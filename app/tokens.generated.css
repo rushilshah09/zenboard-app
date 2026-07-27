@@ -1,0 +1,142 @@
+/* ============================================================================
+   ZENBOARD "B&G" COLOR LAYER — hand-authored from the B&G ZENBOARD Figma
+   (file P8LlPm0W5DuEplLkdxrODe, Home node 1:686), 2026-07-18.
+   REPLACES the generated Paper OS palette. Single dark monochrome theme:
+   black canvas, #121212 floating panels, warm off-white ink (#F2F1EB),
+   white-alpha fills for states. Color appears ONLY in semantic status /
+   priority tokens and the berry brand dot.
+   (design-system/src/tokens/tokens.json is now stale — resync pipeline
+   before running tokens:build again, or it will clobber this file.)
+   Layer 1 color primitives + Layer 2 semantics. The app's own tokens.css
+   layers its legacy aliases and extensions on top of these.
+   ============================================================================ */
+
+:root {
+  /* Surfaces — measured from Figma */
+  --color-canvas: #000000;                    /* desk: pure black */
+  --color-paper: #121212;                     /* floating panel (sidebar, header, content) */
+  --color-paper-2: #1E1E1E;                   /* sunken wrap — card outer / panel header band */
+  --color-paper-3: #262626;                   /* raised — popover/menu header strips */
+  --color-paper-4: #303030;                   /* inner raised card (hero card body) */
+  --color-paper-5: #0D0D0D;                   /* well — recessed insets */
+  --color-tan: #30302F;                       /* strong hairline (sidebar foot divider) */
+  --color-elements-1: rgb(242 241 235 / 0.08);/* default hairline border */
+  --color-ink-900: #F2F1EB;                   /* primary ink (titles, active nav) */
+  --color-ink-800: #E6E5E3;                   /* default body ink */
+  --color-ink-700: #C9C8C2;
+  --color-ink-600: #A8A8A8;                   /* secondary (labels, inactive nav) */
+  --color-ink-500: #91918E;                   /* tertiary (meta, timestamps) */
+  --color-ink-400: #7C7C79;
+  --color-ink-300: #5C5C5C;                   /* disabled ink · toggle track */
+  --color-ink-200: #3A3A38;
+  --color-ink-100: #303030;
+  --color-ink-050: rgb(242 241 235 / 0.06);
+  /* Berry — brand accent. B&G keeps it for the notification dot, logo and
+     rare selected-text emphasis ONLY; never chrome, never buttons. */
+  --color-berry-700: #8A0F51;
+  --color-berry-600: #A61361;
+  --color-berry-500: #C41C72;
+  --color-berry-400: #D55391;
+  --color-berry-300: #E38CB2;
+  --color-berry-200: #EFB9D0;
+  --color-berry-100: rgb(196 28 114 / 0.16);
+  --color-berry-050: rgb(196 28 114 / 0.10);
+  /* Chrome-only alpha washes — B&G: ink, not berry (focus rings, flashes). */
+  --color-berry-alpha-10: rgb(242 241 235 / 0.10);
+  --color-berry-alpha-20: rgb(242 241 235 / 0.20);
+  /* Status — the ONLY saturated color in the UI (success/warning/danger/info),
+     dark-tuned: light text ramps over deep tinted fills. */
+  --color-success-600: #7FC49E;
+  --color-success-500: #55A87C;
+  --color-success-300: #3E6B55;
+  --color-success-100: #1E2C24;
+  --color-warning-600: #E3C07E;
+  --color-warning-500: #D2A150;
+  --color-warning-300: #6E5A2E;
+  --color-warning-100: #2E2717;
+  --color-danger-700: #F5B4AD;
+  --color-danger-600: #EF9189;
+  --color-danger-500: #E5675E;
+  --color-danger-300: #7A3A33;
+  --color-danger-100: #2E1B18;
+  --color-info-600: #9DBBD6;
+  --color-info-500: #5E92BE;
+  --color-info-300: #3E5A70;
+  --color-info-100: #1C2733;
+  /* Label palette (user data: tags, calendars, projects) — dark-tuned trios */
+  --color-label-stone: #8B877E;
+  --color-label-stone-fill: #2A2A28;
+  --color-label-stone-text: #C6C3BC;
+  --color-label-berry: #C41C72;
+  --color-label-berry-fill: #351523;
+  --color-label-berry-text: #E896BD;
+  --color-label-rust: #C97A55;
+  --color-label-rust-fill: #33221A;
+  --color-label-rust-text: #DBA588;
+  --color-label-ochre: #C99E3F;
+  --color-label-ochre-fill: #322A16;
+  --color-label-ochre-text: #DDBE7A;
+  --color-label-moss: #55A87C;
+  --color-label-moss-fill: #1E2C24;
+  --color-label-moss-text: #8FC9A9;
+  --color-label-teal: #4FA8A4;
+  --color-label-teal-fill: #172B2A;
+  --color-label-teal-text: #85C7C4;
+  --color-label-slate: #6E9CC0;
+  --color-label-slate-fill: #1C2733;
+  --color-label-slate-text: #A3C2DB;
+  --color-label-indigo: #8B84C9;
+  --color-label-indigo-fill: #232134;
+  --color-label-indigo-text: #B4AEDD;
+  --color-label-plum: #B07CB8;
+  --color-label-plum-fill: #2C2030;
+  --color-label-plum-text: #D0A8D6;
+  --color-label-clay: #A98B77;
+  --color-label-clay-fill: #2B2420;
+  --color-label-clay-text: #C8AE9D;
+
+  --color-surface-desk: var(--color-canvas);
+  --color-surface-panel: var(--color-paper);
+  --color-surface-sunken: var(--color-paper-2);
+  --color-surface-raised: var(--color-paper-3);
+  --color-surface-hover: rgb(255 255 255 / 0.06);
+  --color-surface-active: rgb(255 255 255 / 0.09);
+  --color-surface-well: var(--color-paper-5);
+  --color-surface-disabled: rgb(255 255 255 / 0.06);
+  --color-surface-selected: rgb(255 255 255 / 0.08);  /* neutral selected wash (Figma nav) */
+  --color-surface-fill: rgb(255 255 255 / 0.12);      /* B&G: secondary button / tag fill */
+  --color-surface-fill-hover: rgb(255 255 255 / 0.16);/* B&G: fill hover step */
+  --color-surface-row: rgb(248 248 248 / 0.06);       /* B&G: list/calendar row fill */
+  --color-text-primary: var(--color-ink-900);
+  --color-text-default: var(--color-ink-800);
+  --color-text-secondary: var(--color-ink-600);
+  --color-text-tertiary: var(--color-ink-500);
+  --color-text-disabled: var(--color-ink-300);
+  --color-text-quiet: rgb(242 241 235 / 0.5);         /* B&G: panel-header labels */
+  --color-text-onsolid: #121212;                      /* on the ink-solid primary */
+  --color-text-accent: var(--color-berry-300);
+  --color-text-selected: var(--color-berry-200);
+  --color-icon-default: var(--color-ink-600);
+  --color-icon-quiet: var(--color-ink-400);
+  --color-border-soft: rgb(242 241 235 / 0.08);
+  --color-border-default: var(--color-elements-1);
+  --color-border-strong: rgb(242 241 235 / 0.12);
+  --color-border-panel: rgb(255 255 255 / 0.02);      /* B&G: floating-panel outline */
+  --color-border-ink: var(--color-ink-800);
+  --color-border-focus: rgb(242 241 235 / 0.40);      /* grayscale focus (monochrome rule) */
+  --color-border-invalid: var(--color-danger-500);
+  --color-border-onsolid: color-mix(in srgb, var(--color-text-onsolid) 16%, transparent); /* dark divider ON the ink-solid primary fill (SplitButton) */
+  --color-scrim: rgb(0 0 0 / 0.60);
+  --color-selection: rgb(242 241 235 / 0.14);
+  --color-code-keyword: var(--color-label-indigo-text);
+  --color-code-string: var(--color-label-moss-text);
+  --color-code-comment: var(--color-ink-400);
+  --color-code-fn: var(--color-label-plum-text);
+  --color-code-number: var(--color-label-rust-text);
+}
+
+/* B&G is a single theme: data-theme="dark" is a no-op (values above ARE the
+   dark system). Block kept so the attribute never breaks selectors. */
+[data-theme="dark"] {
+  color-scheme: dark;
+}

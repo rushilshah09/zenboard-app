@@ -1,26 +1,472 @@
 @import "tailwindcss";
+@import "./tokens.generated.css"; /* GENERATED color layer — source: design-system/src/tokens/tokens.json */
+@import "./tokens.css";
+@import "./ds-theme.css"; /* additive shadcn design-system token/utility layer for @/components/ds */
 
+/* ─────────────────────────────────────────────────────────────
+   ZENBOARD APP TOKENS — extensions over the "Paper OS" system.
+   tokens.css (DESIGN_SYSTEM.md §6, verbatim) is the source of truth
+   for every color / type / radius / shadow / motion primitive. This
+   :root adds ONLY (a) app tokens §6 doesn't define and (b) legacy-name
+   aliases so existing call sites keep working — new values belong in
+   DESIGN_SYSTEM.md first. Light default / dark via
+   html[data-theme="dark"] (higher specificity than tokens.css's
+   [data-theme="dark"], so §6-owned tokens must never be re-declared
+   in the dark block below or they'd shadow the system).
+   Density via html[data-density="compact"].
+   ───────────────────────────────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Legacy radius names → §6 scale. --r-2xl (20px) has no §6 equivalent. */
+  --r-xs: var(--radius-xs);
+  --r-sm: var(--radius-sm);
+  --r-md: var(--radius-md);
+  --r-lg: var(--radius-lg);
+  --r-xl: var(--radius-xl);
+  --r-2xl: 20px;
+  --r-shell: var(--radius-lg);
+  --r-full: var(--radius-pill);
+
+  /* Control metrics (density-aware). DS §5.8/§5.36 ladder: buttons + inputs
+     share the 28 / 32 / 36 grid (default md = 32, so a standard button and
+     text input align exactly). No off-grid heights. */
+  --ctl-sm: 28px; --ctl-md: 32px; --ctl-lg: 36px;
+
+  /* §6's spacing scale skips 28; the app's section rhythm uses it. */
+  --space-7: 28px;
+
+  /* Typography utility scale — powers the text-* Tailwind utilities (below)
+     and lib/typography.ts's TYPE object for inline styles. Distinct from §6's
+     --text-* font SHORTHANDS in tokens.css (those are full `font:` values;
+     these are size/lh/weight/tracking quads — @theme inline emits no :root
+     vars, so the names don't collide). Sizes verified against live DOM
+     measurements in the 2026-07-03 audit. */
+  --text-display-size: 32px; --text-display-lh: 1.15; --text-display-weight: 600; --text-display-tracking: -0.02em;
+  --text-h1-size: 28px;      --text-h1-lh: 1.2;         --text-h1-weight: 500;     --text-h1-tracking: -0.01em;
+  --text-stat-size: 24px;    --text-stat-lh: 1.1;       --text-stat-weight: 500;   --text-stat-tracking: -0.01em;
+  /* h2 re-anchored to DS §4.2.2 (card/featured titles): 16/22/600 Geist. */
+  --text-h2-size: 16px;      --text-h2-lh: 1.375;       --text-h2-weight: 600;     --text-h2-tracking: -0.013em;
+  --text-h3-size: 18px;      --text-h3-lh: 1.3;         --text-h3-weight: 500;     --text-h3-tracking: -0.01em;
+  --text-h4-size: 15px;      --text-h4-lh: 1.35;        --text-h4-weight: 500;     --text-h4-tracking: normal;
+  --text-body-lg-size: 15px; --text-body-lg-lh: 1.5;    --text-body-lg-weight: 400; --text-body-lg-tracking: normal;
+  --text-body-size: 14px;    --text-body-lh: 1.43;      --text-body-weight: 400;   --text-body-tracking: -0.006em;
+  --text-small-size: 13px;   --text-small-lh: 1.45;     --text-small-weight: 400;  --text-small-tracking: normal;
+  --text-caption-size: 12px; --text-caption-lh: 1.4;    --text-caption-weight: 400; --text-caption-tracking: normal;
+  --text-label-size: 11px;   --text-label-lh: 1.3;      --text-label-weight: 500;  --text-label-tracking: 0.04em;
+  --text-micro-size: 10px;   --text-micro-lh: 1.2;      --text-micro-weight: 500;  --text-micro-tracking: 0.02em;
+  --text-nano-size: 8px;     --text-nano-lh: 1.25;      --text-nano-weight: 500;   --text-nano-tracking: 0.038em;
+  --text-code-size: 12px;    --text-code-lh: 1.4;       --text-code-weight: 400;   --text-code-tracking: normal;
+
+  /* View rhythm */
+  --view-px: 40px; --view-pt: 28px; --view-pb: 80px; --view-gap: 24px;
+  --view-maxw: 978px; /* reading-column cap (B&G Figma home 1:686) — views opt out via the width toggle */
+  --section-gap: 28px; --card-pad: 16px;
+
+  /* Dynamic accent. Settings → Appearance swaps ONLY --accent (lib/theme.ts),
+     so the §6 accent derivatives are re-declared as color-mix() off --accent —
+     tuned to land on §6's plum values — and recolor with it. --accent itself
+     comes from tokens.css. The dark block re-tunes deep/text toward §6 dark. */
+  --accent-deep: color-mix(in srgb, var(--accent) 72%, #000);          /* dark-tuned deep */
+  --accent-text: color-mix(in srgb, var(--accent) 86%, #FFF);          /* lifted for dark contrast */
+  --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);    /* §6 16% */
+  --accent-border: color-mix(in srgb, var(--accent) 28%, transparent);  /* §6 28% */
+  --accent-wash: color-mix(in srgb, var(--accent) 12%, transparent);
+  --accent-wash-strong: color-mix(in srgb, var(--accent) 32%, transparent);
+  --on-accent: #121212;   /* B&G: text on the ink accent solid */
+
+  /* Accent — Notion's three verified jobs ONLY (Master Prompt v3 §3). The plum
+     is NOT default chrome: it appears on the logo, active indicators (sparingly),
+     the selection tint, the focus ring, checked checkboxes, links, and on-toggles.
+     Never on default buttons.
+       1. solid          → var(--accent)
+       2. selection tint → accent at 28% over the surface
+       3. focus ring     → accent at ~40% */
+  --accent-selection: color-mix(in srgb, var(--accent) 28%, transparent);
+  --accent-ring: color-mix(in srgb, var(--accent) 40%, transparent);
+
+  /* ── SEMANTIC INK LADDER (Master Prompt v3 · Notion's verified formula) ──
+     Every neutral in the UI is the ONE warm ink shown at a fixed opacity over
+     the locked paper tones — never a hardcoded gray. Mapped onto §6's --ink-a-*
+     alpha scale (tokens.css), which carries the correct per-mode ink triplet, so
+     these auto-adapt light/dark. Prefer these names in new components. */
+  --text-primary:   var(--ink-a-100);   /* titles, active icons */
+  --text-secondary: var(--ink-a-62);    /* labels, breadcrumbs */
+  --text-muted:     var(--ink-a-45);    /* timestamps, meta */
+  --text-faint:     var(--ink-a-28);    /* placeholders, disabled hints */
+  --text-disabled:  var(--ink-a-28);
+  --border-default: var(--ink-a-8);     /* 8–9% hairline, dividers */
+  --border-strong:  var(--ink-a-16);    /* focused-area / strong outline */
+  --divider:        var(--ink-a-8);
+  --state-hover:    var(--hover);        /* warm ink overlay ~8% (mode-aware) */
+  --state-pressed:  var(--hover-strong); /* ~12% */
+  --state-selected: var(--accent-selection);
+  /* Neutral selected/active surface for nav items, rails, and list rows —
+     the Figma HIfi "States/Selected" warm wash (#2A1C00 @ 8%), sourced from
+     the generated semantic token so light/dark stay in sync. */
+  --nav-active-bg:  var(--color-surface-selected);
+  --fill-whisper:   var(--ink-a-6);      /* code-bg base, subtle stripes */
+  --fill-wash:      color-mix(in srgb, var(--ink-5) 15%, transparent); /* Notion neutral wash */
+
+  /* Primary CTA = Berry (design-system.md §2.1.3 / §4.1). The brand accent IS
+     the primary fill; hover LIGHTENS in dark (berry-600 = #EE7EB4). Text on the
+     solid uses --color-text-onsolid (paper in light, dark ink on the lifted
+     berry in dark). The explicit NEUTRAL dark solid lives on --neutral-fill
+     (the `dark` button variant + chat bubbles), so those don't drift. */
+  /* B&G override: no colorful buttons — the primary CTA is the ink solid
+     (#F2F1EB fill, #121212 text), hover lifts to pure white. Berry remains
+     only for the notification dot / logo / rare selected-text emphasis. */
+  --primary: var(--color-ink-900);
+  --primary-deep: #FFFFFF;
+  --on-primary: var(--color-text-onsolid);
+
+  /* Neutral dark solid — alias of --primary, used by the `dark` button variant
+     and chat bubbles so those explicit-neutral surfaces never drift. */
+  --neutral-fill: var(--ink-2);
+  --neutral-fill-deep: var(--ink);
+  --on-neutral-fill: var(--paper-2);
+
+  /* Sidebar shell — width itself is §6's --sidebar-w. */
+  --sidebar-w-collapsed: 50px;
+  --dur-collapse: 220ms;
+
+  /* Deepest ink for rare emphasis; §6's ramp stops at --ink. */
+  --ink-deep: #FFFFFF;
+
+  /* Recessed in-panel surfaces (Documents redesign): --well = grid canvas,
+     --well-2 = neutral status-chip surface. B&G: recessed goes darker. */
+  --well: #0D0D0D;
+  --well-2: #262626;
+
+  /* Popover/menu ring (DS v3 "components 12", 8% ink) — every floating menu
+     carries it so popups never render borderless. color-mix keeps it theme-aware. */
+  --line-pop: color-mix(in srgb, var(--ink) 8%, transparent);
+
+  /* Interaction tints — legacy names over §6, + the strong press wash. */
+  --hover: var(--hover-1);
+  --hover-strong: rgba(255,255,255,0.11);
+  --disabled-bg: var(--bg-disable);
+  --disabled-text: var(--ink-disable);
+
+  /* Tooltip (DS §5.40): inverted paper — --surface-dark stays a dark surface
+     in BOTH themes (tokens.css flips it to #45403A in dark), light text. */
+  --tip-bg: var(--surface-dark); --tip-text: #F2F0EA;
+
+  /* Selection — the word-processor blue (Notion idiom), derived from --blue so
+     both themes adapt. --sel-text tints native ::selection; --sel-block is the
+     softer full-width band painted on blocks swept into a cross-block drag. */
+  --sel-text: color-mix(in srgb, var(--blue) 30%, transparent);
+  --sel-block: color-mix(in srgb, var(--blue) 14%, transparent);
+
+  /* Raw status hues for lines/text/derivations — dark-tuned. */
+  --green: #7DBA6E; --blue: #6FA3E8; --red: #E0735C;
+  --amber: #D2A055; --purple: #9C8FE0; --olive: #A3B382;
+  --amber-text: #D9A86A;
+
+  /* Semantic event/tag palette — legacy --pal-* names aliased onto §6's
+     status trios (values were already identical in light). See lib/palette.ts. */
+  --pal-gray-dot: var(--gray-dot);     --pal-gray-bg: var(--gray-bg);     --pal-gray-text: var(--gray-text);
+  --pal-brown-dot: var(--brown-dot);   --pal-brown-bg: var(--brown-bg);   --pal-brown-text: var(--brown-text);
+  --pal-orange-dot: var(--orange-dot); --pal-orange-bg: var(--orange-bg); --pal-orange-text: var(--orange-text);
+  --pal-yellow-dot: var(--yellow-dot); --pal-yellow-bg: var(--yellow-bg); --pal-yellow-text: var(--yellow-text);
+  --pal-green-dot: var(--green-dot);   --pal-green-bg: var(--green-bg);   --pal-green-text: var(--green-text);
+  --pal-blue-dot: var(--blue-dot);     --pal-blue-bg: var(--blue-bg);     --pal-blue-text: var(--blue-text);
+  --pal-purple-dot: var(--purple-dot); --pal-purple-bg: var(--purple-bg); --pal-purple-text: var(--purple-text);
+  --pal-pink-dot: var(--pink-dot);     --pal-pink-bg: var(--pink-bg);     --pal-pink-text: var(--pink-text);
+  --pal-red-dot: var(--red-dot);       --pal-red-bg: var(--red-bg);       --pal-red-text: var(--red-text);
+
+  --scrim-color: #000000;
+
+  /* Legacy font names → §6 stacks (tokens.css wires next/font handles).
+     --font-editorial resolves to the UI sans — the Fraunces serif is retired. */
+  --font-body: var(--font-ui);
+  --font-editorial: var(--font-ui);
+
+  /* ── ELEVATION — B&G: borders define hierarchy, shadows are ambient-only.
+     A hairline ring + one soft black layer, never large, never colored. */
+  --shadow-xs:      0 1px 2px rgba(0,0,0,0.24);                                       /* flat/gallery cards */
+  --shadow-sm:      0 1px 2px rgba(0,0,0,0.30);                                       /* raised control */
+  --shadow-crisp:   0 1px 2px rgba(0,0,0,0.28);                                       /* switch thumb, tab pill */
+  --shadow-card:    0 0 0 1px var(--border-default), 0 1px 2px rgba(0,0,0,0.24);      /* base card */
+  --shadow-md:      0 0 0 1px var(--border-default), 0 2px 6px rgba(0,0,0,0.30);      /* raised panel */
+  --shadow-lg:      0 0 0 1px var(--border-default), 0 4px 12px rgba(0,0,0,0.36);     /* popover · menu · dropdown */
+  --shadow-overlay: 0 0 0 1px var(--border-default), 0 4px 12px rgba(0,0,0,0.36);     /* popover level */
+  --shadow-xl:      0 0 0 1px var(--border-default), 0 8px 24px rgba(0,0,0,0.44);     /* modal · dialog */
+  --shadow-panel:   0 0 0 1px var(--color-border-panel), 0 1px 2px rgba(0,0,0,0.04);  /* B&G floating panel (Figma Navigation/Header) */
+
+  /* Motion — app easing for micro-interactions; durations otherwise §6. */
+  --ease: cubic-bezier(.2,.8,.2,1);
+  --dur-mid: 180ms;
+
+  color-scheme: dark;
 }
 
+html[data-density="compact"] {
+  --ctl-sm: 25px; --ctl-md: 28px; --ctl-lg: 32px;
+  --view-px: 28px; --view-pt: 20px; --view-pb: 56px; --view-gap: 18px;
+  --section-gap: 22px; --card-pad: 12px;
+}
+
+/* B&G is a single dark theme — the html[data-theme="dark"] override block is
+   gone; :root above already carries the dark system. */
+
+/* Expose tokens to Tailwind utilities (bg-paper, text-ink-3, font-display, rounded-xl, ...) */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-canvas: var(--canvas);
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-paper-3: var(--paper-3);
+  --color-paper-4: var(--paper-4);
+  --color-paper-5: var(--paper-5);
+  --color-tan: var(--tan);
+  --color-well: var(--well);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-4: var(--ink-4);
+  --color-ink-5: var(--ink-5);
+  --color-ink-deep: var(--ink-deep);
+  --color-accent: var(--accent);
+  --color-accent-deep: var(--accent-deep);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-border: var(--accent-border);
+  --color-accent-text: var(--accent-text);
+  --color-accent-wash: var(--accent-wash);
+  --color-on-accent: var(--on-accent);
+  --color-primary: var(--primary);
+  --color-primary-deep: var(--primary-deep);
+  --color-on-primary: var(--on-primary);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+  --color-line-3: var(--line-3);
+  --color-line-pop: var(--line-pop);
+  --color-hover: var(--hover);
+  --color-hover-strong: var(--hover-strong);
+  --color-disabled-bg: var(--disabled-bg);
+  --color-disabled-text: var(--disabled-text);
+  --color-green: var(--green);
+  --color-blue: var(--blue);
+  --color-red: var(--red);
+  --color-amber: var(--amber);
+  --color-purple: var(--purple);
+  --color-olive: var(--olive);
+
+  /* ── B&G MONOCHROME REMAP: the berry-* Tailwind UTILITIES resolve to ink.
+     Every DS chrome class (checked checkboxes, focus rings, selected days,
+     upload progress, …) written as bg/text/border-berry-* renders grayscale in
+     one move. TRUE berry survives only through raw var(--accent) /
+     var(--color-berry-500) references (notification dot, brand). */
+  --color-berry-700: var(--color-ink-900);
+  --color-berry-600: var(--color-ink-800);
+  --color-berry-500: var(--color-ink-900);
+  --color-berry-400: var(--color-ink-500);
+  --color-berry-300: var(--color-ink-300);
+  --color-berry-200: var(--color-ink-200);
+  --color-berry-100: var(--color-surface-fill);
+  --color-berry-050: var(--color-surface-selected);
+
+  --color-ink-900: var(--color-ink-900);
+  --color-ink-800: var(--color-ink-800);
+  --color-ink-700: var(--color-ink-700);
+  --color-ink-600: var(--color-ink-600);
+  --color-ink-500: var(--color-ink-500);
+  --color-ink-400: var(--color-ink-400);
+  --color-ink-300: var(--color-ink-300);
+  --color-ink-200: var(--color-ink-200);
+  --color-ink-100: var(--color-ink-100);
+
+  --color-success-600: var(--color-success-600); --color-success-500: var(--color-success-500);
+  --color-success-300: var(--color-success-300); --color-success-100: var(--color-success-100);
+  --color-warning-600: var(--color-warning-600); --color-warning-500: var(--color-warning-500);
+  --color-warning-300: var(--color-warning-300); --color-warning-100: var(--color-warning-100);
+  --color-danger-600: var(--color-danger-600);   --color-danger-500: var(--color-danger-500);
+  --color-danger-300: var(--color-danger-300);   --color-danger-100: var(--color-danger-100);
+  --color-info-600: var(--color-info-600);       --color-info-500: var(--color-info-500);
+  --color-info-300: var(--color-info-300);       --color-info-100: var(--color-info-100);
+
+  --color-label-stone: var(--color-label-stone);   --color-label-stone-fill: var(--color-label-stone-fill);   --color-label-stone-text: var(--color-label-stone-text);
+  --color-label-berry: var(--color-label-berry);   --color-label-berry-fill: var(--color-label-berry-fill);   --color-label-berry-text: var(--color-label-berry-text);
+  --color-label-rust: var(--color-label-rust);     --color-label-rust-fill: var(--color-label-rust-fill);     --color-label-rust-text: var(--color-label-rust-text);
+  --color-label-ochre: var(--color-label-ochre);   --color-label-ochre-fill: var(--color-label-ochre-fill);   --color-label-ochre-text: var(--color-label-ochre-text);
+  --color-label-moss: var(--color-label-moss);     --color-label-moss-fill: var(--color-label-moss-fill);     --color-label-moss-text: var(--color-label-moss-text);
+  --color-label-teal: var(--color-label-teal);     --color-label-teal-fill: var(--color-label-teal-fill);     --color-label-teal-text: var(--color-label-teal-text);
+  --color-label-slate: var(--color-label-slate);   --color-label-slate-fill: var(--color-label-slate-fill);   --color-label-slate-text: var(--color-label-slate-text);
+  --color-label-indigo: var(--color-label-indigo); --color-label-indigo-fill: var(--color-label-indigo-fill); --color-label-indigo-text: var(--color-label-indigo-text);
+  --color-label-plum: var(--color-label-plum);     --color-label-plum-fill: var(--color-label-plum-fill);     --color-label-plum-text: var(--color-label-plum-text);
+  --color-label-clay: var(--color-label-clay);     --color-label-clay-fill: var(--color-label-clay-fill);     --color-label-clay-text: var(--color-label-clay-text);
+
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+  --font-editorial: var(--font-editorial);
+  --font-mono: var(--font-mono);
+  --font-serif: var(--font-serif);
+
+  --radius-xs: var(--r-xs);
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius-xl: var(--r-xl);
+  --radius-2xl: var(--r-2xl);
+  --radius-full: var(--r-full);
+
+  --shadow-zen-sm: var(--shadow-sm);
+  --shadow-zen-md: var(--shadow-md);
+  --shadow-zen-lg: var(--shadow-lg);
+  --shadow-zen-xl: var(--shadow-xl);
+
+  /* design-system.md §2.8 lift scale → shadow-lift-1..4, shadow-toast */
+  --shadow-lift-1: var(--shadow-lift-1);
+  --shadow-lift-2: var(--shadow-lift-2);
+  --shadow-lift-3: var(--shadow-lift-3);
+  --shadow-lift-4: var(--shadow-lift-4);
+  --shadow-toast: var(--shadow-toast);
+
+  /* Typography scale → text-display, text-h1, ... text-code utility classes */
+  --text-display: var(--text-display-size);
+  --text-display--line-height: var(--text-display-lh);
+  --text-display--font-weight: var(--text-display-weight);
+  --text-display--letter-spacing: var(--text-display-tracking);
+  --text-h1: var(--text-h1-size);
+  --text-h1--line-height: var(--text-h1-lh);
+  --text-h1--font-weight: var(--text-h1-weight);
+  --text-h1--letter-spacing: var(--text-h1-tracking);
+  --text-stat: var(--text-stat-size);
+  --text-stat--line-height: var(--text-stat-lh);
+  --text-stat--font-weight: var(--text-stat-weight);
+  --text-stat--letter-spacing: var(--text-stat-tracking);
+  --text-h2: var(--text-h2-size);
+  --text-h2--line-height: var(--text-h2-lh);
+  --text-h2--font-weight: var(--text-h2-weight);
+  --text-h2--letter-spacing: var(--text-h2-tracking);
+  --text-h3: var(--text-h3-size);
+  --text-h3--line-height: var(--text-h3-lh);
+  --text-h3--font-weight: var(--text-h3-weight);
+  --text-h3--letter-spacing: var(--text-h3-tracking);
+  --text-h4: var(--text-h4-size);
+  --text-h4--line-height: var(--text-h4-lh);
+  --text-h4--font-weight: var(--text-h4-weight);
+  --text-h4--letter-spacing: var(--text-h4-tracking);
+  --text-body-lg: var(--text-body-lg-size);
+  --text-body-lg--line-height: var(--text-body-lg-lh);
+  --text-body-lg--font-weight: var(--text-body-lg-weight);
+  --text-body: var(--text-body-size);
+  --text-body--line-height: var(--text-body-lh);
+  --text-body--font-weight: var(--text-body-weight);
+  --text-small: var(--text-small-size);
+  --text-small--line-height: var(--text-small-lh);
+  --text-small--font-weight: var(--text-small-weight);
+  --text-caption: var(--text-caption-size);
+  --text-caption--line-height: var(--text-caption-lh);
+  --text-caption--font-weight: var(--text-caption-weight);
+  --text-label: var(--text-label-size);
+  --text-label--line-height: var(--text-label-lh);
+  --text-label--font-weight: var(--text-label-weight);
+  --text-label--letter-spacing: var(--text-label-tracking);
+  --text-micro: var(--text-micro-size);
+  --text-micro--line-height: var(--text-micro-lh);
+  --text-micro--font-weight: var(--text-micro-weight);
+  --text-micro--letter-spacing: var(--text-micro-tracking);
+  --text-nano: var(--text-nano-size);
+  --text-nano--line-height: var(--text-nano-lh);
+  --text-nano--font-weight: var(--text-nano-weight);
+  --text-nano--letter-spacing: var(--text-nano-tracking);
+  --text-code: var(--text-code-size);
+  --text-code--line-height: var(--text-code-lh);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* ── Base ── */
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; }
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* Surface, ink, and type come from tokens.css's §6 base body rule.
+     App chrome (nav, buttons, cards, labels, headers...) isn't selectable
+     text — only genuine editable/readable content opts back in below. Closes
+     the "Cmd+A selects the whole page" gap (2026-07-03 interaction audit). */
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+  -webkit-user-select: none;
 }
+
+/* Real edit/read surfaces opt back into normal text selection. */
+input, textarea, code, pre, kbd,
+[contenteditable], [contenteditable] *,
+[data-selectable], [data-selectable] * {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* B&G: no paper grain — surfaces are flat, clean black/gray. */
+
+/* In @layer base so Tailwind utilities (a later layer) can override — an
+   unlayered reset silently beats every `text-*`/color utility on buttons,
+   which broke primary Button contrast (ink text on accent bg). */
+@layer base {
+  button { font-family: inherit; font-size: inherit; color: inherit; }
+  input, textarea, select { font-family: inherit; color: inherit; }
+}
+
+/* Scrollbar (DS §5.28): 6px, pill thumb at half-strength ink-6, no track. */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--ink-6) 50%, transparent);
+  border-radius: var(--radius-pill);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--ink-6); }
+
+/* Opt-in: hide the scrollbar visually while keeping native scroll (tab strips,
+   segmented rails). The fade mask remains the only overflow affordance. */
+.zb-no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.zb-no-scrollbar::-webkit-scrollbar { width: 0; height: 0; display: none; }
+
+@keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes blurin { from { opacity: 0; filter: blur(8px); transform: scale(0.98); } to { opacity: 1; filter: blur(0); transform: scale(1); } }
+@keyframes pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+@keyframes tick { 0% { transform: scale(0.2); opacity: 0; } 50% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
+@keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+@keyframes popIn { 0% { transform: scale(0.96); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+/* Popover/dropdown entrance (DS §4.7): fade + 4px rise + 0.98 scale, --dur-base. */
+@keyframes zb-pop-in { from { opacity: 0; transform: translateY(4px) scale(0.98); } to { opacity: 1; transform: none; } }
+/* Modal entrance (DS §4.7): panel fade + 0.97 scale, --dur-slow; scrim fades --dur-base. */
+@keyframes zb-modal-in { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* Native text selection matches the editor's block-sweep blue, app-wide. */
+::selection { background: var(--sel-text); }
+
+.sr { position: absolute; clip: rect(0 0 0 0); width: 1px; height: 1px; overflow: hidden; }
+/* Number utility: SANS tabular figures (fixed-width digits, no jitter). Per the
+   constitution "Numbers in stats and tables: tabular-nums" / "NEVER monospace,
+   except invoice/ID strings" — mono is reserved for ID/code (e.g. INV-001), not
+   counts, stats, timers, or currency. */
+.num { font-variant-numeric: tabular-nums; }
+
+/* Sidebar/rail navigation row — one hover/transition definition shared by the
+   global sidebar (app-shell) and in-page rails (Tasks views rail), so the two
+   can never drift. Rows style their own active state inline. */
+.zb-nav-item { transition: background var(--dur-instant) var(--ease-out), color var(--dur-fast) var(--ease); }
+.zb-nav-item:hover { background: var(--hover); }
+
+/* Pressable micro-interaction — calm, Notion-style. No movement, scale, or bounce:
+   a subtle tint overlay that respects the element's radius and works over any
+   background (transparent icon buttons, accent pills, neutral surfaces alike).
+   Reduced-motion users get the global kill-switch above. */
+.zb-press { position: relative; transition: box-shadow var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease); }
+.zb-press::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: transparent; pointer-events: none; transition: background var(--dur-instant) var(--ease-out); }
+.zb-press:hover::after { background: var(--hover); }
+.zb-press:active::after { background: var(--hover-strong); }
+
+/* Keyboard focus ring — buttons, links, custom controls. Text fields are
+   excluded: Input/Textarea carry their own focus treatment (accent border +
+   soft ring), and the global outline was double-ringing inputs nested inside
+   adorned pill containers (e.g. the command-palette search). */
+/* B&G: focus is grayscale (color is reserved for status/priority). */
+:focus-visible:not(input):not(textarea):not([contenteditable]) { outline: 2px solid var(--color-border-focus); outline-offset: 1px; border-radius: var(--radius-sm); }
+input:focus-visible, textarea:focus-visible, [contenteditable]:focus-visible { outline: none; }
+
+/* Editor caret placeholder — soft ghost text at the caret, same typography as
+   the paragraph, only muted. Notion-style: it reads as inline body text. */
+.block-row textarea::placeholder { color: var(--text-faint); opacity: 1; }

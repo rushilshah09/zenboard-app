@@ -1,0 +1,183 @@
+/* ds-theme.css — additive token layer for the shadcn design-system components in
+   components/ds. The color layer (primitives + semantics, light + dark) is
+   GENERATED into tokens.generated.css from design-system tokens.json — this file
+   never declares colors. It only fills the non-color gaps DS components need:
+   Tailwind utility registration, the DS text-size names, motion + keyframes, and
+   the utility helpers. Source: design-system src/styles theme+base. */
+
+/* Enables DS components' `dark:` utilities on the app's existing
+   html[data-theme="dark"] switch (zenboard-web toggles via that attribute).
+   Block form — the shorthand with a comma-list :where() selector trips the
+   Tailwind at-rule parser. */
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+}
+
+/* ── LAYER 2 · SEMANTIC — GENERATED into tokens.generated.css (light + dark).
+   Never re-declare --color-* here; this file layers utilities on top. ───────── */
+
+/* ── Register the semantic layer as Tailwind color utilities (bg-surface-*,
+   text-onsolid, border-line-strong, …). `inline` keeps them theme-swappable.
+   Names the app already owns (--color-accent, --color-line, --color-hover) are
+   intentionally NOT redeclared here. ──────────────────────────────────────── */
+@theme inline {
+  --color-line-soft: var(--color-border-soft);
+  --color-line-strong: var(--color-border-strong);
+  --color-line-ink: var(--color-border-ink);
+  --color-line-berry: var(--color-border-focus);
+  --color-line-danger: var(--color-border-invalid);
+  --color-line-onsolid: var(--color-border-onsolid);
+  --color-border-focus: var(--color-border-focus);
+  --color-border-invalid: var(--color-border-invalid);
+
+  --color-surface-desk: var(--color-surface-desk);
+  --color-surface-panel: var(--color-surface-panel);
+  --color-surface-sunken: var(--color-surface-sunken);
+  --color-surface-raised: var(--color-surface-raised);
+  --color-surface-hover: var(--color-surface-hover);
+  --color-surface-active: var(--color-surface-active);
+  --color-surface-well: var(--color-surface-well);
+  --color-surface-disabled: var(--color-surface-disabled);
+  --color-surface-selected: var(--color-surface-selected);
+  /* B&G additions — white-alpha fills + quiet header ink + panel outline */
+  --color-surface-fill: var(--color-surface-fill);
+  --color-surface-fill-hover: var(--color-surface-fill-hover);
+  --color-surface-row: var(--color-surface-row);
+  --color-text-quiet: var(--color-text-quiet);
+  --color-border-panel: var(--color-border-panel);
+
+  --color-onsolid: var(--color-text-onsolid);
+  --color-ds-accent: var(--color-text-accent);
+  --color-selected: var(--color-text-selected);
+  --color-scrim: var(--color-scrim);
+  --color-icon-default: var(--color-icon-default);
+  --color-icon-quiet: var(--color-icon-quiet);
+
+  --color-code-keyword: var(--color-code-keyword);
+  --color-code-string: var(--color-code-string);
+  --color-code-comment: var(--color-code-comment);
+  --color-code-fn: var(--color-code-fn);
+  --color-code-number: var(--color-code-number);
+}
+
+/* ── DS type-scale names the app doesn't already define (body/display exist and
+   are left to the app). ───────────────────────────────────────────────────── */
+@theme {
+  --text-caption: 11px;
+  --text-caption--line-height: 14px;
+  --text-caption--letter-spacing: 0.02em;
+  --text-overline: 11px;
+  --text-overline--line-height: 14px;
+  --text-overline--letter-spacing: 0.06em;
+  --text-overline--font-weight: 600;
+  --text-meta: 12px;
+  --text-meta--line-height: 16px;
+  --text-mono-sm: 12px;
+  --text-mono-sm--line-height: 16px;
+  --text-ui: 14px;
+  --text-ui--line-height: 20px;
+  --text-ui--letter-spacing: -0.15px;
+  --text-mono-md: 13px;
+  --text-mono-md--line-height: 20px;
+  --text-lead: 16px;
+  --text-lead--line-height: 26px;
+  --text-editor: 16px;
+  --text-editor--line-height: 24px;
+  --text-editor--letter-spacing: -0.23px;
+  --text-title-4: 18px;
+  --text-title-4--line-height: 24px;
+  --text-title-4--letter-spacing: -0.30px;
+  --text-title-4--font-weight: 600;
+  --text-title-3: 22px;
+  --text-title-3--line-height: 28px;
+  --text-title-3--letter-spacing: -0.40px;
+  --text-title-3--font-weight: 600;
+  --text-title-2: 24px;
+  --text-title-2--line-height: 32px;
+  --text-title-2--font-weight: 600;
+  --text-title-1: 30px;
+  --text-title-1--line-height: 36px;
+  --text-title-1--letter-spacing: -0.43px;
+  --text-title-1--font-weight: 600;
+
+  /* Framed-panel card tokens (mirror of design-system tokens.json radius.panel /
+     shadow.panel — build.ts only pushes COLOURS to the web layer, so these two
+     non-colour tokens are registered here). Enables rounded-panel / shadow-panel. */
+  --radius-panel: 12px;
+  /* Tag/chip radius (Figma Tags 23:7319 — 5px sits between --radius-xs and -sm).
+     Registered here so `rounded-tag` is a utility; FigmaTag + meta chips use it. */
+  --radius-tag: 5px;
+  --shadow-panel: 0 0 0 1px var(--color-border-panel), 0 1px 2px rgb(0 0 0 / 0.04);
+
+  /* Motion tokens DS components animate with (durations/eases the app lacks). */
+  --ease-out-quiet: cubic-bezier(0.16, 1, 0.30, 1);
+  --ease-standard: cubic-bezier(0.20, 0, 0.00, 1);
+  --ease-in-quiet: cubic-bezier(0.40, 0, 1, 1);
+  --ease-spring: cubic-bezier(0.34, 1.40, 0.64, 1);
+  --duration-instant: 20ms;
+  --duration-fast: 100ms;
+  --duration-base: 150ms;
+  --duration-slow: 200ms;
+  --duration-slower: 200ms;
+  --duration-hold: 700ms;
+
+  /* Z-index registry DS overlays rely on. */
+  --z-sticky: 10;
+  --z-dropdown: 40;
+  --z-overlay: 45;
+  --z-modal: 50;
+  --z-toast: 55;
+  --z-drag: 60;
+  --z-tooltip: 70;
+
+  /* Named animations (Radix data-state driven). */
+  --animate-emerge: emerge var(--duration-base) var(--ease-out-quiet);
+  --animate-rise: rise var(--duration-slow) var(--ease-out-quiet);
+  --animate-exit: exit var(--duration-fast) var(--ease-in-quiet);
+  --animate-slide-in-right: slide-in-right var(--duration-slow) var(--ease-standard);
+  --animate-slide-out-right: slide-out-right var(--duration-fast) var(--ease-in-quiet);
+  --animate-slide-in-bottom: slide-in-bottom var(--duration-slow) var(--ease-standard);
+  --animate-slide-out-bottom: slide-out-bottom var(--duration-fast) var(--ease-in-quiet);
+  --animate-ds-fadein: fadein var(--duration-base) var(--ease-out-quiet);
+  --animate-flash-highlight: flash-highlight 1200ms var(--ease-standard);
+}
+
+@keyframes emerge { from { opacity: 0; transform: translateY(4px) scale(0.96); } }
+@keyframes rise { from { opacity: 0; transform: translateY(8px) scale(0.98); } }
+@keyframes exit { to { opacity: 0; transform: scale(0.99); } }
+@keyframes slide-in-right { from { transform: translateX(100%); } }
+@keyframes slide-out-right { to { transform: translateX(100%); } }
+@keyframes slide-in-bottom { from { transform: translateY(100%); } }
+@keyframes slide-out-bottom { to { transform: translateY(100%); } }
+@keyframes fadein { from { opacity: 0; } }
+@keyframes indeterminate { from { translate: -110% 0; } to { translate: 350% 0; } }
+@keyframes shimmer { from { transform: translateX(-100%); } to { transform: translateX(200%); } }
+@keyframes reveal-down { from { height: 0; opacity: 0.4; } to { height: var(--radix-accordion-content-height); opacity: 1; } }
+@keyframes reveal-up { from { height: var(--radix-accordion-content-height); } to { height: 0; opacity: 0.4; } }
+@keyframes flash-highlight {
+  0%, 100% { background-color: transparent; }
+  25%, 75% { background-color: var(--color-berry-alpha-20, rgb(242 241 235 / 0.20)); }
+}
+
+/* ── @utility helpers DS components apply directly (§6.6). ─────────────────── */
+@utility surface-panel { @apply bg-paper rounded-xl; box-shadow: var(--shadow-lift-1); }
+@utility surface-raised { @apply bg-paper rounded-md; box-shadow: var(--shadow-lift-2); }
+@utility focus-ring {
+  @apply outline-none;
+  &:focus-visible {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 2px var(--focus-offset, var(--color-surface-panel)), 0 0 0 4px var(--color-border-focus);
+  }
+}
+@utility row-hover {
+  transition: background-color var(--duration-instant) var(--ease-out-quiet);
+  &:hover { background-color: var(--color-surface-hover); }
+  &:active { background-color: var(--color-surface-active); }
+}
+@utility truncate-1 { @apply truncate; }
+@utility scroll-fade-x {
+  mask-image: linear-gradient(to right, transparent, black 24px, black calc(100% - 24px), transparent);
+}

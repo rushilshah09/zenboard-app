@@ -1,0 +1,179 @@
+/* ==========================================================
+   ZENBOARD DESIGN TOKENS
+   Source of truth: design-system.md v1.0 "Paper" (13 Jul 2026),
+   §2.19.2 (token file) + §2.1 (colour) + §2.8 (elevation).
+
+   Layer 1 (PRIMITIVE, --color-*) carries the doc's canonical
+   names/values. Legacy app names (--paper-2, --ink, --accent,
+   --font-ui, …) are kept as thin aliases onto the primitives so
+   existing call sites keep resolving during migration.
+
+   The ONE deviation from the doc: next/font (app/layout.tsx) loads
+   Geist / Geist Mono / Source Serif 4 under hashed family
+   handles exposed as CSS vars (--font-geist-sans / --font-geist-mono
+   / --font-source-serif); those handles are prepended to the §2.19
+   stacks. Everything else is 1:1 with the doc.
+
+   App-specific extensions and Tailwind @theme exposure live in
+   globals.css, never here.
+   ========================================================== */
+
+:root {
+  /* ─── LAYER 1 · PRIMITIVES — GENERATED, see tokens.generated.css ──
+     Color primitives (--color-canvas … --color-label-*) and the Layer-2
+     semantic colors come from design-system/src/tokens/tokens.json via
+     `npm run tokens:build`. Never re-declare them here. ─────────────── */
+
+  /* ─── LEGACY ALIASES → primitives (kept for existing call sites) ── */
+
+  /* Surfaces */
+  --canvas:        var(--color-canvas);
+  --paper:         var(--color-paper);
+  --paper-2:       var(--color-paper-2);
+  --paper-3:       var(--color-paper-3);
+  --paper-4:       var(--color-paper-4);
+  --paper-5:       var(--color-paper-5);
+  --tan:           var(--color-tan);
+  --surface-dark:  #303030;                 /* inverted tooltip surface (elevated dark) */
+  --bg-disable:    rgba(242, 241, 235, 0.10);
+
+  /* Ink (text) */
+  --ink:              var(--color-ink-900);
+  --ink-2:            var(--color-ink-800);
+  --ink-3:            var(--color-ink-600);
+  --ink-4:            var(--color-ink-500);
+  --ink-5:            var(--color-ink-400);
+  --ink-6:            var(--color-ink-300);
+  --ink-disable:      rgba(242, 241, 235, 0.24);
+  --ink-placeholder:  var(--color-ink-500);   /* §2.2.2: placeholders are ink-500 (AA) */
+
+  /* Ink alpha scale (Notion-style neutrals) — over the B&G ink #F2F1EB */
+  --ink-base: 242, 241, 235;                  /* #F2F1EB as RGB triplet */
+  --ink-a-100: rgba(var(--ink-base), 1);
+  --ink-a-80:  rgba(var(--ink-base), 0.84);
+  --ink-a-62:  rgba(var(--ink-base), 0.68);
+  --ink-a-45:  rgba(var(--ink-base), 0.50);
+  --ink-a-28:  rgba(var(--ink-base), 0.34);
+  --ink-a-16:  rgba(var(--ink-base), 0.24);
+  --ink-a-12:  rgba(var(--ink-base), 0.16);
+  --ink-a-8:   rgba(var(--ink-base), 0.08);
+  --ink-a-6:   rgba(var(--ink-base), 0.10);
+
+  /* Borders — white-alpha ink hairlines over dark surfaces */
+  --line:          rgba(242, 241, 235, 0.12);
+  --line-2:        rgba(242, 241, 235, 0.08);
+  --line-3:        rgba(242, 241, 235, 0.20);
+  --line-paper-5:  var(--color-paper-5);
+
+  /* Accent — B&G: the interaction accent IS ink (monochrome chrome). Every
+     legacy var(--accent) site (selected days, focus states, today rings, …)
+     renders grayscale through this one alias. TRUE berry is reserved for the
+     notification dot / brand via var(--color-berry-500) directly. The
+     appearance switcher may still pin --accent to a custom color. */
+  --accent:        var(--ink);
+  --accent-deep:   var(--color-ink-700);
+  --accent-text:   var(--color-ink-800);
+  --accent-soft:   rgba(242, 241, 235, 0.16);
+  --accent-border: rgba(242, 241, 235, 0.28);
+
+  /* Hover wash — follows the semantic token (Figma "States/Hover 1") */
+  --hover-1: var(--color-surface-hover);
+
+  /* Status trios — dot / chip-bg / chip-text (app palette; user data) — dark-tuned */
+  --default-dot: #A8A39A; --default-bg: #2A2722; --default-text: #C8C3BA;
+  --gray-dot:    #A39E97; --gray-bg:    #2A2825; --gray-text:    #C6C1BA;
+  --brown-dot:   #C08A5E; --brown-bg:   #2F261E; --brown-text:   #DBB089;
+  --orange-dot:  #DBA45A; --orange-bg:  #332518; --orange-text:  #ECC084;
+  --yellow-dot:  #D8BB5A; --yellow-bg:  #302B16; --yellow-text:  #E8D588;
+  --green-dot:   #6FB35F; --green-bg:   #1F2C1A; --green-text:   #9CCF8E;
+  --blue-dot:    #5E92DE; --blue-bg:    #1A2740; --blue-text:    #93BEF5;
+  --purple-dot:  #B173C4; --purple-bg:  #2A1E30; --purple-text:  #D2A6E0;
+  --pink-dot:    #E06FB3; --pink-bg:    #321E2B; --pink-text:    #ECA0CC;
+  --red-dot:     #FF6B66; --red-bg:     #361E1D; --red-text:     #F5A8A4;
+
+  /* Semantic status aliases → doc §2.1.4 values */
+  --success: var(--color-success-500);  --success-bg: var(--color-success-100);  --success-text: var(--color-success-600);
+  --warning: var(--color-warning-500);  --warning-bg: var(--color-warning-100);  --warning-text: var(--color-warning-600);
+  --danger:  var(--color-danger-500);   --danger-bg:  var(--color-danger-100);   --danger-text:  var(--color-danger-600);
+  --info:    var(--color-info-500);     --info-bg:    var(--color-info-100);     --info-text:    var(--color-info-600);
+
+  /* Typography — Geist (UI/body, per Figma HIfi 2026-07-16) · Geist Mono (numeric)
+     · Source Serif 4 (docs). next/font handles are prepended (the one doc deviation). */
+  --font-sans:    var(--font-geist-sans), "Geist", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono:    var(--font-geist-mono), "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-serif:   var(--font-source-serif), "Source Serif 4", ui-serif, Georgia, serif;
+  /* Legacy family aliases */
+  --font-display: var(--font-sans);
+  --font-ui:      var(--font-sans);
+
+  --text-display: 600 40px/44px var(--font-display);
+  --text-h1:      600 30px/36px var(--font-display);
+  --text-h2:      600 16px/24px var(--font-ui);
+  --text-h3:      600 20px/28px var(--font-ui);
+  --text-body:    400 14px/20px var(--font-ui);
+  --text-body-sm: 400 13px/18px var(--font-ui);
+  --text-label:   500 13px/18px var(--font-ui);
+  --text-caption: 400 12px/16px var(--font-ui);
+  --text-micro:   500 11px/14px var(--font-ui);
+
+  --ls-display: -0.02em;
+  --ls-lg:      -0.01em;    /* 16px+ */
+  --ls-body:    0;          /* 14px  */
+  --ls-micro:   0.02em;
+
+  /* Radius (§2.6) */
+  --radius-xs: 4px;  --radius-sm: 6px;  --radius-md: 8px;
+  --radius-lg: 12px; --radius-xl: 16px; --radius-pill: 9999px;
+
+  /* Spacing (§2.4) — 4px base */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px;
+
+  /* Elevation — B&G: shadows barely exist; borders define hierarchy.
+     Quiet black ambient only (Figma panel shadow = 0 1px 2px @4%). */
+  --shadow-lift-1: 0 1px 2px rgba(0,0,0,0.24);
+  --shadow-lift-2: 0 1px 2px rgba(0,0,0,0.24), 0 8px 16px -6px rgba(0,0,0,0.40);
+  --shadow-lift-3: 0 2px 4px rgba(0,0,0,0.24), 0 24px 48px -12px rgba(0,0,0,0.56);
+  --shadow-lift-4: 0 12px 32px -8px rgba(0,0,0,0.48);
+  --shadow-toast:  0 4px 8px -2px rgba(0,0,0,0.28), 0 16px 32px -8px rgba(0,0,0,0.40);
+  /* Legacy shadow names (globals.css re-tunes to the app's quiet stack) */
+  --shadow-xs:    rgba(0,0,0,0.24) 0px 1px 2px 0px;
+  --shadow-sm:    rgba(0,0,0,0.30) 0px 1px 2px 0px;
+  --shadow-crisp: rgba(0,0,0,0.28) 0px 1px 1px -0.5px;
+  --shadow-card:    var(--shadow-lift-1);
+  --shadow-overlay: var(--shadow-lift-2);
+
+  /* Motion (§2.10) */
+  --ease-out:        cubic-bezier(0.16, 1, 0.30, 1);
+  --ease-out-quiet:  cubic-bezier(0.16, 1, 0.30, 1);
+  --ease-standard:   cubic-bezier(0.20, 0, 0.00, 1);
+  --ease-in-quiet:   cubic-bezier(0.40, 0, 1, 1);
+  --ease-spring:     cubic-bezier(0.34, 1.40, 0.64, 1);
+  --ease-inout:      cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-instant: 80ms; --dur-fast: 120ms; --dur-base: 180ms; --dur-slow: 240ms; --dur-slower: 320ms;
+
+  /* Z-index registry (§2.8.2) */
+  --z-sticky: 10; --z-dropdown: 40; --z-overlay: 45; --z-modal: 50; --z-toast: 55; --z-drag: 60; --z-tooltip: 70;
+
+  /* Layout (§2.5) */
+  --sidebar-w: 230px;   /* Figma HIfi sidebar panel (476:13435) */
+  --topbar-h: 56px;
+  --content-max: 1200px;
+
+  /* ─── LAYER 2 · SEMANTIC — GENERATED, see tokens.generated.css ── */
+}
+
+/* ---------- B&G is a single dark theme ----------
+   The old "Slate Desk" dark block is gone: :root above already carries the
+   dark system. data-theme="dark" stays a harmless no-op. */
+
+/* ---------- BASE — body only ----------
+   globals.css delegates the body surface/ink/type to this rule (adding only
+   font-smoothing + user-select). §2 container patterns land in globals.css. */
+body {
+  background: var(--canvas);
+  color: var(--color-text-default);
+  font: var(--text-body);
+  letter-spacing: var(--ls-body);
+  -webkit-font-smoothing: antialiased;
+}
