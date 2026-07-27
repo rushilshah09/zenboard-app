@@ -1,36 +1,50 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Zenboard
 
-## Getting Started
+A calm workspace for independent professionals — tasks, projects, goals, documents, finance, and a client portal in one place, built to feel closer to Linear or Notion than to a typical productivity tool.
 
-First, run the development server:
+## Stack
+
+- **Next.js** (app router) + TypeScript
+- **Tailwind CSS** + shadcn/ui (Radix primitives) for the design system
+- **Supabase** — Postgres, auth, row-level security; migrations in `supabase/migrations`
+- **Cloudflare Workers** for deployment, via OpenNext (`open-next.config.ts`, `wrangler.jsonc`)
+- **Vitest** for unit tests
+
+## Getting started
 
 ```bash
+npm install
+cp .env.example .env.local   # then fill in the values
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`SETUP.md` documents where every environment variable comes from. Nothing runs without a Supabase project and the keys in `.env.local`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Script | What it does |
+| --- | --- |
+| `npm run dev` | Local dev server |
+| `npm run build` | Production build |
+| `npm test` | Vitest suite |
+| `npm run preview` | Build and preview the Workers bundle locally |
+| `npm run deploy` | Deploy to Cloudflare Workers |
 
-## Learn More
+## Layout
 
-To learn more about Next.js, take a look at the following resources:
+```
+app/          routes — app shell, auth, API handlers, public client portal
+components/   design-system primitives and feature components
+lib/          data access, Supabase clients, domain logic
+supabase/     SQL migrations
+types/        hand-authored database types
+scripts/      maintenance and security-test scripts
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Design system
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The interface follows a single enforced design language: semantic color tokens only (never raw hex), a fixed type scale, one filled-accent action per view, and shared primitives that are reused rather than forked. `DESIGN_CONSTITUTION.md` and `CLAUDE.md` hold the rules; `MASTER_PRODUCT_PLAN.md` covers product direction.
 
-## Deploy on Vercel
+## License
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+No license is granted. This source is published for reference; all rights reserved.
