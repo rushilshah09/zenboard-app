@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Framer code components — built inside Framer, not by Next.js.
+    "framer/**",
   ]),
 ]);
 
