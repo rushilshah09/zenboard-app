@@ -177,11 +177,33 @@ describe('the paper skin', () => {
   });
 
   it('draws its grain inline — a theme never waits on a network request', () => {
-    for (const layer of ['--paper-tooth', '--paper-fibre']) {
-      expect(value(layer), layer).toMatch(/^url\("data:image\/svg\+xml,/);
-      expect(value(layer), layer).toContain('feTurbulence');
-      expect(value(layer), layer).toContain('stitchTiles');
-    }
+    expect(value('--paper-tooth')).toMatch(/^url\("data:image\/svg\+xml,/);
+    expect(value('--paper-tooth')).toContain('feTurbulence');
+    expect(value('--paper-tooth')).toContain('stitchTiles');
+
+    // ONE layer, and the reason is arithmetic rather than taste. `multiply` COMPOUNDS, and this
+    // file once stacked four "subtle" layers — tooth 0.46, fibre 0.78, mottle 0.88, press 0.84 —
+    // whose product turned a white #FC card into #8D. Grey clouds on every panel, rejected on
+    // sight, and no single layer's value would ever have shown it.
+    //
+    // So the check is on the PRODUCT, which is the thing that actually reaches the screen. Any
+    // layer added here has to pass this with everything already present.
+    const floorOf = (tok: string) => {
+      const m = /slope='([\d.]+)'\s*intercept='([\d.]+)'/.exec(value(tok) ?? '');
+      return m ? parseFloat(m[2]) : 1;            // intercept === the darkest the layer goes
+    };
+    const meanOf = (tok: string) => {
+      const m = /slope='([\d.]+)'\s*intercept='([\d.]+)'/.exec(value(tok) ?? '');
+      return m ? parseFloat(m[1]) * 0.5 + parseFloat(m[2]) : 1;
+    };
+    const layers = ['--paper-tooth', '--paper-press'];
+    const product = layers.reduce((a, t) => a * meanOf(t), 1);
+    const worst = layers.reduce((a, t) => a * floorOf(t), 1);
+    expect(product, `mean texture multiplier across ${layers.join(' x ')}`).toBeGreaterThanOrEqual(0.93);
+    expect(worst, 'darkest texture multiplier').toBeGreaterThanOrEqual(0.85);
+    // And the layers that made the clouds are GONE, not merely turned down to nothing.
+    expect(css, 'the mottle made page-wide grey clouds').not.toContain('--paper-mottle');
+    expect(css, 'the fibre streaked the surface').not.toContain('--paper-fibre');
     // Multiplied into the stock, not laid over it: a wash on top only greys the page. The list
     // names every layer now (ruling and laid lines print NORMALLY over stock that is multiplied),
     // so what is asserted is that the stock's own blend is still the last word.

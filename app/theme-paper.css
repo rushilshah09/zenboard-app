@@ -269,29 +269,28 @@ html[data-skin='paper'] {
   --shadow-panel: 0 0 0 1px var(--border), var(--paper-sheet);
   --shadow-popover: 0 0 0 1px var(--border-control), var(--paper-sheet);
 
-  /* ── THE GRAIN ──────────────────────────────────────────────────────────
-     Two turbulences, because real stock has two scales of structure: a fine
-     speckle (the tooth) and long, soft fibres running through it.
+  /* ── THE GRAIN, AND WHY THERE IS ONLY ONE ─────────────────────────────
+     There were three scales here — a fine tooth, long fibres, and a slow page-wide mottle — each
+     tuned on its own and each defensible on its own. Together they made the surface look DIRTY:
+     grey clouds across every panel, which the user rejected on sight.
 
-     The trick is HOW they are composited. Laid over the fill at low alpha, grey
-     noise just greys the page — measured, invisible at 16% and dirty at 40%.
-     Paper does not work that way: its tooth SUBTRACTS light where a fibre sits
-     proud. So each turbulence is compressed into the top of the range by a
-     component transfer (tooth 0.66–1.0, fibre 0.80–1.0 — measured, not guessed: the
-     turbulence clusters near the middle, so the nominal range is ~4× the spread
-     that actually lands on the sheet) and MULTIPLIED into the
-     stock below (`background-blend-mode`), which is what the material does —
-     never darker than a tenth of a stop, and never flat.
+     The arithmetic says why, and it was never checked. `multiply` COMPOUNDS. Tooth bottomed at
+     0.46, fibre at 0.78, mottle at 0.88, and the press overlay at 0.84; multiplied together a
+     white #FC card rendered at #8D typically and #42 at its worst. That is not paper texture, it
+     is a grey card with stains on it. Four layers, each "subtle", producing a 44% average
+     darkening — the failure is in the PRODUCT, which no single layer's value would ever reveal.
 
-     Inline SVG: no image request, nothing to lose, and `stitchTiles` makes the
-     tile seamless so there is no visible repeat at any window size. */
-  --paper-tooth: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='t'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0.54' intercept='0.46'/%3E%3CfeFuncG type='linear' slope='0.54' intercept='0.46'/%3E%3CfeFuncB type='linear' slope='0.54' intercept='0.46'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23t)'/%3E%3C/svg%3E");
-  --paper-fibre: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='360'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.02 0.055' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0.22' intercept='0.78'/%3E%3CfeFuncG type='linear' slope='0.22' intercept='0.78'/%3E%3CfeFuncB type='linear' slope='0.22' intercept='0.78'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='360' height='360' filter='url(%23f)'/%3E%3C/svg%3E");
+     So: one layer, and shallow. Tooth alone at 0.94–1.0, with the press at 0.95–1.0, holds the
+     card at ~#F0 — white, with a fine variation you feel rather than see. That is the whole brief
+     for a texture on a screen; anything you can point at and name is too much.
+
+     Any layer added here must be re-checked as a PRODUCT with everything already present, which
+     `app/theme-paper.test.ts` now does arithmetically rather than by eye. */
+  --paper-tooth: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='t'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0.06' intercept='0.94'/%3E%3CfeFuncG type='linear' slope='0.06' intercept='0.94'/%3E%3CfeFuncB type='linear' slope='0.06' intercept='0.94'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23t)'/%3E%3C/svg%3E");
   /* The third scale, and the one that ages the sheet: MOTTLE. Tooth is millimetres and fibre is
      centimetres; mottle is the whole page — the slow, cloudy unevenness of a sheet that has sat in
      a book for forty years. It is far too low a frequency to read as noise, which is the point: it
      is why two corners of the same sheet are not quite the same colour. */
-  --paper-mottle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='700' height='700'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.006' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0.12' intercept='0.88'/%3E%3CfeFuncG type='linear' slope='0.12' intercept='0.88'/%3E%3CfeFuncB type='linear' slope='0.12' intercept='0.88'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='700' height='700' filter='url(%23m)'/%3E%3C/svg%3E");
 
   /* ── THE IMPRESSION ─────────────────────────────────────────────────────
      The last thing between this and a photograph of a printed page, and the reason the user could
@@ -302,7 +301,7 @@ html[data-skin='paper'] {
      a rule, a stamp and the stock all break up together, the way ink does when it meets paper.
      Finer and much shallower than the stock's own tooth (0.87–1.0, so the deepest speckle takes a
      tenth of a stop) — enough to bite, never enough to muddy 13px type. */
-  --paper-press: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='1' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0.16' intercept='0.84'/%3E%3CfeFuncG type='linear' slope='0.16' intercept='0.84'/%3E%3CfeFuncB type='linear' slope='0.16' intercept='0.84'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23p)'/%3E%3C/svg%3E");
+  --paper-press: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='1' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0.05' intercept='0.95'/%3E%3CfeFuncG type='linear' slope='0.05' intercept='0.95'/%3E%3CfeFuncB type='linear' slope='0.05' intercept='0.95'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23p)'/%3E%3C/svg%3E");
 
   /* ── THE REGISTER DOTS ──────────────────────────────────────────────────
      The detail the user pointed at (2026-09-24, a zoomed crop of the invoice's table): where two
@@ -332,8 +331,8 @@ html[data-skin='paper'] {
 
   --paper-ink-break-fine: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='kf'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.3' numOctaves='1' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0.2126 0.7152 0.0722 0 0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='0.18' intercept='0.82'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23kf)'/%3E%3C/svg%3E");
 
-  --paper-stock: var(--paper-mottle), var(--paper-fibre), var(--paper-tooth);
-  --paper-blend: multiply, multiply, multiply;
+  --paper-stock: var(--paper-tooth);
+  --paper-blend: multiply;
 
   /* ── THE DESK IS RULED ──────────────────────────────────────────────────
      From the references the user sent (2026-09-24): engineering paper under the work. It rules
@@ -349,7 +348,7 @@ html[data-skin='paper'] {
      they are felt rather than seen — which is exactly how they work on real paper. */
   --paper-laid: repeating-linear-gradient(
     to bottom,
-    rgb(38 36 30 / 0.022) 0 1px,
+    rgb(38 36 30 / 0.012) 0 1px,
     transparent 1px 4px
   );
 }
@@ -401,7 +400,7 @@ html[data-skin='paper'] :where(
    one property: naming only the dots here would drop the grain underneath them. */
 html[data-skin='paper'] :where(.bg-surface-sunken, .bg-surface-raised, .bg-paper, .bg-card, .bg-popover) {
   background-image: var(--paper-dots), var(--paper-laid), var(--paper-stock);
-  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, repeat, repeat, repeat, repeat;
+  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, repeat, repeat;
   background-blend-mode: normal, normal, normal, normal, normal, var(--paper-blend);
   /* AND THE BOX ITSELF. Measured in the browser, after the ink rules above changed nothing that
      was visible: a Panel carries `border-width: 0` and gets its edge from `.shadow-panel`, whose
