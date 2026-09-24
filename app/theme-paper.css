@@ -37,25 +37,38 @@
    ========================================================================= */
 
 html[data-skin='paper'] {
-  /* ── THE STOCK ──────────────────────────────────────────────────────────
-     Three weights of paper and a desk to lay them on. Measured against ink
-     #26241E: sheet 15.0:1, desk 13.2:1 — both far above AA, because print is
-     the highest-contrast medium we have and washing it out is how "paper"
-     becomes "beige mush". */
-  /* MEASURED, and this is the change that made the skin stop looking like a beige app: the desk
-     was #EAE6DB against a #FAF8F2 sheet — **1.17:1**. A sheet of paper on a real desk sits at
-     roughly 1.4–1.6:1 against what it is lying on, which is how the eye knows it is an OBJECT
-     rather than a panel. No amount of grain fixes a separation that small; nothing was lying on
-     anything. The desk is now linen board at 1.43:1, and the ink still reads 10.5:1 on it for the
-     few things that sit directly on the desk (a page title, a greeting). */
-  --background: #C8C4B8;          /* the desk — linen board, and you can see it */
-  --card: #F1EFE9;                /* a sheet */
-  --popover: #F6F4EE;             /* a slip laid on top of the sheet */
-  --muted: #E6E3DA;               /* an inset, a rail, a filled cell */
-  --secondary: #E6E3DA;
-  --accent-surface: #DBD7C9;      /* selected — a highlighter pass, in stock */
-  --sidebar: #E1DED4;             /* the folder the sheets live in */
-  --sidebar-accent: #D2CEBE;
+  /* ── ONE WHITE SHEET ────────────────────────────────────────────────────
+     User, 2026-09-24, with the app beside the reference: "I don't like this execution. I want
+     white paper, and on white paper printed like the 2nd image."
+
+     They are right, and the fault was the MODEL, not the values. This block used to describe a
+     sheet lying on a DESK: a dark linen board at #C8C4B8, sheets on top of it, insets and rails
+     darker again. Measured against the reference that is simply not what an invoice is. An invoice
+     is ONE piece of white paper, and everything on it — the header block, the table, the totals
+     box — is PRINTED. There is not a single filled panel anywhere on that page.
+
+     What the desk model produced was a screen of mid-tone greys: a grey sidebar next to grey
+     calendar cells on a grey canvas, with the ink lost in the middle of it. Grey fills were doing
+     the work that RULES are supposed to do, which is exactly backwards for a printed page.
+
+     CORRECTED the same day, from a zoom of the reference's header: the cells there are WHITE and
+     the ground BETWEEN them is dark. So a dark canvas was never the problem — the problem was that
+     the cells were beige too, at #F1EFE9, which is why a grey sidebar sat beside grey cells on a
+     grey canvas and the whole screen turned to mud. Flattening everything to one pale sheet fixed
+     the mud by removing the contrast, which is the other way to get it wrong.
+
+     What the reference actually does, and what this block now does: the cells are genuinely WHITE
+     (L 0.96), the ground is clearly darker (1.67:1, and hatched, because that is what the dark
+     band in the reference IS), and the ink carries on both — 15:1 on a cell, 9:1 on the ground.
+     The lesson is that "white paper" is a statement about the CELLS, not about the whole screen. */
+  --background: #C9C5B9;          /* the GROUND the cells lie on — dark, and hatched */
+  --card: #FCFBF7;                /* a cell: WHITE paper, which is the whole point */
+  --popover: #FEFDFA;             /* a slip — the one surface allowed to sit above the page */
+  --muted: #F1EFE9;               /* the faintest tint a press can lay — never a grey panel */
+  --secondary: #F1EFE9;
+  --accent-surface: #E9E7E1;      /* selected — a highlighter pass, in stock */
+  --sidebar: #FCFBF7;             /* a cell too — ruled off, never filled grey */
+  --sidebar-accent: #E9E7E1;
 
   /* ── THE INK ────────────────────────────────────────────────────────────
      One ink, printed at three strengths. `--muted-foreground` is the lightest
@@ -67,14 +80,14 @@ html[data-skin='paper'] {
   --secondary-foreground: #26241E;
   --accent-surface-foreground: #26241E;
   --sidebar-foreground: #26241E;
-  --sidebar-primary-foreground: #F1EFE9;
+  --sidebar-primary-foreground: #FCFBF7;
   --muted-foreground: #565040;
 
   /* Ink prints solid, so a primary button is a block of it. */
   --primary: #26241E;
-  --primary-foreground: #F1EFE9;
+  --primary-foreground: #FCFBF7;
   --primary-solid: #26241E;
-  --primary-solid-foreground: #F1EFE9;
+  --primary-solid-foreground: #FCFBF7;
   --sidebar-primary: #26241E;
 
   /* ── THE RULES ──────────────────────────────────────────────────────────
@@ -327,13 +340,17 @@ html[data-skin='paper'] {
 
 /* The desk. `fixed` so the grain does not swim under scrolling content — paper
    does not move while you read it. */
+/* The ground the cells lie on. In the reference it is not a flat tone — it is HATCHED, the same
+   ruling the header band uses, because a one-ink press makes a dark area by ruling it closely.
+   The hatch sits under the desk ruling and above the stock, so the ground still takes the grain. */
 html[data-skin='paper'] body {
   background-image:
+    var(--paper-hatch),
     repeating-linear-gradient(to right, var(--paper-rule) 0 1px, transparent 1px var(--paper-grid)),
     repeating-linear-gradient(to bottom, var(--paper-rule) 0 1px, transparent 1px var(--paper-grid)),
     var(--paper-stock);
   /* The ruling is PRINTED on the stock (normal), the stock's own tooth is IN it (multiply). */
-  background-blend-mode: normal, normal, var(--paper-blend);
+  background-blend-mode: normal, normal, normal, var(--paper-blend);
   background-attachment: fixed;
 }
 

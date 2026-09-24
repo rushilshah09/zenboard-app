@@ -99,14 +99,32 @@ describe('the paper skin', () => {
     expect(value('--paper-falloff')).toMatch(/^inset /);
   });
 
-  it('separates the sheet from the desk enough to be an OBJECT', () => {
-    // The measurement that made this skin stop looking like a beige app: the desk was 1.17:1
-    // against the sheet, so nothing was lying on anything. Paper on a desk sits at ~1.4–1.6:1.
-    const desk = value('--background')!;
-    const sheet = value('--card')!;
-    expect(ratio(sheet, desk), `sheet ${sheet} on desk ${desk}`).toBeGreaterThanOrEqual(1.35);
-    // …without the desk becoming so dark that the few things sitting directly on it suffer.
-    expect(ratio(value('--foreground')!, desk)).toBeGreaterThanOrEqual(4.5);
+  it('prints WHITE cells on a dark ground', () => {
+    // Two corrections in one day, and the second explains the first.
+    //
+    // v1 said the canvas must sit 1.35:1 BELOW the cards, so a card read as an object on a desk.
+    // The screen that produced was mud — a grey sidebar beside grey calendar cells on a grey
+    // canvas — and the user rejected it: "I want white paper, printed like the 2nd image."
+    // v2 flattened every surface to one pale sheet, which fixed the mud by deleting the contrast.
+    // That is simply the other way to get it wrong.
+    //
+    // v3 is what the reference actually shows, from a zoom of its header: the cells are WHITE and
+    // the ground between them is dark. A dark canvas was never the problem — beige CELLS were.
+    // So "white paper" is a claim about the cells, and it is checked as one.
+    const cells = ['--card', '--popover', '--sidebar'].map((x) => value(x)!);
+    const ground = value('--background')!;
+    for (const cell of cells) {
+      // Genuinely white, not "warm off-white": below ~0.9 a cell starts reading as a grey panel,
+      // which is exactly the failure being guarded against.
+      expect(lum(cell), `${cell} is a WHITE cell`).toBeGreaterThanOrEqual(0.9);
+      expect(ratio(cell, ground), `${cell} on ground ${ground}`).toBeGreaterThanOrEqual(1.35);
+    }
+    // The ink has to carry on BOTH, or the ground is merely dark rather than printed on.
+    expect(ratio(value('--foreground')!, ground)).toBeGreaterThanOrEqual(4.5);
+    expect(ratio(value('--muted-foreground')!, ground)).toBeGreaterThanOrEqual(4.5);
+    // And the ground is HATCHED, not a flat tone: a one-ink press darkens an area by ruling it.
+    const body = css.slice(css.indexOf("html[data-skin='paper'] body {"));
+    expect(body.slice(0, 400)).toMatch(/var\(--paper-hatch\)/);
   });
 
   it('rules the desk and lays the sheet', () => {
@@ -213,6 +231,7 @@ describe('the paper skin', () => {
     const bare = css.replace(/\/\*[\s\S]*?\*\//g, '');   // the history in the comments is not paint
     const hexes = [...new Set(bare.match(/#[0-9A-Fa-f]{6}/g) ?? [])];
     expect(hexes.length, 'the skin declares its colours as hex').toBeGreaterThan(6);
+    // (hues is populated below, only for colours chromatic enough to have one.)
     const hues: number[] = [];
     for (const h of hexes) {
       const [r, g, b] = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
@@ -228,7 +247,11 @@ describe('the paper skin', () => {
         : max === r ? ((g - b) / d + 6) % 6 * 60
         : max === g ? ((b - r) / d + 2) * 60
         : ((r - g) / d + 4) * 60;
-      hues.push(hue);
+      // Hue is only MEANINGFUL above a little chroma. At d < 0.03 — which is most of a white
+      // paper palette — one RGB unit swings the computed hue by several degrees, so a band
+      // measured across near-neutrals reports noise rather than a second colour. The near-whites
+      // are still held to the chroma cap above, which is the check that actually catches a hue.
+      if (d >= 0.03) hues.push(hue);
     }
     expect(Math.max(...hues) - Math.min(...hues), `hues: ${hues.map((h) => h.toFixed(0)).join(', ')}`)
       .toBeLessThanOrEqual(12);
