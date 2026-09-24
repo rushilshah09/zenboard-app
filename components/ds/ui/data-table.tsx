@@ -73,7 +73,12 @@ export function DataTable<T>({
 
   return (
     <div className={cn("overflow-x-auto rounded-md border border-line", className)}>
-      <table className="w-full border-collapse" aria-busy={loading || undefined}>
+      {/* `border-collapse` is NOT spelled here. The browser's own default for a table is
+          `collapse`, so nothing changes in the default skin — but a hard-coded utility is a
+          decision a SKIN cannot revise, and the paper skin needs `separate` to box and round
+          each cell the way a rule-and-corner border set does. A default belongs in CSS where it
+          can be overridden; a utility here is a lock. */}
+      <table className="w-full" aria-busy={loading || undefined}>
         <caption className="sr-only">{caption}</caption>
         <thead>
           <tr className="sticky top-0 z-sticky border-b border-line bg-paper-2">

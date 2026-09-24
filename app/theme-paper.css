@@ -289,7 +289,7 @@ html[data-skin='paper'] {
      a rule, a stamp and the stock all break up together, the way ink does when it meets paper.
      Finer and much shallower than the stock's own tooth (0.87–1.0, so the deepest speckle takes a
      tenth of a stop) — enough to bite, never enough to muddy 13px type. */
-  --paper-press: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='1' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0.13' intercept='0.87'/%3E%3CfeFuncG type='linear' slope='0.13' intercept='0.87'/%3E%3CfeFuncB type='linear' slope='0.13' intercept='0.87'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23p)'/%3E%3C/svg%3E");
+  --paper-press: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='1' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0.16' intercept='0.84'/%3E%3CfeFuncG type='linear' slope='0.16' intercept='0.84'/%3E%3CfeFuncB type='linear' slope='0.16' intercept='0.84'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23p)'/%3E%3C/svg%3E");
 
   /* ── THE REGISTER DOTS ──────────────────────────────────────────────────
      The detail the user pointed at (2026-09-24, a zoomed crop of the invoice's table): where two
@@ -341,9 +341,19 @@ html[data-skin='paper'] body {
    paper surface — a card, a panel, a menu, a rail, a filled cell — takes the
    grain without one component knowing this skin exists. `:where()` keeps the
    specificity at the attribute alone, so a component can still override.  */
+/* The list is EVERY painted surface in the codebase, counted out of the source rather than
+   recalled — `grep -o 'bg-(surface|paper|canvas|sidebar|card|popover|background)[a-z0-9-]*'`.
+   The first version named eleven classes from memory and missed ten that paint a real background,
+   so `bg-surface-fill`, `bg-surface-selected` and the rest came out SMOOTH next to textured
+   neighbours. Measured on the tasks screen: three painted surfaces, zero grain on all three.
+   That patchiness is what reads as "the texture is not the same everywhere", and enumerating from
+   memory is how it happened — the same mistake as the accent and the panel ring. */
 html[data-skin='paper'] :where(
-  .bg-surface-raised, .bg-paper, .bg-paper-2, .bg-paper-3, .bg-popover, .bg-card,
-  .bg-surface-sunken, .bg-surface-secondary, .bg-background, .bg-canvas, .bg-sidebar
+  .bg-surface-raised, .bg-paper, .bg-paper-2, .bg-paper-3, .bg-paper-4, .bg-paper-5,
+  .bg-popover, .bg-card, .bg-surface, .bg-surface-sunken, .bg-surface-secondary,
+  .bg-surface-fill, .bg-surface-fill-hover, .bg-surface-hover, .bg-surface-active,
+  .bg-surface-selected, .bg-surface-disabled, .bg-surface-row,
+  .bg-background, .bg-canvas, .bg-sidebar
 ) {
   background-image: var(--paper-laid), var(--paper-stock);
   background-blend-mode: normal, var(--paper-blend);
@@ -507,6 +517,49 @@ html[data-skin='paper'] [data-slot='skeleton'][data-shape='circle'] {
   border-radius: var(--radius-pill, 999px);
 }
 html[data-skin='paper'] [data-slot='skeleton-sweep'] { display: none; }
+
+/* ── THE CELL GRID ─────────────────────────────────────────────────────────
+   The user sent the same zoomed crop of the reference four times, which is usually a sign that
+   the answer is in the crop rather than in the words. It is: that table is not a list of rows
+   with lines between them, it is a GRID OF BOXED CELLS. Three things make it, and all three were
+   missing here.
+
+   1. Every cell is boxed on FOUR sides. Ours ruled only horizontally, so rows read as stacked
+      bands — the single biggest structural difference left between our table and the reference.
+   2. The cells are ROUNDED, very slightly. That is what a rule-and-corner border set does: the
+      rules are cast as separate pieces, so they stop just short of each other.
+   3. Which leaves a gap at every junction — and the press fills it with a DOT. The dots are not
+      decoration; they are what the corner pieces of the set physically leave behind.
+
+   `border-collapse: separate` is what makes 1 and 2 possible at all — a collapsed table shares
+   one border between neighbours and cannot round a cell. It also doubles the rule between
+   adjacent cells, which is exactly why the reference's internal rules look heavier than its
+   outer frame. Nothing here moves a row: the cells already had these edges, drawn at 1px in a
+   pale grey. */
+html[data-skin='paper'] table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+html[data-skin='paper'] :where(th, td) {
+  border: 1px solid var(--border-control);
+  border-radius: 3px;
+  /* The junction dots, one per corner — the same device as the cards, at cell scale. */
+  background-image:
+    radial-gradient(circle at 0 0, var(--foreground) 0 1.3px, transparent 1.4px),
+    radial-gradient(circle at 100% 0, var(--foreground) 0 1.3px, transparent 1.4px),
+    radial-gradient(circle at 0 100%, var(--foreground) 0 1.3px, transparent 1.4px),
+    radial-gradient(circle at 100% 100%, var(--foreground) 0 1.3px, transparent 1.4px);
+  background-repeat: no-repeat;
+}
+
+/* The header strip is HATCHED, not filled — a one-ink press makes a tone by ruling it, and the
+   reference bands its header exactly this way. The label rides above the hatch on a knocked-out
+   ground so it never fights the ruling underneath it. */
+html[data-skin='paper'] thead th {
+  background-color: var(--card);
+  background-image: var(--paper-hatch);
+  text-shadow: 0 0 2px var(--card), 0 0 2px var(--card), 0 0 3px var(--card);
+}
 
 /* ── THE VOICE IS PRINTED, NOT SCREEN ─────────────────────────────────────
    The last thing still saying "web app" out loud was the typeface. Geist is a screen grotesk —
