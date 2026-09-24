@@ -6,7 +6,6 @@
 // Modal, Select, Field, toast); optimistic, reconciles server/realtime props.
 import { useMemo, useState } from 'react';
 import { todayISO, formatDay, formatMinutes } from '@/lib/date';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Plus, Landmark, Search, X, Clock } from '@/components/ds/icons';
 import { PageLayout } from '@/components/ui/page-layout';
@@ -14,7 +13,7 @@ import {
   Icon, Button, IconButton, Badge, Stat, Checkbox, EmptyState, EmptyLine,
   Modal, Field, TextInput, Select, toast,
   type BadgeStatus,
- DatePicker, Count, cardClass } from '@/components/ds/ui';
+ DatePicker, Count, cardClass, DataTable } from '@/components/ds/ui';
 import { cn } from '@/lib/cn';
 import { formatMoney } from '@/lib/money';
 import { addInvoice } from '@/lib/actions/money';
@@ -38,7 +37,6 @@ export function displayStatus(inv: { status: string; due_date: string | null }):
 export const STATUS_TONE: Record<string, BadgeStatus> = { draft: 'neutral', sent: 'info', paid: 'success', overdue: 'danger', void: 'neutral' };
 
 const NONE = '__none__'; // Radix Select reserves '' — sentinel for "No client".
-const GRID = '110px 1fr 70px 96px 96px 100px';
 const STATUS_ORDER = ['all', 'draft', 'sent', 'overdue', 'paid'];
 
 type Line = { description: string; quantity: string; unit_amount: string };
@@ -177,34 +175,42 @@ export function MoneyView({ invoices: initInvoices, clients, unbilled, payments,
           />
         </div>
       ) : (
-        <div className={cardClass('overflow-hidden')}>
-          {/* Fixed-column table: swipes horizontally on narrow screens rather
-              than clipping the Due/Total columns. */}
-          <div className="overflow-x-auto overflow-y-hidden">
-            <div className="min-w-[640px]">
-              <div className="grid gap-3 border-b border-line-soft px-4 py-2.5 text-overline text-ink-500" style={{ gridTemplateColumns: GRID }}>
-                <div>Number</div><div>Client</div><div className="text-right">Items</div><div>Status</div><div>Due</div><div className="text-right">Total</div>
-              </div>
-              {filtered.length === 0 && <EmptyLine className="px-4 py-9">No invoices match these filters.</EmptyLine>}
-              {filtered.map((inv, i) => {
-                const dstat = displayStatus(inv);
-                const row = (
-                  <div className={cn('grid items-center gap-3 px-4 py-3 text-ui', i > 0 && 'border-t border-line-soft')} style={{ gridTemplateColumns: GRID }}>
-                    <div className="truncate font-mono text-caption text-ink-500">{inv.number}</div>
-                    <div className="truncate font-medium text-ink-900">{clientName(inv.client_id)}</div>
-                    <div className="text-right tabular-nums text-ink-500">{inv.itemCount}</div>
-                    <div><Badge status={STATUS_TONE[dstat] ?? 'neutral'} className="capitalize">{dstat}</Badge></div>
-                    <div className={cn('text-caption tabular-nums', dstat === 'overdue' ? 'text-danger-600' : 'text-ink-500')}>{fmtDate(inv.due_date)}</div>
-                    <div className="text-right font-medium tabular-nums text-ink-900">{usd(inv.total)}</div>
-                  </div>
-                );
-                return isTempId(inv.id)
-                  ? <div key={inv.id} className="opacity-60">{row}</div>
-                  : <Link key={inv.id} href={`/money/${inv.id}`} className="focus-ring block rounded-sm transition-colors hover:bg-surface-hover">{row}</Link>;
-              })}
-            </div>
-          </div>
-        </div>
+        // THE table — the same one every tabular screen will use — so an invoice row responds
+        // exactly as a task row does. It keeps what Finance's own rows got right (each row is a
+        // real link: keyboard, cmd-click, prefetch) and gains sorting, which it never had.
+        <DataTable
+          caption="Invoices"
+          minWidth="640px"
+          rows={filtered}
+          rowKey={(inv) => inv.id}
+          rowHref={(inv) => `/money/${inv.id}`}
+          isPending={(inv) => isTempId(inv.id)}
+          empty={<EmptyLine className="px-4 py-9">No invoices match these filters.</EmptyLine>}
+          columns={[
+            { key: 'number', header: 'Number', mono: true, width: '110px', sortBy: (inv) => inv.number, cell: (inv) => inv.number },
+            {
+              key: 'client', header: 'Client', sortBy: (inv) => clientName(inv.client_id),
+              cell: (inv) => <span className="block truncate font-medium text-ink-900">{clientName(inv.client_id)}</span>,
+            },
+            { key: 'items', header: 'Items', numeric: true, width: '70px', cell: (inv) => <span className="text-ink-500">{inv.itemCount}</span> },
+            {
+              key: 'status', header: 'Status', width: '96px',
+              cell: (inv) => { const d = displayStatus(inv); return <Badge status={STATUS_TONE[d] ?? 'neutral'} className="capitalize">{d}</Badge>; },
+            },
+            {
+              key: 'due', header: 'Due', width: '96px', sortBy: (inv) => inv.due_date ?? '',
+              cell: (inv) => (
+                <span className={cn('text-caption tabular-nums', displayStatus(inv) === 'overdue' ? 'text-danger-600' : 'text-ink-500')}>
+                  {fmtDate(inv.due_date)}
+                </span>
+              ),
+            },
+            {
+              key: 'total', header: 'Total', numeric: true, width: '100px', sortBy: (inv) => Number(inv.total),
+              cell: (inv) => <span className="font-medium text-ink-900">{usd(inv.total)}</span>,
+            },
+          ]}
+        />
       )}
 
       {/* Recent payments */}

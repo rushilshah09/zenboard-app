@@ -17203,3 +17203,36 @@ the browser, several at 4–6× zoom.
 - Invoice line items are a hand-rolled CSS grid, not the DS table, so the cell grid cannot reach them.
 - The ground's hatch is declared but covered by the shell's `var(--canvas)`, so it renders only in gaps.
 - **Push blocked**: no GitHub credential on this machine; all commits are local.
+
+## One table, and the row vocabulary it shares with every list — 2026-09-24
+
+The user's brief: make the whole app feel like ONE product — "documents, invoices, tasks" — at
+Linear/Notion quality. Measured first, not eyeballed: **zero modules used the DS `DataTable`**, and
+`--row-table` (44px), the row token it exists for, was used zero times. Every tabular screen built its
+own; Finance built two.
+
+**Why nothing used it** — it was worse than what it should have replaced. Its rows opened on
+`<tr onClick>` (no keyboard, no cmd-click, no prefetch — Finance's own rows were real `<Link>`s and had
+all three), numbers were set in mono, rows were 40px against their own 44px token, selection washed
+in `berry-100` where every other row uses `surface-selected`. Adopting it would have LOST quality.
+
+**What shipped**
+- `components/ds/ui/row-state.ts` — the one row vocabulary: divider, transition, and the wash. The task
+  row (`rowSurface`) and the table both read it now; they had already drifted (berry vs
+  surface-selected, instant vs fast) while each file stayed internally consistent.
+- **A row is a link**: `rowHref` puts a real Next `<Link>` in the primary cell, its `::after` stretched
+  over the row. Keyboard focus washes the ROW. `onRowOpen` rows are focusable, Enter/Space opens.
+- **Hover means clickable**: a row that opens nothing gets no hover wash. A wash is a promise.
+- Numbers in the UI face with `tabular-nums`; mono only for identifier columns (`mono: true`).
+- Finance's invoice list and an invoice's line items both moved onto it; the list gained sorting.
+  The line-item EDITOR stays a grid of inputs — it is a form, not a table.
+
+**Proved** — `components/ds/ui/data-table.test.ts` (11): the token, the stretched link, keyboard open,
+mono-for-IDs, the shared vocabulary, hover-only-when-interactive, and a scan that fails any module
+hand-rolling a table (`gridTemplateColumns`) outside six declared, reasoned exceptions — with a
+stale-exception check that doubles as the scanner's control. In the browser: invoice rows 44px, and a
+click at the centre of EVERY cell hits the row's `<a>`; line items 44px, no wash, no link, no divider
+under the last. **2697 tests / 178 files** · tsc clean · eslint clean.
+
+**Owed** — other lists (clients, projects, forms responses) are flex rows, not tables; each should be
+checked against the same vocabulary next.

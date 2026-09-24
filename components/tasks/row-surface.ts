@@ -29,6 +29,7 @@
 // into two spellings of the same broken thing. Fixing them separately would
 // have fixed them differently. A row's surface is one idea; it gets one
 // definition.
+import { ROW_DIVIDER, ROW_TRANSITION, rowWash } from '@/components/ds/ui/row-state';
 import { cn } from '@/lib/cn';
 
 /** 8px. Kept for the surfaces that inset a row HORIZONTALLY — a rail item, a
@@ -95,7 +96,7 @@ export function rowSurface({ selected = false, last = false, padding, heightClas
     // construction rather than by luck.
     // The height goes on the OUTER, so the declared number is what the list steps
     // by. Tailwind is border-box, so the divider is included rather than added.
-    outer: cn('group relative py-0.5', heightClass, !last && 'border-b border-line-soft'),
+    outer: cn('group relative py-0.5', heightClass, !last && ROW_DIVIDER),
     wash: cn(
       // NO RADIUS. The wash is full width — it has to be, because its padding
       // is what aligns a row's text with the panel header above it
@@ -105,12 +106,14 @@ export function rowSurface({ selected = false, last = false, padding, heightClas
       // card behind them and no impression of a floating pill. Rounding was
       // added to stop the fill colliding with the hairline; the vertical inset
       // is what actually does that, and it does it without the notches.
-      'flex transition-colors duration-fast',
+      'flex', ROW_TRANSITION,
       // h-full fills whatever the outer declared; without a height the wash is
       // sized by its padding and content exactly as before.
       heightClass && 'h-full',
       padding,
-      selected ? 'bg-surface-selected' : 'hover:bg-surface-hover',
+      // The states come from the DS row vocabulary, which the table reads too — so a task row
+      // and an invoice row cannot light up differently (they did: berry vs surface-selected).
+      rowWash(selected),
     ),
   };
 }

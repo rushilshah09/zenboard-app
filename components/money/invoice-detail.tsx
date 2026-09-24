@@ -8,7 +8,7 @@ import { todayISO } from '@/lib/date';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, Plus, X, Check } from '@/components/ds/icons';
-import { Icon, Button, IconButton, Badge, TextInput, Field, Modal, toast, EmptyLine, DatePicker, cardClass } from '@/components/ds/ui';
+import { Icon, Button, IconButton, Badge, TextInput, Field, Modal, toast, EmptyLine, DatePicker, cardClass, DataTable } from '@/components/ds/ui';
 import { cn } from '@/lib/cn';
 import { updateInvoiceStatus, recordPayment, voidInvoice, duplicateInvoice, updateInvoiceDraft } from '@/lib/actions/money';
 import { usd, fmtDate, displayStatus, STATUS_TONE } from '@/components/money/money-view';
@@ -71,7 +71,7 @@ export function InvoiceDetail({ invoice, items: initItems, payments: initPayment
   }
   const setLine = (i: number, patch: Partial<Line>) => setLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
 
-  const headCols = '1fr 70px 90px 90px' + (editing ? ' 32px' : '');
+  const headCols = '1fr 70px 90px 90px 32px';
 
   return (
     <PageLayout>
@@ -97,21 +97,40 @@ export function InvoiceDetail({ invoice, items: initItems, payments: initPayment
         </div>
       </div>
 
-      {/* Line items */}
-      <div className={cardClass('mb-4 overflow-hidden')}>
-        <div className="grid gap-2 border-b border-line-soft px-4 py-2.5 text-overline text-ink-500" style={{ gridTemplateColumns: headCols }}>
-          <div>Description</div><div className="text-right">Qty</div><div className="text-right">Rate</div><div className="text-right">Amount</div>{editing && <div />}
-        </div>
-        {!editing ? (
-          items.length === 0 ? <EmptyLine className="px-4 py-5">No line items.</EmptyLine> : items.map((it, i) => (
-            <div key={it.id} className={cn('grid items-center gap-2 px-4 py-3 text-ui', i > 0 && 'border-t border-line-soft')} style={{ gridTemplateColumns: '1fr 70px 90px 90px' }}>
-              <div className="text-ink-900">{it.description}{it.time_entry_id && <span className="ml-1.5 text-caption text-ink-500">· time</span>}</div>
-              <div className="text-right tabular-nums text-ink-500">{it.quantity}</div>
-              <div className="text-right tabular-nums text-ink-500">{usd(Number(it.unit_amount))}</div>
-              <div className="text-right font-medium tabular-nums text-ink-900">{usd(Number(it.quantity) * Number(it.unit_amount))}</div>
-            </div>
-          ))
-        ) : (
+      {/* Line items. READ, they are THE table — the one Finance's list and every other tabular
+          screen uses — so a line item and an invoice row are drawn by the same code. They do not
+          open anything, so they carry no hover wash (a wash promises a click). EDITING is a form
+          of inputs, not a table, and keeps its own grid on purpose. */}
+      {!editing ? (
+        <DataTable
+          caption="Line items"
+          className="mb-4"
+          rows={items}
+          rowKey={(it) => it.id}
+          empty={<EmptyLine className="px-4 py-5">No line items.</EmptyLine>}
+          columns={[
+            {
+              key: 'description', header: 'Description',
+              cell: (it) => (
+                <span className="text-ink-900">
+                  {it.description}
+                  {it.time_entry_id && <span className="ml-1.5 text-caption text-ink-500">· time</span>}
+                </span>
+              ),
+            },
+            { key: 'qty', header: 'Qty', numeric: true, width: '70px', cell: (it) => <span className="text-ink-500">{it.quantity}</span> },
+            { key: 'rate', header: 'Rate', numeric: true, width: '90px', cell: (it) => <span className="text-ink-500">{usd(Number(it.unit_amount))}</span> },
+            {
+              key: 'amount', header: 'Amount', numeric: true, width: '90px',
+              cell: (it) => <span className="font-medium text-ink-900">{usd(Number(it.quantity) * Number(it.unit_amount))}</span>,
+            },
+          ]}
+        />
+      ) : (
+        <div className={cardClass('mb-4 overflow-hidden')}>
+          <div className="grid gap-2 border-b border-line-soft px-4 py-2.5 text-overline text-ink-500" style={{ gridTemplateColumns: headCols }}>
+            <div>Description</div><div className="text-right">Qty</div><div className="text-right">Rate</div><div className="text-right">Amount</div><div />
+          </div>
           <div className="p-3">
             {lines.map((l, i) => (
               <div key={i} className="mb-2 grid items-center gap-2" style={{ gridTemplateColumns: '1fr 70px 90px 90px 32px' }}>
@@ -131,8 +150,8 @@ export function InvoiceDetail({ invoice, items: initItems, payments: initPayment
               <Button size="sm" variant="primary" onClick={saveDraft}>Save</Button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Totals */}
       <div className="mb-6 flex justify-end">
