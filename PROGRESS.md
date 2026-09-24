@@ -17162,3 +17162,44 @@ overline labels, tabular figures and IDs stay monospaced.
 `max-width`), and the two voices — the serif on `--font-sans`/`--font-ui`, the mono still on the
 label and figure roles. Captured at 1920, 1600 and 820: the desk margin holds at every width and
 the sheet fills the rest. `tsc` clean · **2682 tests / 177 files** · eslint clean.
+
+## Paper, reworked against its references — and PAUSED — 2026-09-24
+
+The user sent a letterpress invoice, a vintage book cover and two photographs of a Kindle, asking
+for the Paper skin "same to same". Eleven commits (`8dc4766` → `f993133`). **Paused on the user's
+word** ("pause on paper theme") with everything committed and green; nothing is half-applied.
+
+**What shipped**
+- **Two colours, enforced by measuring the rendered page.** Three separate families carried hue and
+  each looked correct in the stylesheet: the accent came back as an INLINE style from `lib/theme.ts`
+  (no stylesheet can beat that — now branched on the skin in both the runtime and the pre-paint boot
+  script), entity labels via `--color-label-*`, and an amber that outlasted both via `--scope-*`.
+  Home measures 0 coloured elements.
+- **Rules are ink** (`#5E5849`, 6.2:1), not a mid-beige hairline — the "sharpness looks weird" note
+  was about a line that was neither ink nor absent. Panels draw their own ring because `.shadow-panel`
+  does not read `--shadow-panel`; the token override had drawn nothing.
+- **White cells on a dark ground.** Two wrong turns first: a desk model that made everything grey mud,
+  then one flat pale sheet that fixed the mud by deleting the contrast. The reference's own header
+  settled it — the cells are white, the ground between them is dark. Beige CELLS were the problem.
+- **Nothing is filled.** The tinted panel ground served neither reference: the invoice's cells are
+  white and its bands hatched; a Kindle has no fills at all. Panel headers are ruled instead.
+- **One grain, because `multiply` compounds.** Four layers tuned in isolation multiplied a white `#FC`
+  card to `#8D`. Mottle and fibre deleted; the guard now checks the PRODUCT arithmetically.
+- **Ink breaks up** on the mark and icons via an ALPHA mask (a blend cannot lighten dark ink).
+- Also: flat page (no gloss, no drop shadow), register dots at cell corners, boxed table cell grid,
+  hatched table heads, loaders as blank ruled cells, e-ink motion (the ladder collapses to a repaint).
+
+**The decision that mattered.** Four bugs this sprint shared one cause: styling a hook the app does
+not use. Only probing computed styles in the browser caught them. The standing rule for any skin work:
+measure what RENDERS, never trust the stylesheet.
+
+**Verified** — 2686 tests / 177 files, tsc and eslint clean at every commit; each change checked in
+the browser, several at 4–6× zoom.
+
+**Owed, for when Paper resumes**
+- **An invoice and a Kindle are opposite objects** (boxed and dense vs unboxed and typographic). Paper
+  has faithfully built the invoice. The Kindle feeling belongs on READING surfaces — the Docs editor —
+  as its own sprint: serif at reading size, ~1.6 leading, a real measure, no chrome.
+- Invoice line items are a hand-rolled CSS grid, not the DS table, so the cell grid cannot reach them.
+- The ground's hatch is declared but covered by the shell's `var(--canvas)`, so it renders only in gaps.
+- **Push blocked**: no GitHub credential on this machine; all commits are local.

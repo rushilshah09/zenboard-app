@@ -121,6 +121,8 @@ Measured against `COLLECTION_VIEW_BRIEF.md` for everything that still applies to
   whose absence is detectable. Check: `scripts/verify/verify-collection-many.mjs`.
 - **K13 — Final audit** (§34–44). Hover, loading, empty and error states; keyboard and screen reader; both
   themes; phone and tablet; PROGRESS and memory.
+  ⏳ **2026-09-24, taken by session e71978cb.** Session 7061260e is not running (checked with ListAgents), and
+  K11–K12 were in fact completed by e71978cb after the handoff note above, so that note is stale.
 
 ## Collection Index and an unbounded workspace — `COLLECTION_INDEX_BRIEF.md` (session e71978cb, in order)
 
