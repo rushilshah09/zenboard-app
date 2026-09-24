@@ -167,8 +167,19 @@ export function applyAppearance(theme: Theme, density: Density, accent: Accent =
   // chosen swatch to --accent; globals.css derives every -soft/-border/-ring/-deep
   // from it. --on-accent is the foreground ON an accent fill, and it is chosen
   // PER ACCENT — the lighter half of the palette cannot carry white. See ACCENTS.
-  el.style.setProperty('--accent', accentHex(accent, next));
-  el.style.setProperty('--on-accent', accentOn());
+  // …unless the skin prints in ONE INK. Paper is a two-colour material (user, 2026-09-24:
+  // "only 2 colours and textures"), and an INLINE style beats any stylesheet — so a skin cannot
+  // take the accent back in CSS, however late its file is imported. That is exactly what happened:
+  // every status ramp in the skin was already ink while a berry star sat on the page, because
+  // this line kept overruling it. The skin owns its palette, so here JS gets out of the way and
+  // lets `app/theme-paper.css` supply `--accent`/`--on-accent` from its own ink and stock.
+  if (nextSkin === 'paper') {
+    el.style.removeProperty('--accent');
+    el.style.removeProperty('--on-accent');
+  } else {
+    el.style.setProperty('--accent', accentHex(accent, next));
+    el.style.setProperty('--on-accent', accentOn());
+  }
   release?.();
 }
 
@@ -241,6 +252,6 @@ var resolved=skin==='paper'?'light':(t==='system'?((window.matchMedia&&window.ma
 d.setAttribute('data-theme',resolved);
 d.setAttribute('data-skin',skin);
 d.setAttribute('data-density',den);
-d.style.setProperty('--accent',(resolved==='dark'?(HD[acc]||HD.${DEFAULT_ACCENT}):(H[acc]||H.${DEFAULT_ACCENT})));
-d.style.setProperty('--on-accent','${ON_ACCENT}');
+if(skin!=='paper'){d.style.setProperty('--accent',(resolved==='dark'?(HD[acc]||HD.${DEFAULT_ACCENT}):(H[acc]||H.${DEFAULT_ACCENT})));
+d.style.setProperty('--on-accent','${ON_ACCENT}');}
 }catch(e){}})();`;

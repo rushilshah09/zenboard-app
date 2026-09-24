@@ -229,8 +229,30 @@ describe('the paper skin', () => {
       expect(block, ramp).toMatch(new RegExp(`--color-${ramp}-600: var\\(--foreground\\);`));
     }
     expect(value('--destructive')).toBe('var(--foreground)');
+    // The accent is the one hue the DEFAULT skin keeps, so it is the one most likely to survive
+    // into a monochrome skin unnoticed — and it did: a magenta star sat on this page while every
+    // ramp above was already ink, because the comment here ASSUMED `--accent` followed the
+    // foreground instead of asserting it.
+    expect(value('--accent'), 'the berry must not survive into a two-colour skin').toBe('var(--foreground)');
     // Which leaves danger with no hue — so it must be told apart by FORM, or not at all.
     expect(css).toMatch(/\[data-variant='danger'\] \{[^}]*background-image: var\(--paper-hatch\)/);
+
+    // THREE families carry hue, and the page was still coloured after the first two were fixed.
+    // Each was found by reading the rendered page, not the stylesheets: the accent came back as
+    // an INLINE style from lib/theme.ts, the entity labels via `--color-label-*`, and the amber
+    // that outlasted both via `--scope-*` in theme-shadcn.css. Any one of them left out puts
+    // colour back on a two-colour page, so all three are named here.
+    for (const t of ['--scope-amber', '--scope-blue', '--scope-indigo', '--scope-plum', '--scope-sage']) {
+      expect(value(t), t).toBe('var(--foreground)');
+    }
+    for (const label of ['berry', 'ochre', 'teal', 'indigo', 'rust']) {
+      expect(value(`--color-label-${label}`), label).toBe('var(--foreground)');
+    }
+    // And the inline pin is branched on the skin in BOTH paths — the runtime and the pre-paint
+    // boot script — or the berry flashes in before the stylesheet is even parsed.
+    const theme = readFileSync('lib/theme.ts', 'utf8');
+    expect(theme).toMatch(/if \(nextSkin === 'paper'\) \{\s*el\.style\.removeProperty\('--accent'\)/);
+    expect(theme).toMatch(/if\(skin!=='paper'\)\{d\.style\.setProperty\('--accent'/);
   });
 
   it('presses the ink into the sheet, not just the stock under it', () => {
@@ -270,6 +292,24 @@ describe('the paper skin', () => {
     expect(skeleton).toContain('data-shape={shape}');
     expect(skeleton).toContain('data-slot="skeleton-sweep"');
     expect(readFileSync('components/ds/ui/button.tsx', 'utf8')).toContain('data-slot="button"');
+  });
+
+  it('does not animate, because the material cannot', () => {
+    // A Kindle's defining quality is not its colour: electrophoretic ink does not MOVE. The
+    // particles are repositioned and then stay there, so a page turn is a repaint, not a
+    // transition. The skin collapses the ladder rather than removing animation, so no call site
+    // changes and every component still asks for `--duration-base`.
+    for (const rung of ['--duration-fast', '--duration-base', '--duration-slow']) {
+      const ms = parseFloat(value(rung)!);
+      expect(ms, `${rung} is a repaint, not a glide`).toBeLessThanOrEqual(20);
+    }
+    // Still ON the ladder, not opted out of it: 20ms is the rulebook's own `instant` rung.
+    expect(value('--duration-base')).toMatch(/^\d+ms$/);
+    // And the register dots are ink, on cells only — never on the desk or the folder.
+    const cells = css.slice(css.indexOf('A CELL IS BOXED'), css.indexOf('THE PRESS.'));
+    expect(cells).toMatch(/var\(--paper-dots\), var\(--paper-laid\), var\(--paper-stock\)/);
+    expect(cells).not.toMatch(/bg-canvas|bg-sidebar|bg-background/);
+    expect(value('--paper-dots')).toMatch(/radial-gradient/);
   });
 
   it('touches nothing outside itself', () => {
