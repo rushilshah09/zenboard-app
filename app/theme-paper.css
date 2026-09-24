@@ -64,8 +64,14 @@ html[data-skin='paper'] {
   --background: #C9C5B9;          /* the GROUND the cells lie on — dark, and hatched */
   --card: #FCFBF7;                /* a cell: WHITE paper, which is the whole point */
   --popover: #FEFDFA;             /* a slip — the one surface allowed to sit above the page */
-  --muted: #F1EFE9;               /* the faintest tint a press can lay — never a grey panel */
-  --secondary: #F1EFE9;
+  /* ── NOTHING IS FILLED ──────────────────────────────────────────────────
+     User: "still this is not giving the feeling of Kindle." Measured on Home: 20 filled surfaces.
+     A Kindle page has none, and — this is the part I had missed for several passes — NEITHER DOES
+     THE INVOICE. Its cells are white and its bands are hatched; there is not one flat grey fill on
+     that sheet. So the tinted panel ground was never serving either reference. It was mine.
+     Tint is how a SCREEN separates regions. Paper separates them with a rule. */
+  --muted: #FCFBF7;               /* the card's own white: an inset is ruled, never shaded */
+  --secondary: #FCFBF7;
   --accent-surface: #E9E7E1;      /* selected — a highlighter pass, in stock */
   --sidebar: #FCFBF7;             /* a cell too — ruled off, never filled grey */
   --sidebar-accent: #E9E7E1;
@@ -425,6 +431,13 @@ html[data-skin='paper'] :where([data-slot='mark']) {
 html[data-skin='paper'] :where([data-slot='icon']) {
   -webkit-mask-image: var(--paper-ink-break-fine);
   mask-image: var(--paper-ink-break-fine);
+}
+
+/* With the tint gone, a panel header needs the rule that a form would have drawn anyway. It is a
+   shadow rather than a border so the row does not move by a pixel — the skin changes materials,
+   never layout. */
+html[data-skin='paper'] [data-slot='panel-header'] {
+  box-shadow: inset 0 -1px 0 0 var(--border);
 }
 
 /* THE PRESS. Everything the app draws passes under one sheet of tooth: type, rules, icons,

@@ -75,6 +75,10 @@ export const PanelHeader = React.forwardRef<HTMLDivElement, PanelHeaderProps>(fu
   return (
     <div
       ref={ref}
+      // Marked so a SKIN can reach it. Paper needs a rule here: it removes the tinted panel
+      // ground entirely (nothing on a printed page or an e-ink page is a flat grey fill), and
+      // without that tint the header would have nothing separating it from the rows below.
+      data-slot="panel-header"
       className={cn("flex min-h-11 w-full shrink-0 items-center justify-between gap-2 px-[var(--panel-px)] py-2", className)}
       {...props}
     >
