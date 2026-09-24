@@ -59,7 +59,26 @@ function addDaysUTC(iso: string, days: number): string {
   return d.toISOString();
 }
 
-export function eventsToIcs(events: IcsEvent[], calendarName = 'Zenboard', now = new Date()): string {
+export type IcsOptions = {
+  /**
+   * Emit the polling hints a SUBSCRIBED calendar needs.
+   *
+   * A downloaded .ics is read once and these mean nothing. A feed is fetched
+   * forever, and without them each client falls back to its own default —
+   * Apple Calendar's is measured in hours and is not documented, so a plan
+   * changed at 09:00 can surface at lunchtime. `REFRESH-INTERVAL` is the RFC
+   * 7986 property; `X-PUBLISHED-TTL` is the older Microsoft spelling that
+   * Outlook still reads, and both are needed to cover the real clients.
+   */
+  refreshMinutes?: number;
+};
+
+export function eventsToIcs(
+  events: IcsEvent[],
+  calendarName = 'Zenboard',
+  now = new Date(),
+  opts: IcsOptions = {},
+): string {
   const stamp = utcStamp(now.toISOString());
   const lines: string[] = [
     'BEGIN:VCALENDAR',
@@ -69,6 +88,11 @@ export function eventsToIcs(events: IcsEvent[], calendarName = 'Zenboard', now =
     'METHOD:PUBLISH',
     `X-WR-CALNAME:${icsText(calendarName)}`,
   ];
+  if (opts.refreshMinutes && opts.refreshMinutes > 0) {
+    const dur = `PT${Math.round(opts.refreshMinutes)}M`;
+    lines.push(`REFRESH-INTERVAL;VALUE=DURATION:${dur}`);
+    lines.push(`X-PUBLISHED-TTL:${dur}`);
+  }
   for (const e of events) {
     if (!e.starts_at) continue;
     lines.push('BEGIN:VEVENT');

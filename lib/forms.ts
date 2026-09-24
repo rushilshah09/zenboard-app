@@ -100,9 +100,29 @@ export async function loadFormByToken(token: string): Promise<PublicForm | null>
   // Views are a coarse counter, not analytics: an atomic +1 via SQL function so
   // concurrent loads can't clobber each other. Fire-and-forget — a failed count
   // must never stop someone from filling the form.
-  void (svc as unknown as { rpc: (fn: string, args: object) => Promise<unknown> })
-    .rpc('increment_form_views', { p_form_id: row.id })
-    .catch(() => {});
+  //
+  // AND IT USED TO DO EXACTLY THAT. The previous version asserted `rpc` returned
+  // a `Promise` and called `.catch()` on it. PostgREST's `rpc()` returns a
+  // `PostgrestFilterBuilder`, which is a THENABLE but not a Promise: it has
+  // `.then()` and no `.catch()`. So this line threw `svc.rpc(...).catch is not a
+  // function` synchronously, during the server render, on every single load of
+  // every published form — the counter that "must never stop someone from
+  // filling the form" was the only thing stopping them.
+  //
+  // THE CAST IS WHAT HID IT, and the fix is one word inside the cast. The old
+  // one promised `Promise<unknown>`; the honest type is `PromiseLike<unknown>`
+  // — a thing with `.then` and nothing else. Saying `PromiseLike` makes the
+  // compiler reject `.catch()` outright, so this mistake cannot be made here
+  // again, and `Promise.resolve()` adopts the thenable to get a real one.
+  //
+  // Note for Cloudflare: an un-awaited promise can be cancelled once the
+  // response is sent, so a view may occasionally be lost. That is the right
+  // trade for a coarse counter — the alternative is making every respondent
+  // wait on a write that is nobody's business but ours.
+  const rpc = (svc as unknown as {
+    rpc: (fn: string, args: Record<string, unknown>) => PromiseLike<unknown>;
+  }).rpc('increment_form_views', { p_form_id: row.id });
+  void Promise.resolve(rpc).catch(() => {});
 
   const studio = row.space_id ? await spaceName(svc, row.space_id) : 'Studio';
 
@@ -233,10 +253,16 @@ export async function loadForm(id: string): Promise<FormRecord | null> {
     settings: unknown; version: number; share_token: string | null; client_id: string | null;
     project_id: string | null; space_id: string | null; view_count: number | null; show_in_portal: boolean | null;
   };
+  // A second, necessarily serial round trip — it needs `row.space_id`, which
+  // only exists once the row is back. Hoisted out of the object literal so the
+  // cost is visible rather than hiding inside a property. It supplies the
+  // studio name the builder's Preview shows; every other section pays for it
+  // and uses none of it, which is the next thing to fix here.
+  const studio = row.space_id ? await spaceName(db, row.space_id) : 'Studio';
   return {
     views: row.view_count ?? 0,
     showInPortal: row.show_in_portal ?? false,
-    studio: row.space_id ? await spaceName(db, row.space_id) : 'Studio',
+    studio,
     id: row.id,
     title: row.title,
     description: row.description,
@@ -248,6 +274,28 @@ export async function loadForm(id: string): Promise<FormRecord | null> {
     clientId: row.client_id,
     projectId: row.project_id,
   };
+}
+
+/**
+ * Just the number, for the Responses TAB.
+ *
+ * Every section of a form prints that count in its tab bar, and each of them
+ * was getting it by pulling up to 500 whole response rows — answers, uploads,
+ * metadata — and calling `.length` on the result. On a form with real traffic
+ * that is the heaviest query on the page, run four times over as you click
+ * between tabs, to render one integer.
+ *
+ * `head: true` sends no rows at all; Postgres answers with a count and
+ * PostgREST returns an empty body.
+ */
+export async function countFormResponses(formId: string): Promise<number> {
+  const db = (await createClient()) as unknown as DB;
+  const { count } = await db
+    .from('form_responses')
+    .select('id', { count: 'exact', head: true })
+    .eq('form_id', formId)
+    .eq('status', 'complete');
+  return count ?? 0;
 }
 
 export async function loadFormResponses(formId: string): Promise<ResponseRecord[]> {

@@ -5,6 +5,8 @@
 // it on expiry so a stale token can never be submitted. If the script is blocked,
 // we fail quiet — the server still verifies, and the other spam defences stand.
 import { useEffect, useRef } from 'react';
+import { useLatest } from '@/lib/use-latest';
+import { useResolvedTheme } from '@/lib/use-resolved-theme';
 
 type TurnstileOptions = {
   sitekey: string;
@@ -50,7 +52,7 @@ function loadScript(): Promise<void> {
   });
 }
 
-export function TurnstileWidget({ siteKey, onToken, theme = 'auto' }: {
+export function TurnstileWidget({ siteKey, onToken, theme: themeProp }: {
   siteKey: string;
   onToken: (token: string) => void;
   theme?: 'auto' | 'light' | 'dark';
@@ -58,8 +60,13 @@ export function TurnstileWidget({ siteKey, onToken, theme = 'auto' }: {
   const ref = useRef<HTMLDivElement>(null);
   const widgetId = useRef<string | null>(null);
   // Keep the latest callback without re-rendering the widget on every parent render.
-  const onTokenRef = useRef(onToken);
-  onTokenRef.current = onToken;
+  const onTokenRef = useLatest(onToken);
+  // The captcha matches the page it sits in. Turnstile's own 'auto' follows the OS,
+  // which is wrong for a reader who chose Light or Dark explicitly — so the default
+  // is the theme the page RESOLVED. A flip re-runs the effect below, which removes
+  // the old widget before rendering the new one. Guarded in turnstile.test.ts.
+  const pageTheme = useResolvedTheme();
+  const theme = themeProp ?? pageTheme;
 
   useEffect(() => {
     let cancelled = false;

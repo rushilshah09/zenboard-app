@@ -7,12 +7,14 @@
 // and restores them from localStorage (the source of truth), closing the loop
 // the same way next-themes' provider does. Renders nothing.
 import { useLayoutEffect } from 'react';
-import { applyAppearance, readAppearance } from '@/lib/theme';
+import { applyAppearance, readAppearance, watchSystemTheme } from '@/lib/theme';
 
 export function AppearanceBoot() {
   useLayoutEffect(() => {
     const a = readAppearance();
-    applyAppearance(a.theme, a.density, a.accent);
+    applyAppearance(a.theme, a.density, a.accent, a.skin);
+    // Keeps a 'System' user in step with the OS for the life of the session.
+    return watchSystemTheme();
   }, []);
   return null;
 }

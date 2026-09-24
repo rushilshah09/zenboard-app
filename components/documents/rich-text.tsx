@@ -9,15 +9,18 @@
 // and external changes (undo/redo) resync the mounted view in place.
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Schema, type Node as PMNode, type Mark, type MarkType } from 'prosemirror-model';
-import { EditorState, TextSelection, type Transaction } from 'prosemirror-state';
-import { EditorView } from 'prosemirror-view';
+import { EditorState, Plugin, PluginKey, TextSelection, type Transaction } from 'prosemirror-state';
+import { Decoration, DecorationSet, EditorView } from 'prosemirror-view';
 import { keymap } from 'prosemirror-keymap';
 import { baseKeymap, toggleMark } from 'prosemirror-commands';
-import { Bold, Italic, Underline, Strikethrough, Code as CodeIcon, Link2, X, ChevronDown } from "@/components/ds/icons";
+import { Bold, Italic, Underline, Strikethrough, Code as CodeIcon, Link2, X, ChevronDown, Brain } from "@/components/ds/icons";
 import { Icon, Toolbar, ToolbarButton, ToolbarSeparator, MenuPanel, MenuItem, MenuLabel, MenuGlyph } from "@/components/ds/ui";
+import { RecordPreview } from '@/components/connected/record-preview';
 import { cn } from '@/lib/cn';
 import { mergeSpans, sparse, plainOf, spansOf, removeRange, insertSpan, type RichSpan } from '@/lib/rich';
 import { PALETTE_NAMES } from '@/lib/palette';
+import { useFollowLink } from '@/lib/use-follow-link';
+import { safeHref } from '@/lib/safe-url';
 
 // Span color styling — same token bridge as block color: '<palette>' tints the
 // text via --pal-<n>-text, '<palette>-bg' washes the background via --pal-<n>-bg.
@@ -51,8 +54,23 @@ export const richSchema = new Schema({
     link: {
       attrs: { href: {} },
       inclusive: false,
-      toDOM: (m: Mark) => ['a', { class: 'zb-rich-a', href: m.attrs.href as string }, 0],
-      parseDOM: [{ tag: 'a[href]', getAttrs: (el) => ({ href: (el as HTMLElement).getAttribute('href') }) }],
+      // The RENDER boundary. `lib/blocks.ts` already refuses an unsafe stored
+      // link, but a mark can also arrive from a paste that never touched
+      // storage, and this is the last place before a real <a> exists that a
+      // click can follow. An unsafe href renders with NO href — the words stay,
+      // the navigation does not.
+      toDOM: (m: Mark) => {
+        const href = safeHref(m.attrs.href);
+        // No class on the refused branch. Keeping `zb-rich-a` would leave it
+        // underlined and cursor-pointer — something that LOOKS like a link and
+        // does nothing, which is worse than either outcome. It renders as the
+        // words it is.
+        return href ? ['a', { class: 'zb-rich-a', href }, 0] : ['span', {}, 0];
+      },
+      parseDOM: [{ tag: 'a[href]', getAttrs: (el) => {
+        const href = safeHref((el as HTMLElement).getAttribute('href'));
+        return href ? { href } : false;   // false ⇒ the mark is not applied at all
+      } }],
     },
     color: {
       attrs: { name: {} },
@@ -107,6 +125,9 @@ export function docToSpans(doc: PMNode): RichSpan[] {
 // ── the caret-surface contract shared with the code-block <textarea> path ────
 // Mirrors the textarea properties the editor's key/selection logic reads, so
 // one set of handlers drives both surfaces.
+/** Viewport coordinates of a caret position — what a menu anchors to. */
+export type CaretRect = { left: number; top: number; bottom: number };
+
 export type SurfaceHandle = {
   focus: (pos?: number) => void;
   blur: () => void;
@@ -116,6 +137,13 @@ export type SurfaceHandle = {
   readonly dir: 'forward' | 'backward' | 'none';
   readonly length: number;
   readonly text: string;
+  /**
+   * Where a plain-text offset sits on screen, so a typed-trigger menu can open
+   * AT the caret instead of at the block's left edge. `/` almost always starts
+   * a block so the difference never showed; `@` is typed mid-sentence, where a
+   * menu pinned to the margin reads as belonging to something else.
+   */
+  caretRect: (pos: number) => CaretRect | null;
 };
 
 export function textareaHandle(el: HTMLTextAreaElement): SurfaceHandle {
@@ -128,6 +156,13 @@ export function textareaHandle(el: HTMLTextAreaElement): SurfaceHandle {
     get dir() { return el.selectionDirection as 'forward' | 'backward' | 'none'; },
     get length() { return el.value.length; },
     get text() { return el.value; },
+    // A <textarea> has no per-character geometry. Code blocks are the only
+    // surface that use this handle and they carry no typed-trigger menus, so
+    // the element's own left edge is an honest answer rather than a guess.
+    caretRect: () => {
+      const r = el.getBoundingClientRect();
+      return { left: r.left, top: r.top, bottom: r.bottom };
+    },
   };
 }
 
@@ -152,6 +187,21 @@ function charOffsetAt(node: Node | null, nodeOffset: number, container: HTMLElem
   return n;
 }
 
+/**
+ * What a host must provide for "Remember this" to appear on a selection.
+ *
+ * Passed down unchanged through the editor — neither this component nor the
+ * block editor knows what a memory IS. The host owns the subject (which record
+ * the fact is about) and the write; they own the gesture.
+ */
+export type RememberHook = {
+  /** Named in the field's hint, so the user always sees where a fact will land. */
+  subjectLabel: string;
+  max: number;
+  /** Returns an error message to show in place, or null when it saved. */
+  onSave: (body: string) => Promise<string | null>;
+};
+
 export type RichTextProps = {
   blockId: string;
   text: string;
@@ -159,6 +209,13 @@ export type RichTextProps = {
   type: string; // BlockType — used only for placeholder/caret styling hooks
   active: { anchor: number; head: number; epoch: number } | null;
   placeholder: string;
+  /**
+   * An open trigger menu's text — the "/" and what has been typed after it —
+   * drawn as a soft pill, with `placeholder` after the caret while nothing has
+   * been typed ("/Type to search", Notion's slash menu). Offsets are Block.text
+   * offsets; null when no menu is open on this block.
+   */
+  trigger?: { at: number; length: number; placeholder?: string } | null;
   style?: React.CSSProperties;
   onRich: (text: string, spans: RichSpan[] | undefined, caret: number) => void;
   // Inline markdown auto-convert: `literal` is the exact typed state (already
@@ -169,6 +226,10 @@ export type RichTextProps = {
   // list) and performs the conversion; anchor/head restore the selection.
   turnIntoOptions?: TurnIntoOption[];
   onTurnInto?: (type: string, anchor: number, head: number) => void;
+  // Memory's marked capture (§7X §4.2). The editor supplies the subject and the
+  // write; this component only knows how to hand over the selected text. Absent
+  // on hosts with nothing to record a fact ABOUT.
+  remember?: RememberHook;
   // Return true when the editor's shared handler consumed the key.
   onKey: (e: KeyLike, el: SurfaceHandle) => boolean | void;
   // Return true when the editor's paste engine consumed the event.
@@ -185,7 +246,7 @@ export type RichTextProps = {
 // Static span rendering — the SAME semantic elements and classes as the PM
 // mark toDOMs, so the active swap is DOM-shape-identical (styling, a11y, and
 // copied HTML all match).
-function staticSpans(spans: RichSpan[] | undefined, text: string): React.ReactNode {
+function staticSpans(spans: RichSpan[] | undefined, text: string, follow?: (href: string) => void): React.ReactNode {
   const list = spans?.length ? spans : text ? [{ text } as RichSpan] : [];
   if (!list.length) return <br />; // hold one line height, like PM's trailing break
   return list.map((sp, i) => {
@@ -193,7 +254,33 @@ function staticSpans(spans: RichSpan[] | undefined, text: string): React.ReactNo
     // Innermost first — nesting order mirrors PM's mark rank so the swap is
     // DOM-shape-identical (color is the schema's last mark → innermost).
     if (sp.color) n = <span className="zb-rich-color" data-color={sp.color} style={colorStyle(sp.color)}>{n}</span>;
-    if (sp.link) n = <a className="zb-rich-a" href={sp.link} onClick={(e) => { if (!(e.metaKey || e.ctrlKey)) e.preventDefault(); }} target="_blank" rel="noreferrer">{n}</a>;
+    // A plain click FOLLOWS the link — `useFollowLink` decides in-app vs new
+    // tab. This used to `preventDefault` and do nothing, so a mention could
+    // only be opened with ⌘-click. Handling it here rather than on the parent's
+    // mouseup also covers the keyboard: Enter on a focused anchor fires `click`.
+    // ⌘/ctrl-click is left to the browser, so "open in a new tab" still works.
+    // THE RENDER PATH THAT MATTERS. Almost every block on screen is static —
+    // only the focused one is a live ProseMirror view — so this, not the mark's
+    // toDOM, is where a stored link becomes a real <a> with a click handler that
+    // navigates. A link nobody can vouch for renders as the words it is.
+    const href = safeHref(sp.link);
+    if (href) {
+      n = (
+        <a
+          className="zb-rich-a" href={href} rel="noreferrer"
+          onClick={(e) => {
+            if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return; // let the browser have it
+            e.preventDefault();
+            follow?.(href);
+          }}
+        >{n}</a>
+      );
+      // Hovering an INTERNAL link previews what is on the other end. Returns the
+      // anchor untouched for an external link or an unaddressable route, so this
+      // costs nothing on the overwhelming majority of links — and the query does
+      // not fire until the card actually opens.
+      n = <RecordPreview href={href}>{n}</RecordPreview>;
+    }
     if (sp.c) n = <code className="zb-rich-c">{n}</code>;
     if (sp.s) n = <s className="zb-rich-s">{n}</s>;
     if (sp.u) n = <span className="zb-rich-u">{n}</span>;
@@ -202,6 +289,46 @@ function staticSpans(spans: RichSpan[] | undefined, text: string): React.ReactNo
     return <span key={i}>{n}</span>;
   });
 }
+
+// ── The trigger pill ─────────────────────────────────────────────────────────
+// Plugin state, not React props, because a view's plugins are fixed when it is
+// created: the editor hands a new trigger over as transaction meta and the
+// decorations follow. Between hand-overs the range rides the document mapping,
+// so a keystroke never leaves the pill a character behind.
+type TriggerState = NonNullable<RichTextProps['trigger']> | null;
+const TRIGGER = new PluginKey<TriggerState>('zb-trigger');
+const triggerPlugin = new Plugin<TriggerState>({
+  key: TRIGGER,
+  state: {
+    init: () => null,
+    apply(tr, value) {
+      const meta = tr.getMeta(TRIGGER) as TriggerState | undefined;
+      if (meta !== undefined) return meta;
+      if (!value || !tr.docChanged) return value;
+      return { ...value, at: tr.mapping.map(1 + value.at, -1) - 1 };
+    },
+  },
+  props: {
+    decorations(state) {
+      const t = TRIGGER.getState(state);
+      if (!t) return null;
+      const from = 1 + t.at;
+      const to = Math.min(from + t.length, state.doc.content.size - 1);
+      if (from >= to) return null;
+      const decos = [Decoration.inline(from, to, { class: t.placeholder ? 'zb-trigger zb-trigger-open' : 'zb-trigger' })];
+      if (t.placeholder) {
+        const text = t.placeholder;
+        decos.push(Decoration.widget(to, () => {
+          const el = document.createElement('span');
+          el.className = 'zb-trigger-ph';
+          el.textContent = text;
+          return el;
+        }, { side: 1, key: 'zb-trigger-ph:' + text }));
+      }
+      return DecorationSet.create(state.doc, decos);
+    },
+  },
+});
 
 export function RichText(props: RichTextProps) {
   const { active } = props;
@@ -225,6 +352,7 @@ function StaticRich({ text, spans, onActivate }: RichTextProps) {
   // Activation happens on mouseUP so a drag over the static spans first makes
   // a native selection, which we then adopt as the PM selection.
   const armed = useRef(false);
+  const follow = useFollowLink();
   return (
     <div
       ref={ref}
@@ -235,6 +363,14 @@ function StaticRich({ text, spans, onActivate }: RichTextProps) {
         if (!armed.current || !ref.current) return;
         armed.current = false;
         const sel = window.getSelection();
+        // A click that landed ON a link follows it instead of activating the
+        // block — otherwise mouseup swaps this static render for the live
+        // editor and the anchor's own click never reaches a live element.
+        // A DRAG that ends on a link is still a selection, so this only applies
+        // when the selection collapsed: dragging across a mention to select it
+        // behaves exactly as before.
+        const onLink = (e.target as HTMLElement | null)?.closest?.('a.zb-rich-a');
+        if (onLink && (!sel || sel.isCollapsed)) return;
         let anchor: number | null = null; let head: number | null = null;
         if (sel && sel.rangeCount && ref.current.contains(sel.anchorNode) && ref.current.contains(sel.focusNode)) {
           anchor = charOffsetAt(sel.anchorNode, sel.anchorOffset, ref.current);
@@ -250,7 +386,7 @@ function StaticRich({ text, spans, onActivate }: RichTextProps) {
         onActivate(anchor ?? head, head);
       }}
     >
-      {staticSpans(spans, text)}
+      {staticSpans(spans, text, follow)}
     </div>
   );
 }
@@ -395,6 +531,18 @@ function ActivePM(props: RichTextProps & { active: NonNullable<RichTextProps['ac
     // doc.textContent drops them, which would desync caret math around breaks.
     get length() { return plainOf(docToSpans(view.state.doc)).length; },
     get text() { return plainOf(docToSpans(view.state.doc)); },
+    // +1 converts a Block.text offset to a PM document position (the same
+    // shift `focus` and `selStart` apply). Clamped, because the caller's offset
+    // comes from text that may already have moved under it.
+    caretRect: (pos) => {
+      try {
+        const max = view.state.doc.content.size - 1;
+        const c = view.coordsAtPos(Math.max(1, Math.min(1 + pos, max)));
+        return { left: c.left, top: c.top, bottom: c.bottom };
+      } catch {
+        return null;
+      }
+    },
   });
 
   useEffect(() => {
@@ -437,6 +585,7 @@ function ActivePM(props: RichTextProps & { active: NonNullable<RichTextProps['ac
           // never reach it: the editor's shared handler consumes them first
           // via handleKeyDown, which runs before all plugin keymaps.
           keymap(baseKeymap),
+          triggerPlugin,
         ],
       }),
       handleKeyDown: (view, event) => {
@@ -498,6 +647,23 @@ function ActivePM(props: RichTextProps & { active: NonNullable<RichTextProps['ac
     // (epoch) demands it — never on our own emitted changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.blockId, props.active.epoch]);
+
+  // An open trigger menu hands its range to the pill (see `triggerPlugin`).
+  const trigAt = props.trigger?.at;
+  const trigLength = props.trigger?.length;
+  const trigPlaceholder = props.trigger?.placeholder;
+  const { epoch } = props.active;
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    const next: TriggerState = trigAt !== undefined && trigLength !== undefined
+      ? { at: trigAt, length: trigLength, placeholder: trigPlaceholder }
+      : null;
+    const cur = TRIGGER.getState(view.state);
+    if (cur === next || (cur && next && cur.at === next.at && cur.length === next.length && cur.placeholder === next.placeholder)) return;
+    view.dispatch(view.state.tr.setMeta(TRIGGER, next));
+    // `epoch` and the block: a re-created view starts with no pill and needs it again.
+  }, [trigAt, trigLength, trigPlaceholder, epoch, props.blockId]);
 
   // External content change (undo/redo, structural ops touching this block):
   // rebuild the doc in place, keep the caret clamped.
@@ -565,6 +731,19 @@ function ActivePM(props: RichTextProps & { active: NonNullable<RichTextProps['ac
             const sel = tbRef.current;
             if (sel) props.onTurnInto!(t, sel.from - 1, sel.to - 1);
           })}
+          remember={props.remember && {
+            ...props.remember,
+            // Read at the moment the field opens, not when the toolbar rendered:
+            // the selection is the source of truth and it can still change under
+            // a toolbar that is already on screen.
+            selectedText: () => {
+              const view = viewRef.current; const sel = tbRef.current;
+              if (!view || !sel) return '';
+              // ' ' as the block separator — a selection spanning a hard break
+              // must not weld two words together.
+              return view.state.doc.textBetween(sel.from, sel.to, ' ', ' ');
+            },
+          }}
           onColor={applyColor}
           onToggle={(m) => applyMark(richSchema.marks[m])}
           onOpenLink={() => setLinkOpen(true)}
@@ -599,7 +778,7 @@ function LinkEditor({ current, onApply, onRemove, onClose }: {
   return (
     <div className="flex items-center gap-1.5 px-0.5">
       <span className="shrink-0 text-ink-600"><Icon icon={Link2} size={14} /></span>
-      <input
+      <input data-chromeless
         autoFocus value={draft} onChange={(e) => setDraft(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submit(); } if (e.key === 'Escape') { e.preventDefault(); onClose(); } }}
         placeholder="Paste or type a link…"
@@ -615,11 +794,91 @@ function LinkEditor({ current, onApply, onRemove, onClose }: {
   );
 }
 
+/**
+ * "Remember this" — Memory's marked-capture gesture (§7X §4.2), in the one
+ * place where selecting text already means something.
+ *
+ * It mounts fresh with the selected text so the fact can be TRIMMED before it is
+ * stored. That extra keystroke is deliberate and it is the one place we diverge
+ * from mymind's "saving costs one gesture and no decisions": mymind saves images
+ * and links, which need no editing, whereas a fact pulled out of prose almost
+ * never arrives well-formed — "…they mentioned they'd prefer invoices on the
+ * 1st, which…" is not a memory until someone trims it. Saving the raw selection
+ * would fill Memory with sentence fragments, and the module's own success
+ * measure is that facts are re-readable in one line.
+ *
+ * `subjectLabel` is shown, never chosen: the caller inferred it (§7X — the
+ * doc's client, else the doc itself) and naming it out loud is what keeps the
+ * "zero surprise" metric at zero.
+ */
+function RememberEditor({ initial, subjectLabel, max, onSave, onClose }: {
+  initial: string;
+  subjectLabel: string;
+  max: number;
+  onSave: (body: string) => Promise<string | null>;
+  onClose: () => void;
+}) {
+  const [draft, setDraft] = useState(initial);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const over = draft.trim().length - max;
+
+  const submit = async () => {
+    if (busy || !draft.trim() || over > 0) return;
+    setBusy(true);
+    try {
+      const error = await onSave(draft);
+      if (error) setErr(error);
+      else onClose();
+    } catch (e) {
+      // The host's save is a server action and can REJECT (expired session,
+      // dropped connection). Without `finally` the field stays disabled with the
+      // user's sentence trapped in it — and this one is inside a floating
+      // toolbar, so there is nowhere for them to go but Esc.
+      // Deliberately NOT `e.message`: an exception here is a thrown server
+      // action (an expired session, a dropped connection) and its message is
+      // engineering vocabulary — "Not authenticated" is not UI copy. The
+      // expected refusals all come back as `{ error }` with a real sentence.
+      void e;
+      setErr('That didn’t save. Check your connection and try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-0.5 px-0.5 py-0.5">
+      <div className="flex items-center gap-1.5">
+        <span className="shrink-0 text-ink-600"><Icon icon={Brain} size={14} /></span>
+        <input data-chromeless
+          autoFocus value={draft} onChange={(e) => { setDraft(e.target.value); if (err) setErr(null); }}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submit(); } if (e.key === 'Escape') { e.preventDefault(); onClose(); } }}
+          placeholder="The fact, in one line…"
+          aria-label={`Remember about ${subjectLabel}`}
+          aria-invalid={!!err || over > 0}
+          autoComplete="off" data-1p-ignore data-lpignore="true"
+          className="w-[280px] border-0 bg-transparent text-meta text-ink-900 outline-none placeholder:text-ink-500"
+        />
+        {/* Only in the last stretch — a counter on a short fact is a warning
+            about a limit nobody was near. */}
+        {max - draft.trim().length <= 40 && (
+          <span className={cn('shrink-0 tabular-nums text-caption', over > 0 ? 'text-danger-600' : 'text-ink-500')}>
+            {max - draft.trim().length}
+          </span>
+        )}
+      </div>
+      <span className={cn('pl-[22px] text-caption', err ? 'text-danger-600' : 'text-ink-500')}>
+        {err ?? `Remember about ${subjectLabel} · Enter saves`}
+      </span>
+    </div>
+  );
+}
+
 // The turn-into and color dropdowns reuse the canonical <MenuPanel>; only the
 // absolute positioning (top offset, width, edge) is set per use.
 const TB_PANEL_POS = 'absolute top-[calc(100%+6px)] max-h-[280px] w-[190px] overflow-y-auto';
 
-function InlineToolbar({ tb, linkOpen, blockType, turnIntoOptions, onTurnInto, onColor, onToggle, onOpenLink, onApplyLink, onRemoveLink, onCloseLink }: {
+function InlineToolbar({ tb, linkOpen, blockType, turnIntoOptions, onTurnInto, onColor, onToggle, onOpenLink, onApplyLink, onRemoveLink, onCloseLink, remember }: {
   tb: ToolbarState; linkOpen: boolean;
   blockType: string;
   turnIntoOptions?: TurnIntoOption[];
@@ -630,9 +889,14 @@ function InlineToolbar({ tb, linkOpen, blockType, turnIntoOptions, onTurnInto, o
   onApplyLink: (href: string) => void;
   onRemoveLink: () => void;
   onCloseLink: () => void;
+  /** Memory's marked capture (§7X). Absent when the host cannot record facts. */
+  remember?: { subjectLabel: string; max: number; selectedText: () => string; onSave: (body: string) => Promise<string | null> };
 }) {
   // One dropdown at a time: the turn-into list or the color panel.
   const [drop, setDrop] = useState<'turn' | 'color' | null>(null);
+  // The remember field takes over the whole bar, exactly as the link editor
+  // does — one temporary mode, never two panels fighting for the same 320px.
+  const [rememberOpen, setRememberOpen] = useState(false);
   const turnLabel = turnIntoOptions?.find((o) => o.type === blockType)?.label ?? blockType;
   const colorSwatch: React.CSSProperties = tb.color
     ? tb.color.endsWith('-bg')
@@ -643,12 +907,30 @@ function InlineToolbar({ tb, linkOpen, blockType, turnIntoOptions, onTurnInto, o
     <Toolbar
       floating
       onMouseDown={(e) => { if ((e.target as HTMLElement).tagName !== 'INPUT') e.preventDefault(); }}
-      className="fixed z-[80] [animation:zb-pop-in_120ms_var(--ease-standard)]"
+      className="fixed z-dropdown zb-enter [animation:zb-pop-in_var(--duration-fast)_var(--ease-out-quiet)]"
       // Position is computed from the selection coords — geometry stays inline.
-      style={{ left: tb.x, top: tb.y, transform: tb.below ? 'translate(-50%, 8px)' : 'translate(-50%, calc(-100% - 8px))' }}
+      // `translate`, not `transform`: a running animation outranks an inline style,
+      // so the entrance keyframe used to REPLACE a positioning `transform` and the
+      // toolbar faded in 146px right and 46px low, over the words just selected,
+      // then jumped. The two properties compose instead. It grows out of the edge
+      // that faces the selection.
+      style={{
+        left: tb.x,
+        top: tb.y,
+        translate: tb.below ? '-50% 8px' : '-50% calc(-100% - 8px)',
+        transformOrigin: tb.below ? '50% 0%' : '50% 100%',
+      }}
     >
       {linkOpen ? (
         <LinkEditor current={tb.link} onApply={onApplyLink} onRemove={onRemoveLink} onClose={onCloseLink} />
+      ) : rememberOpen && remember ? (
+        <RememberEditor
+          initial={remember.selectedText()}
+          subjectLabel={remember.subjectLabel}
+          max={remember.max}
+          onSave={remember.onSave}
+          onClose={() => setRememberOpen(false)}
+        />
       ) : (
         <>
           {turnIntoOptions && onTurnInto && (
@@ -659,18 +941,18 @@ function InlineToolbar({ tb, linkOpen, blockType, turnIntoOptions, onTurnInto, o
                 title="Turn into" aria-label="Turn into" aria-expanded={drop === 'turn'}
                 className="whitespace-nowrap text-meta"
               >
-                {turnLabel} <Icon icon={ChevronDown} size={10} />
+                {turnLabel} <Icon icon={ChevronDown} size={12} />
               </ToolbarButton>
               <ToolbarSeparator />
             </>
           )}
-          <ToolbarButton active={tb.b} onClick={() => onToggle('b')} title="Bold ⌘B" aria-label="Bold" aria-pressed={tb.b}><Icon icon={Bold} size={15} weight={tb.b ? 'bold' : 'regular'} /></ToolbarButton>
-          <ToolbarButton active={tb.i} onClick={() => onToggle('i')} title="Italic ⌘I" aria-label="Italic" aria-pressed={tb.i}><Icon icon={Italic} size={15} /></ToolbarButton>
-          <ToolbarButton active={tb.u} onClick={() => onToggle('u')} title="Underline ⌘U" aria-label="Underline" aria-pressed={tb.u}><Icon icon={Underline} size={15} /></ToolbarButton>
-          <ToolbarButton active={tb.s} onClick={() => onToggle('s')} title="Strikethrough ⌘⇧S" aria-label="Strikethrough" aria-pressed={tb.s}><Icon icon={Strikethrough} size={15} /></ToolbarButton>
-          <ToolbarButton active={tb.c} onClick={() => onToggle('c')} title="Code ⌘E" aria-label="Inline code" aria-pressed={tb.c}><Icon icon={CodeIcon} size={15} /></ToolbarButton>
+          <ToolbarButton active={tb.b} onClick={() => onToggle('b')} title="Bold ⌘B" aria-label="Bold" aria-pressed={tb.b}><Icon icon={Bold} size={16} weight={tb.b ? 'bold' : 'regular'} /></ToolbarButton>
+          <ToolbarButton active={tb.i} onClick={() => onToggle('i')} title="Italic ⌘I" aria-label="Italic" aria-pressed={tb.i}><Icon icon={Italic} size={16} /></ToolbarButton>
+          <ToolbarButton active={tb.u} onClick={() => onToggle('u')} title="Underline ⌘U" aria-label="Underline" aria-pressed={tb.u}><Icon icon={Underline} size={16} /></ToolbarButton>
+          <ToolbarButton active={tb.s} onClick={() => onToggle('s')} title="Strikethrough ⌘⇧S" aria-label="Strikethrough" aria-pressed={tb.s}><Icon icon={Strikethrough} size={16} /></ToolbarButton>
+          <ToolbarButton active={tb.c} onClick={() => onToggle('c')} title="Code ⌘E" aria-label="Inline code" aria-pressed={tb.c}><Icon icon={CodeIcon} size={16} /></ToolbarButton>
           <ToolbarSeparator />
-          <ToolbarButton active={!!tb.link} onClick={onOpenLink} title="Link ⌘K" aria-label="Link" aria-pressed={!!tb.link}><Icon icon={Link2} size={15} /></ToolbarButton>
+          <ToolbarButton active={!!tb.link} onClick={onOpenLink} title="Link ⌘K" aria-label="Link" aria-pressed={!!tb.link}><Icon icon={Link2} size={16} /></ToolbarButton>
           <ToolbarButton
             wide active={drop === 'color' || !!tb.color}
             onClick={() => setDrop((d) => (d === 'color' ? null : 'color'))}
@@ -679,8 +961,21 @@ function InlineToolbar({ tb, linkOpen, blockType, turnIntoOptions, onTurnInto, o
           >
             {/* Swatch reflects the selection's colour — user palette, inline. */}
             <span className="text-caption font-semibold leading-none" style={colorSwatch}>A</span>
-            <Icon icon={ChevronDown} size={9} />
+            <Icon icon={ChevronDown} size={12} />
           </ToolbarButton>
+          {/* Last, and behind a separator: everything to its left changes how the
+              selection LOOKS, this one takes the selection somewhere else. */}
+          {remember && (
+            <>
+              <ToolbarSeparator />
+              <ToolbarButton
+                onClick={() => { setDrop(null); setRememberOpen(true); }}
+                title="Remember this" aria-label="Remember this"
+              >
+                <Icon icon={Brain} size={16} />
+              </ToolbarButton>
+            </>
+          )}
           {drop === 'turn' && turnIntoOptions && onTurnInto && (
             <MenuPanel className={cn(TB_PANEL_POS, 'left-0')}>
               {turnIntoOptions.map((o) => (
@@ -723,6 +1018,12 @@ export function RichTextStyles() {
       .zb-rich-c { font-family: var(--font-mono); font-size: 85%; background: var(--color-surface-fill); border-radius: var(--radius-xs); padding: 1px 4px; }
       .zb-rich-a { color: inherit; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
       .zb-rich-ph { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      /* The open slash menu's "/query" — a soft pill in the one hover wash, its
+         padding drawn by a spread shadow so the text does not move. With nothing
+         typed yet, the placeholder after the caret completes the pill. */
+      .zb-trigger { background: var(--color-surface-hover); box-shadow: 0 0 0 3px var(--color-surface-hover); border-radius: var(--radius-xs); }
+      .zb-trigger-open { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+      .zb-trigger-ph { color: var(--color-ink-500); background: var(--color-surface-hover); box-shadow: 0 0 0 3px var(--color-surface-hover); border-radius: 0 var(--radius-xs) var(--radius-xs) 0; pointer-events: none; user-select: none; }
       @keyframes zbTbIn { from { opacity: 0; } to { opacity: 1; } }
     `}</style>
   );

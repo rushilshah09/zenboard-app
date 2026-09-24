@@ -27,9 +27,23 @@ export interface TabsProps {
   "aria-label"?: string;
   className?: string;
   children?: React.ReactNode;
+  /**
+   * A control that belongs ON the bar — a view switcher for the panel
+   * underneath (List / Board / Calendar). Beside the tabs when the bar has room,
+   * on its own line below them when it does not.
+   *
+   * It lived OVER the bar, absolutely positioned at its right end, and at 375px
+   * that switcher sat on top of Docs, Files and Money: measured, three of six
+   * sections could not be tapped on a phone. As a sibling in the bar's own
+   * flow it can never cover a tab at any width — between the stacking
+   * threshold and the tabs' natural width the list scrolls under its fade
+   * instead. The threshold is a CONTAINER width, not a viewport one, because
+   * the same bar can sit beside a rail on a laptop.
+   */
+  end?: React.ReactNode;
 }
 
-export function Tabs({ items, value, onValueChange, activation = "automatic", className, children, ...aria }: TabsProps) {
+export function Tabs({ items, value, onValueChange, activation = "automatic", className, children, end, ...aria }: TabsProps) {
   const listRef = React.useRef<HTMLDivElement>(null);
   const [bar, setBar] = React.useState<{ x: number; w: number } | null>(null);
 
@@ -50,9 +64,7 @@ export function Tabs({ items, value, onValueChange, activation = "automatic", cl
     return () => ro.disconnect();
   }, [measure]);
 
-  return (
-    <RT.Root value={value} onValueChange={onValueChange} activationMode={activation} className={className}>
-      <ScrollArea axis="x" fade hideScrollbar className="border-b border-line">
+  const list = (
         <RT.List ref={listRef} aria-label={aria["aria-label"]} className="relative flex w-max min-w-full gap-1">
           {items.map((t) => (
             <RT.Trigger
@@ -66,7 +78,7 @@ export function Tabs({ items, value, onValueChange, activation = "automatic", cl
                 "focus-ring group flex h-9 items-center gap-2 rounded-t-md px-3 text-ui font-medium text-ink-700 transition-colors duration-instant",
                 "hover:bg-surface-hover hover:text-ink-900",
                 "data-[state=active]:text-ink-900",
-                "disabled:pointer-events-none disabled:text-ink-300",
+                "disabled:pointer-events-none disabled:text-ink-500",
               )}
             >
               {t.icon && <Icon icon={t.icon} size={14} className="shrink-0" />}
@@ -89,7 +101,30 @@ export function Tabs({ items, value, onValueChange, activation = "automatic", cl
             />
           )}
         </RT.List>
-      </ScrollArea>
+  );
+
+  return (
+    <RT.Root value={value} onValueChange={onValueChange} activationMode={activation} className={cn(end != null && "@container", className)}>
+      {end != null ? (
+        // 37.5rem is MEASURED, not estimated: six tabs 405px + the 12px gap +
+        // a three-way switcher 185px = 602px. The first guess, 38rem (608px),
+        // stacked the switcher on a 604px bar where it fit — re-adding the
+        // very band Phase 1 removed. At 600–602px the list gives up ≤2px under
+        // its fade, which nobody can see. Below it the switcher takes its own
+        // line; above it the two share ONE hairline — moved from the list to
+        // this row, so it runs under the switcher too and the sliding
+        // underline still sits on it.
+        <div className="flex flex-col @min-[37.5rem]:flex-row @min-[37.5rem]:items-end @min-[37.5rem]:border-b @min-[37.5rem]:border-line">
+          <ScrollArea axis="x" fade hideScrollbar className="min-w-0 border-b border-line @min-[37.5rem]:flex-1 @min-[37.5rem]:border-b-0">
+            {list}
+          </ScrollArea>
+          <div className="flex justify-end pt-3 @min-[37.5rem]:shrink-0 @min-[37.5rem]:pb-1.5 @min-[37.5rem]:ps-3 @min-[37.5rem]:pt-0">{end}</div>
+        </div>
+      ) : (
+        <ScrollArea axis="x" fade hideScrollbar className="border-b border-line">
+          {list}
+        </ScrollArea>
+      )}
       {children}
     </RT.Root>
   );

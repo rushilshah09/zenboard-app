@@ -17,7 +17,7 @@ export function UploadZone({ hint, height = 120, error, onFile }: {
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files?.[0]; if (f) onFile(f); }}
-        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', height, border: `1.5px dashed ${dragOver ? 'var(--accent-border)' : 'var(--line-3)'}`, borderRadius: 'var(--r-md)', background: dragOver ? 'var(--accent-soft)' : 'transparent', cursor: 'pointer', transition: 'background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease)' }}>
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', height, border: `1.5px dashed ${dragOver ? 'var(--accent-border)' : 'var(--line-3)'}`, borderRadius: 'var(--r-md)', background: dragOver ? 'var(--accent-soft)' : 'transparent', cursor: 'pointer', transition: 'background var(--duration-fast) var(--ease-hover), border-color var(--duration-fast) var(--ease-hover), transform var(--duration-fast) var(--ease-out-quiet)' }}>
         <Icon icon={Image} size={20} style={{ color: 'var(--text-secondary)' }} />
         <span style={{ fontSize: 'var(--text-small-size)', fontWeight: 500, color: 'var(--text-secondary)' }}>Upload an image</span>
         <span style={{ fontSize: 'var(--text-label-size)', color: 'var(--text-muted)' }}>{hint}</span>

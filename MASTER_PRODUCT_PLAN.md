@@ -1,6 +1,6 @@
 # Zenboard — Master Product & Redesign Plan
 
-**Status:** v1 · 2026-07-20
+**Status:** v2 · 2026-08-01 (v1 2026-07-20 + the **v2 UPDATE** section at the end — read that first; it corrects §3.3, reverses the AI policy, and re-scores the roadmap)
 **Scope:** The whole product — vision, architecture, every feature area, and a phased roadmap. Supersedes and absorbs `PM_FEATURE_SPEC.md` (which remains the detailed PM-layer spec; where they conflict, this document wins).
 **Companion docs:** `DESIGN_CONSTITUTION.md` (how it looks and feels) · `PROGRESS.md` (build state) · `supabase/migrations/` (data truth).
 
@@ -127,18 +127,24 @@ Mention* (fabric): any doc block or comment can @-mention any entity → backlin
 ```
 `*` = table/column does not exist yet; every one is scheduled in §9.
 
-### 3.3 Schema truth (28 tables live) and the six missing pieces
+### 3.3 Schema truth and the missing pieces
 
-Migrations 0001–0014 are applied. The existing schema already covers ~85% of the target graph — the plan's data work is **six additions**, not a rebuild:
+*Numbers corrected 2026-08-03 — see the ledger note in §9.* Migrations **0001–0028 and
+0030 are applied** (0028 and 0030 pasted 2026-08-03, verified by column probe);
+**0031 (`reminders`) is written but not applied**. The existing schema
+already covers ~85% of the target graph — the plan's data work is **five additions**, not
+a rebuild:
 
 | # | Missing piece | Migration | Unlocks (blueprint) |
 |---|---|---|---|
-| 1 | `saved_views` | 0015 (drafted, unapplied) | Saved filters in nav (§7I), portal-curated views |
-| 2 | `attachments` + storage bucket | 0016 | Files everywhere (§7H); portal deliverables (§7L) |
-| 3 | `tasks.event_id` ↔ `calendar_events.task_id` | 0017 | Timeboxing (§7C/D) |
-| 4 | `tasks.remind_at` + push worker | 0018 | Reminders (§7B) |
-| 5 | `mentions` (entity↔entity, typed) | 0019 | Backlinks, "Connected" panel, Ask-AI grounding (§3.4) |
-| 6 | `milestones.project_id` repoint + `blocked_by` links | 0020 | Project milestones (§7E), dependencies-lite (§7B) |
+| ~~1~~ | ~~`saved_views`~~ | ~~0015~~ | **Shipped** — applied, Phase 2 |
+| ~~5~~ | ~~`mentions` (entity↔entity, typed)~~ | ~~0019~~ | **Shipped as 0027** — read path *and* write path live (§3.4) |
+| ~~1~~ | ~~`task_events` (`tasks.event_id` ↔ `calendar_events.task_id`)~~ | ~~0030~~ | **Shipped** — applied, the twin is live (§7C/D) |
+| 1 | `reminders` (`tasks.remind_at` + `reminded_at`) | **0031** | Reminders (§7B) — **written, in-app delivery built and gated**; the push/email worker is a later sprint |
+| 3 | `task_links` (`blocked_by`) | **0032** | Dependencies-lite (§7B) — **built 2026-08-03, gated** |
+| 3b | `milestones.project_id` + `due_date` | **0036** | Project milestones (§7E) — **built 2026-08-04, gated.** Not a "repoint": goals' milestones are load-bearing in Horizon, so a milestone gains a second possible owner (CHECK: exactly one) rather than moving. `due_date` is part of it because the table had no date at all |
+| 4 | `attachments` + storage bucket | **0033** | Files everywhere (§7H); portal deliverables (§7L) |
+| 5 | `proposals` / `contracts` | **0034** | Proposal→accept→project (§7M) |
 
 House rules stand: idempotent SQL, owner-only RLS, user pastes DDL, `types/database.ts` synced by hand.
 
@@ -344,13 +350,13 @@ Format per area: **Problem → References → Solution → Flow → States & edg
 
 **Problem.** Task systems die of either anemia (a string and a checkbox — reality doesn't fit) or obesity (custom fields, five priority levels, workflow builders — entering a task becomes data entry).
 **References.** Things (perfect minimal anatomy; but no labels-as-filters, no business links) · Todoist (labels/filters; priority sprawl) · Linear (statuses with meaning; team fields) · TickTick (reminders done right; cluttered) · Asana (dependencies; ceremony).
-**Solution.** The anatomy is frozen: title · notes · project/section · subtasks (∞ schema, 2-level display) · status (todo/doing/review/done — `done` stays the authoritative bit) · priority (3) · highlight ★ · scheduled_date · due_date · estimate · recurrence · labels (flat, space-scoped, ≤12 encouraged) · remind_at (one) · blocked_by (P2, greys the task in Today until blocker completes) · time entries · comments · attachments. **No custom fields, ever** (Lists exist for that). Recurrence contract hardened and documented: completing a recurring task spawns the next occurrence; `every` (fixed cadence) vs `every!` (after completion) semantics tested.
+**Solution.** The anatomy is frozen: title · notes · project/section · subtasks (∞ schema, 2-level display) · status (todo/doing/review/done — `done` stays the authoritative bit) · priority (3) · highlight ★ · scheduled_date · due_date · estimate · recurrence · labels (flat, space-scoped, ≤12 encouraged) · remind_at (one) · blocked_by (P2, greys the task in Today until blocker completes) · time entries · comments · attachments. **No custom fields, ever** (Lists exist for that). Recurrence contract hardened and documented: completing a recurring task spawns the next occurrence; `every` (fixed cadence) vs `every!` (after completion) semantics tested. **Editor shipped 2026-08-03** — the contract was fully built and only reachable by typing into quick-add; the drawer's chip rendered `every! 3 days` as "Daily" and flattened interval/weekday/`every!` on any edit. Frequency · interval · weekday · after-completion now edit in place, labelled by the one `describeRecurrence`.
 **Flow.** Row click → drawer (list context preserved). Drawer: title/notes inline-edit, meta as chips, subtask tree with drill-in breadcrumb, comments as log. All fields keyboard-reachable.
 **States & edges.** Done-with-open-subtasks → confirm cascade or keep · recurring + overdue → next occurrence never stacks (one live instance max) · task completed from calendar twin or portal view reflects everywhere (one source of truth) · deleting a parent offers re-parent or cascade · timezone: dates are dates (no TZ math on scheduled/due); reminders are timestamps.
 **Connected.** project/section · goal · client (via project) · doc mentions · calendar twin · invoice line (via time entries) · blocking links. All visible in Connected panel.
 **Mobile.** Row check-off, drawer read/edit, capture; reordering and bulk ops stay desktop-first.
 **AI.** *Parse* (NL fields) and *Recall* ("what did I say about X?" over comments/notes).
-**Deps/Phase.** Labels UI + filters (tables exist) → **P0, Phase 2**. Reminders (0018 + worker) → P1, Phase 3. Blocked-by (0020) → P2, Phase 5+.
+**Deps/Phase.** Labels UI + filters (tables exist) → **P0, Phase 2**. Reminders (**0031**) → **built 2026-08-03, gated** — one `remind_at`, anchored presets from the timebox twin, delivery claimed exactly once via a conditional UPDATE so tabs and devices cannot double-fire; the email worker shipped 2026-08-04 as an authenticated `POST /api/cron/reminders` running the SAME claim — no schema change, exactly as the claim was designed to allow. Web push (VAPID + a service worker) remains unbuilt. Blocked-by (**0032**) → **built 2026-08-03, gated.** ONE edge ("A waits for B"), because "blocking" is the same edge read from the other end, "relates to" is what the mentions fabric already does and "duplicates" is a decision, not a relationship. Transitivity falls out for free rather than being computed; cycles are refused server-side against the current graph; a blocked task still completes, because the flag is information, not a lock.
 
 ---
 
@@ -360,11 +366,11 @@ Format per area: **Problem → References → Solution → Flow → States & edg
 **References.** Sunsama (guided ritual, stop-time-first, shutdown; but a $20/mo overlay with homework-feel) · Akiflow (fast drag-planning, slots; no opinion) · Things Today (curation; no time-fit check) · Motion (auto-scheduling — the cautionary tale: the machine owns your day).
 **Solution.** The **planning continuum**: Shutdown (evening) → Morning plan → Today → Focus. Shutdown reviews done, sweeps unfinished (reschedule/tomorrow/drop — never auto-rollover), picks tomorrow's top 3, closes with a one-line reflection. Morning plan confirms the 3, adds from Inbox/Upcoming, shows the **capacity line** (Σ estimates vs. work hours — "your plan is 9.5h; your day is 7h") and offers timeboxing: drag any Today task onto the day column → creates the linked calendar event twin. Rituals are skippable (we're calm, not Sunsama-strict) but Home visibly reflects an unplanned day with one quiet prompt, not a nag.
 **Flow.** Top-bar time-aware button (Plan day ↔ Shutdown) → full-screen calm flow (exists) → writes `rituals` row. Weekly review (§7G) on the same rail.
-**States & edges.** Skipped ritual (Home shows "No plan yet — plan your day?" once) · overloaded capacity (line turns warning; suggests moving lowest-priority — never auto-moves) · vacation mode (pause rituals + habit streaks without loss) · timezone travel (day boundary = local).
+**States & edges.** Skipped ritual (Home shows "No plan yet — plan your day?" once) · overloaded capacity (line turns warning; suggests moving lowest-priority — never auto-moves) · vacation mode (pause rituals + habit streaks without loss) → **SHIPPED 2026-08-06**, `lib/vacation.ts`: a DATE not a toggle, prompts silenced but rituals still reachable, and vacation days handed to `currentStreak`'s long-unused `skipped` set so a week away neither breaks a streak nor credits one · timezone travel (day boundary = local).
 **Connected.** Shutdown picks feed morning plan · highlight ★ feeds Focus default · plan/reflection text feeds weekly review · timeboxes are calendar events (§7D).
 **Mobile.** Shutdown and morning plan are *great* phone moments — full mobile parity for rituals; timeboxing drag is desktop-first (mobile: "schedule at…" sheet).
 **AI.** *Draft*: shutdown pre-drafts the summary ("Shipped 6, moved 2"); morning plan can suggest the top 3 from due dates + goal links — suggestions in chips, one tap.
-**Deps/Phase.** Shutdown→tomorrow picker + capacity line → **P0, Phase 3**. Timebox link (0017) → P1, Phase 3.
+**Deps/Phase.** Shutdown→tomorrow picker + capacity line → **P0, Phase 3 — both SHIPPED 2026-08-05, no migration.** The picker was already live; the capacity line landed as `lib/capacity.ts`, THE rule, plus a "does it fit?" step in the morning plan where the suggestion can be acted on. It replaced three disagreeing implementations (Home's `DAY_BUDGET = 8h`, the Week board's `DAY_CAP = 6h`, and the ritual's sum against nothing) and is the first thing to read the `dayEnd` onboarding has been collecting since §7U — which nothing read, and which was unchangeable afterwards until Settings → Account gained a Work hours field. Meetings count against the day, merged and clipped to the working window, with timebox twins excluded (Home had been charging a timeboxed task twice). Unestimated tasks are counted and reported, never assigned a default. Timebox link (**0030**) → P1, Phase 3.
 
 ---
 
@@ -378,7 +384,7 @@ Format per area: **Problem → References → Solution → Flow → States & edg
 **Connected.** Events ↔ tasks (twin) · meetings can @-mention a client → the client's page shows upcoming meetings · "meeting → note" one-tap creates a Doc pre-linked to event + client (P1 — the consultant's dream).
 **Mobile.** Read + check-off + day view; creating twins is desktop-first.
 **AI.** *Watch*: "Your Thursday has 5h of meetings and 6h planned work" surfaces in the morning ritual, not as a push.
-**Deps/Phase.** OAuth config + sync verify → **P0, Phase 3**. Twin link (0017) → P1, Phase 3. Meeting-note → P1, Phase 4.
+**Deps/Phase.** OAuth config + sync verify → **P0, Phase 3**. Twin link (**0030**) → **applied; the twin and the drag-from-rail gesture both shipped 2026-08-03** — the rail carries a slot menu as its keyboard and mobile equivalent, and is absent in Month view because a month cell is a day, not a time. Meeting-note → P1, Phase 4.
 
 ---
 
@@ -392,7 +398,7 @@ Format per area: **Problem → References → Solution → Flow → States & edg
 **Connected.** client (spine) · goal (rollup) · portal · invoices via time · docs/lists · milestones on calendar.
 **Mobile.** Overview + task check-off; template creation desktop-first.
 **AI.** *Draft*: close-out retro pre-draft from activity; status-line suggestion when the project's been quiet 7 days ("Still waiting on client copy?").
-**Deps/Phase.** Tab consolidation + sections UI → **P0, Phase 3**. Milestones repoint (0020) → P1, Phase 3. Templates (`project_templates` jsonb) → **P1, Phase 3** (high retention value). Close-out → P0, Phase 3.
+**Deps/Phase.** Tab consolidation + sections UI → **P0, Phase 3**. Milestones repoint (**0036**, renumbered) → **built 2026-08-04, gated** — Overview **and** Calendar (§7E in full). A checkpoint renders as a MARKER (outline + flag glyph), never as an event block, because it owns no span of time. Templates (shipped as code, no migration) → **P1, Phase 3** (high retention value). Close-out → P0, Phase 3.
 
 ---
 
@@ -427,7 +433,7 @@ Format per area: **Problem → References → Solution → Flow → States & edg
 **Connected.** doc ↔ project/client/task/event mentions · meeting-note from calendar (§7D) · proposal docs feed money (§7M) · portal can share individual docs read-only.
 **Mobile.** Read + comment + light edit; heavy authoring desktop.
 **AI.** *Draft* (meeting-note skeleton from event context; client-update draft from project activity) · *Recall* ("what did we agree about revisions?" — answers cite the doc).
-**Deps/Phase.** Editor M1–M10 → **P0, Phase 4** (the phase's centerpiece). Attachments (0016) → P0, Phase 4. Library merge → Phase 4, then delete route.
+**Deps/Phase.** Editor M1–M10 → **P0, Phase 4** (the phase's centerpiece). Attachments (**0033**) → P0, Phase 4. Library merge → Phase 4, then delete route.
 
 ---
 
@@ -513,7 +519,7 @@ Format per area: **Problem → References → Solution → Flow → States & edg
 **References.** Basecamp (Always On/Work Can Wait schedules) · Linear inbox (aggregation not interruption) · every to-do app's red badge (the anti-pattern).
 **Solution.** Three channels, strict diet: **(1) In-app activity** — portal events (request, approval, payment, view) land in the Inbox as quiet items, aggregated, no badge counts anywhere, ever. **(2) Morning digest (opt-in email/push):** one message — due today, overdue, waiting-on older than N days, portal activity overnight. **(3) Time reminders** — the one `remind_at` per task, and invoice nudges *to the client* (§7N). That's the entire notification surface. Everything else waits for a ritual.
 **States & edges.** Quiet hours by default (digest at your chosen morning time) · vacation mode silences all · unsubscribes honored instantly.
-**Deps/Phase.** Digest worker → **P1, Phase 6**. Portal events → Phase 5.
+**Deps/Phase.** Time reminders (channel 3) → **built 2026-08-03** (in-app: toast + bell, gated on 0031) + email worker **2026-08-04**. Morning digest (channel 2) → **built 2026-08-06, no migration** — `lib/digest.ts` is the projection, `POST /api/cron/digest` the worker, and Settings → Notifications the switch. **Opt-in, at most one a day, dropped rather than queued once it is more than three hours late, and not sent at all when nothing is asking for you** — an email that says "nothing today" every Tuesday is unread on the Tuesday that matters. It carries §7C's capacity line beside today's list, which is what makes it a plan rather than an inventory. Vacation mode ships here as its first implementation, as a DATE and not a toggle. **All three channels are now built.** Portal events → Phase 5.
 
 ---
 
@@ -522,7 +528,7 @@ Format per area: **Problem → References → Solution → Flow → States & edg
 **Problem.** Automation builders (Zapier-in-app, Asana rules, Notion buttons) hand users a programming job and create haunted houses — rules someone wrote in March firing mysteriously in November. Yet repetitive glue work is real and worth killing.
 **References.** Asana rules / ClickUp automations (power, haunted houses) · Linear (opinionated built-ins: auto-archive, auto-close — the model) · IFTTT (the graveyard of user programming).
 **Solution.** Zenboard ships **named, designed behaviors** — each one built, documented, toggleable, with visible provenance ("created by: Recurrence"): recurrence spawning · request→task accept · proposal-accept→project+invoice · close-out unbilled prompt · invoice reminder schedule · timebox twin-sync · overdue re-ask at morning plan · goal rollup at review. Every behavior states what it did in the object's activity line. **No user-defined triggers, no rule builder** — when a real pattern emerges from support, we *design* the behavior and ship it to everyone.
-**Deps/Phase.** Each behavior ships with its home feature; the *doctrine* is Phase 1 (documentation page: "What Zenboard does automatically").
+**Deps/Phase.** Each behavior ships with its home feature; the *doctrine* is Phase 1 (documentation page: "What Zenboard does automatically") → **the page is now TRUE as of 2026-08-06**. `lib/automations.ts` is the list, kept next to the code, with three-valued status (On · **Ready** = built but awaiting a migration · Planned) and a test that walks every claimed source file and migration. It had been listing §7Q *clerk* moments under this §7P heading and marking all of them "Planned" — including one that shipped that morning — while six live behaviours went unmentioned. **Still owed: per-behaviour toggles and the "created by: Recurrence" provenance line**, which touch every module and are their own sprint.
 
 ---
 
@@ -599,6 +605,31 @@ Refuse: an integrations *marketplace*, Slack-style app directory, 80-connector c
 **Solution.** **Spaces** (exist: switcher + default space) = hard contexts: separate clients, projects, finance; Today/rituals/⌘K operate *within* the active space; Calendar can overlay both (time is shared). Personal space hides business hubs (no Clients/Finance noise for groceries). Cross-space linking: refuse — if it needs linking, it's one space. Phase 7's "second chair" would be a per-space grant, keeping the model clean.
 **Deps/Phase.** Shipped; polish (per-space hub visibility, onboarding default) → P1, Phase 2.
 
+### 7X. Memory (added 2026-08-03)
+
+**Problem.** The same facts get re-derived every week — how this client pays, how long
+this kind of project really takes, what was agreed in March. They exist in the workspace
+already; nothing surfaces them, so the user reconstructs them by opening three screens.
+
+**Solution.** A sixth layer over §3.1: **facts with a time validity**, not saved things.
+"Acme wants invoices on the 1st" is a memory; a saved article is a bookmark and a meeting
+write-up is a Doc. Facts are **superseded, never overwritten**, so "what was true then"
+survives. Captured three ways — *derived* (Zenboard notices, no user involved), *marked*
+("Remember this" from any selection), *told* (quick capture) — and surfaced in four
+places the user already is: ⌘K Recall, the Connected panel, an ambient three-fact strip
+on a client/project, and the weekly review. **No chat window** (§7Q's test). Edges reuse
+`mentions` (0027); there is no second fabric.
+
+**The differentiator:** the reference products (mymind, Supermemory, Mem0, Zep) must all
+be *told* things. Zenboard already holds the invoices, calendar, tasks and portal
+threads — the workspace is the corpus, and the highest-value memories are the ones nobody
+types.
+
+**Deps/Phase.** Full blueprint in `MEMORY_MODULE_PLAN.md`. M1–M2 with Phase 4, M3 with
+Phase 5, M5 (clerk-proposed memories) not before Phase 6. Migration **0029**. M1–M4
+contain no AI at all, deliberately — the module must be worth using before a model
+touches it.
+
 ---
 
 ## 8. The never list (expanded)
@@ -617,6 +648,13 @@ Positioning statements, not gaps. Each conflict this plan resolves in favor of t
 10. **No bookkeeping/tax engine.** Export to the accountant's tools.
 11. **No metered AI credits.**
 12. **No template economy/gallery as onboarding.**
+13. **Memory never writes itself silently** (§7X). Derived and clerk-suggested facts are
+    proposals until accepted — the clerk doctrine applies hardest where inference is the
+    product.
+14. **Memory never reaches the client portal, or an export by default.** It is inference
+    *about* clients; it is the most damaging thing in the product to leak.
+15. **No "chat with your memory" window, no browser clipper, no memory score.** ⌘K is the
+    one search; the workspace is the corpus; remembering is not a game.
 
 ---
 
@@ -641,17 +679,19 @@ Phases are dependency-ordered: each unlocks the next layer's crossings. Within p
 ### Phase 3 — Planning & Execution *(cancel Sunsama/Akiflow; replace light Asana/Linear · ~6–8 wks)*
 > Goal: the day and the project both feel governed.
 - Shutdown→tomorrow picker · capacity line · Home staged states (§7V) · habits row in morning ritual.
-- Calendar: finish gcal OAuth + verify sync · ICS out · **0017 timebox twin** + drag-to-calendar.
-- Projects: sections UI · **0020 milestones repoint** · templates · close-out moment · health line.
+- Calendar: finish gcal OAuth + verify sync · ICS out · **0030 timebox twin** + drag-to-calendar.
+- Projects: sections UI · **0032 milestones repoint** · templates · close-out moment · health line.
 - Goals rollup at review time · weekly review v2 (someday resurfacing, goal glance).
-- **0018 reminders** + push worker. iOS: verify M1, ship capture/Today/rituals.
+- **0031 reminders** + push worker. iOS: verify M1, ship capture/Today/rituals.
 
 ### Phase 4 — Knowledge & Collaboration *(cancel Notion, solo use · ~8–10 wks)*
 > Goal: prose and structure join the graph.
-- Docs M1–M10 block editor · entity mentions + **0019 `mentions`** + Connected panel everywhere · doc templates · library content migration, route deleted.
-- **0016 attachments** + storage · files on tasks/docs/projects.
+- Docs M1–M10 block editor · entity mentions + ~~**0019 `mentions`**~~ (**shipped as 0027**, read + write) + Connected panel everywhere · doc templates · library content migration, route deleted.
+- **0033 attachments** + storage · files on tasks/docs/projects.
 - Lists UI (views, doc embeds) · meeting-note from calendar event.
 - Search v2: Postgres FTS + deep links (§7J).
+- **Memory M1–M2** (§7X, **migration 0029**): the `memories` table, "Remember this" from
+  any selection, memories in the Connected panel, ⌘K Recall. No AI in either milestone.
 
 ### Phase 5 — Business & Client Management *(cancel Moxie/Bonsai/HoneyBook · ~8–10 wks)*
 > Goal: the engagement lifecycle end-to-end; money moves.
@@ -659,12 +699,17 @@ Phases are dependency-ordered: each unlocks the next layer's crossings. Within p
 - Portal v2: requests→task accept · portal_visible plans · approvals · comments · money tab.
 - Proposals: money blocks + accept flow → project-from-template + invoice (§7M).
 - Clients polish: Connected panel · conversion flows. Accounting CSV export. Notion importer.
+- **Memory M3** (§7X): the derived detectors — payment rhythm, reply latency, estimate
+  accuracy, deferral patterns. Pure functions over data this phase already holds; still no AI.
 
 ### Phase 6 — Automation & AI *(the clerk arrives · ~6–8 wks)*
 > Goal: manual glue disappears; nothing surprises anyone.
 - File (triage suggestions) · Draft (six defined moments) · Recall/Ask in ⌘K · Watch (rituals + digest only).
 - Morning digest worker · invoice reminder schedules · email-in capture.
 - Monthly review doc (§7R).
+- **Memory M4–M5** (§7X): supersede-not-overwrite UI and the weekly-review "still true?"
+  step; then the clerk *proposing* memories from docs and portal threads — accepted with
+  one tap, landing as `origin: 'suggested'`, a value 0027 already anticipated.
 
 ### Phase 7 — Advanced Intelligence *(the horizon · ongoing)*
 > Explored only if 1–6 earn it, in this order:
@@ -673,7 +718,47 @@ Phases are dependency-ordered: each unlocks the next layer's crossings. Within p
 - Webhooks/Zapier out · QuickBooks/Xero · qualified e-sign · budgets/recurring invoices/multi-currency · read-only mini-gantt.
 
 ### Migration ledger (the skeleton in one place)
-`0004` money metadata (drafted→apply, Ph5) · `0015` saved_views (drafted→apply, Ph2) · `0016` attachments (Ph4) · `0017` task↔event (Ph3) · `0018` remind_at (Ph3) · `0019` mentions (Ph4) · `0020` milestones repoint + task_links (Ph3/5) · `0021` project_templates (Ph3) · `0022` proposals/accept metadata (Ph5) · `0023` stripe/webhook bookkeeping (Ph5).
+
+> **⚠ RENUMBERED 2026-08-03.** v1's ledger reserved 0016–0023 for the work below; other
+> features then took those numbers (0016 `feedback`, 0017 `portal_requests_lifecycle`,
+> 0018 `portal_invoices`, 0019 `portal_approvals`, 0020 `forms`, 0021
+> `notifications_realtime`, 0022 `form_uploads`, 0023 `forms_f3_backfill`), so every
+> "gated on 00XX" line pointed at the wrong file. The *work* is still unbuilt —
+> `attachments`, `reminders`, `task_events`, `proposals`, `contracts` all probe as absent.
+> The numbers below are the reassignment. See `SPRINT_STATUS.md` §1.2.
+>
+> **Numbers are assigned in reservation order, not phase order.** The only rules are that
+> a number is unique and that migrations apply ascending; a Phase 4 table may therefore
+> hold a lower number than a Phase 3 one (0029 Memory does).
+
+**Applied:** `0001`–`0028`, `0030`. **Written, not applied:** `0031` reminders (Ph3 — the
+one open blocker). **Deliberately deferred:** `0004` money metadata (Ph5, Stripe on hold).
+
+> `0028` rows_are_pages and `0030` task_events were pasted 2026-08-03 and verified by
+> column probe. `0029` (memories) is reserved and unwritten — numbers are assigned in
+> reservation order, so 0030/0031 landing first is expected, not a mistake.
+
+**Reserved and unwritten — the live ledger:**
+
+| # | What | Phase | §  |
+|---|---|---|---|
+| `0029` | `memories` | 4 | §7X |
+| ~~`0030`~~ | ~~`task_events` (task ↔ calendar twin)~~ | ~~3~~ | **Applied** 2026-08-03 |
+| `0031` | `reminders` (`remind_at` + `reminded_at`) | 3 | §7B — **written**, awaiting paste |
+| ~~`0032`~~ | ~~`task_links` (`blocked_by`)~~ | 3 | §7B — **applied 2026-08-04** |
+| ~~`0033`~~ | ~~`attachments` + storage bucket~~ | 4 | §7H, §7L — **applied** |
+| ~~`0034`~~ | ~~`proposals` / `contracts`~~ → **`acceptances`** | 5 | §7M — **applied 2026-08-04** |
+| ~~`0035`~~ | ~~`acceptances.invoice_id` — the accept crossing~~ | 5 | §7M — **applied 2026-08-04** |
+| `0036` | stripe/webhook bookkeeping | 5 — **on hold** (no Stripe in India) | §7N |
+
+**0034 is not `proposals`/`contracts`, and never will be.** §7M's own solution line says a
+proposal is a Doc containing scope blocks, a line-items block and an accept block — so the
+scope blocks are blocks, the line-items block needed no migration at all, and the one thing
+that genuinely needs storage is the SIGNATURE. A `proposals` table would give the product
+two document systems, which principle 8 exists to forbid.
+
+`project_templates` left the ledger: templates shipped in Phase 3 as code
+(`lib/project-templates.ts`) over the existing tables, and need no migration.
 
 ---
 
@@ -709,3 +794,146 @@ Phases are dependency-ordered: each unlocks the next layer's crossings. Within p
 
 
 
+
+---
+
+# v2 UPDATE — 2026-08-01
+
+**Status:** amendment to v1 (2026-07-20). v1's vision (§1), principles (§2), object
+model (§3.1–3.2), competitive synthesis (§4), IA (§6), blueprints (§7) and never-list
+(§8) **all still stand** and were re-validated against the running app. This section
+corrects what time has made false and records two decisions that change scope.
+
+## v2.1 — §3.3 is now wrong. Corrected schema truth.
+
+v1 said "migrations 0001–0014 applied" and listed six missing pieces. Reality today:
+
+- ~~**All 28 migrations are live** (0001–0028). The drift question v1 left open is closed.~~
+  **CORRECTED 2026-08-03: 0028 is NOT applied.** A column-by-column PostgREST probe
+  found `pages.database_id`, `pages.properties`, `pages.row_order` and
+  `collection_rows.page_id` all missing from the running database. The claim above was
+  written from the migration file, not from the database. `types/database.ts` is
+  hand-authored and already lists those columns, so `tsc` never objected — a
+  hand-written schema type describes intent, not reality. **The drift question v1 left
+  open is NOT closed: probe before building on a migration.** See PROGRESS 2026-08-03.
+- 0028's backfill also carries a live bug: `round(r.sort_index)::int` overflows, because
+  `collection_rows.sort_index` is a `double` holding `Date.now()` and `pages.sort_index`
+  is an `int`. Fix that line before applying it.
+- Of v1's six "missing pieces": **`mentions` (#5) shipped as 0027** — but only its READ
+  path exists (`lib/connected.ts`). **Nothing writes mentions**, so backlinks render
+  empty. That is the single highest-value unblocked gap in the product today.
+- **0028 (`rows_are_pages`) is new since v1 and is the biggest structural change the
+  schema has ever taken.** It makes every database row a real `pages` row
+  (`pages.database_id`, `pages.properties`, `pages.row_order`), which is Notion's core
+  model and the precondition for rows having icons, covers, comments, history and
+  backlinks. Backfill is done; **readers have not been repointed yet** — that is Phase 1's
+  next unit.
+- `page_versions` existed since 0001, unused, and is now wired (version history ships).
+
+**A rule learned the hard way, added to the house rules:** a migration that widens what
+a table MEANS silently changes every unqualified query against it. 0028 made
+`select * from pages` ambiguous, and two readers (Docs hub, global search) started
+listing database rows as loose documents. **Grep every reader of a table before calling
+such a migration done.**
+
+## v2.2 — AI is now IN scope (policy reversal, recorded)
+
+v1's §8 never-list and the Notion-parity brief both excluded AI. The user has since
+asked for "AI and agents" as a core pillar twice, explicitly. **That supersedes the
+earlier no-AI rule.** §7Q's *clerk doctrine* is the right frame and needs no rewrite —
+AI proposes, never writes silently; every suggestion is a one-tap accept that lands as
+an ordinary row in the fabric. What changes is only that §7Q moves from "documented,
+not built" to a real Phase 6 deliverable.
+
+The doctrine's test stands: **if a feature needs a chat window to be useful, it is the
+wrong feature.** Intelligence belongs inside the acts the user already performs —
+triage, planning, scheduling, summarising a thread — not behind a prompt box.
+
+## v2.3 — The Notion-parity brief, reconciled with this plan
+
+A separate 14-section brief ("Build a Notion-Grade Database + Document System") arrived
+after v1 and is **narrower than this plan, not a replacement for it.** It goes deep on
+§7H (documents/blocks) and §7I (databases/views/properties) and says nothing about
+clients, money, rituals or goals. Where they overlap, treat the brief as the detailed
+spec for those two blueprints; where they conflict on scope, **this plan wins** (it owns
+the whole product).
+
+Two of the brief's structural demands are now settled decisions:
+1. **Every row is a page** → committed, incremental path, 0028 applied.
+2. **Blocks as addressable rows** → **the ADDRESSABLE half is done (2026-08-06,
+   no migration); the ROWS half is smaller than this line claimed.**
+
+   This paragraph used to say the JSONB blob made "block-level comments, block links
+   and synced blocks impossible" and call it the largest remaining structural debt.
+   Reading the code corrected it: **a block has carried a stable id since the editor
+   was written** (`Block.id`, minted by `genId()`, persisted in the blob, round-tripped
+   by `normalize()`, re-minted on duplicate), every row already rendered
+   `data-block-id`, and the outline already scrolled to one. Addressing was never
+   waiting on a table, and block links shipped unmigrated — see `lib/block-link.ts`.
+
+   What the blob genuinely prevents is a block having an **owner other than its page**.
+   That is what a synced block is (one block, many pages) and what a comment thread
+   would want a foreign key to. Those two remain Phase 4 (Knowledge) migration work,
+   and they are the real content of this item now.
+
+Scale target set deliberately at **~2,000 rows client-side**, not the brief's 10,000.
+Single-user reality; virtualization is a phase of work that would not be felt today.
+Nothing in the design may *block* adding it.
+
+## v2.4 — Current-state audit delta (amends §5)
+
+**Newly done since v1** (move out of §5.2 "incomplete"):
+- One detail shell — every record opens through `<PageView>` (side/center/full, remembered
+  per type). Tasks, database rows and project docs migrated; `<Drawer>` is now reserved
+  for modal create/config forms and its chrome was made identical so the transition is invisible.
+- Filter groups with AND/OR **and** nested sub-groups (the engine always supported them;
+  only the UI was flat — and it was silently destroying nested groups on every edit).
+- Version history (list, preview, restore-is-undoable, 10-min coalescing window).
+- Document outline including toggle/table/callout landmarks, not just headings.
+- Selection-aware statistics (reading time, speaking time) replacing the always-on counter.
+- Optimistic creation made **trustworthy** — it was already optimistic everywhere, but
+  every failure path rolled back in silence. A row that appears and vanishes unexplained
+  is worse than a spinner.
+- §5.21 property type conversion engine (coercion + plain-English data-loss report).
+- Icons unified to **one family (Phosphor)**; six unused dependencies removed.
+
+**Newly discovered debt** (add to §5.2/5.3):
+- **Two parallel property systems** — `doc-properties.tsx` (22 types, page-level) and
+  `lib/collections.ts` (16 types, database-level) share no code, types or editors. The
+  brief assumes one. Merging them is a Phase 1 unit.
+- **`lib/db-engine.ts` had zero tests** before this session. Now 6. The engine is the
+  most load-bearing pure code in the product and should be the best-tested.
+- Conversion engine is built but **not yet wired** to a confirm modal.
+
+## v2.5 — Roadmap correction
+
+v1's Phase 1 ("the app becomes one product") is **~70% done**. What remains in it:
+
+| # | Unit | Why it is Phase 1 |
+|---|---|---|
+| 1 | ~~Repoint database readers to `pages where database_id`~~ **Code done 2026-08-03, gated.** Blocked on **applying 0028** (user pastes the SQL; fix the `::int` overflow first) | Completes 0028; until then rows are pages in the schema only |
+| 2 | ~~Wire the type-conversion confirm modal~~ **Done 2026-08-01** | Engine exists; without the modal, retyping still silently destroys data |
+| 3 | Merge the two property systems | Every later property feature otherwise gets built twice |
+| 4 | @-mention write path | Makes the fabric (§3.4) real; it is currently a read path over an empty table |
+
+Phases 2–7 stand as written. The one re-ordering: **blocks-as-rows moves from "someday"
+into Phase 4 as an explicit, funded structural unit** — synced blocks and block comments
+are promised by §7H and are impossible without it.
+
+## v2.6 — The ultimate question, re-scored
+
+§1.2 asks what Zenboard must become before a user deletes their other tools. Scored today:
+
+| Tool | Can Zenboard replace it yet? | Blocking |
+|---|---|---|
+| Things / Todoist | **Nearly** — tasks, capture, scheduling, recurrence all exist | Reminders; mobile |
+| Sunsama / Akiflow | **Partly** — rituals and staged Home ship | Timeboxing needs task↔event link |
+| Notion | **No** | Blocks-as-rows; block comments; synced blocks |
+| Linear | **Partly** — for one person; cycles translated | Triage; dependencies |
+| Basecamp | **Philosophically yes** — restraint is already the house style | Team accounts |
+| Moxie / Bonsai / HoneyBook | **Closest of all** — portal, requests, invoices, forms all ship | Proposals/contracts; payments |
+| Asana | **No, and deliberately** — team coordination is out of scope until team accounts |
+
+**The honest headline: Zenboard is furthest ahead on the business spine (the "empty
+seat" §4.8 identified) and furthest behind on the document substrate.** That asymmetry
+should drive sequencing — defend the lead, then close the Notion gap.

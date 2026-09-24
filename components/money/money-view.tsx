@@ -4,30 +4,30 @@
 // new-invoice flow that pulls a client's unbilled time as suggested line items.
 // All values from real records. Built on DS primitives (Stat, Badge, Checkbox,
 // Modal, Select, Field, toast); optimistic, reconciles server/realtime props.
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { todayISO, formatDay, formatMinutes } from '@/lib/date';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Plus, Landmark, Search, X, Clock } from '@/components/ds/icons';
-import { PageHeader } from '@/components/ui/page-header';
-import { ViewContainer } from '@/components/ui/view-container';
+import { PageLayout } from '@/components/ui/page-layout';
 import {
-  Icon, Button, IconButton, Badge, Stat, Checkbox, EmptyState,
-  Modal, Field, TextInput, Select, Toaster, toast,
+  Icon, Button, IconButton, Badge, Stat, Checkbox, EmptyState, EmptyLine,
+  Modal, Field, TextInput, Select, toast,
   type BadgeStatus,
-} from '@/components/ds/ui';
+ DatePicker, Count, cardClass } from '@/components/ds/ui';
 import { cn } from '@/lib/cn';
+import { formatMoney } from '@/lib/money';
 import { addInvoice } from '@/lib/actions/money';
-import { useViewWidth } from '@/components/shell/view-width';
+import { useServerState } from '@/lib/use-server-state';
+import { isTempId, tempId } from '@/lib/temp-id';
 
 export type ClientLite = { id: string; name: string };
 export type Invoice = { id: string; number: string; client_id: string | null; project_id: string | null; status: string; due_date: string | null; notes: string | null; created_at: string; total: number; itemCount: number; paid: number };
 export type UnbilledLog = { id: string; project_id: string | null; project_name: string | null; client_id: string | null; minutes: number; started_at: string; value: number };
 export type PaymentRow = { id: string; invoice_id: string; amount: number; paid_on: string; method: string | null; number: string; client_id: string | null };
 
-export const usd = (n: number) => '$' + Math.round(n).toLocaleString();
-const todayISO = () => new Date().toISOString().slice(0, 10);
-export const fmtDate = (d: string | null) => (d ? new Date(d.length === 10 ? d + 'T00:00:00' : d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '—');
-export const fmtDur = (m: number) => (m <= 0 ? '0m' : m < 60 ? `${m}m` : m % 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${Math.floor(m / 60)}h`);
+export const usd = (n: number) => formatMoney(n);
+export const fmtDate = (d: string | null) => formatDay(d) ?? '—';
 
 // 'sent' past its due date reads as 'overdue' (underlying status stays 'sent').
 export function displayStatus(inv: { status: string; due_date: string | null }): string {
@@ -79,9 +79,7 @@ export function MoneyView({ invoices: initInvoices, clients, unbilled, payments,
   invoices: Invoice[]; clients: ClientLite[]; unbilled: UnbilledLog[]; payments: PaymentRow[]; monthStart: string; rate: number;
 }) {
   const router = useRouter();
-  const { full } = useViewWidth();
-  const [invoices, setInvoices] = useState(initInvoices);
-  useEffect(() => { setInvoices(initInvoices); }, [initInvoices]);
+  const [invoices, setInvoices] = useServerState(initInvoices);
   const [composing, setComposing] = useState(false);
 
   const clientName = (id: string | null) => (id ? clients.find((c) => c.id === id)?.name ?? 'Client' : 'No client');
@@ -117,21 +115,23 @@ export function MoneyView({ invoices: initInvoices, clients, unbilled, payments,
     if (!input.items.length) return;
     setComposing(false);
     const total = input.items.reduce((a, i) => a + i.quantity * i.unit_amount, 0);
-    const tmp = 'tmp-' + Date.now();
+    const tmp = tempId();
     setInvoices((iv) => [{ id: tmp, number: '…', client_id: input.clientId, project_id: null, status: 'draft', due_date: input.dueDate, notes: null, created_at: new Date().toISOString(), total, itemCount: input.items.length, paid: 0 }, ...iv]);
     const res = await addInvoice({ clientId: input.clientId, dueDate: input.dueDate, items: input.items });
     if ('id' in res) { toast({ message: `${res.number} created`, variant: 'info' }); router.refresh(); }
     else { setInvoices((iv) => iv.filter((x) => x.id !== tmp)); toast({ message: res.error, variant: 'error' }); }
   }
 
+  // No title — the app header already says "Finance". This row exists for
+  // the page's actions and the ••• menu, in the same place on every page.
   return (
-    <ViewContainer full={full} className="relative pb-[var(--view-pb)] pt-8" style={{ animation: 'fadein 220ms' }}>
-      <PageHeader hideTitle icon={Landmark} title="Finance" subtitle="Log time, bill it, get paid." style={{ marginBottom: 20 }}
-        actions={<Button variant="primary" size="sm" icon={<Icon icon={Plus} size={16} />} onClick={() => setComposing(true)}>New invoice</Button>} />
+    <PageLayout
+      actions={<Button variant="secondary" size="sm" icon={<Icon icon={Plus} size={16} />} onClick={() => setComposing(true)}>New invoice</Button>}
+    >
 
       {/* KPIs — one bordered strip of hairline-divided cells (not four tiles). */}
       <div className="mb-6 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-line bg-line sm:grid-cols-4">
-        <Kpi label="Unbilled" value={usd(unbilledTotal)} hint={unbilled.length ? `${fmtDur(unbilledMin)} · ${unbilled.length} entr${unbilled.length === 1 ? 'y' : 'ies'}` : 'all billed'} />
+        <Kpi label="Unbilled" value={usd(unbilledTotal)} hint={unbilled.length ? `${formatMinutes(unbilledMin)} · ${unbilled.length} entr${unbilled.length === 1 ? 'y' : 'ies'}` : 'all billed'} />
         <Kpi label="Outstanding" value={usd(outstanding)} hint={`${outstandingInvoices.length} invoice${outstandingInvoices.length === 1 ? '' : 's'}`} />
         <Kpi label="Paid this month" value={usd(paidThisMonth)} hint={paidThisList.length ? `${paidThisList.length} payment${paidThisList.length === 1 ? '' : 's'}` : 'none yet'} />
         <Kpi label="Overdue" value={String(overdueCount)} hint={overdueCount ? 'need a nudge' : 'all current'} />
@@ -139,10 +139,10 @@ export function MoneyView({ invoices: initInvoices, clients, unbilled, payments,
 
       {/* Filter bar */}
       <div className="mb-3 flex flex-wrap items-center gap-2.5">
-        <div className="flex h-8 min-w-[180px] flex-[1_1_220px] items-center gap-2 rounded-md border border-line-soft bg-surface-raised px-3">
+        <div className="flex h-8 min-w-[180px] flex-[1_1_220px] items-center gap-2 rounded-md border border-line-soft bg-surface-raised px-3 transition-shadow focus-within:shadow-[0_0_0_2px_var(--color-surface-panel),0_0_0_4px_var(--color-border-focus)]">
           <Icon icon={Search} size={14} className="shrink-0 text-ink-500" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by client or number" autoComplete="off" data-1p-ignore data-lpignore="true"
-            className="min-w-0 flex-1 border-0 bg-transparent text-ui text-ink-900 outline-none placeholder:text-ink-400" />
+          <input data-chromeless value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by client or number" autoComplete="off" data-1p-ignore data-lpignore="true"
+            className="min-w-0 flex-1 border-0 bg-transparent text-ui text-ink-900 outline-none placeholder:text-ink-500 [@media(pointer:coarse)]:min-h-6" />
           {search && <button type="button" onClick={() => setSearch('')} aria-label="Clear search" className="focus-ring shrink-0 rounded-xs text-ink-500 hover:text-ink-800"><Icon icon={X} size={14} /></button>}
         </div>
         <div className="flex flex-wrap gap-1.5">
@@ -150,7 +150,7 @@ export function MoneyView({ invoices: initInvoices, clients, unbilled, payments,
             <FilterChip key={s} active={statusF === s} onClick={() => setStatusF(s)}>
               {s === 'overdue' && (statusCounts.overdue ?? 0) > 0 && <span aria-hidden className="size-1.5 rounded-full bg-danger-500" />}
               <span className="capitalize">{s}</span>
-              <span className="tabular-nums text-ink-400">{statusCounts[s] ?? 0}</span>
+              <Count value={statusCounts[s] ?? 0} />
             </FilterChip>
           ))}
         </div>
@@ -168,24 +168,24 @@ export function MoneyView({ invoices: initInvoices, clients, unbilled, payments,
 
       {/* Invoices table */}
       {invoices.length === 0 ? (
-        <div className="rounded-lg border border-line bg-surface-raised">
+        <div className={cardClass()}>
           <EmptyState
             illustration={<Icon icon={Landmark} size={20} />}
             title="No invoices yet"
-            description="Create one to bill a client and track what you're owed."
+            description="Bill a client and track what you're owed."
             primary={<Button variant="primary" icon={<Icon icon={Plus} size={16} />} onClick={() => setComposing(true)}>New invoice</Button>}
           />
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-line bg-surface-raised">
+        <div className={cardClass('overflow-hidden')}>
           {/* Fixed-column table: swipes horizontally on narrow screens rather
               than clipping the Due/Total columns. */}
           <div className="overflow-x-auto overflow-y-hidden">
             <div className="min-w-[640px]">
-              <div className="grid gap-3 border-b border-line-soft px-4 py-2.5 text-overline uppercase tracking-wide text-ink-500" style={{ gridTemplateColumns: GRID }}>
+              <div className="grid gap-3 border-b border-line-soft px-4 py-2.5 text-overline text-ink-500" style={{ gridTemplateColumns: GRID }}>
                 <div>Number</div><div>Client</div><div className="text-right">Items</div><div>Status</div><div>Due</div><div className="text-right">Total</div>
               </div>
-              {filtered.length === 0 && <div className="px-4 py-9 text-center text-ui text-ink-500">No invoices match these filters.</div>}
+              {filtered.length === 0 && <EmptyLine className="px-4 py-9">No invoices match these filters.</EmptyLine>}
               {filtered.map((inv, i) => {
                 const dstat = displayStatus(inv);
                 const row = (
@@ -198,9 +198,9 @@ export function MoneyView({ invoices: initInvoices, clients, unbilled, payments,
                     <div className="text-right font-medium tabular-nums text-ink-900">{usd(inv.total)}</div>
                   </div>
                 );
-                return inv.id.startsWith('tmp-')
+                return isTempId(inv.id)
                   ? <div key={inv.id} className="opacity-60">{row}</div>
-                  : <Link key={inv.id} href={`/money/${inv.id}`} className="block transition-colors hover:bg-surface-hover">{row}</Link>;
+                  : <Link key={inv.id} href={`/money/${inv.id}`} className="focus-ring block rounded-sm transition-colors hover:bg-surface-hover">{row}</Link>;
               })}
             </div>
           </div>
@@ -214,23 +214,32 @@ export function MoneyView({ invoices: initInvoices, clients, unbilled, payments,
             <h2 className="text-title-4 text-ink-900">Recent payments</h2>
             <span className="tabular-nums text-caption text-ink-500">{payments.length}</span>
           </div>
-          <div className="overflow-hidden rounded-lg border border-line bg-surface-raised">
+          <div className={cardClass('overflow-hidden')}>
+            {/* Five fixed columns don't fit a phone — the amount was being clipped
+                off the right edge, on a money screen. Below sm the secondary
+                metadata folds under the client name and the amount keeps its place. */}
             {payments.map((p, i) => (
               <div key={p.id} className={cn('flex items-center gap-3 px-4 py-3 text-ui', i > 0 && 'border-t border-line-soft')}>
-                <span className="w-20 shrink-0 truncate font-mono text-caption text-ink-500">{p.number}</span>
-                <span className="min-w-0 flex-1 truncate text-ink-800">{clientName(p.client_id)}</span>
-                {p.method && <span className="shrink-0 text-caption text-ink-500">{p.method}</span>}
-                <span className="shrink-0 text-caption tabular-nums text-ink-500">{fmtDate(p.paid_on)}</span>
-                <span className="w-24 shrink-0 text-right font-medium tabular-nums text-success-600">{usd(Number(p.amount))}</span>
+                <span className="hidden w-20 shrink-0 truncate font-mono text-caption text-ink-500 sm:inline">{p.number}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-ink-800">{clientName(p.client_id)}</div>
+                  <div className="flex items-center gap-1.5 truncate text-caption text-ink-500 sm:hidden">
+                    <span className="font-mono">{p.number}</span>
+                    {p.method && <span>· {p.method}</span>}
+                    <span className="tabular-nums">· {fmtDate(p.paid_on)}</span>
+                  </div>
+                </div>
+                {p.method && <span className="hidden shrink-0 text-caption text-ink-500 sm:inline">{p.method}</span>}
+                <span className="hidden shrink-0 text-caption tabular-nums text-ink-500 sm:inline">{fmtDate(p.paid_on)}</span>
+                <span className="shrink-0 text-right font-medium tabular-nums text-success-600 sm:w-24">{usd(Number(p.amount))}</span>
               </div>
             ))}
           </div>
         </section>
       )}
 
-      <Toaster />
-      {composing && <NewInvoiceModal clients={clients} unbilled={unbilled} rate={rate} onClose={() => setComposing(false)} onCreate={create} />}
-    </ViewContainer>
+        {composing && <NewInvoiceModal clients={clients} unbilled={unbilled} rate={rate} onClose={() => setComposing(false)} onCreate={create} />}
+    </PageLayout>
   );
 }
 
@@ -245,10 +254,10 @@ function NewInvoiceModal({ clients, unbilled, rate, onClose, onCreate }: {
   const [lines, setLines] = useState<Line[]>([{ description: '', quantity: '1', unit_amount: '' }]);
 
   const clientLogs = clientId ? unbilled.filter((t) => t.client_id === clientId) : [];
-  const toggle = (id: string) => setPicked((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggle = (id: string) => setPicked((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   const logItems = clientLogs.filter((t) => picked.has(t.id)).map((t) => ({
-    description: `${t.project_name ?? 'Time'} — ${fmtDate(t.started_at)} (${fmtDur(t.minutes)})`,
+    description: `${t.project_name ?? 'Time'} — ${fmtDate(t.started_at)} (${formatMinutes(t.minutes)})`,
     quantity: Math.round((t.minutes / 60) * 100) / 100,
     unit_amount: rate,
     timeEntryId: t.id,
@@ -276,8 +285,7 @@ function NewInvoiceModal({ clients, unbilled, rate, onClose, onCreate }: {
             />
           </Field>
           <Field label="Due date" id="inv-due" className="w-40">
-            <input id="inv-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
-              className="focus-ring h-9 w-full rounded-md border border-line bg-surface-raised px-3 text-ui text-ink-900" />
+            <DatePicker id="inv-due" value={dueDate || null} onValueChange={setDueDate} />
           </Field>
         </div>
 
@@ -285,10 +293,10 @@ function NewInvoiceModal({ clients, unbilled, rate, onClose, onCreate }: {
         {clientId && (
           <div>
             <div className="mb-2 flex items-center gap-1.5 text-caption font-medium text-ink-500">
-              <Icon icon={Clock} size={13} /> Unbilled time {rate > 0 ? `· $${rate}/hr` : '· set a rate in Settings'}
+              <Icon icon={Clock} size={12} /> Unbilled time {rate > 0 ? `· $${rate}/hr` : '· set a rate in Settings'}
             </div>
             {clientLogs.length === 0 ? (
-              <p className="px-0.5 text-caption text-ink-500">No unbilled time for this client.</p>
+              <EmptyLine>No unbilled time for this client.</EmptyLine>
             ) : (
               <div className="flex max-h-48 flex-col gap-1.5 overflow-y-auto">
                 {clientLogs.map((t) => {
@@ -297,7 +305,7 @@ function NewInvoiceModal({ clients, unbilled, rate, onClose, onCreate }: {
                     <label key={t.id} className={cn('flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2 transition-colors', on ? 'border-line-strong bg-surface-active' : 'border-line-soft bg-surface-raised hover:bg-surface-hover')}>
                       <Checkbox checked={on} onCheckedChange={() => toggle(t.id)} />
                       <span className="min-w-0 flex-1 truncate text-ui text-ink-800">{t.project_name ?? 'Time'} · {fmtDate(t.started_at)}</span>
-                      <span className="shrink-0 tabular-nums text-caption text-ink-500">{fmtDur(t.minutes)}</span>
+                      <span className="shrink-0 tabular-nums text-caption text-ink-500">{formatMinutes(t.minutes)}</span>
                       <span className="w-16 shrink-0 text-right font-medium tabular-nums text-ink-900">{usd(t.value)}</span>
                     </label>
                   );
@@ -319,7 +327,7 @@ function NewInvoiceModal({ clients, unbilled, rate, onClose, onCreate }: {
                 <div className="w-14">
                   <TextInput value={l.quantity} onChange={(e) => setLine(i, { quantity: e.target.value })} placeholder="Qty" inputMode="decimal" aria-label="Quantity" className="text-right" />
                 </div>
-                <span aria-hidden className="text-ink-400">×</span>
+                <span aria-hidden className="text-ink-500">×</span>
                 <div className="w-20">
                   <TextInput value={l.unit_amount} onChange={(e) => setLine(i, { unit_amount: e.target.value })} placeholder="$" inputMode="decimal" aria-label="Unit amount" className="text-right" />
                 </div>

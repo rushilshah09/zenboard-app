@@ -103,7 +103,10 @@ export function DataTable<T>({
                       className={cn("focus-ring group inline-flex items-center gap-1 rounded-xs", c.numeric && "flex-row-reverse")}
                     >
                       {c.header}
-                      <span className={cn("text-ink-400 opacity-0 group-hover:opacity-100", active && "text-ink-800 opacity-100")} aria-hidden>
+                      {/* Not `reveal-on-hover`: the `active` branch overrides opacity,
+                          and an explicit class keeps that override unambiguous. On a
+                          touch device the sort affordance must simply be visible. */}
+                      <span className={cn("text-ink-500 opacity-0 group-hover:opacity-100 [@media(pointer:coarse)]:opacity-100", active && "text-ink-800 opacity-100")} aria-hidden>
                         {active && sort!.dir === -1 ? <ChevronDown className="size-3" /> : <ChevronUp className="size-3" />}
                       </span>
                     </button>
@@ -137,7 +140,7 @@ export function DataTable<T>({
                     className={cn(
                       "border-b border-line-soft transition-colors duration-instant last:border-b-0",
                       onRowOpen && "cursor-pointer",
-                      isSel ? "bg-berry-100" : "hover:bg-paper-3",
+                      isSel ? "bg-berry-100" : "hover:bg-surface-hover",
                     )}
                   >
                     {selectable && (

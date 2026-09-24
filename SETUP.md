@@ -93,3 +93,55 @@ ones get marked **Encrypted**.
 | `GOOGLE_OAUTH_CLIENT_ID` | Google Cloud → Credentials | Supabase provider **+** `.env.local` |
 | `GOOGLE_OAUTH_CLIENT_SECRET` 🔒 | Google Cloud → Credentials | Supabase provider **+** `.env.local` |
 | `GEMINI_API_KEY` 🔒 | Google AI Studio | `.env.local` (Phase 4) |
+
+## Reminder delivery when the app is closed (optional)
+
+`components/reminders/reminder-scheduler.tsx` delivers reminders while a tab is open.
+`POST /api/cron/reminders` is the other channel — it emails you for reminders that came
+due while Zenboard was closed, and runs the **same claim**, so the two can never both
+speak about one reminder.
+
+1. Set `REMINDER_CRON_SECRET` to a long random value. Locally it is already in
+   `.env.local`; for the deploy, add it in the Cloudflare dashboard (and remember
+   `wrangler deploy --keep-vars`, or a plain deploy deletes dashboard vars).
+2. Point any scheduler at the endpoint every 5–15 minutes:
+
+   ```
+   curl -X POST https://<your-host>/api/cron/reminders \
+     -H "Authorization: Bearer $REMINDER_CRON_SECRET"
+   ```
+
+   A Cloudflare Cron Trigger, a GitHub Actions schedule, or cron-job.org all work. The
+   endpoint is a plain authenticated POST on purpose — nothing about it is tied to one
+   scheduler.
+3. Email goes out via Resend. Until a domain is verified there, the shared
+   `onboarding@resend.dev` sender only delivers to the Resend account's own address; set
+   `RESEND_FROM` to a verified-domain address for anything else.
+
+**Without step 1 the endpoint refuses every request with 503** — it fails closed rather
+than defaulting to open, since it reads across users and sends mail. Without step 2
+nothing changes: reminders still arrive in-app and in the bell.
+
+## Morning digest (optional)
+
+`POST /api/cron/digest` sends at most one email a day: what's on today (with the capacity
+line), what's overdue, what's blocked, and any client requests that arrived overnight.
+
+It uses **the same secret and the same scheduler** as the reminder endpoint — they are one
+set of machine credentials, and a second secret is a second thing to rotate and forget. Add
+a second line to whatever you set up above:
+
+```
+curl -X POST https://<your-host>/api/cron/digest \
+  -H "Authorization: Bearer $REMINDER_CRON_SECRET"
+```
+
+Every 15–30 minutes is right. The endpoint decides for itself whether it is anyone's
+morning — it reads each person's own timezone and their chosen send time, so a single
+schedule serves every zone.
+
+**Nobody receives a digest until they switch it on** in Settings → Notifications; it is
+opt-in, and the response tells you so plainly: `scanned` is how many accounts were read,
+`considered` how many were evaluated, and `skipped.off` how many have not opted in. A run
+that reports `scanned: 0` means the query itself is failing; `scanned: 6, off: 6` means it
+is working and nobody has asked for it yet.

@@ -3,20 +3,23 @@
 // (Edit draft · Mark sent · Record payment · Duplicate · Void). Totals computed
 // from items. Optimistic; reconciles via router.refresh. Built on DS primitives.
 import { useState } from 'react';
+import { PageLayout } from '@/components/ui/page-layout';
+import { todayISO } from '@/lib/date';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, Plus, X, Check } from '@/components/ds/icons';
-import { Icon, Button, IconButton, Badge, TextInput, Field, Modal, Toaster, toast } from '@/components/ds/ui';
+import { Icon, Button, IconButton, Badge, TextInput, Field, Modal, toast, EmptyLine, DatePicker, cardClass } from '@/components/ds/ui';
 import { cn } from '@/lib/cn';
 import { updateInvoiceStatus, recordPayment, voidInvoice, duplicateInvoice, updateInvoiceDraft } from '@/lib/actions/money';
 import { usd, fmtDate, displayStatus, STATUS_TONE } from '@/components/money/money-view';
+import { tempId } from '@/lib/temp-id';
 
 export type InvoiceFull = { id: string; number: string; client_id: string | null; project_id: string | null; status: string; due_date: string | null; notes: string | null; created_at: string };
 export type ItemRow = { id: string; description: string; quantity: number; unit_amount: number; time_entry_id: string | null; sort_order: number };
 export type PaymentLine = { id: string; amount: number; paid_on: string; method: string | null };
 type Line = { description: string; quantity: string; unit_amount: string };
 
-const dateInputClass = 'focus-ring h-9 rounded-md border border-line bg-surface-raised px-3 text-ui text-ink-900';
+// (`dateInputClass` is gone — both dates come through the DS <DatePicker>.)
 
 export function InvoiceDetail({ invoice, items: initItems, payments: initPayments, clientName, voidSupported }: {
   invoice: InvoiceFull; items: ItemRow[]; payments: PaymentLine[]; clientName: string; voidSupported: boolean;
@@ -53,7 +56,7 @@ export function InvoiceDetail({ invoice, items: initItems, payments: initPayment
   }
   async function pay(amount: number, paidOn: string, method: string) {
     setPaying(false);
-    const tmp = 'tmp-' + Date.now();
+    const tmp = tempId();
     setPayments((p) => [{ id: tmp, amount, paid_on: paidOn, method: method || null }, ...p]);
     if (paid + amount >= total && total > 0) setStatus('paid');
     const r = await recordPayment({ invoiceId: invoice.id, amount, paidOn, method });
@@ -71,7 +74,7 @@ export function InvoiceDetail({ invoice, items: initItems, payments: initPayment
   const headCols = '1fr 70px 90px 90px' + (editing ? ' 32px' : '');
 
   return (
-    <div className="relative mx-auto max-w-[820px] px-[clamp(18px,3vw,40px)] pb-[var(--view-pb)] pt-8" style={{ animation: 'fadein 220ms' }}>
+    <PageLayout>
       <Link href="/money" className="focus-ring mb-4 inline-flex items-center gap-1 rounded-xs text-ui text-ink-500 transition-colors hover:text-ink-800">
         <Icon icon={ChevronLeft} size={16} /> Finance
       </Link>
@@ -95,12 +98,12 @@ export function InvoiceDetail({ invoice, items: initItems, payments: initPayment
       </div>
 
       {/* Line items */}
-      <div className="mb-4 overflow-hidden rounded-lg border border-line-soft bg-surface-raised">
-        <div className="grid gap-2 border-b border-line-soft px-4 py-2.5 text-overline uppercase tracking-wide text-ink-500" style={{ gridTemplateColumns: headCols }}>
+      <div className={cardClass('mb-4 overflow-hidden')}>
+        <div className="grid gap-2 border-b border-line-soft px-4 py-2.5 text-overline text-ink-500" style={{ gridTemplateColumns: headCols }}>
           <div>Description</div><div className="text-right">Qty</div><div className="text-right">Rate</div><div className="text-right">Amount</div>{editing && <div />}
         </div>
         {!editing ? (
-          items.length === 0 ? <div className="px-4 py-5 text-ui text-ink-500">No line items.</div> : items.map((it, i) => (
+          items.length === 0 ? <EmptyLine className="px-4 py-5">No line items.</EmptyLine> : items.map((it, i) => (
             <div key={it.id} className={cn('grid items-center gap-2 px-4 py-3 text-ui', i > 0 && 'border-t border-line-soft')} style={{ gridTemplateColumns: '1fr 70px 90px 90px' }}>
               <div className="text-ink-900">{it.description}{it.time_entry_id && <span className="ml-1.5 text-caption text-ink-500">· time</span>}</div>
               <div className="text-right tabular-nums text-ink-500">{it.quantity}</div>
@@ -122,7 +125,7 @@ export function InvoiceDetail({ invoice, items: initItems, payments: initPayment
             <Button variant="ghost" size="xs" icon={<Icon icon={Plus} size={14} />} onClick={() => setLines((ls) => [...ls, { description: '', quantity: '1', unit_amount: '' }])}>Add line</Button>
             <div className="mt-3 flex items-center gap-2.5 border-t border-line-soft pt-3">
               <label htmlFor="inv-due" className="text-caption text-ink-500">Due</label>
-              <input id="inv-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={dateInputClass} />
+              <DatePicker id="inv-due" className="w-[168px]" value={dueDate || null} onValueChange={setDueDate} />
               <div className="flex-1" />
               <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
               <Button size="sm" variant="primary" onClick={saveDraft}>Save</Button>
@@ -151,9 +154,9 @@ export function InvoiceDetail({ invoice, items: initItems, payments: initPayment
         {(ds === 'sent' || ds === 'overdue') && <Button size="sm" variant="ghost" icon={<Icon icon={Plus} size={16} />} onClick={() => setPaying(true)}>Record</Button>}
       </div>
       {payments.length === 0 ? (
-        <p className="px-0.5 text-caption text-ink-500">No payments recorded yet.</p>
+        <EmptyLine>No payments recorded yet.</EmptyLine>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-line-soft bg-surface-raised">
+        <div className={cardClass('overflow-hidden')}>
           {payments.map((p, i) => (
             <div key={p.id} className={cn('flex items-center gap-3 px-4 py-3 text-ui', i > 0 && 'border-t border-line-soft')}>
               <span className="w-[70px] shrink-0 text-caption tabular-nums text-ink-500">{fmtDate(p.paid_on)}</span>
@@ -164,9 +167,8 @@ export function InvoiceDetail({ invoice, items: initItems, payments: initPayment
         </div>
       )}
 
-      <Toaster />
       {paying && <PaymentModal balance={balance > 0 ? balance : total} onClose={() => setPaying(false)} onSave={pay} />}
-    </div>
+    </PageLayout>
   );
 }
 
@@ -181,7 +183,7 @@ function Row({ label, value, strong, positive }: { label: string; value: string;
 
 function PaymentModal({ balance, onClose, onSave }: { balance: number; onClose: () => void; onSave: (amount: number, paidOn: string, method: string) => void }) {
   const [amount, setAmount] = useState(balance ? String(Math.round(balance)) : '');
-  const [paidOn, setPaidOn] = useState(new Date().toISOString().slice(0, 10));
+  const [paidOn, setPaidOn] = useState(todayISO());
   const [method, setMethod] = useState('Bank transfer');
   const submit = () => { const a = parseFloat(amount); if (!a || a <= 0) return; onSave(a, paidOn, method.trim()); };
   return (
@@ -195,7 +197,7 @@ function PaymentModal({ balance, onClose, onSave }: { balance: number; onClose: 
           <TextInput autoFocus value={amount} onChange={(e) => setAmount(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} inputMode="decimal" />
         </Field>
         <Field label="Date" id="pay-date">
-          <input id="pay-date" type="date" value={paidOn} onChange={(e) => setPaidOn(e.target.value)} className={cn(dateInputClass, 'w-full')} />
+          <DatePicker id="pay-date" value={paidOn || null} onValueChange={setPaidOn} />
         </Field>
         <Field label="Method">
           <TextInput value={method} onChange={(e) => setMethod(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} placeholder="Bank transfer, Stripe…" autoComplete="off" data-1p-ignore data-lpignore="true" />

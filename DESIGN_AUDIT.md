@@ -22,7 +22,7 @@ But adoption is almost nonexistent, out of **70 component files**:
 |---|---|---|
 | `components/ui/primitives.tsx` (Button, Card, Field, Input, Pill) | 3 files | 4% |
 | `components/ui/zen.tsx` (Btn, Tabs, Badge, StatTile) | 8 files | 11% |
-| `components/ui/states.tsx` (EmptyState, Skeleton, ErrorState) | 0 feature files (only its own internal use) | 0% |
+| ~~`components/ui/states.tsx`~~ | **DELETED 2026-08-05** — last two importers migrated to `ds/ui/states.tsx` | — |
 
 The screens that *do* use `zen.tsx` (Projects, Money) are visibly the most polished,
 consistent screens in the app. The screens that hand-roll everything inline (Dashboard,
@@ -384,7 +384,7 @@ shipped, the Verdict column says so.
 | 8 | App-wide | Radius | `--r-*` scale exists and is broadly adopted; stragglers: task checkbox r5 vs `--r-xs` 4 / prompt's radius-sm 6, mixed popover radii already normalized earlier. | Radius mapping | Checkbox → 6px (`--r-sm`-adjacent); sweep remaining raw radii to tokens during screen passes. | PARTIAL (mostly done) |
 | 9 | Tasks | Casing | Header renders "Filter" (Title) beside "layout" (lower) — tasks-view.tsx:398 vs :424. | Casing rule | Buttons/controls Title Case, descriptions sentence case. "layout"→"Layout". | CONFIRMED |
 | 10 | Goals | Duplicate action labels | "New goal" (horizon-view.tsx:185) + "Add goal" (:208) for the same action. | One label per action | Standardize on "New goal" (matches topbar "+ New"). | CONFIRMED |
-| 11 | App-wide | Empty states / seed | Canonical EmptyState exists — TWICE (`ui/states.tsx` + `ds/ui/states.tsx`). Real app has no seed data (demo data only in dev-preview). | One EmptyState + first-run seed | Merge to one EmptyState; add first-run seed content (starter tasks/goal/habit) at onboarding. | CONFIRMED (duplicate primitive) |
+| 11 | App-wide | Empty states / seed | Canonical EmptyState existed TWICE. Real app has no seed data (demo data only in dev-preview). | One EmptyState + first-run seed | Merge to one EmptyState; add first-run seed content (starter tasks/goal/habit) at onboarding. | **DUPLICATE FIXED 2026-08-05** — `ui/states.tsx` deleted; the survivor was also 270px against a 180px cap and is now exactly 180px, enforced by `lib/empty-state-copy.test.ts`. **Seed still open** — but §7U onboarding already creates a real project + today's first tasks, so re-scope this to "seed for users who skip onboarding" before building. |
 | 12 | App-wide | Icon voice | `ds/icons.ts` ships a MIX: ~45 Phosphor exports (shell/Home/tasks) + ~170 Tabler exports. Two stroke voices at once. | One icon set | Complete the Phosphor migration through the seam (user directive 2026-07-17: Phosphor). | CONFIRMED |
 | 13 | Home | Greeting fallback | `today/page.tsx:20` falls back to raw email prefix → "designdotrushil". | Humane copy | Fallback chain: full_name → "there" (never the email handle). | CONFIRMED |
 | 14 | App-wide | Card language | TWO panel systems ship: `ui/panel.tsx` (44px-header Panel/PanelHeader/PanelCard) and `ui/panels.tsx` (framed Figma panel). Same job, different components. | One Card | Fold into one Card primitive during the Home flatten (row 3). | CONFIRMED |

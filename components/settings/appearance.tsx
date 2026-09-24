@@ -1,19 +1,21 @@
 'use client';
-// Appearance — theme (Light/Dark/System), density, accent, and the task sound.
+// Appearance — theme (Light/Dark/System), density, accent, page width, and the
+// task sound.
 // Per-device, stored in localStorage and applied to <html> live; the boot script
 // in layout.tsx applies the same values before paint. Rendered as DS settings
 // rows: label + quiet description left, the control on the trailing edge.
 import { useEffect, useState } from 'react';
-import { Sun, Moon, Monitor, type IconType } from "@/components/ds/icons";
+import { Sun, Moon, Monitor, FileText, Palette, type IconType } from "@/components/ds/icons";
 import {
   Icon, SegmentedControl, Switch,
   SettingsPaneHeader, SettingsSection, SettingsRow,
 } from "@/components/ds/ui";
 import { cn } from '@/lib/cn';
+import { useViewWidth } from '@/components/shell/view-width';
 import { taskSoundEnabled, setTaskSoundEnabled, SOUND_EVENT, playTaskComplete } from '@/lib/sound';
 import {
-  type Theme, type Density, type Accent,
-  DEFAULT_THEME, DEFAULT_DENSITY, DEFAULT_ACCENT, ACCENTS,
+  type Theme, type Density, type Accent, type Skin,
+  DEFAULT_THEME, DEFAULT_DENSITY, DEFAULT_ACCENT, DEFAULT_SKIN, ACCENTS,
   APPEARANCE_EVENT, readAppearance, commitAppearance, applyAppearance,
 } from '@/lib/theme';
 
@@ -23,6 +25,12 @@ const THEME_OPTS: Opt<Theme>[] = [
   { value: 'light', label: 'Light', icon: Sun },
   { value: 'dark', label: 'Dark', icon: Moon },
   { value: 'system', label: 'System', icon: Monitor },
+];
+// The two things the app can be MADE OF. Light/dark is how bright the default
+// skin is; this is the material.
+const SKIN_OPTS: Opt<Skin>[] = [
+  { value: 'default', label: 'Default', icon: Palette },
+  { value: 'paper', label: 'Paper', icon: FileText },
 ];
 const DENSITY_OPTS: Opt<Density>[] = [
   { value: 'comfortable', label: 'Comfortable' },
@@ -44,8 +52,8 @@ function segmentedOptions<T extends string>(opts: Opt<T>[]) {
 export function Appearance() {
   // Start from defaults (matches SSR, no flash — the boot script already applied
   // the real values), then mirror the stored prefs once mounted.
-  const [pref, setPref] = useState({ theme: DEFAULT_THEME as Theme, density: DEFAULT_DENSITY as Density, accent: DEFAULT_ACCENT as Accent });
-  const { theme, density, accent } = pref;
+  const [pref, setPref] = useState({ theme: DEFAULT_THEME as Theme, density: DEFAULT_DENSITY as Density, accent: DEFAULT_ACCENT as Accent, skin: DEFAULT_SKIN as Skin });
+  const { theme, density, accent, skin } = pref;
 
   // Sync from the source of truth on mount and whenever any surface changes it
   // (e.g. the sidebar quick-toggle) so the controls never drift out of sync.
@@ -60,16 +68,22 @@ export function Appearance() {
   useEffect(() => {
     if (theme !== 'system') return;
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const on = () => applyAppearance('system', density, accent);
+    const on = () => applyAppearance('system', density, accent, skin);
     mq.addEventListener('change', on);
     return () => mq.removeEventListener('change', on);
-  }, [theme, density, accent]);
+  }, [theme, density, accent, skin]);
 
   // Each control patches one field; commitAppearance reads the others fresh from
   // localStorage, so rapid clicks can't clobber each other.
   const setTheme = (t: Theme) => setPref(commitAppearance({ theme: t }));
   const setDensity = (d: Density) => setPref(commitAppearance({ density: d }));
   const setAccent = (a: Accent) => setPref(commitAppearance({ accent: a }));
+  const setSkin = (k: Skin) => setPref(commitAppearance({ skin: k }));
+
+  const paper = skin === 'paper';
+
+  // Page width — the same device-local preference the ••• page menu used to own.
+  const { full, toggle } = useViewWidth();
 
   // Task-completion sound — a separate device-local preference (default on).
   const [sound, setSound] = useState(true);
@@ -92,14 +106,30 @@ export function Appearance() {
       <SettingsSection title="Theme">
         <SettingsRow
           title="Theme"
-          description="Light, dark, or match your system."
+          description="Default is the screen palette. Paper prints the whole app on stock, with ink rules and square corners."
           control={
             <SegmentedControl
               aria-label="Theme"
               fit="content"
+              value={skin}
+              onValueChange={(v) => setSkin(v as Skin)}
+              options={segmentedOptions(SKIN_OPTS)}
+            />
+          }
+        />
+        {/* Light/dark belongs to the default skin: paper is a light material, and a
+            dark paper is a different material. Rather than leave a control that
+            silently does nothing, the row says so. */}
+        <SettingsRow
+          title="Light and dark"
+          description={paper ? 'Paper is a light material — light and dark apply to the default theme.' : 'Light, dark, or match your system.'}
+          control={
+            <SegmentedControl
+              aria-label="Light and dark"
+              fit="content"
               value={theme}
               onValueChange={(v) => setTheme(v as Theme)}
-              options={segmentedOptions(THEME_OPTS)}
+              options={segmentedOptions(THEME_OPTS).map((o) => ({ ...o, disabled: paper }))}
             />
           }
         />
@@ -144,6 +174,19 @@ export function Appearance() {
               })}
             </div>
           }
+        />
+      </SettingsSection>
+
+      <SettingsSection title="Layout">
+        {/* Full width used to be the ONLY item in a ••• menu rendered on every
+            page header — a permanent overflow button, in the most valuable slot
+            on the row, holding one device-wide preference. It belongs with the
+            other device preferences; the page headers end with the page's own
+            action now. */}
+        <SettingsRow
+          title="Full width"
+          description="Let pages use the whole workspace instead of a centred reading column."
+          control={<Switch checked={full} onCheckedChange={toggle} aria-label="Full width" />}
         />
       </SettingsSection>
 

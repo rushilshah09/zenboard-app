@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Source_Serif_4 } from "next/font/google";
 import "./globals.css";
 import { themeInitScript } from "@/lib/theme";
 import { AppearanceBoot } from "@/components/shell/appearance-boot";
+import { InputModalityBoot } from "@/components/shell/input-modality-boot";
 import { Providers } from "@/components/shell/providers";
 
 // Type system (Figma HIfi, 2026-07-16) = Geist (UI + body, variable weight)
@@ -18,6 +19,11 @@ const sourceSerif = Source_Serif_4({
   subsets: ["latin"],
   weight: ["400", "600"],
   display: "swap",
+  // Not preloaded. Reading mode is opt-in, yet a preloaded font is fetched at
+  // high priority on EVERY page: this was the largest file in the preload list
+  // (51 KB), competing with the page's own CSS and scripts. It still loads, on
+  // demand, the moment reading mode actually renders serif text.
+  preload: false,
 });
 
 export const metadata: Metadata = {
@@ -46,6 +52,7 @@ export default function RootLayout({
       </head>
       <body className="font-sans">
         <AppearanceBoot />
+        <InputModalityBoot />
         <Providers>{children}</Providers>
       </body>
     </html>

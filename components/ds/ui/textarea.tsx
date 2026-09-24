@@ -54,10 +54,15 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(fun
           className={cn(
             shared,
             "bg-paper text-ink-900 placeholder:text-ink-500 transition-colors duration-instant",
-            "border-line-strong hover:border-ink-300",
-            "focus:border-berry-500 focus:outline-none focus:ring-2 focus:ring-berry-alpha-20",
+            // Hover firms to the control tier — one rule for every field, so
+            // a textarea, an input and a select behave identically. Was
+            // `border-ink-300`, a SOLID at roughly the same value as the
+            // resting edge, so hovering changed almost nothing.
+            "border-line-strong hover:border-line-control",
+            // One focus recipe app-wide; the berry ring compiled to nothing (see input.tsx).
+    "focus-ring",
             "aria-[invalid=true]:border-danger-500 aria-[invalid=true]:bg-danger-100/40",
-            "disabled:bg-surface-disabled disabled:text-ink-300 disabled:border-transparent",
+            "disabled:bg-surface-disabled disabled:text-ink-500 disabled:border-transparent",
             "read-only:bg-paper-3 read-only:border-transparent read-only:text-ink-700",
             autoGrow
               ? "max-h-64 min-h-20 resize-none overflow-y-auto [grid-area:1/1]"

@@ -16,7 +16,7 @@
 // lose the answers — and the owner still learns where people stop.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle, Send, Sparkles, ArrowLeft, ArrowRight } from '@/components/ds/icons';
-import { Icon, Button, button, Field, TextInput, Textarea, Select, RadioGroup, Radio, Checkbox, Rating, FileUpload } from '@/components/ds/ui';
+import { Icon, Button, button, Field, TextInput, Textarea, Select, RadioGroup, Radio, Checkbox, Rating, FileUpload, DatePicker } from '@/components/ds/ui';
 import { startResponse, saveProgress, submitResponse, createFormUploadUrl } from '@/lib/actions/forms';
 import { createClient } from '@/lib/supabase/client';
 import { TurnstileWidget } from '@/components/forms/turnstile';
@@ -53,7 +53,11 @@ export function FormRenderer({
   // Branching can remove the question you're standing on — never strand the step.
   const maxStep = Math.max(0, shownFields.length - 1);
   const safeStep = Math.min(step, maxStep);
-  useEffect(() => { if (step > maxStep) setStep(maxStep); }, [step, maxStep]);
+  // Adjusted during render, not after: an effect let one frame paint the
+  // stranded step first. It terminates — after this, `step === maxStep`.
+  // (`safeStep` alone is not enough: the STORED step has to come down too, or
+  // re-widening the branch later jumps the reader forward to where they were.)
+  if (step > maxStep) setStep(maxStep);
 
   const responseId = useRef<string | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -78,6 +82,9 @@ export function FormRenderer({
       try {
         if (!responseId.current) {
           const res = await startResponse(token!, source);
+          // silent: a partial save retries on the next keystroke (responseId
+          // stays null), and someone still filling in a form must not be
+          // interrupted by an error about a draft row they never asked for.
           if ('error' in res) return;
           responseId.current = res.id;
           try { localStorage.setItem(respKey(token!), res.id); } catch { /* ignore */ }
@@ -158,12 +165,15 @@ export function FormRenderer({
   }
 
   const initials = form.studio.split(/\s+/).map((w) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+  // Kept in a ref, not state: nothing on screen depends on it, and re-rendering
+  // the form on a bot's keystroke would be a tell.
+  const onHoneypot = (v: string) => { honeypot.current = v; };
 
   if (state === 'sent') {
     return (
       <Shell initials={initials} studio={form.studio}>
         <div className="py-10 text-center">
-          <Icon icon={CheckCircle} size={22} className="text-success-600" />
+          <Icon icon={CheckCircle} size={24} className="text-success-600" />
           <h1 className="mt-3 font-display text-h3 text-ink-900">Thank you.</h1>
           <p className="mx-auto mt-1.5 max-w-[36ch] text-body text-ink-500">
             {form.settings.thanks?.trim() || 'Your response has been sent.'}
@@ -195,13 +205,13 @@ export function FormRenderer({
     const lead = idx > 0 && (shown[idx - 1].type === 'heading' || shown[idx - 1].type === 'statement') ? shown[idx - 1] : null;
 
     return (
-      <Shell initials={initials} studio={form.studio}>
+      <Shell initials={initials} studio={form.studio} onHoneypot={onHoneypot}>
         {/* Progress — thin, quiet, always answerable: "how much is left?" */}
         <div className="mb-8 flex items-center gap-3">
           <div className="h-1 flex-1 overflow-hidden rounded-full bg-surface-fill">
             <div
-              className="h-full rounded-full bg-ink-900 transition-[width] duration-slow ease-standard"
-              style={{ width: `${((safeStep + 1) / shownFields.length) * 100}%` }}
+              className="h-full w-full rounded-full bg-ink-900 transition-transform duration-slow ease-standard"
+              style={{ transform: `translateX(-${100 - Math.min(100, ((safeStep + 1) / shownFields.length) * 100)}%)` }}
             />
           </div>
           <span className="shrink-0 tabular-nums text-meta text-ink-500">{safeStep + 1} of {shownFields.length}</span>
@@ -215,7 +225,7 @@ export function FormRenderer({
 
         <div
           key={block.id}
-          className="animate-ds-fadein"
+          className="zb-enter animate-fadein"
           onKeyDown={(e) => {
             // Enter advances, except in a paragraph where it's a newline.
             if (e.key === 'Enter' && !e.shiftKey && block.type !== 'long_text') { e.preventDefault(); advance(block); }
@@ -247,7 +257,7 @@ export function FormRenderer({
 
         {last && turnstileActive && (
           <div className="mt-8">
-            <TurnstileWidget siteKey={turnstileSiteKey!} theme="dark" onToken={setTurnstileToken} />
+            <TurnstileWidget siteKey={turnstileSiteKey!} onToken={setTurnstileToken} />
           </div>
         )}
         {last && !live && form.settings.turnstile && (
@@ -262,13 +272,13 @@ export function FormRenderer({
             size="lg"
             onClick={() => (last ? void send() : advance(block))}
             loading={state === 'sending'}
-            icon={last ? <Icon icon={Send} size={15} /> : undefined}
-            iconRight={last ? undefined : <Icon icon={ArrowRight} size={15} />}
+            icon={last ? <Icon icon={Send} size={16} /> : undefined}
+            iconRight={last ? undefined : <Icon icon={ArrowRight} size={16} />}
           >
             {last ? 'Submit' : 'Next'}
           </Button>
           {safeStep > 0 && (
-            <Button variant="ghost" size="lg" onClick={() => setStep((s) => Math.max(0, s - 1))} icon={<Icon icon={ArrowLeft} size={15} />}>
+            <Button variant="ghost" size="lg" onClick={() => setStep((s) => Math.max(0, s - 1))} icon={<Icon icon={ArrowLeft} size={16} />}>
               Back
             </Button>
           )}
@@ -280,7 +290,7 @@ export function FormRenderer({
 
   // ── Page mode: the whole form as one calm document ──────────────────────
   return (
-    <Shell initials={initials} studio={form.studio}>
+    <Shell initials={initials} studio={form.studio} onHoneypot={onHoneypot}>
       <h1 className="font-display text-h1 leading-tight text-ink-900">{form.title}</h1>
       {form.description && <p className="mt-3 whitespace-pre-wrap text-body-lg leading-relaxed text-ink-700">{form.description}</p>}
 
@@ -304,7 +314,7 @@ export function FormRenderer({
 
       {turnstileActive && (
         <div className="mt-7">
-          <TurnstileWidget siteKey={turnstileSiteKey!} theme="dark" onToken={setTurnstileToken} />
+          <TurnstileWidget siteKey={turnstileSiteKey!} onToken={setTurnstileToken} />
         </div>
       )}
       {!live && form.settings.turnstile && (
@@ -314,7 +324,7 @@ export function FormRenderer({
       {formError && <p className="mt-6 text-meta text-danger-600" role="alert">{formError}</p>}
 
       <div className="mt-8 flex items-center gap-3 border-t border-line-soft pt-6">
-        <Button variant="primary" size="lg" onClick={send} loading={state === 'sending'} icon={<Icon icon={Send} size={15} />}>
+        <Button variant="primary" size="lg" onClick={send} loading={state === 'sending'} icon={<Icon icon={Send} size={16} />}>
           Submit
         </Button>
         {preview && <span className="text-meta text-ink-500">Preview — nothing is saved.</span>}
@@ -345,7 +355,9 @@ function Honeypot({ onChange }: { onChange: (v: string) => void }) {
   );
 }
 
-function Shell({ initials, studio, children }: { initials: string; studio: string; children: React.ReactNode }) {
+function Shell({ initials, studio, onHoneypot, children }: {
+  initials: string; studio: string; onHoneypot?: (v: string) => void; children: React.ReactNode;
+}) {
   return (
     <div className="relative mx-auto w-full max-w-[680px] px-5 py-10 sm:px-6 sm:py-14">
       <div className="mb-9 flex items-center gap-2.5">
@@ -353,6 +365,8 @@ function Shell({ initials, studio, children }: { initials: string; studio: strin
         <span className="truncate text-ui font-medium text-ink-800">{studio}</span>
       </div>
       {children}
+      {/* Only on a fillable shell — the thank-you page has nothing to protect. */}
+      {onHoneypot && <Honeypot onChange={onHoneypot} />}
       <div className="mt-12 flex items-center justify-center gap-1.5 border-t border-line-soft pt-5 text-meta text-ink-500">
         <Icon icon={Sparkles} size={12} /> Powered by Zenboard
       </div>
@@ -407,16 +421,18 @@ function Control({ block, value, onChange, onBlur, uploadFile }: {
     }
     case 'multi_select': {
       const picked = Array.isArray(value) ? value : [];
+      // Checkbox's own `label` gives the same row height and coarse-pointer
+      // touch target as Radio — a hand-rolled <label> here silently shipped a
+      // 32px tap target on the one surface that is mostly filled on phones.
       return (
         <div className="flex flex-col gap-1">
           {(block.options ?? []).map((o) => (
-            <label key={o} className="flex min-h-8 cursor-pointer items-center gap-2.5 py-1 text-body text-ink-800">
-              <Checkbox
-                checked={picked.includes(o)}
-                onCheckedChange={(c) => onChange(c ? [...picked, o] : picked.filter((x) => x !== o))}
-              />
-              {o}
-            </label>
+            <Checkbox
+              key={o}
+              label={o}
+              checked={picked.includes(o)}
+              onCheckedChange={(c) => onChange(c ? [...picked, o] : picked.filter((x) => x !== o))}
+            />
           ))}
         </div>
       );
@@ -433,7 +449,11 @@ function Control({ block, value, onChange, onBlur, uploadFile }: {
     case 'rating':
       return <Rating value={Number(value ?? 0)} onValueChange={(n) => onChange(n)} />;
     case 'date':
-      return <TextInput type="date" value={String(value ?? '')} onChange={(e) => onChange(e.target.value)} onBlur={onBlur} />;
+      // Our picker, not the browser's — a native date input inside a DS-styled
+      // box is the one combination that looks like Zenboard and behaves like
+      // Chrome. It parses "next friday" too, which is worth more on a brief than
+      // an OS wheel is.
+      return <DatePicker aria-label={block.label || 'Date'} value={String(value ?? '') || null} onValueChange={(iso) => { onChange(iso); onBlur?.(); }} />;
     case 'number':
       return <TextInput inputMode="decimal" value={String(value ?? '')} placeholder={block.placeholder} onChange={(e) => onChange(e.target.value)} onBlur={onBlur} />;
     case 'email':

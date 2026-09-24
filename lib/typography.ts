@@ -31,10 +31,13 @@ export const TYPE = {
   body: level('body'),
   small: level('small'),
   caption: level('caption'),
-  /** Micro-label (stat-card captions, column headers) — uppercase body sans, not
-      mono: the mono treatment read "terminal" next to the rest of the UI. */
-  label: { ...level('label', true), fontFamily: 'var(--font-body)', textTransform: 'uppercase' as const },
-  /** DS §4.2.2 micro (10/500): badges, kbd, eyebrows. Callers add uppercase. */
+  /** Micro-label (stat-card captions, column headers) — body sans, SENTENCE
+      CASE. It was uppercase until the user's 2026-09-08 directive made sentence
+      case the rule everywhere ("Sidebar control", not "SIDEBAR CONTROL"); the
+      role is where the rule has to live, or every new caller shouts again. */
+  label: { ...level('label', true), fontFamily: 'var(--font-body)' },
+  /** DS §4.2.2 micro (10/500): badges, kbd, eyebrows. Sentence case, like every
+      label — never uppercase. */
   micro: level('micro', true),
   /** DS §4.2.2 nano (8/500): notification count badges only. */
   nano: level('nano', true),

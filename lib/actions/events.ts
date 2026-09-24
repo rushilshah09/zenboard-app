@@ -6,13 +6,9 @@ import { activeSpaceId } from '@/lib/active-space';
 // to Google (best-effort — a failed push never blocks the local write).
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { getValidAccessToken, pushCreate, pushUpdate, pushDelete } from '@/lib/google-calendar';
-
-async function requireUser() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-  return { supabase, user };
-}
+import { timeboxDay, syncsToGoogle } from '@/lib/timebox';
+import { userTimezone } from '@/lib/user-tz';
+import { requireSession } from '@/lib/auth';
 
 // Google token for write-back, or null if not connected. Never throws.
 async function googleToken(userId: string) {
@@ -30,7 +26,7 @@ export async function addEvent(input: EventInput): Promise<{ error: string } | {
   const title = input.title.trim();
   if (!title) return { error: 'Event needs a title.' };
   if (!input.startsAt) return { error: 'Event needs a time.' };
-  const { supabase, user } = await requireUser();
+  const { supabase, user } = await requireSession();
   const sid = await spaceId(supabase, user.id);
   const allDay = !!input.allDay;
   const ends = allDay ? null : (input.endsAt || null);
@@ -57,7 +53,7 @@ export async function updateEvent(
   id: string,
   patch: { title?: string; startsAt?: string; endsAt?: string | null; allDay?: boolean; color?: string | null },
 ): Promise<{ error: string } | { ok: true }> {
-  const { supabase, user } = await requireUser();
+  const { supabase, user } = await requireSession();
   const row: { title?: string; starts_at?: string; ends_at?: string | null; all_day?: boolean; color?: string | null } = {};
   if (patch.title !== undefined) {
     const t = patch.title.trim();
@@ -81,10 +77,25 @@ export async function updateEvent(
   }
   if (error) return { error: error.message };
 
+  // The twin contract (§7D): "moving the event moves the task's scheduled time".
+  // The block IS when the task is happening, so dragging it to Thursday has to
+  // reschedule the task — otherwise the list and the calendar disagree about the
+  // same object. Best-effort and gated on 0030: a task whose date lags by one
+  // drag is a nuisance; a calendar that refuses to move is not.
+  if (patch.startsAt !== undefined) {
+    try {
+      const { data: twin } = await supabase.from('calendar_events').select('task_id').eq('id', id).maybeSingle();
+      if (twin?.task_id) {
+        const day = timeboxDay(patch.startsAt, await userTimezone());
+        if (day) await supabase.from('tasks').update({ scheduled_date: day, is_inbox: false }).eq('id', twin.task_id);
+      }
+    } catch { /* 0030 not applied — nothing to keep in step */ }
+  }
+
   // Mirror the change to Google if this event is linked.
   try {
-    const { data: ev } = await supabase.from('calendar_events').select('external_id, title, starts_at, ends_at, all_day').eq('id', id).maybeSingle();
-    if (ev?.external_id) {
+    const { data: ev } = await supabase.from('calendar_events').select('external_id, title, starts_at, ends_at, all_day, source').eq('id', id).maybeSingle();
+    if (ev?.external_id && syncsToGoogle(ev.source)) {
       const conn = await googleToken(user.id);
       if (conn) await pushUpdate(conn.token, conn.calendarId, ev.external_id, { title: ev.title, startsAt: ev.starts_at, endsAt: ev.ends_at, allDay: ev.all_day });
     }
@@ -94,13 +105,22 @@ export async function updateEvent(
 }
 
 export async function deleteEvent(id: string): Promise<{ error: string } | { ok: true }> {
-  const { supabase, user } = await requireUser();
-  const { data: ev } = await supabase.from('calendar_events').select('external_id').eq('id', id).maybeSingle();
+  const { supabase, user } = await requireSession();
+  const { data: ev } = await supabase.from('calendar_events').select('external_id, source').eq('id', id).maybeSingle();
+
+  // §7D: "deleting the event un-timeboxes (never deletes) the task." 0030's
+  // ON DELETE SET NULL already guarantees the task survives; this clears the
+  // link BEFORE the delete so the task is never briefly pointing at a row that
+  // is on its way out, which a concurrent read would see as a broken twin.
+  try {
+    await supabase.from('tasks').update({ event_id: null }).eq('event_id', id);
+  } catch { /* 0030 not applied — there are no twins to unlink */ }
+
   const { error } = await supabase.from('calendar_events').delete().eq('id', id);
   if (error) return { error: error.message };
 
   try {
-    if (ev?.external_id) {
+    if (ev?.external_id && syncsToGoogle(ev.source)) {
       const conn = await googleToken(user.id);
       if (conn) await pushDelete(conn.token, conn.calendarId, ev.external_id);
     }

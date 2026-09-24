@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Build output of the Cloudflare adapter. Linting it is meaningless (it is
+    // bundled vendor code) and it dominated the report: 1134 of 1231 errors and
+    // most of the runtime came from files nobody edits.
+    ".open-next/**",
   ]),
 ]);
 

@@ -10,23 +10,19 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { Icon, MenuPanel, MenuLabel } from '@/components/ds/ui';
+import { Icon, MenuLabel, Popover, PopoverTrigger, PopoverContent } from '@/components/ds/ui';
 import { Bell } from '@/components/ds/icons';
+import { formatAgo } from '@/lib/date';
 
 type NotifRow = {
   id: string; kind: string; title: string; body: string | null;
   link: { href?: string } | null; read: boolean; created_at: string;
 };
 
-// Quiet relative time — same voice as the rest of the app (no seconds precision).
-function relTime(iso: string): string {
-  const s = Math.max(0, Math.floor((Date.now() - Date.parse(iso)) / 1000));
-  if (s < 60) return 'just now';
-  const m = Math.floor(s / 60); if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60); if (h < 24) return `${h}h ago`;
-  const d = Math.floor(h / 24); if (d < 7) return `${d}d ago`;
-  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-}
+// Quiet relative time. This said "same voice as the rest of the app" while being
+// a hand-rolled copy — which is exactly why it wasn't: its fallback rendered a
+// month-first date next to the day-first ones everywhere else.
+const relTime = (iso: string): string => formatAgo(iso, { precise: true }) ?? '';
 
 export function NotificationsBell({ demo }: { demo?: NotifRow[] } = {}) {
   const router = useRouter();
@@ -77,9 +73,18 @@ export function NotificationsBell({ demo }: { demo?: NotifRow[] } = {}) {
   }, [isDemo, markRead, router]);
 
   return (
-    <div style={{ position: 'relative' }}>
+    // PORTALLED. This panel was an `absolute` MenuPanel inside the header, which
+    // the shell clips (`overflow: hidden` on its panels) — the same latent bug
+    // as the document card menu the user screenshotted. A Popover rather than a
+    // DropdownMenu because these rows are notification CARDS, not menu items:
+    // they carry a title, a body and a timestamp, and forcing `menuitem`
+    // semantics onto them would announce them wrongly and impose type-ahead.
+    // `onMouseLeave` to close is gone with it — a panel you have to keep the
+    // pointer inside is unusable by keyboard, and Radix handles outside-click
+    // and Escape properly.
+    <Popover open={open} onOpenChange={(next) => { setOpen(next); if (next && !isDemo) load(); }}>
+      <PopoverTrigger asChild>
       <button
-        onClick={() => setOpen((v) => { const next = !v; if (next && !isDemo) load(); return next; })}
         aria-label="Notifications" title="Notifications" className="zb-nav-item zb-press"
         style={{ position: 'relative', width: 28, height: 28, display: 'grid', placeItems: 'center', background: 'transparent', border: 'none', borderRadius: 8, cursor: 'pointer', color: 'var(--color-icon-default)', flexShrink: 0 }}>
         <Icon icon={Bell} size={16} />
@@ -88,8 +93,9 @@ export function NotificationsBell({ demo }: { demo?: NotifRow[] } = {}) {
           <span aria-label={`${unread} unread`} style={{ position: 'absolute', top: 2, right: 1, minWidth: 10, height: 10, padding: 2, borderRadius: 120, background: 'var(--color-berry-500)', border: '1px solid var(--paper)', color: '#FDFEFB', fontSize: 8, fontWeight: 500, display: 'grid', placeItems: 'center', lineHeight: 1 }}>{unread > 9 ? '9+' : unread}</span>
         )}
       </button>
-      {open && (
-        <MenuPanel aria-label="Notifications" onMouseLeave={() => setOpen(false)} className="absolute right-0 top-full z-[60] mt-1.5 w-[300px]">
+      </PopoverTrigger>
+      <PopoverContent align="end" flush aria-label="Notifications" className="w-[300px] p-1">
+        <div>
           <div className="flex items-center justify-between pr-1">
             <MenuLabel>Notifications</MenuLabel>
             {unread > 0 && (
@@ -102,19 +108,19 @@ export function NotificationsBell({ demo }: { demo?: NotifRow[] } = {}) {
             <div className="max-h-[360px] overflow-y-auto">
               {rows.map((r) => (
                 <button key={r.id} onClick={() => openRow(r)}
-                  className="zb-press flex w-full items-start gap-2 rounded-md px-2.5 py-2 text-left transition-colors duration-fast hover:bg-surface-hover">
+                  className="group/note zb-press flex w-full items-start gap-2 rounded-md px-2.5 py-2 text-left transition-colors duration-fast">
                   <span aria-hidden className="mt-1.5 size-1.5 shrink-0 rounded-full" style={{ background: r.read ? 'transparent' : 'var(--color-berry-500)' }} />
                   <span className="min-w-0 flex-1">
-                    <span className={`block truncate text-ui ${r.read ? 'text-ink-600' : 'text-ink-800'}`}>{r.title}</span>
-                    {r.body && <span className="block truncate text-caption text-ink-500">{r.body}</span>}
-                    <span className="block text-caption text-ink-400">{relTime(r.created_at)}</span>
+                    <span className={`block truncate text-ui ${r.read ? 'text-ink-600 group-hover/note:text-ink-700' : 'text-ink-800'}`}>{r.title}</span>
+                    {r.body && <span className="block truncate text-caption text-ink-500 group-hover/note:text-ink-700">{r.body}</span>}
+                    <span className="block text-caption text-ink-500 group-hover/note:text-ink-700">{relTime(r.created_at)}</span>
                   </span>
                 </button>
               ))}
             </div>
           )}
-        </MenuPanel>
-      )}
-    </div>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }

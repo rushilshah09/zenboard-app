@@ -8,6 +8,11 @@ export function Skeleton({ className, shape = "block" }: { className?: string; s
   return (
     <span
       aria-hidden
+      // `data-shape` is the SHAPE OF THE MISSING THING, which is the only thing a
+      // loading placeholder actually knows. The paper skin reads it to draw the blank
+      // a printed form would leave: a rule for a line, a ruled box for a block.
+      data-slot="skeleton"
+      data-shape={shape}
       className={cn(
         "relative block overflow-hidden bg-paper-5",
         shape === "line" && "h-3 rounded-xs",
@@ -17,6 +22,7 @@ export function Skeleton({ className, shape = "block" }: { className?: string; s
       )}
     >
       <span
+        data-slot="skeleton-sweep"
         className="absolute inset-y-0 w-1/2 bg-gradient-to-r from-transparent via-paper-3 to-transparent motion-safe:animate-[shimmer_1.4s_ease-in-out_infinite]"
         style={{ transform: "translateX(-100%)" }}
       />

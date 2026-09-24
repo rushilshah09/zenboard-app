@@ -4,12 +4,15 @@
 // never swallows modifier combos (⌘K etc. stay with their own handlers). This is
 // the single source of truth for what the command palette + Settings advertise.
 import { useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
+import { isTypingTarget } from '@/lib/list-keys';
+import { isFocusMode, FOCUS_PATH, FOCUS_EXIT_PATH } from '@/lib/focus-mode';
 
 // "g" then this key → route.
 export const GOTO: Record<string, { href: string; label: string }> = {
   t: { href: '/today', label: 'Home' },
-  i: { href: '/inbox', label: 'Inbox' },
+  // The Inbox is a view inside Tasks; the chord kept its key.
+  i: { href: '/tasks?view=inbox', label: 'Inbox' },
   w: { href: '/tasks?view=week', label: 'Week' },
   h: { href: '/horizon', label: 'Goals' },
   b: { href: '/habits', label: 'Habits' },
@@ -18,6 +21,10 @@ export const GOTO: Record<string, { href: string; label: string }> = {
   c: { href: '/clients', label: 'Clients' },
   m: { href: '/money', label: 'Finance' },
   d: { href: '/documents', label: 'Docs' },
+  // `r` for recall, the verb §7X §5.1 uses — `m` was already Finance's chord
+  // (from its old "Money" name, which the glossary since retired; renaming the
+  // chord is a separate change and would break muscle memory to fix a label).
+  // r: { href: '/memory', label: 'Memory' },   // hidden with the module, 2026-09-07
 };
 
 // Reference list rendered in Settings → Keyboard. Kept here so it can't drift
@@ -30,7 +37,7 @@ export const SHORTCUT_GROUPS: { title: string; items: { keys: string[]; label: s
       { keys: ['?'], label: 'Open command palette' },
       { keys: ['C'], label: 'Quick capture to Inbox' },
       { keys: ['⇧', 'T'], label: 'Triage inbox' },
-      { keys: ['F'], label: 'Enter focus mode' },
+      { keys: ['F'], label: 'Focus mode on or off' },
     ],
   },
   {
@@ -55,6 +62,7 @@ export const SHORTCUT_GROUPS: { title: string; items: { keys: string[]; label: s
       { keys: ['K'], label: 'Focus previous task' },
       { keys: ['↵'], label: 'Open focused task' },
       { keys: ['E'], label: 'Complete' },
+      { keys: ['H'], label: 'Highlight' },
       { keys: ['T'], label: 'Schedule for today' },
       { keys: ['S'], label: 'Schedule…' },
       { keys: ['P'], label: 'Move to project' },
@@ -83,15 +91,11 @@ export function goChordActive(): boolean {
   return Date.now() - _lastG < 1200;
 }
 
-function isTypingTarget(el: EventTarget | null): boolean {
-  const n = el as HTMLElement | null;
-  if (!n) return false;
-  const tag = n.tagName;
-  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || n.isContentEditable;
-}
+
 
 export function GlobalShortcuts() {
   const router = useRouter();
+  const pathname = usePathname();
   const pendingG = useRef(0); // timestamp of a recent "g" press
 
   useEffect(() => {
@@ -109,12 +113,15 @@ export function GlobalShortcuts() {
 
       if (key === 'g') { pendingG.current = Date.now(); _lastG = Date.now(); return; }
       if (key === 'c') { e.preventDefault(); window.dispatchEvent(new Event('zb:capture')); return; }
-      if (key === 'f') { e.preventDefault(); router.push('/focus'); return; }
+      // F TOGGLES. It used to push `/focus` unconditionally, so the one key bound to the mode
+      // could enter it and never leave — pressing F again re-entered the route you were already
+      // on. A mode whose whole premise is "one way out" must not hide that way from the keyboard.
+      if (key === 'f') { e.preventDefault(); router.push(isFocusMode(pathname) ? FOCUS_EXIT_PATH : FOCUS_PATH); return; }
       if (e.key === '?') { e.preventDefault(); window.dispatchEvent(new Event('zb:open-command')); return; }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [router]);
+  }, [router, pathname]);
 
   return null;
 }

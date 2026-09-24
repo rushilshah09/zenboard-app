@@ -80,8 +80,8 @@
   --hover-1: var(--color-surface-hover);
 
   /* Status trios — dot / chip-bg / chip-text (app palette; user data) — dark-tuned */
-  --default-dot: #A8A39A; --default-bg: #2A2722; --default-text: #C8C3BA;
-  --gray-dot:    #A39E97; --gray-bg:    #2A2825; --gray-text:    #C6C1BA;
+  --default-dot: #A3A3A3; --default-bg: #272727; --default-text: #C3C3C3;
+  --gray-dot:    #9F9F9F; --gray-bg:    #282828; --gray-text:    #C2C2C2;
   --brown-dot:   #C08A5E; --brown-bg:   #2F261E; --brown-text:   #DBB089;
   --orange-dot:  #DBA45A; --orange-bg:  #332518; --orange-text:  #ECC084;
   --yellow-dot:  #D8BB5A; --yellow-bg:  #302B16; --yellow-text:  #E8D588;
@@ -144,19 +144,48 @@
   --shadow-overlay: var(--shadow-lift-2);
 
   /* Motion (§2.10) */
-  --ease-out:        cubic-bezier(0.16, 1, 0.30, 1);
-  --ease-out-quiet:  cubic-bezier(0.16, 1, 0.30, 1);
-  --ease-standard:   cubic-bezier(0.20, 0, 0.00, 1);
-  --ease-in-quiet:   cubic-bezier(0.40, 0, 1, 1);
-  --ease-spring:     cubic-bezier(0.34, 1.40, 0.64, 1);
-  --ease-inout:      cubic-bezier(0.65, 0, 0.35, 1);
-  --dur-instant: 80ms; --dur-fast: 120ms; --dur-base: 180ms; --dur-slow: 240ms; --dur-slower: 320ms;
+  /* ONE curve for arrivals, departures and colour. There were three names for
+     two curves: --ease-out and --ease-out-quiet were byte-identical, and
+     globals.css kept a third, --ease (.2,.8,.2,1), on 61 hover and colour
+     transitions. A name nobody can tell apart from another name is not a
+     vocabulary. */
+  /* Emil Kowalski's curves, the project's source of truth for motion. The built-in
+     CSS easings are too weak to read as intentional; these are the strong ease-out,
+     the ease-in-out for movement on screen, and the iOS drawer curve. */
+  --ease-out-quiet:  cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-standard:   cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer:     cubic-bezier(0.32, 0.72, 0, 1);
+  /* CSS `ease`, spelled out: hover and colour changes (Emil's decision tree:
+     entering or leaving → ease-out, moving on screen → ease-in-out, hover or
+     colour → ease). */
+  --ease-hover:      cubic-bezier(0.25, 0.1, 0.25, 1);
+  /* ONE duration ladder, and it is the DS one in ds-theme.css: instant 20 · fast
+     100 · base 150 · slow 200 · hold 700. There used to be a second set here —
+     --dur-instant/fast/base/slow/slower at 80/120/180/240/320 — so "fast" meant
+     120ms in the app layer and 100ms in the DS layer, and "instant" differed by
+     4x. 76 uses folded into the ladder the other 178 already spoke. */
 
-  /* Z-index registry (§2.8.2) */
-  --z-sticky: 10; --z-dropdown: 40; --z-overlay: 45; --z-modal: 50; --z-toast: 55; --z-drag: 60; --z-tooltip: 70;
+  /* Z-index registry — DELETED FROM HERE, and this note is the reason.
+     It lived in BOTH this file and ds-theme.css's `@theme` block, with different
+     numbers. Tailwind hoists `@theme` variables to the top of the output, so
+     this plain `:root` — imported earlier but emitted LATER — silently won, and
+     ds-theme's values never reached the browser. The registry there carries a
+     long comment explaining that toast and tooltip were raised from 55/70 to
+     320/330 so an Undo toast could clear the command palette; measured on
+     2026-09-07, the served values were still 55 and 70. The fix had been
+     written, reviewed and never applied for as long as both copies existed.
+     ds-theme.css is now the only declaration. Do not re-add one here. */
 
   /* Layout (§2.5) */
   --sidebar-w: 230px;   /* Figma HIfi sidebar panel (476:13435) */
+  /* SECONDARY rails — the record list beside a detail on Tasks, Documents,
+     Clients and Projects — are the same width as the primary sidebar, so the
+     two vertical edges on screen line up as one rhythm rather than missing each
+     other by a hair. Four rails had drifted to TWO numbers: 230 (Tasks and
+     Documents, both citing the Figma panel above) and 240 (Clients, Projects —
+     Tailwind's `w-60`, adopted for being a scale step rather than for being
+     right). 230 wins because it is the one with a source. */
+  --rail-w: var(--sidebar-w);
   --topbar-h: 56px;
   --content-max: 1200px;
 

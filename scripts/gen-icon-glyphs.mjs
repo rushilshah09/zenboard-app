@@ -1,0 +1,119 @@
+#!/usr/bin/env node
+// Generates components/ds/icon-glyphs.generated.ts from @phosphor-icons/react.
+//
+// WHY THIS EXISTS. Every Phosphor icon component carries its path data in SIX
+// weights (bold, duotone, fill, light, regular, thin). The icon seam only ever
+// draws TWO: `regular`, and `fill` when the DS <Icon> asks for weight="fill"
+// (its "bold" is a stroke width, which Phosphor's filled paths ignore). With
+// ~380 glyphs in the seam, the four dead weights were two thirds of a 464 KiB
+// (gzipped) chunk — the single largest thing in a worker that had reached
+// 3,006 of Cloudflare's 3,072 KiB ceiling. This keeps the two weights and
+// nothing else.
+//
+// Picker-only glyphs (used solely inside PICKER_ICONS) keep `regular` alone:
+// a stored record icon is always drawn in the regular weight.
+//
+// Run after changing which glyphs components/ds/icons.ts uses:
+//   node scripts/gen-icon-glyphs.mjs
+// components/ds/icon-glyphs.test.ts fails if the table and the seam disagree,
+// and renders every glyph against Phosphor's own component to prove the
+// markup is identical.
+import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const SEAM = join(ROOT, 'components/ds/icons.ts');
+const OUT = join(ROOT, 'components/ds/icon-glyphs.generated.ts');
+const DEFS = join(ROOT, 'node_modules/@phosphor-icons/react/dist/defs');
+const PKG = JSON.parse(readFileSync(join(ROOT, 'node_modules/@phosphor-icons/react/package.json'), 'utf8'));
+
+// Comments stripped first, so an example in prose is never read as a call.
+// Offsets stay meaningful because every comment is replaced by spaces.
+const blank = (m) => m.replace(/[^\n]/g, ' ');
+const seam = readFileSync(SEAM, 'utf8').replace(/\/\*[\s\S]*?\*\//g, blank).replace(/\/\/[^\n]*/g, blank);
+const pickerStart = seam.indexOf('export const PICKER_ICONS');
+const pickerEnd = seam.indexOf('\n};', pickerStart);
+if (pickerStart < 0 || pickerEnd < 0) throw new Error('PICKER_ICONS block not found in the seam');
+
+const CALL = /glyph\("([A-Za-z0-9]+)"\)/g;
+const outside = new Set();
+const inside = new Set();
+for (const m of seam.matchAll(CALL)) {
+  const inPicker = m.index > pickerStart && m.index < pickerEnd;
+  (inPicker ? inside : outside).add(m[1]);
+}
+const names = [...new Set([...outside, ...inside])].sort();
+if (names.length === 0) throw new Error('no glyph("…") calls found in the seam');
+
+/**
+ * Every exported component name → the defs module it draws from, read from
+ * the component files themselves. Names are not always file names: renamed
+ * icons keep their old export as an alias in the new file (`FolderNotchIcon`
+ * lives in csr/Folder.es.js), so guessing a path from the name fails.
+ */
+const CSR = join(ROOT, 'node_modules/@phosphor-icons/react/dist/csr');
+const defsOf = new Map();
+for (const f of readdirSync(CSR).filter((x) => x.endsWith('.es.js'))) {
+  const text = readFileSync(join(CSR, f), 'utf8');
+  const def = /from "\.\.\/defs\/([A-Za-z0-9]+)\.es\.js"/.exec(text)?.[1];
+  const exp = /export\s*\{([^}]*)\}/.exec(text)?.[1];
+  if (!def || !exp) continue;
+  for (const part of exp.split(',')) {
+    const alias = part.trim().split(/\s+as\s+/).pop();
+    if (alias) defsOf.set(alias, def);
+  }
+}
+
+/** Evaluate one defs module with a React stand-in, returning its weight Map. */
+function loadWeights(name) {
+  const def = defsOf.get(name);
+  if (!def) throw new Error(`no Phosphor component exports ${name}`);
+  const file = join(DEFS, `${def}.es.js`);
+  if (!existsSync(file)) throw new Error(`no Phosphor definition file for ${name} (${def})`);
+  const src = readFileSync(file, 'utf8')
+    .replace(/import \* as (\w+) from "react";/, 'const $1 = __R;')
+    .replace(/export\s*\{\s*(\w+) as default\s*\};?/, 'return $1;');
+  const R = { Fragment: '#fragment', createElement: (type, props, ...children) => ({ type, props: props ?? {}, children }) };
+  return new Function('__R', src)(R);
+}
+
+/** A weight's elements, flattened out of any fragment, as [tag, attrs]. */
+function parts(node) {
+  if (!node) return [];
+  if (node.type === '#fragment') return node.children.flatMap(parts);
+  const attrs = {};
+  for (const [k, v] of Object.entries(node.props)) if (k !== 'key' && k !== 'children') attrs[k] = String(v);
+  return [[node.type, attrs], ...node.children.flatMap(parts)];
+}
+
+const lines = [];
+for (const name of names) {
+  const weights = loadWeights(name);
+  const r = parts(weights.get('regular'));
+  if (!r.length) throw new Error(`${name} has no regular weight`);
+  const entry = { r };
+  if (outside.has(name)) {
+    const f = parts(weights.get('fill'));
+    if (!f.length) throw new Error(`${name} has no fill weight`);
+    entry.f = f;
+  }
+  lines.push(`  ${JSON.stringify(name)}: ${JSON.stringify(entry)},`);
+}
+
+const out = `// GENERATED by scripts/gen-icon-glyphs.mjs from @phosphor-icons/react ${PKG.version}.
+// Do not edit by hand — change the glyph("…") calls in components/ds/icons.ts
+// and run \`node scripts/gen-icon-glyphs.mjs\`.
+//
+// Two weights, not six: \`r\` (regular) always, \`f\` (fill) for every glyph the
+// interface uses. Picker-only glyphs carry \`r\` alone — a stored record icon is
+// always drawn regular. See the header of the generator for the measurement.
+export type GlyphPart = readonly [tag: string, attrs: Readonly<Record<string, string>>];
+export type GlyphDef = { readonly r: readonly GlyphPart[]; readonly f?: readonly GlyphPart[] };
+
+export const GLYPHS: Readonly<Record<string, GlyphDef>> = {
+${lines.join('\n')}
+};
+`;
+writeFileSync(OUT, out);
+console.log(`wrote ${names.length} glyphs (${outside.size} with fill, ${[...inside].filter((n) => !outside.has(n)).length} picker-only) → ${OUT.slice(ROOT.length + 1)}`);

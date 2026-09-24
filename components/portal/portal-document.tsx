@@ -10,24 +10,32 @@
 // form + approval decisions (token-scoped server actions).
 //
 // Design notes: responsive LAYOUT uses Tailwind classes (grid/flex/lg:) —
-// inline styles can't do media queries — while per-card COLOUR + GEOMETRY keeps
-// the portal's token idiom (var(--paper-2) / --line / --r-*). The portal is
+// inline styles can't do media queries — and every card is the app's own house
+// card (`CARD` below: surface-raised, a hairline, radius lg). The portal is
 // fully MONOCHROME by choice (no berry/accent washes) — the only colour is the
 // semantic status Badge (paid/sent/overdue, approved/changes). Emphasis comes
 // from the ink solid + type hierarchy, not a pink accent.
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import {
   CheckCircle, Circle, FileText, Files, Send, Sparkles,
-  LayoutGrid, Inbox, Receipt, List, ArrowRight, SquarePen,
+  LayoutGrid, Inbox, Receipt, List, ArrowRight, SquarePen, Megaphone,
 } from '@/components/ds/icons';
-import { Icon, Badge, Button, button, type BadgeStatus } from '@/components/ds/ui';
+import { Icon, Badge, Button, button, EmptyLine, type BadgeStatus, CARD_CLASS } from '@/components/ds/ui';
 import type { IconType } from '@/lib/icons';
-import { Input, Textarea } from '@/components/ui/primitives';
-import { submitClientRequest, submitClientReply, getClientRequestStatuses, submitApprovalDecision } from '@/lib/actions/portal';
+import { TextInput, Textarea } from '@/components/ds/ui';
+import { submitClientRequest, submitClientReply, getClientRequestStatuses, submitApprovalDecision, signPortalFile } from '@/lib/actions/portal';
 import { CLIENT_LABEL_TONE, type PortalRequestStatus } from '@/lib/request-status';
 import { RequestThread, type ThreadMessage } from '@/components/portal/request-thread';
-import type { PortalView, PortalInvoice, PortalApproval, PortalForm } from '@/lib/portal';
+import type { PortalView, PortalInvoice, PortalApproval, PortalForm, PortalDoc, PortalAccept, PortalStream, PortalFile, PortalUpdate } from '@/lib/portal';
+import { formatBytes } from '@/lib/attachments';
+import { LineItemsBlock } from '@/components/documents/line-items-block';
+import { AcceptBlock } from '@/components/documents/accept-block';
+import { submitAcceptance } from '@/lib/actions/acceptance';
+import type { Acceptance } from '@/lib/acceptance';
 import { cn } from '@/lib/cn';
+import { formatDay } from '@/lib/date';
+import { formatMoney } from '@/lib/money';
+import { useServerState } from '@/lib/use-server-state';
 
 // Browser-scoped tracking of the requests THIS visitor submitted (no login). The
 // request id (a random uuid returned on submit) is the client's capability to
@@ -45,17 +53,23 @@ function rememberId(token: string, id: string) {
 
 const STATUS_TONE: Record<string, BadgeStatus> = { active: 'accent', paused: 'warning', completed: 'success', done: 'success', archived: 'neutral' };
 const statusLabel = (s: string) => (s === 'done' ? 'Completed' : s.charAt(0).toUpperCase() + s.slice(1));
-const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+// Portal dates always carry the year: a client reading an invoice or a signed
+// document has no session context to infer it from.
+const fmtDate = (iso: string) => formatDay(iso, { year: true }) ?? '';
 
 const INVOICE_TONE: Record<PortalInvoice['status'], BadgeStatus> = { sent: 'info', paid: 'success', overdue: 'danger' };
 const invoiceLabel = (s: PortalInvoice['status']) => (s === 'overdue' ? 'Overdue' : s === 'paid' ? 'Paid' : 'Sent');
-const money = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: Number.isInteger(n) ? 0 : 2 }).format(n);
+// A client reading their own invoice wants the exact figure, cents included.
+const money = (n: number) => formatMoney(n, { exact: true });
 
-type SectionId = 'overview' | 'approvals' | 'forms' | 'requests' | 'work' | 'invoices' | 'documents';
+type SectionId = 'overview' | 'updates' | 'approvals' | 'forms' | 'requests' | 'work' | 'invoices' | 'documents';
 type NavItem = { id: SectionId; label: string; icon: IconType; count?: number };
 
 // Shared small-caps section label (used inside Overview groups).
-const labelStyle: React.CSSProperties = { fontSize: 'var(--text-label-size)', fontWeight: 500, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-secondary)', margin: 0 };
+// Sentence case, like every label in the app — this is what a CLIENT reads, so
+// it is the last place to be shouting. The tracking only ever existed to keep
+// capitals legible, and went with them.
+const labelStyle: React.CSSProperties = { fontSize: 'var(--text-label-size)', fontWeight: 500, color: 'var(--text-secondary)', margin: 0 };
 
 export function PortalDocument({ view, token, preview = false, demoStatuses, embedded = false }: { view: PortalView; token?: string; preview?: boolean; demoStatuses?: PortalRequestStatus[]; embedded?: boolean }) {
   // Request lifecycle state is lifted here so the nav badge, the Overview
@@ -64,10 +78,21 @@ export function PortalDocument({ view, token, preview = false, demoStatuses, emb
   const refreshRequests = useCallback(async () => {
     if (demoStatuses || preview || !token) return;
     const ids = readIds(token);
-    if (ids.length === 0) { setRequests([]); return; }
+    // Nothing sent from this browser: the empty initial state already says so. Setting it again here was a
+    // synchronous setState inside the mount effect (react-hooks/set-state-in-effect) for no change; ids only grow.
+    if (ids.length === 0) return;
     setRequests(await getClientRequestStatuses(token, ids));
   }, [token, preview, demoStatuses]);
-  useEffect(() => { refreshRequests(); }, [refreshRequests]);
+  // On arrival, fetch in the effect and set state in its callback — with a cleanup, so a portal closed before the
+  // answer lands never sets it. `refreshRequests` is for after a submit, from the event that caused it.
+  useEffect(() => {
+    if (demoStatuses || preview || !token) return;
+    const ids = readIds(token);
+    if (ids.length === 0) return;
+    let live = true;
+    getClientRequestStatuses(token, ids).then((r) => { if (live) setRequests(r); });
+    return () => { live = false; };
+  }, [token, preview, demoStatuses]);
   const onSubmitted = (id: string) => { if (token) rememberId(token, id); refreshRequests(); };
 
   // Derived, section-agnostic counts.
@@ -79,12 +104,16 @@ export function PortalDocument({ view, token, preview = false, demoStatuses, emb
   // Nav is built from what's actually shared — hidden sections never appear.
   const nav = useMemo(() => ([
     { id: 'overview', label: 'Overview', icon: LayoutGrid },
+    // Only when there is more than one: a single update already reads in full
+    // on the Overview, and a nav item leading to the same paragraph is a door
+    // into the room you are standing in.
+    (view.updates?.length ?? 0) > 1 ? { id: 'updates', label: 'Updates', icon: Megaphone, count: view.updates!.length } : null,
     view.approvals ? { id: 'approvals', label: 'To review', icon: CheckCircle, count: awaitingCount || undefined } : null,
     view.forms ? { id: 'forms', label: 'Forms', icon: SquarePen, count: view.forms.length || undefined } : null,
     (view.allowRequests || requests.length) ? { id: 'requests', label: 'Requests', icon: Inbox, count: needsInputCount || undefined } : null,
-    (view.open || view.completed) ? { id: 'work', label: 'Work', icon: List } : null,
+    (view.open || view.completed || view.streams) ? { id: 'work', label: 'Work', icon: List } : null,
     view.invoices ? { id: 'invoices', label: 'Invoices', icon: Receipt, count: unpaid.length || undefined } : null,
-    view.docs ? { id: 'documents', label: 'Documents', icon: Files } : null,
+    (view.docs || view.files) ? { id: 'documents', label: 'Documents', icon: Files } : null,
   ].filter(Boolean) as NavItem[]), [view, requests.length, awaitingCount, needsInputCount, unpaid.length]);
 
   const [active, setActive] = useState<SectionId>('overview');
@@ -109,8 +138,8 @@ export function PortalDocument({ view, token, preview = false, demoStatuses, emb
                 className={cn(
                   'focus-ring flex h-9 items-center gap-2.5 rounded-md px-2.5 text-left text-[13px] transition-colors',
                   active === item.id
-                    ? 'font-medium text-[var(--ink)] [background:var(--paper-2)]'
-                    : 'text-[var(--text-secondary)] hover:text-[var(--ink)] hover:[background:var(--paper)]',
+                    ? 'font-medium text-[var(--ink)] bg-surface-active'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--ink)] hover:bg-surface-hover',
                 )}
               >
                 <Icon icon={item.icon} size={16} />
@@ -137,11 +166,11 @@ export function PortalDocument({ view, token, preview = false, demoStatuses, emb
               className={cn(
                 'focus-ring inline-flex h-9 shrink-0 items-center gap-2 rounded-full border px-3.5 text-[13px] transition-colors',
                 active === item.id
-                  ? 'font-medium text-[var(--ink)] [background:var(--paper-2)] [border-color:var(--line)]'
-                  : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--ink)]',
+                  ? 'font-medium text-[var(--ink)] bg-surface-active [border-color:var(--line)]'
+                  : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--ink)] hover:bg-surface-hover',
               )}
             >
-              <Icon icon={item.icon} size={15} />
+              <Icon icon={item.icon} size={16} />
               {item.label}
               {item.count ? <Count n={item.count} /> : null}
             </button>
@@ -153,6 +182,7 @@ export function PortalDocument({ view, token, preview = false, demoStatuses, emb
       <main className="min-w-0 flex-1">
         <div className="mx-auto w-full max-w-[960px] px-4 py-7 sm:px-6 lg:px-12 lg:py-11">
           {active === 'overview' && <Overview {...sectionProps} />}
+          {active === 'updates' && <UpdatesSection {...sectionProps} />}
           {active === 'approvals' && <ApprovalsSection {...sectionProps} />}
           {active === 'forms' && <FormsSection {...sectionProps} />}
           {active === 'requests' && <RequestsSection {...sectionProps} />}
@@ -221,8 +251,8 @@ function Group({ title, action, children }: { title: string; action?: React.Reac
 
 function ViewAll({ onClick }: { onClick: () => void }) {
   return (
-    <button onClick={onClick} className="focus-ring inline-flex items-center gap-1 rounded-sm text-[12px] transition-colors" style={{ color: 'var(--text-secondary)' }}>
-      View all <Icon icon={ArrowRight} size={13} />
+    <button onClick={onClick} className="focus-ring touch-min inline-flex items-center gap-1 rounded-sm text-[12px] transition-colors" style={{ color: 'var(--text-secondary)' }}>
+      View all <Icon icon={ArrowRight} size={12} />
     </button>
   );
 }
@@ -265,24 +295,39 @@ function Overview({ view, token, preview, awaitingCount, unpaid, unpaidTotal, go
         </Group>
       )}
 
+      {/* What we SAID leads what we DID. A client opening this wants a sentence
+          from a person before a list of finished tickets, and until now the
+          list of finished tickets was all there was. */}
+      {view.updates && view.updates.length > 0 && (
+        <Group title="Latest update" action={view.updates.length > 1 ? <ViewAll onClick={() => go('updates')} /> : undefined}>
+          <UpdateNote update={view.updates[0]} />
+        </Group>
+      )}
+
       {view.timeline && (
-        <Group title="Recent updates">
-          {view.timeline.length === 0 ? <Empty line="No updates yet." /> : <TimelineList items={view.timeline.slice(0, 6)} />}
+        <Group title="Recently completed">
+          {view.timeline.length === 0 ? <Empty line="Nothing completed yet." /> : <TimelineList items={view.timeline.slice(0, 6)} />}
         </Group>
       )}
     </div>
   );
 }
 
+// ── The portal's card: the app's own ─────────────────────────────────────────
+// Every card here is the house card — `bg-surface-raised`, a hairline, `rounded-lg` — the same object the studio
+// sees in the app. They were `paper-2` fills on the portal's grey page at `r-xl` and `r-2xl`: a second, softer card
+// language, so a client looked at a different product from the one their studio works in (audit, 2026-09-22).
+const CARD = CARD_CLASS;
+
 // ── Generous metric card ──────────────────────────────────────────────────
 function StatCard({ label, value, sub, meter }: { label: string; value: string; sub?: string; meter?: number }) {
   return (
-    <div style={{ background: 'var(--paper-2)', border: '1px solid var(--line)', borderRadius: 'var(--r-2xl)', padding: '18px 20px' }}>
+    <div className={cn(CARD, 'px-5 py-[18px]')}>
       <span style={labelStyle}>{label}</span>
       <div className="num" style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-h1-size)', fontWeight: 600, letterSpacing: '-0.02em', lineHeight: 1.05, color: 'var(--ink)', marginTop: 12 }}>{value}</div>
       {meter != null && (
         <div style={{ marginTop: 12, height: 6, borderRadius: 'var(--r-full)', background: 'color-mix(in srgb, var(--ink) 8%, transparent)', overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${meter}%`, background: 'var(--ink)', transition: 'width 300ms' }} />
+          <div style={{ height: '100%', width: '100%', background: 'var(--ink)', transform: `translateX(-${100 - Math.min(100, Math.max(0, meter))}%)`, transition: 'transform var(--duration-base) var(--ease-standard)' }} />
         </div>
       )}
       {sub && <div style={{ marginTop: 10, fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)' }}>{sub}</div>}
@@ -323,9 +368,9 @@ function FormsSection({ view, preview }: SP) {
  */
 function FormCard({ form, preview }: { form: PortalForm; preview?: boolean }) {
   return (
-    <div style={{ background: 'var(--paper-2)', border: '1px solid var(--line)', borderRadius: 'var(--r-xl)', padding: '16px 18px' }}>
+    <div className={cn(CARD, 'px-[18px] py-4')}>
       <div className="flex items-center gap-2.5">
-        <Icon icon={SquarePen} size={15} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
+        <Icon icon={SquarePen} size={16} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
         <span className="min-w-0 flex-1" style={{ fontSize: 'var(--text-body-size)', fontWeight: 600, color: 'var(--ink)' }}>{form.title}</span>
       </div>
       {form.description && (
@@ -333,12 +378,14 @@ function FormCard({ form, preview }: { form: PortalForm; preview?: boolean }) {
       )}
       <div className="mt-3.5" style={{ paddingLeft: 23 }}>
         {preview ? (
-          <Button variant="primary" size="sm" disabled>Open the form</Button>
+          <Button variant="secondary" size="sm" disabled>Open the form</Button>
         ) : (
           // A real <a>, styled with the DS button cva. NOT <Button asChild>: this
           // Button renders its own <span> wrapper, so Radix Slot has no single
           // element to merge onto and throws (see zenboard-ds-gotchas).
-          <a href={`/f/${form.token}`} className={button({ variant: 'primary', size: 'sm' })}>
+          // Secondary: an action in a list of cards is one of several — a filled button on every card is no longer
+          // the one thing to do (CLAUDE.md: one filled button per view).
+          <a href={`/f/${form.token}`} className={button({ variant: 'secondary', size: 'sm' })}>
             Open the form
           </a>
         )}
@@ -368,19 +415,32 @@ function RequestsSection({ view, token, preview, requests, refreshRequests, onSu
   );
 }
 
-// ── WORK — open + completed, grouped ──────────────────────────────────────
+// ── WORK — workstreams first, then anything ungrouped ─────────────────────
+//
+// A workstream is the shape an agency's client already thinks in ("where are we
+// on packaging?"), so it leads. Streams the studio kept internal never reach
+// this component at all — lib/portal.ts does not fetch them — which is why
+// there is no "hidden" affordance anywhere here to give one away.
+//
+// A project with no client-facing workstreams renders exactly as it did before
+// they existed: one In progress list and one Completed list.
 function WorkSection({ view }: SP) {
+  const streams = view.streams ?? [];
   const open = view.open ?? [];
   const completed = view.completed ?? [];
-  const empty = open.length + completed.length === 0;
+  const empty = streams.length + open.length + completed.length === 0;
+  // Only worth a heading of its own when there is something above it to be
+  // distinguished FROM.
+  const looseLabel = streams.length > 0;
   return (
     <div>
       <PageHeader title="Work" caption="Everything we're building for you, and what's already shipped." />
       {empty ? <Empty line="No tasks yet." /> : (
         <div className="grid gap-8">
+          {streams.map((s) => <StreamGroup key={s.id} stream={s} />)}
           {open.length > 0 && (
             <div>
-              <div className="mb-2 flex items-center gap-2"><h2 style={labelStyle}>In progress</h2><Count n={open.length} /></div>
+              <div className="mb-2 flex items-center gap-2"><h2 style={labelStyle}>{looseLabel ? 'Everything else' : 'In progress'}</h2><Count n={open.length} /></div>
               <div>{open.map((t) => <TaskRow key={t.id} title={t.title} />)}</div>
             </div>
           )}
@@ -396,11 +456,61 @@ function WorkSection({ view }: SP) {
   );
 }
 
+// One workstream: its name, how far along it is, then its work — open first,
+// because "what is happening" is the question, and finished items are the
+// answer to a different one.
+function StreamGroup({ stream: s }: { stream: PortalStream }) {
+  const total = s.open.length + s.completed.length;
+  return (
+    <div>
+      <div className="mb-2 flex items-center gap-2">
+        <h2 style={labelStyle}>{s.name}</h2>
+        <Count n={total} />
+        <span className="flex-1" />
+        <span className="num" style={{ fontSize: 'var(--text-label-size)', color: 'var(--text-secondary)' }}>
+          {s.completed.length} of {total} done
+        </span>
+      </div>
+      <div aria-hidden style={{ height: 3, borderRadius: 999, background: 'var(--line-2)', overflow: 'hidden' }}>
+        <div style={{ width: `${s.pct}%`, height: '100%', background: 'var(--ink)' }} />
+      </div>
+      <div>
+        {s.open.map((t) => <TaskRow key={t.id} title={t.title} />)}
+        {s.completed.map((t) => <TaskRow key={t.id} title={t.title} done />)}
+      </div>
+    </div>
+  );
+}
+
 function TaskRow({ title, done }: { title: string; done?: boolean }) {
   return (
     <div className="flex items-center gap-3" style={{ padding: '11px 2px', borderTop: '1px solid var(--line-2)' }}>
       <Icon icon={done ? CheckCircle : Circle} size={16} style={{ color: done ? 'var(--green-text)' : 'var(--text-secondary)', flexShrink: 0 }} />
       <span style={{ fontSize: 'var(--text-body-size)', color: done ? 'var(--text-secondary)' : 'var(--ink)' }}>{title}</span>
+    </div>
+  );
+}
+
+// ── UPDATES — the one section that is a person talking ─────────────────────
+function UpdatesSection({ view }: SP) {
+  const list = view.updates ?? [];
+  return (
+    <div>
+      <PageHeader title="Updates" caption="Where things stand, in our words." />
+      {list.length === 0 ? <Empty line="No updates yet." /> : (
+        <div className="grid gap-6">{list.map((u) => <UpdateNote key={u.id} update={u} />)}</div>
+      )}
+    </div>
+  );
+}
+
+// Prose, not a row. The date sits under the words rather than in a fixed column
+// like the timeline's, because this is something to read, not something to scan.
+function UpdateNote({ update: u }: { update: PortalUpdate }) {
+  return (
+    <div>
+      <p style={{ margin: 0, maxWidth: 640, fontSize: 'var(--text-body-lg-size)', lineHeight: 1.65, color: 'var(--ink)', whiteSpace: 'pre-wrap' }}>{u.body}</p>
+      <div className="num" style={{ marginTop: 8, fontSize: 'var(--text-label-size)', color: 'var(--text-secondary)' }}>{fmtDate(u.at)}</div>
     </div>
   );
 }
@@ -447,21 +557,81 @@ function InvoicesSection({ view, unpaidTotal }: SP) {
 }
 
 // ── DOCUMENTS ─────────────────────────────────────────────────────────────
-function DocumentsSection({ view }: SP) {
+function DocumentsSection({ view, token, preview }: SP) {
   const list = view.docs ?? [];
+  const files = view.files ?? [];
   return (
     <div>
       <PageHeader title="Documents" caption="Files and notes shared with you." />
-      {list.length === 0 ? <Empty line="No shared documents." /> : (
-        <div>
-          {list.map((d) => (
-            <div key={d.id} style={{ padding: '14px 2px', borderTop: '1px solid var(--line-2)' }}>
-              <div className="flex items-center gap-2" style={{ marginBottom: d.text ? 6 : 0 }}>
-                <Icon icon={FileText} size={15} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
-                <span style={{ fontSize: 'var(--text-body-size)', fontWeight: 600, color: 'var(--ink)' }}>{d.title}</span>
-              </div>
-              {d.text && <p style={{ margin: 0, paddingLeft: 23, fontSize: 'var(--text-small-size)', lineHeight: 1.6, color: 'var(--ink-2)', whiteSpace: 'pre-wrap' }}>{d.text}</p>}
-            </div>
+      {list.length === 0 && files.length === 0 ? <Empty line="No shared documents." /> : (
+        <div className="grid gap-8">
+          {list.length > 0 && (
+            <div>{list.map((d) => <DocumentRow key={d.id} doc={d} token={token} preview={preview} />)}</div>
+          )}
+          {files.length > 0 && <FilesGroup files={files} token={token} preview={preview} />}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── FILES ─────────────────────────────────────────────────────────────────
+// Deliverables the studio uploaded. Shown under Documents rather than as a
+// seventh nav item: to a client "the brief" and "the logo pack" are the same
+// errand, and a nav that splits them by how they were authored is our filing
+// again, not their project.
+function FilesGroup({ files, token, preview }: { files: PortalFile[]; token?: string; preview?: boolean }) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function open(f: PortalFile) {
+    // The preview is the owner looking at their own portal. Signing a real URL
+    // there would work, but it is not what the client's click does, and this
+    // component's whole contract is that the two are the same thing.
+    if (preview || !token) { setError('File downloads open on the live portal.'); return; }
+    setBusy(f.id); setError(null);
+    const res = await signPortalFile(token, f.id);
+    setBusy(null);
+    if ('error' in res) { setError(res.error); return; }
+    window.open(res.url, '_blank', 'noopener,noreferrer');
+  }
+
+  return (
+    <div>
+      <div className="mb-2 flex items-center gap-2"><h2 style={labelStyle}>Files</h2><Count n={files.length} /></div>
+      <div>
+        {files.map((f) => (
+          <div key={f.id} className="flex items-center gap-3" style={{ padding: '11px 2px', borderTop: '1px solid var(--line-2)' }}>
+            <Icon icon={Files} size={16} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
+            <span className="min-w-0 flex-1 truncate" style={{ fontSize: 'var(--text-body-size)', color: 'var(--ink)' }}>{f.filename}</span>
+            <span className="num shrink-0" style={{ fontSize: 'var(--text-label-size)', color: 'var(--text-secondary)' }}>{formatBytes(f.size)}</span>
+            <Button size="sm" variant="secondary" loading={busy === f.id} onClick={() => void open(f)}>Download</Button>
+          </div>
+        ))}
+      </div>
+      {error && <div role="status" style={{ marginTop: 8, fontSize: 'var(--text-label-size)', color: 'var(--text-secondary)' }}>{error}</div>}
+    </div>
+  );
+}
+
+function DocumentRow({ doc: d, token, preview }: { doc: PortalDoc; token?: string; preview?: boolean }) {
+  const paperwork = !!d.items || d.accepts.length > 0;
+  return (
+    <div style={{ padding: '14px 2px', borderTop: '1px solid var(--line-2)' }}>
+      <div className="flex items-center gap-2" style={{ marginBottom: d.text || paperwork ? 6 : 0 }}>
+        <Icon icon={FileText} size={16} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
+        <span style={{ fontSize: 'var(--text-body-size)', fontWeight: 600, color: 'var(--ink)' }}>{d.title}</span>
+      </div>
+      {d.text && <p style={{ margin: 0, paddingLeft: 23, fontSize: 'var(--text-small-size)', lineHeight: 1.6, color: 'var(--ink-2)', whiteSpace: 'pre-wrap' }}>{d.text}</p>}
+
+      {paperwork && (
+        <div style={{ paddingLeft: 23, marginTop: 10 }}>
+          {/* The same block components the owner authored with, read-only. A
+              second portal-only rendering could show a different total or
+              different wording from the document that was signed. */}
+          {d.items && <LineItemsBlock items={d.items} onChange={() => {}} readOnly />}
+          {d.accepts.map((a) => (
+            <SignBlock key={a.blockId} pageId={d.id} accept={a} token={token} preview={preview} />
           ))}
         </div>
       )}
@@ -469,30 +639,62 @@ function DocumentsSection({ view }: SP) {
   );
 }
 
+// The one write the portal makes to a document. `preview` is the owner looking
+// at their own portal — the block renders exactly as the client sees it, but
+// signing is refused, because a studio must not be able to accept on the
+// client's behalf by clicking around in a preview.
+function SignBlock({ pageId, accept, token, preview }: { pageId: string; accept: PortalAccept; token?: string; preview?: boolean }) {
+  const [signed, setSigned] = useState<Acceptance | null>(accept.acceptance);
+  return (
+    <AcceptBlock
+      terms={accept.terms}
+      acceptance={signed}
+      onAccept={async (name, email) => {
+        if (preview) return { error: 'This is a preview — your client signs from their own link.' };
+        if (!token) return { error: 'This link can’t record a signature.' };
+        const res = await submitAcceptance(token, pageId, accept.blockId, name, email);
+        if ('error' in res) return res;
+        setSigned(res.acceptance);
+        return { ok: true } as const;
+      }}
+    />
+  );
+}
+
 // ── Client-actionable cards (unchanged logic) ─────────────────────────────
 function StatusCard({ item, token, preview, onReplied }: { item: PortalRequestStatus; token?: string; preview?: boolean; onReplied: () => void }) {
   const [reply, setReply] = useState('');
   const [sending, setSending] = useState(false);
-  const [msgs, setMsgs] = useState(item.messages);
-  useEffect(() => setMsgs(item.messages), [item.messages]);
+  // A hint carries whether it is about the FIELD ("write something") or about
+  // the link or the server. Only the first marks the textarea invalid — a red
+  // box around text that is perfectly fine tells a screen reader the wrong thing.
+  const [hint, setHint] = useState<{ text: string; field?: boolean } | null>(null);
+  const replyId = useId();
+  const [msgs, setMsgs] = useServerState(item.messages);
 
   const thread: ThreadMessage[] = msgs.map((m) => ({ author: m.author, body: m.body, createdAt: m.createdAt }));
 
   async function send() {
-    if (preview || !token) return;
     const text = reply.trim();
-    if (text.length < 1) return;
+    // EVERY WAY OUT OF THIS FUNCTION SAYS SOMETHING. It used to return silently
+    // four ways — empty reply, the owner's preview, a link with no token, and a
+    // server refusal — so a press could do nothing and explain nothing. The
+    // empty case was invisible anyway: the button was disabled, and the DS
+    // renders that as a pale wash, so the action read as absent.
+    if (text.length < 1) { setHint({ text: 'Write a reply first.', field: true }); document.getElementById(replyId)?.focus(); return; }
+    if (preview) { setHint({ text: 'This is a preview — your client replies from their own link.' }); return; }
+    if (!token) { setHint({ text: 'This link can’t send a reply.' }); return; }
     setSending(true);
     const res = await submitClientReply(token, item.id, text);
     setSending(false);
-    if ('error' in res) return;
+    if ('error' in res) { setHint({ text: res.error }); return; }
     setMsgs((ms) => [...ms, { author: 'client', body: text, createdAt: new Date().toISOString() }]);
     setReply('');
     onReplied();
   }
 
   return (
-    <div style={{ background: 'var(--paper-2)', border: '1px solid var(--line)', borderRadius: 'var(--r-xl)', padding: '16px 18px' }}>
+    <div className={cn(CARD, 'px-[18px] py-4')}>
       <div className="flex items-center gap-2.5">
         <span className="min-w-0 flex-1" style={{ fontSize: 'var(--text-body-size)', fontWeight: 600, color: 'var(--ink)' }}>{item.title}</span>
         <Badge status={CLIENT_LABEL_TONE[item.label] as BadgeStatus}>{item.label}</Badge>
@@ -506,9 +708,11 @@ function StatusCard({ item, token, preview, onReplied }: { item: PortalRequestSt
 
       {item.canReply && (
         <div className="mt-3 grid gap-2">
-          <Textarea value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Reply…" rows={3} />
+          <Textarea id={replyId} value={reply} onChange={(e) => { setReply(e.target.value); if (hint) setHint(null); }}
+            placeholder="Reply…" rows={3} aria-invalid={!!hint?.field} />
+          {hint && <p role="alert" className="m-0 text-meta text-danger">{hint.text}</p>}
           <div className="flex justify-end">
-            <Button variant="primary" size="sm" onClick={send} disabled={preview || sending || reply.trim().length < 1} icon={<Icon icon={Send} size={13} />}>{sending ? 'Sending…' : 'Reply'}</Button>
+            <Button variant="secondary" size="sm" onClick={send} disabled={sending} icon={<Icon icon={Send} size={12} />}>{sending ? 'Sending…' : 'Reply'}</Button>
           </div>
         </div>
       )}
@@ -522,25 +726,32 @@ function ApprovalCard({ approval, token, preview }: { approval: PortalApproval; 
   const [asking, setAsking] = useState(false);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
+  // Same contract as the reply above: the button stays pressable, and every way
+  // out of these two says something. A client deciding on work they are paying
+  // for is the last person who should press a button and get silence.
+  const [hint, setHint] = useState<{ text: string; field?: boolean } | null>(null);
+  const draftId = useId();
 
   async function approve() {
-    if (preview || !token) return;
+    if (preview) { setHint({ text: 'This is a preview — your client approves from their own link.' }); return; }
+    if (!token) { setHint({ text: 'This link can’t record a decision.' }); return; }
     setBusy(true);
     const res = await submitApprovalDecision(token, approval.id, 'approved');
     setBusy(false);
-    if ('error' in res) return;
-    setStatus('approved'); setNote(null); setAsking(false);
+    if ('error' in res) { setHint({ text: res.error }); return; }
+    setStatus('approved'); setNote(null); setAsking(false); setHint(null);
   }
 
   async function requestChanges() {
-    if (preview || !token) return;
     const text = draft.trim();
-    if (text.length < 2) return;
+    if (text.length < 2) { setHint({ text: 'Say what needs changing.', field: true }); document.getElementById(draftId)?.focus(); return; }
+    if (preview) { setHint({ text: 'This is a preview — your client answers from their own link.' }); return; }
+    if (!token) { setHint({ text: 'This link can’t record a decision.' }); return; }
     setBusy(true);
     const res = await submitApprovalDecision(token, approval.id, 'changes_requested', text);
     setBusy(false);
-    if ('error' in res) return;
-    setStatus('changes_requested'); setNote(text); setAsking(false); setDraft('');
+    if ('error' in res) { setHint({ text: res.error }); return; }
+    setStatus('changes_requested'); setNote(text); setAsking(false); setDraft(''); setHint(null);
   }
 
   const resolved = status !== 'awaiting';
@@ -548,9 +759,9 @@ function ApprovalCard({ approval, token, preview }: { approval: PortalApproval; 
   const label = status === 'approved' ? 'Approved' : status === 'changes_requested' ? 'Changes requested' : 'Please review';
 
   return (
-    <div style={{ background: 'var(--paper-2)', border: '1px solid var(--line)', borderRadius: 'var(--r-xl)', padding: '16px 18px' }}>
+    <div className={cn(CARD, 'px-[18px] py-4')}>
       <div className="flex items-center gap-2.5">
-        <Icon icon={FileText} size={15} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
+        <Icon icon={FileText} size={16} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
         <span className="min-w-0 flex-1" style={{ fontSize: 'var(--text-body-size)', fontWeight: 600, color: 'var(--ink)' }}>{approval.title}</span>
         <Badge status={tone}>{label}</Badge>
       </div>
@@ -560,18 +771,25 @@ function ApprovalCard({ approval, token, preview }: { approval: PortalApproval; 
       )}
 
       {!resolved && !asking && (
-        <div className="mt-3.5 flex gap-2">
-          <Button variant="primary" size="sm" onClick={approve} disabled={preview || busy} icon={<Icon icon={CheckCircle} size={14} />}>Approve</Button>
-          <Button variant="outline" size="sm" onClick={() => setAsking(true)} disabled={preview}>Request changes</Button>
+        <div className="mt-3.5 grid gap-2">
+          <div className="flex gap-2">
+            {/* Secondary, like "Request changes" beside it: two answers to one question, neither pushed. A filled
+                Approve on every card in the list was also a filled button per card. */}
+            <Button variant="secondary" size="sm" onClick={approve} disabled={busy} icon={<Icon icon={CheckCircle} size={14} />}>Approve</Button>
+            <Button variant="secondary" size="sm" onClick={() => setAsking(true)}>Request changes</Button>
+          </div>
+          {hint && <p role="alert" className="m-0 text-meta text-danger">{hint.text}</p>}
         </div>
       )}
 
       {!resolved && asking && (
         <div className="mt-3 grid gap-2">
-          <Textarea value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="What needs changing?" rows={3} />
+          <Textarea id={draftId} value={draft} onChange={(e) => { setDraft(e.target.value); if (hint) setHint(null); }}
+            placeholder="What needs changing?" rows={3} aria-invalid={!!hint?.field} />
+          {hint && <p role="alert" className="m-0 text-meta text-danger">{hint.text}</p>}
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" size="sm" onClick={() => { setAsking(false); setDraft(''); }}>Cancel</Button>
-            <Button variant="primary" size="sm" onClick={requestChanges} disabled={preview || busy || draft.trim().length < 2} icon={<Icon icon={Send} size={13} />}>Send</Button>
+            <Button variant="ghost" size="sm" onClick={() => { setAsking(false); setDraft(''); setHint(null); }}>Cancel</Button>
+            <Button variant="primary" size="sm" onClick={requestChanges} disabled={busy} icon={<Icon icon={Send} size={12} />}>Send</Button>
           </div>
         </div>
       )}
@@ -597,7 +815,7 @@ function RequestForm({ token, preview, onSubmitted }: { token?: string; preview?
 
   if (state === 'sent') {
     return (
-      <div style={{ background: 'var(--paper-2)', border: '1px solid var(--line)', borderRadius: 'var(--r-xl)', padding: 20, textAlign: 'center' }}>
+      <div className={cn(CARD, 'p-5 text-center')}>
         <Icon icon={CheckCircle} size={20} style={{ color: 'var(--green-text)' }} />
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-h2-size)', color: 'var(--ink)', marginTop: 6 }}>Request sent.</div>
         <div style={{ fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)', marginTop: 2 }}>You’ll see its status above as the team responds.</div>
@@ -607,8 +825,8 @@ function RequestForm({ token, preview, onSubmitted }: { token?: string; preview?
   }
 
   return (
-    <div style={{ background: 'var(--paper-2)', border: '1px solid var(--line)', borderRadius: 'var(--r-xl)', padding: 14, display: 'grid', gap: 10 }}>
-      <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name (optional)" autoComplete="off" />
+    <div className={cn(CARD, 'grid gap-2.5 p-3.5')}>
+      <TextInput value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name (optional)" autoComplete="off" />
       <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Describe your request…" rows={4} />
       {error && <div style={{ fontSize: 'var(--text-caption-size)', color: 'var(--red-text)' }}>{error}</div>}
       <div className="flex items-center justify-between">
@@ -619,6 +837,8 @@ function RequestForm({ token, preview, onSubmitted }: { token?: string; preview?
   );
 }
 
+// The portal's section-empty line is the app's, plus the rule above it that
+// separates it from the section heading.
 function Empty({ line }: { line: string }) {
-  return <div style={{ padding: '18px 2px', fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)', borderTop: '1px solid var(--line-2)' }}>{line}</div>;
+  return <EmptyLine className="border-t border-line-soft py-4">{line}</EmptyLine>;
 }

@@ -4,6 +4,7 @@ import { Plus, Search } from "@/lib/icons";
 import { cn } from "@/lib/cn";
 import { Kbd } from "./kbd";
 import { rank } from "./combobox";
+import { useChanged } from "@/lib/use-changed";
 
 // design-system.md §4.33 — the keyboard spine of Zenboard. Not a search box:
 // THE interface for daily users. Active row is paper-4, never berry (a berry
@@ -68,13 +69,13 @@ export function CommandMenu({ open, onOpenChange, items, recentIds = [], creator
   const listRef = React.useRef<HTMLDivElement>(null);
   const listId = React.useId();
 
-  React.useEffect(() => {
-    if (open) {
-      setQuery("");
-      setMode(null);
-      setActive(0);
-    }
-  }, [open]);
+  // Reset while rendering, not after: an effect cleared these post-paint, so
+  // reopening flashed the previous query for a frame.
+  if (useChanged(open) && open) {
+    setQuery("");
+    setMode(null);
+    setActive(0);
+  }
 
   // Mode prefix becomes a chip inside the input (§4.33).
   const onQueryChange = (raw: string) => {
@@ -129,7 +130,9 @@ export function CommandMenu({ open, onOpenChange, items, recentIds = [], creator
     return { groups, flat: groups.flatMap((g) => g.rows) };
   }, [items, query, mode, recentIds, creators]);
 
-  React.useEffect(() => setActive(0), [query, mode]);
+  const queryChanged = useChanged(query);
+  const modeChanged = useChanged(mode);
+  if (queryChanged || modeChanged) setActive(0);
 
   // Debounced polite count (§4.33).
   const [announce, setAnnounce] = React.useState("");
@@ -174,20 +177,19 @@ export function CommandMenu({ open, onOpenChange, items, recentIds = [], creator
   return (
     <RDlg.Root open={open} onOpenChange={onOpenChange}>
       <RDlg.Portal>
-        <RDlg.Overlay className="fixed inset-0 z-overlay bg-[var(--color-scrim)] backdrop-blur-[2px] data-[state=open]:animate-fadein" />
+        <RDlg.Overlay className="fixed inset-0 z-overlay bg-[var(--color-scrim)] backdrop-blur-[2px]" />
         <RDlg.Content
           aria-label="Command menu"
           aria-describedby={undefined}
           className={cn(
             "fixed left-1/2 top-[20vh] z-modal flex max-h-[440px] w-[640px] max-w-[calc(100vw-32px)] -translate-x-1/2 flex-col overflow-hidden",
             "rounded-lg border border-line bg-paper shadow-lift-3",
-            "data-[state=open]:animate-rise data-[state=closed]:animate-exit",
           )}
         >
           <RDlg.Title className="sr-only">Command menu</RDlg.Title>
           {/* Input row */}
           <div className="flex h-14 shrink-0 items-center gap-3 border-b border-line-soft px-4">
-            <Search className="size-4 shrink-0 text-ink-400" aria-hidden />
+            <Search className="size-4 shrink-0 text-ink-500" aria-hidden />
             {mode && (
               <span className="flex h-6 shrink-0 items-center rounded-xs bg-paper-4 px-1.5 text-ui font-medium text-ink-800">
                 {MODE_LABEL[mode]}
@@ -220,7 +222,7 @@ export function CommandMenu({ open, onOpenChange, items, recentIds = [], creator
             )}
             {groups.map((g) => (
               <div key={g.name} role="group" aria-label={g.name}>
-                <div className="px-2 pb-1 pt-2 text-overline uppercase text-ink-500">{g.name}</div>
+                <div className="px-2 pb-1 pt-2 text-overline text-ink-500">{g.name}</div>
                 {g.rows.map((row) => {
                   rowIndex++;
                   const i = rowIndex;
@@ -237,7 +239,7 @@ export function CommandMenu({ open, onOpenChange, items, recentIds = [], creator
                       onClick={() => run(row)}
                       className={cn(
                         "flex h-10 cursor-pointer items-center gap-2.5 rounded-sm px-2",
-                        isActive && "bg-paper-4",
+                        isActive && "bg-surface-hover",
                       )}
                     >
                       {row.kind === "item" ? (

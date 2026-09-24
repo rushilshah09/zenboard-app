@@ -1,138 +1,349 @@
-import * as React from "react";
-import * as RD from "@radix-ui/react-dropdown-menu";
-import { Check, ChevronRight, Circle } from "@/lib/icons";
-import { cn } from "@/lib/cn";
-import { Kbd } from "./kbd";
+"use client"
 
-// design-system.md §4.34 — the action menu. Emerge from the trigger edge,
-// origin follows placement. ONE highlight state shared by hover and keyboard.
-// Danger last, after a separator. Submenus: safe-triangle (Radix built-in).
+import * as React from "react"
+import { cn } from "@/lib/cn"
+// The registry imports these from lucide-react. This app has one icon seam
+// (components/ds/icons.ts → @/lib/icons) and no lucide dependency, so the
+// glyphs come from there instead — switching icon sets stays a one-file change.
+import { Check as CheckIcon, ChevronRight as ChevronRightIcon } from "@/lib/icons"
+import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui"
+// The one overlay chrome (menu.tsx): every floating surface shares it.
+import { OVERLAY_CLASS } from "./menu"
 
-export const DropdownMenu = RD.Root;
-export const DropdownMenuTrigger = RD.Trigger;
-export const DropdownMenuGroup = RD.Group;
-export const DropdownMenuSub = RD.Sub;
-export const DropdownMenuRadioGroup = RD.RadioGroup;
-
-// Chrome shared verbatim with MenuPanel (menu.tsx MENU_PANEL_CLASS / MENU_ITEM_CLASS)
-// so a Radix DropdownMenu and a hand-positioned MenuPanel are pixel-identical.
-// Keeps the placement-aware emerge/exit (superior to pop-in for anchored menus).
-const PANEL =
-  "z-dropdown min-w-[180px] max-w-[320px] rounded-lg border border-line-strong bg-surface-raised p-1.5 shadow-lift-2 " +
-  "data-[state=open]:animate-emerge data-[state=closed]:animate-exit " +
-  "data-[side=bottom]:origin-top data-[side=top]:origin-bottom data-[side=left]:origin-right data-[side=right]:origin-left";
-
-// min-h-8 row · 14px label · 16px leading glyph · 8px pad / 8px gap · 6px radius.
-// Highlight = surface-hover wash (lifts above the surface-raised panel); label colour steady.
-const ITEM =
-  "group/item relative flex min-h-9 w-full cursor-pointer select-none items-center gap-2.5 rounded-md px-2.5 py-1.5 text-ui text-ink-800 outline-none " +
-  "data-[highlighted]:bg-surface-hover " +
-  "data-[disabled]:pointer-events-none data-[disabled]:text-ink-300 " +
-  "[&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-ink-500 data-[highlighted]:[&_svg]:text-ink-700";
-
-export const DropdownMenuContent = React.forwardRef<
-  HTMLDivElement,
-  React.ComponentPropsWithoutRef<typeof RD.Content>
->(function DropdownMenuContent({ className, sideOffset = 4, collisionPadding = 12, ...props }, ref) {
-  return (
-    <RD.Portal>
-      <RD.Content ref={ref} sideOffset={sideOffset} collisionPadding={collisionPadding} className={cn(PANEL, className)} {...props} />
-    </RD.Portal>
-  );
-});
-
-export interface DropdownMenuItemProps extends React.ComponentPropsWithoutRef<typeof RD.Item> {
-  icon?: React.ReactNode;
-  /** Platform-neutral key tokens, e.g. ["mod","D"] — teaches the shortcut (§4.34). */
-  keys?: string[];
-  danger?: boolean;
-  /** Reserve the 16px leading slot so labels align in check/radio menus. */
-  inset?: boolean;
+function DropdownMenu({
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
+  return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />
 }
 
-export const DropdownMenuItem = React.forwardRef<HTMLDivElement, DropdownMenuItemProps>(function DropdownMenuItem(
-  { icon, keys, danger, inset, className, children, ...props },
-  ref,
-) {
+function DropdownMenuPortal({
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Portal>) {
   return (
-    <RD.Item
-      ref={ref}
+    <DropdownMenuPrimitive.Portal data-slot="dropdown-menu-portal" {...props} />
+  )
+}
+
+function DropdownMenuTrigger({
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Trigger>) {
+  return (
+    <DropdownMenuPrimitive.Trigger
+      data-slot="dropdown-menu-trigger"
+      {...props}
+    />
+  )
+}
+
+function DropdownMenuContent({
+  className,
+  sideOffset = 4,
+  keepFocus = false,
+  onCloseAutoFocus,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Content> & {
+  /**
+   * Leave focus where it is — when the menu opens AND when it closes. For a menu
+   * that was only pointed at (the breadcrumb trail opens on hover): the person's
+   * caret is in the document, and moving the mouse across the header took it —
+   * into the menu, then onto the crumb. Radix's focus-on-open is a prop its types
+   * keep private (`onOpenAutoFocus`) but its Content passes through, so it is set
+   * here, in one place, and guarded by dropdown-menu.test.ts.
+   */
+  keepFocus?: boolean
+}) {
+  const stayPut = keepFocus ? { onOpenAutoFocus: (e: Event) => e.preventDefault() } : {}
+  return (
+    <DropdownMenuPrimitive.Portal>
+      <DropdownMenuPrimitive.Content
+        data-slot="dropdown-menu-content"
+        sideOffset={sideOffset}
+        className={cn(
+          "z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto p-1 zb-enter data-[state=open]:animate-emerge data-[state=closed]:animate-exit",
+          OVERLAY_CLASS,
+          className
+        )}
+        onCloseAutoFocus={(e) => {
+          onCloseAutoFocus?.(e)
+          if (keepFocus) e.preventDefault()
+        }}
+        {...(stayPut as object)}
+        {...props}
+      />
+    </DropdownMenuPrimitive.Portal>
+  )
+}
+
+function DropdownMenuGroup({
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Group>) {
+  return (
+    <DropdownMenuPrimitive.Group data-slot="dropdown-menu-group" {...props} />
+  )
+}
+
+function DropdownMenuItemBase({
+  className,
+  inset,
+  variant = "default",
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Item> & {
+  inset?: boolean
+  variant?: "default" | "destructive"
+}) {
+  return (
+    <DropdownMenuPrimitive.Item
+      data-slot="dropdown-menu-item"
+      data-inset={inset}
+      data-variant={variant}
       className={cn(
-        ITEM,
-        inset && "ps-8",
-        danger &&
-          "text-danger-600 data-[highlighted]:bg-danger-100 data-[highlighted]:text-danger-600 [&_svg]:text-danger-600 data-[highlighted]:[&_svg]:text-danger-600",
-        className,
+        "group/item relative flex cursor-default items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-hidden select-none focus:bg-surface-hover data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[inset]:pl-8 data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:text-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground data-[variant=destructive]:*:[svg]:text-destructive!",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function DropdownMenuCheckboxItem({
+  className,
+  children,
+  checked,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.CheckboxItem>) {
+  return (
+    <DropdownMenuPrimitive.CheckboxItem
+      data-slot="dropdown-menu-checkbox-item"
+      className={cn(
+        "group/item relative flex cursor-default items-center gap-2 rounded-sm py-1.5 pr-2 pl-8 text-sm outline-hidden select-none focus:bg-surface-hover data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        className
+      )}
+      checked={checked}
+      {...props}
+    >
+      <span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
+        <DropdownMenuPrimitive.ItemIndicator>
+          <CheckIcon className="size-4" />
+        </DropdownMenuPrimitive.ItemIndicator>
+      </span>
+      {children}
+    </DropdownMenuPrimitive.CheckboxItem>
+  )
+}
+
+function DropdownMenuRadioGroup({
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.RadioGroup>) {
+  return (
+    <DropdownMenuPrimitive.RadioGroup
+      data-slot="dropdown-menu-radio-group"
+      {...props}
+    />
+  )
+}
+
+function DropdownMenuRadioItem({
+  className,
+  children,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.RadioItem>) {
+  return (
+    <DropdownMenuPrimitive.RadioItem
+      data-slot="dropdown-menu-radio-item"
+      // TRAILING CHECK, not the registry's leading dot — and the reason is
+      // cohesion, not taste. This menu system already says "this is the current
+      // one" in one way: the account menu's workspace list, and every
+      // `DropdownMenuItem active`, put a check on the right. A radio group that
+      // says the same thing with a dot on the LEFT gives the same sentence two
+      // grammars inside one menu. The radio SEMANTICS are untouched — this is
+      // still Radix's RadioItem, still `role="menuitemradio"` with aria-checked;
+      // only the glyph the indicator draws has changed.
+      className={cn(
+        "group/item relative flex cursor-default items-center gap-2.5 rounded-md px-2 py-1.5 text-sm outline-hidden select-none focus:bg-surface-hover data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        className
+      )}
+      {...props}
+    >
+      {children}
+      <DropdownMenuPrimitive.ItemIndicator className="ms-auto">
+        <CheckIcon className="size-4" />
+      </DropdownMenuPrimitive.ItemIndicator>
+    </DropdownMenuPrimitive.RadioItem>
+  )
+}
+
+function DropdownMenuLabel({
+  className,
+  inset,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Label> & {
+  inset?: boolean
+}) {
+  return (
+    <DropdownMenuPrimitive.Label
+      data-slot="dropdown-menu-label"
+      data-inset={inset}
+      className={cn(
+        // The registry styles a label exactly like an item — same size, same weight,
+// same padding — so a section heading is indistinguishable from something you
+// can click. `text-overline` is Zenboard's one section-label role (12/500,
+// tertiary ink, SENTENCE CASE) and it is what makes "Workspaces" read as a
+// heading rather than a disabled row.
+        "px-2 pt-2 pb-1 text-overline text-ink-500 data-[inset]:pl-8",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function DropdownMenuSeparator({
+  className,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Separator>) {
+  return (
+    <DropdownMenuPrimitive.Separator
+      data-slot="dropdown-menu-separator"
+      className={cn("-mx-1 my-1 h-px bg-border", className)}
+      {...props}
+    />
+  )
+}
+
+function DropdownMenuShortcut({
+  className,
+  ...props
+}: React.ComponentProps<"span">) {
+  return (
+    <span
+      data-slot="dropdown-menu-shortcut"
+      className={cn(
+        "ml-auto text-xs tracking-widest text-muted-foreground group-data-[highlighted]/item:text-ink-700",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function DropdownMenuSub({
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Sub>) {
+  return <DropdownMenuPrimitive.Sub data-slot="dropdown-menu-sub" {...props} />
+}
+
+function DropdownMenuSubTrigger({
+  className,
+  inset,
+  icon,
+  value,
+  children,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.SubTrigger> & {
+  inset?: boolean
+  /** Leading glyph, like `DropdownMenuItem`'s. Styled by the row's own
+   *  `[&_svg]:size-4`, so it needs no wrapper of its own. */
+  icon?: React.ReactNode
+  /** The current answer, right-aligned before the chevron — "Project · Balluji ›", as Linear's property
+   *  submenus read. Secondary ink that steps up on the highlight wash, like an item's `description`. Put it
+   *  here, never inside `children`: the label is one truncating span, so anything placed in it runs on
+   *  ("ScheduleInbox"). */
+  value?: React.ReactNode
+}) {
+  return (
+    <DropdownMenuPrimitive.SubTrigger
+      data-slot="dropdown-menu-sub-trigger"
+      data-inset={inset}
+      className={cn(
+        "group/item flex cursor-default items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-hidden select-none focus:bg-surface-hover data-[inset]:pl-8 data-[state=open]:bg-surface-hover [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground",
+        className
       )}
       {...props}
     >
       {icon}
-      <span className="flex-1 truncate">{children}</span>
-      {keys && <Kbd keys={keys} className="border-transparent bg-transparent text-ink-400 shadow-none" />}
-    </RD.Item>
-  );
-});
-
-export const DropdownMenuCheckboxItem = React.forwardRef<
-  HTMLDivElement,
-  React.ComponentPropsWithoutRef<typeof RD.CheckboxItem>
->(function DropdownMenuCheckboxItem({ className, children, ...props }, ref) {
-  return (
-    <RD.CheckboxItem ref={ref} className={cn(ITEM, "ps-8", className)} {...props}>
-      <span className="absolute start-2 flex size-4 items-center justify-center">
-        <RD.ItemIndicator>
-          <Check className="size-3.5 text-berry-600" aria-hidden />
-        </RD.ItemIndicator>
-      </span>
-      {children}
-    </RD.CheckboxItem>
-  );
-});
-
-export const DropdownMenuRadioItem = React.forwardRef<
-  HTMLDivElement,
-  React.ComponentPropsWithoutRef<typeof RD.RadioItem>
->(function DropdownMenuRadioItem({ className, children, ...props }, ref) {
-  return (
-    <RD.RadioItem ref={ref} className={cn(ITEM, "ps-8", className)} {...props}>
-      <span className="absolute start-2 flex size-4 items-center justify-center">
-        <RD.ItemIndicator>
-          <Circle className="size-1.5 fill-berry-600 text-berry-600" aria-hidden />
-        </RD.ItemIndicator>
-      </span>
-      {children}
-    </RD.RadioItem>
-  );
-});
-
-export function DropdownMenuLabel({ className, ...props }: React.ComponentPropsWithoutRef<typeof RD.Label>) {
-  return <RD.Label className={cn("px-2.5 pb-1 pt-2 text-overline uppercase text-ink-500", className)} {...props} />;
+      <span className="min-w-0 flex-1 truncate">{children}</span>
+      {value != null && value !== "" && (
+        <span className="max-w-[50%] shrink truncate text-ink-500 group-data-[highlighted]/item:text-ink-700 group-data-[state=open]/item:text-ink-700">{value}</span>
+      )}
+      <ChevronRightIcon className="size-4 shrink-0" />
+    </DropdownMenuPrimitive.SubTrigger>
+  )
 }
 
-export function DropdownMenuSeparator({ className, ...props }: React.ComponentPropsWithoutRef<typeof RD.Separator>) {
-  return <RD.Separator className={cn("-mx-1.5 my-1 h-px bg-line-soft", className)} {...props} />;
+function DropdownMenuSubContent({
+  className,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.SubContent>) {
+  return (
+    <DropdownMenuPrimitive.SubContent
+      data-slot="dropdown-menu-sub-content"
+      className={cn(
+        "z-50 min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden p-1 zb-enter data-[state=open]:animate-emerge data-[state=closed]:animate-exit",
+        OVERLAY_CLASS,
+        className
+      )}
+      {...props}
+    />
+  )
 }
 
-export const DropdownMenuSubTrigger = React.forwardRef<
-  HTMLDivElement,
-  React.ComponentPropsWithoutRef<typeof RD.SubTrigger> & { icon?: React.ReactNode }
->(function DropdownMenuSubTrigger({ icon, className, children, ...props }, ref) {
+
+// ── Zenboard conveniences ───────────────────────────────────────────────────
+// The registry component above is untouched in structure, spacing and
+// behaviour; this is a thin pass-through so the 44 existing call sites keep
+// working, and every prop maps onto a mechanism shadcn already ships:
+//
+//   icon   → the first child (its own `[&_svg]:size-4` styles it)
+//   danger → `variant="destructive"` (shadcn's own prop)
+//   keys   → `<DropdownMenuShortcut>` (shadcn's own component)
+//   active → a trailing check, for an exclusive pick that is not a radio group
+//
+// Nothing here restyles the row. If a future prop needs to, it belongs in the
+// registry component instead, so there is one place the chrome is decided.
+export interface DropdownMenuItemProps
+  extends React.ComponentProps<typeof DropdownMenuPrimitive.Item> {
+  icon?: React.ReactNode;
+  /** Platform-neutral key tokens, e.g. ["mod","D"]. */
+  keys?: string[];
+  danger?: boolean;
+  inset?: boolean;
+  /** Chosen — trailing check. */
+  active?: boolean;
+  /** A second line under the label, for menus that offer a CHOICE. */
+  description?: string;
+}
+
+function DropdownMenuItem({
+  icon, keys, danger, active, description, children, ...props
+}: DropdownMenuItemProps) {
   return (
-    <RD.SubTrigger ref={ref} className={cn(ITEM, "data-[state=open]:bg-surface-hover", className)} {...props}>
+    <DropdownMenuItemBase variant={danger ? "destructive" : "default"} {...props}>
       {icon}
-      <span className="flex-1 truncate">{children}</span>
-      <ChevronRight aria-hidden />
-    </RD.SubTrigger>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate">{children}</span>
+        {description && <span className="block truncate text-caption text-ink-500 group-data-[highlighted]/item:text-ink-700">{description}</span>}
+      </span>
+      {keys?.length ? <DropdownMenuShortcut>{keys.join(" ")}</DropdownMenuShortcut> : null}
+      {active && <CheckIcon className="size-4 shrink-0" aria-hidden />}
+    </DropdownMenuItemBase>
   );
-});
+}
 
-export const DropdownMenuSubContent = React.forwardRef<
-  HTMLDivElement,
-  React.ComponentPropsWithoutRef<typeof RD.SubContent>
->(function DropdownMenuSubContent({ className, sideOffset = 6, ...props }, ref) {
-  return (
-    <RD.Portal>
-      <RD.SubContent ref={ref} sideOffset={sideOffset} className={cn(PANEL, className)} {...props} />
-    </RD.Portal>
-  );
-});
+export {
+  DropdownMenu,
+  DropdownMenuPortal,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
+  DropdownMenuItem,
+  DropdownMenuItemBase,
+  DropdownMenuCheckboxItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+}

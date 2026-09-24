@@ -4,24 +4,20 @@
 // is strictly token-scoped: it only ever writes a client_requests row for the
 // project that owns the token, and only if that project allows requests.
 import { randomBytes } from 'crypto';
-import { createClient, createServiceClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/server';
 import { loadPortalPreview } from '@/lib/portal';
 import type { PortalView } from '@/lib/portal';
 import { clientRequestLabel, deriveTitle, type PortalRequestStatus, type RequestDecision } from '@/lib/request-status';
 import { notifyOwner } from '@/lib/notify';
+import { requireSession } from '@/lib/auth';
+import { typeFor, NOTE, CLIENT_UPDATE } from '@/lib/updates';
+import { intakeTask } from '@/lib/task-intake';
 
 // Owner-only "Preview as client": returns the exact projection the client sees.
 // RLS scopes loadPortalPreview to the signed-in owner's project.
 export async function getPortalPreview(projectId: string): Promise<PortalView | null> {
-  await requireUser();
+  await requireSession();
   return loadPortalPreview(projectId);
-}
-
-async function requireUser() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-  return { supabase, user };
 }
 
 function newToken() {
@@ -30,7 +26,7 @@ function newToken() {
 
 // Enable/disable the portal. Enabling generates a token if there isn't one.
 export async function setPortalEnabled(projectId: string, enabled: boolean): Promise<{ error: string } | { ok: true; token: string | null }> {
-  const { supabase } = await requireUser();
+  const { supabase } = await requireSession();
   const { data: cur } = await supabase.from('projects').select('portal_token').eq('id', projectId).maybeSingle();
   const token = enabled ? (cur?.portal_token ?? newToken()) : (cur?.portal_token ?? null);
   const { error } = await supabase.from('projects').update({ portal_enabled: enabled, portal_token: token }).eq('id', projectId);
@@ -39,7 +35,7 @@ export async function setPortalEnabled(projectId: string, enabled: boolean): Pro
 
 // Rotate the token — the old link immediately stops working.
 export async function rotatePortalToken(projectId: string): Promise<{ error: string } | { ok: true; token: string }> {
-  const { supabase } = await requireUser();
+  const { supabase } = await requireSession();
   const token = newToken();
   const { error } = await supabase.from('projects').update({ portal_token: token }).eq('id', projectId);
   return error ? { error: error.message } : { ok: true, token };
@@ -51,20 +47,56 @@ export type ShareFlags = {
 };
 
 export async function updateShareFlags(projectId: string, flags: ShareFlags): Promise<{ error: string } | { ok: true }> {
-  const { supabase } = await requireUser();
+  const { supabase } = await requireSession();
   const { error } = await supabase.from('projects').update(flags).eq('id', projectId);
   return error ? { error: error.message } : { ok: true };
 }
 
 export async function setTaskClientVisible(taskId: string, visible: boolean): Promise<{ error: string } | { ok: true }> {
-  const { supabase } = await requireUser();
+  const { supabase } = await requireSession();
   const { error } = await supabase.from('tasks').update({ client_visible: visible }).eq('id', taskId);
   return error ? { error: error.message } : { ok: true };
 }
 
 export async function setDocClientVisible(pageId: string, visible: boolean): Promise<{ error: string } | { ok: true }> {
-  const { supabase } = await requireUser();
+  const { supabase } = await requireSession();
   const { error } = await supabase.from('pages').update({ client_visible: visible }).eq('id', pageId);
+  return error ? { error: error.message } : { ok: true };
+}
+
+/** A single file (0039). Same column, same meaning as a task's or a doc's. */
+export async function setFileClientVisible(attachmentId: string, visible: boolean): Promise<{ error: string } | { ok: true }> {
+  const { supabase } = await requireSession();
+  const { error } = await supabase.from('attachments').update({ client_visible: visible }).eq('id', attachmentId);
+  return error ? { error: error.message } : { ok: true };
+}
+
+/**
+ * A whole workstream (0040).
+ *
+ * Deliberately does NOT cascade to its tasks. Turning a stream on is "the
+ * client may know this workstream exists"; each task inside it still has to be
+ * marked, because a cascade would silently re-expose every task somebody had
+ * previously made internal the next time the stream was switched off and on.
+ * The bulk path is `setStreamTasksClientVisible` below — the same intent, said
+ * out loud.
+ */
+export async function setStreamClientVisible(sectionId: string, visible: boolean): Promise<{ error: string } | { ok: true }> {
+  const { supabase } = await requireSession();
+  const { error } = await supabase.from('sections').update({ client_visible: visible }).eq('id', sectionId);
+  return error ? { error: error.message } : { ok: true };
+}
+
+/**
+ * Mark every task in a workstream at once — the bulk pass, run from the stream
+ * header where you can see what it will affect.
+ *
+ * Subtasks are included: the portal only ever shows top-level tasks, but a
+ * subtask that later gets promoted should not arrive carrying a stale mark.
+ */
+export async function setStreamTasksClientVisible(sectionId: string, visible: boolean): Promise<{ error: string } | { ok: true }> {
+  const { supabase } = await requireSession();
+  const { error } = await supabase.from('tasks').update({ client_visible: visible }).eq('section_id', sectionId);
   return error ? { error: error.message } : { ok: true };
 }
 
@@ -77,7 +109,7 @@ export async function setDocClientVisible(pageId: string, visible: boolean): Pro
 // Replaces the old fire-and-forget accept: the request and task now know each
 // other, so the client sees live task progress and the task shows its origin.
 export async function approveRequest(requestId: string): Promise<{ error: string } | { taskId: string }> {
-  const { supabase, user } = await requireUser();
+  const { supabase, user } = await requireSession();
   const { data: req } = await supabase
     .from('client_requests').select('project_id, name, title, body, task_id').eq('id', requestId).maybeSingle();
   if (!req) return { error: 'Request not found.' };
@@ -91,7 +123,13 @@ export async function approveRequest(requestId: string): Promise<{ error: string
   const notes = `From client request${who}:\n\n${req.body.trim()}`;
 
   const { data: task, error } = await supabase.from('tasks')
-    .insert({ user_id: user.id, space_id: proj.space_id, project_id: req.project_id, title, notes, priority: 'low', request_id: requestId })
+    // Shared with every other way work arrives from outside — lib/task-intake.ts.
+    // The request-specific fields ride on top; `priority: 'low'` is this path's
+    // own decision and deliberately not part of the shared rule.
+    .insert({
+      ...intakeTask({ userId: user.id, spaceId: proj.space_id, projectId: req.project_id, title, fallbackTitle: 'Client request' }),
+      notes, priority: 'low', request_id: requestId,
+    })
     .select('id').single();
   if (error || !task) return { error: error?.message ?? 'Could not create task.' };
 
@@ -101,7 +139,7 @@ export async function approveRequest(requestId: string): Promise<{ error: string
 
 // Decline with a reason the client will read.
 export async function declineRequest(requestId: string, reason: string): Promise<{ error: string } | { ok: true }> {
-  const { supabase } = await requireUser();
+  const { supabase } = await requireSession();
   const note = (reason ?? '').trim();
   if (note.length < 2) return { error: 'Please add a short reason.' };
   const { error } = await supabase.from('client_requests')
@@ -112,7 +150,7 @@ export async function declineRequest(requestId: string, reason: string): Promise
 // Ask the client for more information — posts a client-facing message and flips
 // the request to needs_info. The client's reply flips it back to pending.
 export async function requestMoreInfo(requestId: string, message: string): Promise<{ error: string } | { ok: true }> {
-  const { supabase } = await requireUser();
+  const { supabase } = await requireSession();
   const body = (message ?? '').trim();
   if (body.length < 2) return { error: 'Please write a short question.' };
   const { error: mErr } = await supabase.from('request_messages')
@@ -124,7 +162,7 @@ export async function requestMoreInfo(requestId: string, message: string): Promi
 
 // Reopen a declined request back to pending (clears the resolution note).
 export async function reopenRequest(requestId: string): Promise<{ error: string } | { ok: true }> {
-  const { supabase } = await requireUser();
+  const { supabase } = await requireSession();
   const { error } = await supabase.from('client_requests')
     .update({ status: 'pending', resolution_note: null }).eq('id', requestId);
   return error ? { error: error.message } : { ok: true };
@@ -133,7 +171,7 @@ export async function reopenRequest(requestId: string): Promise<{ error: string 
 // Post a message to the thread. client_facing=false is a private team note that
 // is NEVER projected to the portal.
 export async function postRequestMessage(requestId: string, body: string, clientFacing: boolean): Promise<{ error: string } | { ok: true }> {
-  const { supabase } = await requireUser();
+  const { supabase } = await requireSession();
   const text = (body ?? '').trim();
   if (text.length < 1) return { error: 'Write a message first.' };
   const { error } = await supabase.from('request_messages')
@@ -285,13 +323,67 @@ export async function getClientRequestStatuses(token: string, ids: string[]): Pr
     });
 }
 
+// ── Project updates (S2) ─────────────────────────────────────────────────────
+// An update is a `project_activity` row; whether it was addressed to the client
+// is its `type`. See lib/updates.ts for why that is the type and not a new
+// table. These three live here, with the other portal writes, because
+// addressing an update to a client is a portal act — `logProjectActivity` in
+// projects.ts stays what it was, the internal log.
+
+/** Change an existing update's audience. The one write behind the row's chip. */
+export async function setUpdateClientVisible(activityId: string, visible: boolean): Promise<{ error: string } | { ok: true }> {
+  const { supabase } = await requireSession();
+  const { error } = await supabase.from('project_activity')
+    .update({ type: typeFor(visible) })
+    // Only ever retypes an update. Without this an id belonging to a
+    // `status_change` or an `accepted` row would be rewritten into a note and
+    // the project's history would quietly lose an event.
+    .in('type', [NOTE, CLIENT_UPDATE])
+    .eq('id', activityId);
+  return error ? { error: error.message } : { ok: true };
+}
+
+/** Delete an update. There is no un-send: what a client has already read has
+ *  been read, and pretending otherwise would be the dishonest affordance. */
+export async function deleteUpdate(activityId: string): Promise<{ error: string } | { ok: true }> {
+  const { supabase } = await requireSession();
+  const { error } = await supabase.from('project_activity')
+    .delete().in('type', [NOTE, CLIENT_UPDATE]).eq('id', activityId);
+  return error ? { error: error.message } : { ok: true };
+}
+
+// PUBLIC: mint a short-lived URL for a file the studio shared.
+//
+// Every gate is re-checked HERE rather than trusted from the projection that
+// drew the button, because an id in a form post is a claim, not a permission:
+// the token must resolve to a live portal, that project must be sharing files,
+// and the row must belong to it AND be marked. Nothing about a signed URL is
+// revocable once handed out, which is why it is 5 minutes and why the checks
+// are duplicated rather than assumed.
+export async function signPortalFile(token: string, fileId: string): Promise<{ error: string } | { url: string }> {
+  if (!token || token.length < 8 || !fileId) return { error: 'Invalid link.' };
+  const svc = createServiceClient();
+
+  const { data: project } = await svc.from('projects')
+    .select('id, portal_enabled, share_files').eq('portal_token', token).maybeSingle();
+  if (!project || !project.portal_enabled || !project.share_files) return { error: 'This file isn’t available.' };
+
+  const { data: row } = await svc.from('attachments')
+    .select('path, project_id, client_visible').eq('id', fileId).maybeSingle();
+  if (!row || row.project_id !== project.id || row.client_visible !== true) return { error: 'This file isn’t available.' };
+
+  const { data, error } = await svc.storage.from('attachments').createSignedUrl(row.path, 300);
+  if (error || !data?.signedUrl) return { error: 'Could not open that file.' };
+  return { url: data.signedUrl };
+}
+
 // ── Deliverable approvals ────────────────────────────────────────────────────
 
 // Owner asks the client to sign off on a document. Makes the doc client-visible
 // (so it appears in the portal) and opens an awaiting approval. Idempotent: if an
 // approval is already awaiting for this doc, it's reused rather than duplicated.
 export async function requestApproval(pageId: string): Promise<{ error: string } | { ok: true }> {
-  const { supabase } = await requireUser();
+  const { supabase } = await requireSession();
   const { data: page } = await supabase.from('pages').select('id, project_id, title').eq('id', pageId).maybeSingle();
   if (!page || !page.project_id) return { error: 'Only project documents can be sent for approval.' };
 
@@ -310,7 +402,7 @@ export async function requestApproval(pageId: string): Promise<{ error: string }
 
 // Owner withdraws an approval request.
 export async function cancelApproval(approvalId: string): Promise<{ error: string } | { ok: true }> {
-  const { supabase } = await requireUser();
+  const { supabase } = await requireSession();
   const { error } = await supabase.from('approvals').delete().eq('id', approvalId);
   return error ? { error: error.message } : { ok: true };
 }

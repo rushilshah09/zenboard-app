@@ -1,7 +1,7 @@
 'use client';
 // Time grid (Day or Week) — Zenboard's calm reinterpretation of the classic
 // hour grid. All-day lane on top, hour rows below, timed events positioned by
-// start/end with overlap lanes. A live "now" line (with a time chip in the
+// start/end — stacked or side by side (lib/calendar-layout). A live "now" line (with a time chip in the
 // gutter) marks the current time and the grid auto-scrolls to it.
 //
 // Pointer interactions: click empty slot → create (1h); drag empty → create a
@@ -9,70 +9,84 @@
 // drag an event's bottom handle → resize. A click is distinguished from a drag by
 // whether the pointer actually moved.
 //
-// Color semantic (consistent app-wide): plum accent = Zenboard events,
-// blue = synced Google events.
-import { useEffect, useRef, useState } from 'react';
+// Colour: each event's own (lib/event-color) — the accent marks its left bar, a picked colour tints the card.
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { cn } from "@/lib/cn";
-import { type CalEvent, WEEKDAYS, localISODate, isToday, fmtTime, fmtMinTime, minutesOfDay, hhmm, isoFromLocal } from '@/lib/calendar';
+import { type CalEvent, WEEKDAYS, localISODate, isToday, fmtTime, fmtMinTime, fmtHourLabel, gmtLabel, minutesOfDay, hhmm, isoFromLocal } from '@/lib/calendar';
+import { endMinutes, layoutDay } from '@/lib/calendar-layout';
+import { formatClockRange } from '@/lib/date';
 import { eventTokens } from '@/lib/event-color';
+import { isTwin, isTwinDone } from '@/lib/timebox';
+import { Check } from '@/components/ds/icons';
+import { Icon } from '@/components/ds/ui';
+import { MilestoneChip } from '@/components/calendar/milestone-chip';
+import type { CalendarMilestone } from '@/lib/milestones';
 
 const HOUR_H = 80; // px per hour (approved design 501:16578: 80px hour rows)
 const DAY_H = HOUR_H * 24;
 const SNAP = 15;   // minutes
 const GUTTER = 80; // px, hour-label rail ("GMT" / "1 AM") — design 501:16578
 
-function endMinutes(e: CalEvent): number {
-  const start = minutesOfDay(e.starts_at);
-  if (!e.ends_at) return Math.min(1440, start + 60);
-  const end = new Date(e.ends_at);
-  const sameLocalDay = localISODate(end) === localISODate(new Date(e.starts_at));
-  return sameLocalDay ? end.getHours() * 60 + end.getMinutes() : 1440;
+/** A stacked event steps in this far per level (lib/calendar-layout decides the level). */
+const STACK_INDENT = 12;
+/** Below this height a block has room for one line: its title and start time share it. */
+const TWO_LINES = 42;
+
+/** The block's shell: one line is centred in a short block, two lines sit at the top of a taller one. */
+const blockClass = (oneLine: boolean) =>
+  cn('@container absolute overflow-hidden rounded-md pl-3 pr-2 text-left', oneLine ? 'flex flex-col justify-center' : 'py-1');
+
+/**
+ * What a block says — its bar, name and time — shared by the event card and the drag ghost, so a preview reads
+ * exactly as what it previews. The ghost had its own copy, hard-wired to the default colour and "New event": grab an
+ * ochre event and it turned magenta and forgot its name under the pointer (user report 2026-09-21).
+ */
+function EventFace({ tokens, title, start, range, oneLine, done = false, lead }: {
+  tokens: { bar: string }; title: string; start: string; range: string; oneLine: boolean; done?: boolean;
+  /** Before the name: a timebox twin's checkbox. */
+  lead?: React.ReactNode;
+}) {
+  return (
+    <>
+      <span aria-hidden className="absolute inset-y-1 left-1 w-[3.5px] rounded-full" style={{ background: tokens.bar }} />
+      <div className={cn('flex gap-1.5', oneLine ? 'items-center' : 'items-start')}>
+        {lead}
+        {/* Done is the strike (and a twin's ticked box), never a fade — the app says "done" that way everywhere. On one
+            line the time sits right after the name, not across the card: in a wide day column `flex-1` pushed it
+            800px away from what it timed. */}
+        <div className={cn('min-w-0 truncate text-ui font-medium tracking-[-0.005em]', !oneLine && 'flex-1', done && 'line-through')}>{title}</div>
+        {/* Half an hour has room for one line, so the start time shares the name's (the Notion idiom) — when the block
+            is wide enough for both. A narrow block keeps the name: its place on the grid already says when it is,
+            and "Stan… 10:00" said neither. */}
+        {oneLine && <div className={cn('hidden shrink-0 text-caption tabular-nums @min-[9rem]:block', done && 'line-through')}>{start}</div>}
+      </div>
+      {/* No opacity on text (CLAUDE.md): the time is quieter than the name by size and weight. One line, always — in a
+          narrow column it truncates rather than stacking "09:30 / – / 10:30". */}
+      {!oneLine && <div className={cn('mt-px truncate text-caption tabular-nums', done && 'line-through')}>{range}</div>}
+    </>
+  );
 }
 
-function layoutDay(events: CalEvent[]) {
-  const sorted = [...events].sort((a, b) => minutesOfDay(a.starts_at) - minutesOfDay(b.starts_at));
-  const out: { e: CalEvent; lane: number; lanes: number }[] = [];
-  let cluster: CalEvent[] = [];
-  let clusterEnd = -1;
-  const flush = () => {
-    const laneEnds: number[] = [];
-    const laneOf = new Map<string, number>();
-    for (const ev of cluster) {
-      const s = minutesOfDay(ev.starts_at);
-      let placed = false;
-      for (let l = 0; l < laneEnds.length; l++) {
-        if (s >= laneEnds[l]) { laneEnds[l] = endMinutes(ev); laneOf.set(ev.id, l); placed = true; break; }
-      }
-      if (!placed) { laneOf.set(ev.id, laneEnds.length); laneEnds.push(endMinutes(ev)); }
-    }
-    for (const ev of cluster) out.push({ e: ev, lane: laneOf.get(ev.id)!, lanes: laneEnds.length });
-    cluster = [];
-  };
-  for (const ev of sorted) {
-    if (cluster.length && minutesOfDay(ev.starts_at) >= clusterEnd) { flush(); clusterEnd = -1; }
-    cluster.push(ev);
-    clusterEnd = Math.max(clusterEnd, endMinutes(ev));
-  }
-  if (cluster.length) flush();
-  return out;
-}
+// The zone the grid is drawn in. Never on the server — its zone is UTC and the grid is the browser's — so the
+// server snapshot is empty and the label arrives with hydration, the rule `useNarrow` follows.
+const noSubscription = () => () => {};
+const browserZone = () => gmtLabel(-new Date().getTimezoneOffset());
+const useZoneLabel = () => useSyncExternalStore(noSubscription, browserZone, () => '');
 
 // Every event uses its own color — the brand accent by default, or the user's
 // pick — so the drag preview, created card, and edited card are identical.
 const evColor = (e: CalEvent) => eventTokens(e.color);
 
-// Now-chip / hour-gutter language, 12-hour uppercase to match the HiFi grid.
-const fmtNow = (min: number) => {
-  const h = Math.floor(min / 60), m = min % 60;
-  return `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
-};
+// The now-chip used to hand-roll a THIRD copy of "minutes → clock time", also
+// hardcoded to 12-hour. It reads `fmtMinTime` now, so the chip, the hour gutter
+// and the ghost label are one format in the user's own locale.
 
 type Drag =
   | { kind: 'create'; dayIdx: number; aMin: number; bMin: number }
   | { kind: 'move'; id: string; dayIdx: number; aMin: number; durMin: number; grabOffset: number }
   | { kind: 'resize'; id: string; dayIdx: number; topMin: number; bMin: number };
 
-export function WeekGrid({ days, events, onCreateAt, onCreateRange, onCreateAllDay, onMove, onOpen }: {
+export function WeekGrid({ days, events, onCreateAt, onCreateRange, onCreateAllDay, onMove, onOpen, onToggleTask, taskDrag, onTaskDrop, onTaskDragEnd, milestones, onOpenProject }: {
   days: Date[];
   events: CalEvent[];
   onCreateAt: (date: string, time: string) => void;
@@ -80,15 +94,38 @@ export function WeekGrid({ days, events, onCreateAt, onCreateRange, onCreateAllD
   onCreateAllDay: (date: string) => void;
   onMove: (id: string, startsAt: string, endsAt: string) => void;
   onOpen: (e: CalEvent) => void;
+  /** Complete a timeboxed task from its calendar block. Absent ⇒ twins render read-only. */
+  onToggleTask?: (taskId: string, done: boolean) => void;
+  /**
+   * A task being dragged in from OUTSIDE the grid (the calendar's task rail).
+   *
+   * The grid owns this rather than the rail because the grid owns the geometry:
+   * only it knows which column a pointer is over and what minute that Y is.
+   * The rail starts the gesture and the grid finishes it — the alternative was
+   * exporting column rects, which is the same coupling pointing the wrong way.
+   */
+  taskDrag?: { id: string; title: string; minutes: number } | null;
+  /** Dropped on a slot. `date` is a local day id, `time` is HH:MM. */
+  onTaskDrop?: (taskId: string, date: string, time: string) => void;
+  /** The gesture ended — dropped or abandoned. Always fires exactly once. */
+  onTaskDragEnd?: () => void;
+  /** Project checkpoints (§7E), bucketed by day. Absent ⇒ 0036 not applied. */
+  milestones?: Map<string, CalendarMilestone[]>;
+  onOpenProject?: (projectId: string) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const colRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const zone = useZoneLabel();
   const [nowMin, setNowMin] = useState(() => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); });
 
   const [drag, setDrag] = useState<Drag | null>(null);
   const dragRef = useRef<Drag | null>(null);
   const moved = useRef(false);
   const set = (d: Drag | null) => { dragRef.current = d; setDrag(d); };
+  const [dropAt, setDropAt] = useState<{ dayIdx: number; min: number } | null>(null);
+  const dropRef = useRef<{ dayIdx: number; min: number } | null>(null);
+  const setDrop = (v: { dayIdx: number; min: number } | null) => { dropRef.current = v; setDropAt(v); };
+
 
   useEffect(() => {
     const tick = () => { const d = new Date(); setNowMin(d.getHours() * 60 + d.getMinutes()); };
@@ -110,6 +147,14 @@ export function WeekGrid({ days, events, onCreateAt, onCreateRange, onCreateAllD
 
   // One faint wash only: today gets a whisper of ink. (Weekend tints made the
   // canvas read banded/dirty — a calm calendar is an even surface.)
+    // LIVE MARKERS READ `--accent`. Today, and now, are the two things on a
+  // calendar that are about YOU rather than about the grid, and the accent
+  // token exists for exactly them — tokens.css names "selected days, focus
+  // states, today rings" as its sites. They were hard-coded to `ink-900`, so
+  // picking an accent under Settings → Appearance recoloured checkboxes,
+  // switches and sliders and left the calendar grey — which is a large part of
+  // why this screen read as a different product. With the default accent (which
+  // IS ink) nothing changes; it starts paying off the moment a colour is picked.
   const colWash = (d: Date) => (isToday(d) ? 'var(--color-surface-row)' : 'transparent');
 
   // ── Pointer geometry ──
@@ -126,6 +171,40 @@ export function WeekGrid({ days, events, onCreateAt, onCreateRange, onCreateAllD
     }
     return null;
   };
+
+  // Where an incoming task is currently hovering. Null when the pointer is over
+  // the rail, the gutter, or off the grid — which is also what makes "let go
+  // over nothing" a cancel rather than a drop at some nearest guess.
+  //
+  // Cleared by the handlers that END a gesture, never in the effect body: a
+  // synchronous setState there is a cascading render, and every read of this
+  // value is already guarded by `taskDrag`, so there is nothing to reset on
+  // mount.
+  useEffect(() => {
+    if (!taskDrag) return;
+    const move = (e: PointerEvent) => {
+      const i = dayIdxAtX(e.clientX);
+      setDrop(i == null ? null : { dayIdx: i, min: minAt(e.clientY, i) });
+    };
+    const finish = (drop: boolean) => {
+      const at = dropRef.current;
+      setDrop(null);
+      if (drop && at) onTaskDrop?.(taskDrag.id, localISODate(days[at.dayIdx]), hhmm(at.min));
+      onTaskDragEnd?.();
+    };
+    const up = () => finish(true);
+    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') finish(false); };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('keydown', key);
+    return () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('keydown', key);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [taskDrag, days]);
+
 
   function begin(d: Drag) {
     moved.current = false;
@@ -185,31 +264,36 @@ export function WeekGrid({ days, events, onCreateAt, onCreateRange, onCreateAllD
   const EVENT_HOVER = 'transition-[filter] duration-fast hover:brightness-95 hover:z-[3]';
 
   return (
-    <div ref={scrollRef} className={cn('min-h-0 flex-1 overflow-y-auto', drag && 'select-none')}>
+    <div ref={scrollRef} className={cn('min-h-0 flex-1 overflow-y-auto', (drag || taskDrag) && 'select-none')}>
       {/* Day headers — sticky inside the one shared scroller, so the header and
           grid columns share the same scrollbar and can never drift out of
-          alignment. "Sun 5", today's date in an ink pill; GMT labels the gutter. */}
-      <div className="sticky top-0 z-10 grid border-b border-line-strong bg-paper-2" style={{ gridTemplateColumns: cols }}>
-        <div className="flex h-10 items-center justify-end border-r border-line-soft px-2 text-caption text-ink-500">GMT</div>
+          alignment. "Sun 5", today's date in an accent pill; the gutter names the zone the times are in. */}
+      <div className="sticky top-0 z-10 grid border-b border-line-strong bg-paper" style={{ gridTemplateColumns: cols }}>
+        <div className="flex h-10 items-center justify-end border-r border-line-soft px-2 text-caption tabular-nums text-ink-500">{zone}</div>
         {days.map((d, i) => {
           const today = isToday(d);
           return (
             <div key={localISODate(d)} className="flex h-10 items-center gap-1.5 px-3" style={{ borderLeft: i === 0 ? 'none' : '1px solid var(--color-line-soft)', background: colWash(d) }}>
               <span className={cn('text-ui font-medium', today ? 'text-ink-900' : 'text-ink-600')}>{WEEKDAYS[d.getDay()]}</span>
-              <span className={cn('inline-grid h-[22px] min-w-[22px] place-items-center rounded-full text-ui tabular-nums', today ? 'bg-ink-900 font-semibold text-onsolid' : 'font-medium text-ink-900')}>{d.getDate()}</span>
+              <span className={cn('inline-grid h-[22px] min-w-[22px] place-items-center rounded-full text-ui tabular-nums', today ? 'bg-[var(--accent)] font-semibold text-[var(--on-accent)]' : 'font-medium text-ink-900')}>{d.getDate()}</span>
             </div>
           );
         })}
       </div>
 
       {/* All-day lane — sticky just below the header (top = header 40 + 1px border) */}
-      <div className="sticky top-[41px] z-[9] grid min-h-8 border-b border-line-strong bg-paper-2" style={{ gridTemplateColumns: cols }}>
+      <div className="sticky top-[41px] z-[9] grid min-h-8 border-b border-line-strong bg-paper" style={{ gridTemplateColumns: cols }}>
         <div className="border-r border-line-soft pr-2 pt-2 text-right text-caption text-ink-500">All day</div>
         {days.map((d, i) => {
           const key = localISODate(d);
           const allDay = (byDate.get(key) ?? []).filter((e) => e.all_day);
           return (
             <div key={key} onClick={() => onCreateAllDay(key)} className="flex cursor-pointer flex-col gap-[3px] p-[5px]" style={{ borderLeft: i === 0 ? 'none' : '1px solid var(--color-line-soft)', background: colWash(d) }}>
+              {/* Checkpoints lead the lane: a milestone is the day's headline,
+                  and an all-day event is context around it. */}
+              {(milestones?.get(key) ?? []).map((m) => (
+                <MilestoneChip key={m.id} milestone={m} onOpen={(id) => onOpenProject?.(id)} />
+              ))}
               {allDay.map((e) => {
                 const t = evColor(e);
                 return (
@@ -232,13 +316,13 @@ export function WeekGrid({ days, events, onCreateAt, onCreateRange, onCreateAllD
             now chip yields so the two never collide. */}
         <div className="relative border-r border-line-soft" style={{ height: DAY_H }}>
           {Array.from({ length: 24 }, (_, h) => h > 0 && !(hasToday && Math.abs(h * 60 - nowMin) < 20) && (
-            <div key={h} className="absolute right-2 whitespace-nowrap text-caption text-ink-500" style={{ top: h * HOUR_H - 8 }}>{`${h % 12 === 0 ? 12 : h % 12} ${h < 12 ? 'AM' : 'PM'}`}</div>
+            <div key={h} className="absolute right-2 whitespace-nowrap text-caption text-ink-500" style={{ top: h * HOUR_H - 8 }}>{fmtHourLabel(h)}</div>
           ))}
           {/* Now chip — flush to the gutter's right edge so its right edge meets
               the now line at the same Y: the pill + line read as one connected
               marker (the Notion idiom). */}
           {hasToday && (
-            <span className="absolute right-0 z-[5] whitespace-nowrap rounded-full bg-ink-900 px-1.5 py-0.5 text-caption font-semibold tabular-nums text-onsolid" style={{ top: (nowMin / 60) * HOUR_H - 10 }}>{fmtNow(nowMin)}</span>
+            <span className="absolute right-0 z-[5] whitespace-nowrap rounded-full bg-[var(--accent)] px-1.5 py-0.5 text-caption font-semibold tabular-nums text-[var(--on-accent)]" style={{ top: (nowMin / 60) * HOUR_H - 10 }}>{fmtMinTime(nowMin)}</span>
           )}
         </div>
         {days.map((d, idx) => {
@@ -246,25 +330,36 @@ export function WeekGrid({ days, events, onCreateAt, onCreateRange, onCreateAllD
           const timed = (byDate.get(key) ?? []).filter((e) => !e.all_day);
           const laid = layoutDay(timed);
           const today = isToday(d);
-          const ghost = drag && drag.dayIdx === idx
+          // The incoming task paints the SAME ghost an internal drag does, at
+          // its real length, so what you see before letting go is the block you
+          // will get — not a highlighted row that then becomes something else.
+          const incoming = taskDrag && dropAt?.dayIdx === idx
+            ? { top: dropAt.min, bottom: dropAt.min + taskDrag.minutes, label: taskDrag.title }
+            : null;
+          // A moved or resized block previews AS ITSELF — its colour and its name; only a new one is "New event".
+          const ghost: { top: number; bottom: number; label?: string; event?: CalEvent } | null = incoming ?? (drag && drag.dayIdx === idx
             ? (drag.kind === 'create'
                 ? { top: Math.min(drag.aMin, drag.bMin), bottom: Math.max(drag.aMin, drag.bMin) }
                 : drag.kind === 'move'
-                  ? { top: drag.aMin, bottom: drag.aMin + drag.durMin }
-                  : { top: drag.topMin, bottom: drag.bMin })
-            : null;
+                  ? { top: drag.aMin, bottom: drag.aMin + drag.durMin, event: events.find((x) => x.id === drag.id) }
+                  : { top: drag.topMin, bottom: drag.bMin, event: events.find((x) => x.id === drag.id) })
+            : null);
           return (
             <div key={key} ref={(el) => { colRefs.current[idx] = el; }}
-              onPointerDown={(e) => { if (e.button !== 0) return; const m = minAt(e.clientY, idx); begin({ kind: 'create', dayIdx: idx, aMin: m, bMin: m + SNAP }); }}
+              onPointerDown={(e) => { if (e.button !== 0 || taskDrag) return; const m = minAt(e.clientY, idx); begin({ kind: 'create', dayIdx: idx, aMin: m, bMin: m + SNAP }); }}
               className="relative cursor-pointer" style={{ height: DAY_H, borderLeft: idx === 0 ? 'none' : '1px solid var(--color-line-soft)', background: colWash(d) }}>
               {Array.from({ length: 24 }, (_, h) => h > 0 && (
                 <div key={h} className="absolute inset-x-0 border-t border-line-soft" style={{ top: h * HOUR_H }} />
               ))}
-              {laid.map(({ e, lane, lanes }) => {
+              {laid.map(({ e, col, cols: laneCount, span, depth }) => {
                 const top = (minutesOfDay(e.starts_at) / 60) * HOUR_H;
                 const h = Math.max(22, ((endMinutes(e) - minutesOfDay(e.starts_at)) / 60) * HOUR_H - 2);
                 const t = evColor(e);
-                const w = 100 / lanes;
+                const w = 100 / laneCount;
+                // Stacked over an event still running beneath it: stepped in, and drawn above it.
+                const inset = depth * STACK_INDENT;
+                const oneLine = h < TWO_LINES;
+                const done = isTwinDone(e);
                 return (
                   <div key={e.id}
                     onPointerDown={(ev) => {
@@ -274,40 +369,57 @@ export function WeekGrid({ days, events, onCreateAt, onCreateRange, onCreateAllD
                       begin({ kind: 'move', id: e.id, dayIdx: idx, aMin: s, durMin: endMinutes(e) - s, grabOffset: minAt(ev.clientY, idx) - s });
                     }}
                     title={e.title}
-                    className={cn('absolute overflow-hidden rounded-md py-1 pl-3 pr-2 text-left', EVENT_HOVER)}
-                    style={{ top, height: h, left: `calc(${lane * w}% + 2px)`, width: `calc(${w}% - 4px)`,
+                    className={cn(blockClass(oneLine), EVENT_HOVER)}
+                    style={{ top, height: h, left: `calc(${col * w}% + ${2 + inset}px)`, width: `calc(${span * w}% - ${4 + inset}px)`,
                       cursor: drag?.kind === 'move' ? 'grabbing' : 'grab',
                       background: t.bg, color: t.text,
-                      boxShadow: '0 0 0 1.5px var(--color-paper-2)',
-                      opacity: draggingId === e.id ? 0.35 : 1, zIndex: 2 }}>
-                    <span aria-hidden className="absolute inset-y-1 left-1 w-[3.5px] rounded-full" style={{ background: t.bar }} />
-                    <div className="truncate text-ui font-medium tracking-[-0.005em]">{e.title}</div>
-                    {h > 36 && <div className="mt-px text-caption tabular-nums opacity-75">{fmtTime(e.starts_at)}{e.ends_at ? ` – ${fmtTime(e.ends_at)}` : ''}</div>}
+                      // A ring in the grid's own colour: the gap that tells a stacked card from the one beneath it.
+                      boxShadow: '0 0 0 1.5px var(--color-paper)',
+                      opacity: draggingId === e.id ? 0.35 : 1, zIndex: 2 + depth }}>
+                    {/* A twin block carries the TASK's checkbox — the same `toggleTask` a list row calls, so completing
+                        either side completes both (lib/timebox.ts). Ordinary events have no completion to offer. */}
+                    <EventFace tokens={t} title={e.title} start={fmtTime(e.starts_at)} range={formatClockRange(e.starts_at, e.ends_at) ?? ''}
+                      oneLine={oneLine} done={done}
+                      lead={isTwin(e) && onToggleTask ? (
+                        <button
+                          onPointerDown={(ev) => ev.stopPropagation()}
+                          onClick={(ev) => { ev.stopPropagation(); onToggleTask(e.task_id!, !isTwinDone(e)); }}
+                          role="checkbox"
+                          aria-checked={done}
+                          aria-label={done ? `Mark “${e.title}” not done` : `Mark “${e.title}” done`}
+                          className="zb-press mt-px grid size-[15px] [@media(pointer:coarse)]:size-6 shrink-0 cursor-pointer place-items-center rounded-xs border bg-transparent transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1"
+                          style={{ borderColor: 'currentColor', opacity: done ? 1 : 0.55 }}>
+                          {done && <Icon icon={Check} size={12} />}
+                        </button>
+                      ) : undefined} />
                     {/* resize handle */}
                     <div onPointerDown={(ev) => { if (ev.button !== 0) return; ev.stopPropagation(); const s = minutesOfDay(e.starts_at); begin({ kind: 'resize', id: e.id, dayIdx: idx, topMin: s, bMin: endMinutes(e) }); }}
                       className="absolute inset-x-0 bottom-0 h-[7px] cursor-ns-resize" />
                   </div>
                 );
               })}
-              {/* Drag ghost — a real event card in the default color, so the
-                  preview and the created event look identical. */}
+              {/* Drag ghost — the block as it will land. A moved or resized event is itself (its colour, its name); an
+                  incoming task is its own name; only a new block is "New event" in the default colour. */}
               {ghost && (() => {
-                const g = eventTokens(null);
+                const g = ghost.event ? evColor(ghost.event) : eventTokens(null);
                 const gh = Math.max(22, ((ghost.bottom - ghost.top) / 60) * HOUR_H - 2);
                 return (
-                  <div className="absolute inset-x-0.5 z-[6] overflow-hidden rounded-md py-1 pl-3 pr-2"
-                    style={{ top: (ghost.top / 60) * HOUR_H, height: gh, background: g.bg, color: g.text, boxShadow: '0 0 0 1.5px var(--color-paper-2), var(--shadow-lift-2)', pointerEvents: 'none' }}>
-                    <span aria-hidden className="absolute inset-y-1 left-1 w-[3.5px] rounded-full" style={{ background: g.bar }} />
-                    <div className="truncate text-ui font-medium">New event</div>
-                    {gh > 36 && <div className="mt-px text-caption tabular-nums opacity-75">{fmtMinTime(ghost.top)} – {fmtMinTime(ghost.bottom)}</div>}
+                  <div data-ghost="" className={cn(blockClass(gh < TWO_LINES), 'inset-x-0.5 z-[6]')}
+                    style={{ top: (ghost.top / 60) * HOUR_H, height: gh, background: g.bg, color: g.text, boxShadow: '0 0 0 1.5px var(--color-paper), var(--shadow-lift-2)', pointerEvents: 'none' }}>
+                    <EventFace tokens={g} title={ghost.event?.title ?? ghost.label ?? 'New event'} oneLine={gh < TWO_LINES}
+                      start={fmtMinTime(ghost.top)} range={`${fmtMinTime(ghost.top)} – ${fmtMinTime(ghost.bottom)}`}
+                      done={!!ghost.event && isTwinDone(ghost.event)} />
                   </div>
                 );
               })()}
               {/* Now line — solid on today only, with a left-edge dot (the
                   Google/Notion calendar idiom; a cross-week line read as noise) */}
               {today && (
-                <div className="pointer-events-none absolute inset-x-0 z-[4] h-0.5 bg-ink-900" style={{ top: (nowMin / 60) * HOUR_H - 1 }}>
-                  <span aria-hidden className="absolute -left-1 -top-[3px] size-2 rounded-full bg-ink-900" />
+                <div className="pointer-events-none absolute inset-x-0 z-[4] h-0.5 bg-[var(--accent)]" style={{ top: (nowMin / 60) * HOUR_H - 1 }}>
+                  {/* The dot and the line are ONE object, so they take one
+                      colour. `ink-900` tracked the theme's ink, which meant a
+                      black dot on an accent line in light (user screenshot). */}
+                  <span aria-hidden className="absolute -left-1 -top-[3px] size-2 rounded-full bg-[var(--accent)]" />
                 </div>
               )}
             </div>
@@ -318,7 +430,7 @@ export function WeekGrid({ days, events, onCreateAt, onCreateRange, onCreateAllD
             column, the three read as a single marker spanning the whole grid —
             starting at the pill's right edge, exactly like the Notion reference. */}
         {hasToday && (
-          <div className="pointer-events-none absolute z-[3] h-px" style={{ left: GUTTER - 1, right: 0, top: (nowMin / 60) * HOUR_H - 0.5, background: 'var(--color-ink-500)' }} />
+          <div className="pointer-events-none absolute z-[3] h-px" style={{ left: GUTTER - 1, right: 0, top: (nowMin / 60) * HOUR_H - 0.5, background: 'var(--accent-border)' }} />
         )}
       </div>
     </div>

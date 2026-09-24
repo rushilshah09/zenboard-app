@@ -6,12 +6,16 @@
 //   tabs  · 40px row, pill tabs (4px 8px, r-md, 14/400) — active = hover wash
 //           + ink-2, resting ink-4; quiet right-slot action (e.g. Remove)
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useFocusReturn } from '@/lib/use-focus-return';
 
 export function PickerPanel({ label, width, align = 'left', onClose, children }: {
   label: string; width: number; align?: 'left' | 'right'; onClose: () => void; children: React.ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [shift, setShift] = useState(0);
+  // Mounted only while open, so its cleanup hands focus back to whatever
+  // opened it - every PickerPanel consumer inherits that.
+  useFocusReturn();
   useEffect(() => {
     const down = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
     const key = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); onClose(); } };
@@ -31,8 +35,8 @@ export function PickerPanel({ label, width, align = 'left', onClose, children }:
     if (s) setShift(s);
   }, []);
   return (
-    <div ref={ref} role="dialog" aria-label={label}
-      style={{ position: 'absolute', top: 'calc(100% + 6px)', [align]: 0, zIndex: 60, width: `min(${width}px, calc(100vw - 32px))`, ...(shift ? (align === 'left' ? { marginLeft: shift } : { marginRight: -shift }) : {}), background: 'var(--paper-3)', borderRadius: 'var(--r-xl)', boxShadow: 'var(--shadow-panel)', animation: 'fadein 140ms' }}>
+    <div ref={ref} role="dialog" aria-label={label} className="zb-enter"
+      style={{ position: 'absolute', top: 'calc(100% + 6px)', [align]: 0, zIndex: 'var(--z-dropdown)', width: `min(${width}px, calc(100vw - 32px))`, ...(shift ? (align === 'left' ? { marginLeft: shift } : { marginRight: -shift }) : {}), background: 'var(--paper-3)', borderRadius: 'var(--r-xl)', boxShadow: 'var(--shadow-panel)', animation: 'zb-pop-in var(--duration-fast) var(--ease-out-quiet)', transformOrigin: `top ${align}` }}>
       {children}
     </div>
   );

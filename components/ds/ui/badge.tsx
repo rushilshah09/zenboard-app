@@ -49,6 +49,8 @@ export function Badge({ variant = "status", count = 0, status = "neutral", surfa
   }
   return (
     <span
+      data-slot="badge"
+      data-status={status}
       className={cn(
         "inline-flex h-5 items-center gap-1 whitespace-nowrap rounded-sm border px-2 text-meta font-medium leading-none",
         STATUS[status],

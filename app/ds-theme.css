@@ -25,6 +25,10 @@
 @theme inline {
   --color-line-soft: var(--color-border-soft);
   --color-line-strong: var(--color-border-strong);
+  /* `border-line-control` — the >=3:1 tier. Use it ONLY where the boundary is
+     the entire control (checkbox, radio, switch track, slider thumb); on
+     anything that carries its own label or value, -strong is the right edge. */
+  --color-line-control: var(--color-border-control);
   --color-line-ink: var(--color-border-ink);
   --color-line-berry: var(--color-border-focus);
   --color-line-danger: var(--color-border-invalid);
@@ -50,6 +54,10 @@
 
   --color-onsolid: var(--color-text-onsolid);
   --color-ds-accent: var(--color-text-accent);
+  /* `bg-drop-line` — where a carried block, row or column will land (DropLine).
+     It takes the one brand hue on purpose; `bg-accent` itself is kept off the
+     registry's components, where shadcn means a hover surface by it. */
+  --color-drop-line: var(--accent);
   --color-selected: var(--color-text-selected);
   --color-scrim: var(--color-scrim);
   --color-icon-default: var(--color-icon-default);
@@ -67,98 +75,229 @@
 @theme {
   --text-caption: 11px;
   --text-caption--line-height: 14px;
-  --text-caption--letter-spacing: 0.02em;
-  --text-overline: 11px;
-  --text-overline--line-height: 14px;
-  --text-overline--letter-spacing: 0.06em;
-  --text-overline--font-weight: 600;
+  --text-caption--letter-spacing: 0em;
+  /* The section-label role — "Workspaces", "Views", "Projects", "Sidebar
+     control". It was 11px/600 with 0.06em tracking, which are the settings
+     CAPITALS need: letterspacing exists to stop shouted text from jamming
+     together. The user's rule is sentence case by default, so the caps are
+     gone and the tracking with them. A heading now separates from the rows
+     below it (14/400 ink-800) by size, weight AND colour — three signals,
+     none of them volume. See [[zenboard-system-before-screen]]. */
+  --text-overline: 12px;
+  --text-overline--line-height: 16px;
+  --text-overline--letter-spacing: 0em;
+  --text-overline--font-weight: 500;
   --text-meta: 12px;
+  --text-meta--letter-spacing: 0em;
   --text-meta--line-height: 16px;
   --text-mono-sm: 12px;
+  --text-mono-sm--letter-spacing: 0em;
   --text-mono-sm--line-height: 16px;
   --text-ui: 14px;
   --text-ui--line-height: 20px;
   --text-ui--letter-spacing: -0.15px;
   --text-mono-md: 13px;
+  --text-mono-md--letter-spacing: -0.08px;
   --text-mono-md--line-height: 20px;
   --text-lead: 16px;
+  --text-lead--letter-spacing: -0.22px;
   --text-lead--line-height: 26px;
   --text-editor: 16px;
   --text-editor--line-height: 24px;
-  --text-editor--letter-spacing: -0.23px;
+  --text-editor--letter-spacing: -0.22px;
   --text-title-4: 18px;
   --text-title-4--line-height: 24px;
-  --text-title-4--letter-spacing: -0.30px;
+  --text-title-4--letter-spacing: -0.29px;
   --text-title-4--font-weight: 600;
   --text-title-3: 22px;
   --text-title-3--line-height: 28px;
-  --text-title-3--letter-spacing: -0.40px;
+  --text-title-3--letter-spacing: -0.4px;
   --text-title-3--font-weight: 600;
   --text-title-2: 24px;
+  --text-title-2--letter-spacing: -0.46px;
   --text-title-2--line-height: 32px;
   --text-title-2--font-weight: 600;
   --text-title-1: 30px;
   --text-title-1--line-height: 36px;
-  --text-title-1--letter-spacing: -0.43px;
+  --text-title-1--letter-spacing: -0.63px;
   --text-title-1--font-weight: 600;
 
   /* Framed-panel card tokens (mirror of design-system tokens.json radius.panel /
      shadow.panel — build.ts only pushes COLOURS to the web layer, so these two
      non-colour tokens are registered here). Enables rounded-panel / shadow-panel. */
   --radius-panel: 12px;
-  /* Tag/chip radius (Figma Tags 23:7319 — 5px sits between --radius-xs and -sm).
-     Registered here so `rounded-tag` is a utility; FigmaTag + meta chips use it. */
-  --radius-tag: 5px;
-  --shadow-panel: 0 0 0 1px var(--color-border-panel), 0 1px 2px rgb(0 0 0 / 0.04);
+  /* Tag/chip radius. It was 5px — a Figma measurement that "sits between
+     --radius-xs and -sm", i.e. a SIXTH value on a five-value scale, for a
+     difference no one can see. It is `--radius-xs` now, which is also the right
+     answer on curvature: a ~18px chip at 4px carries the same corner-to-height
+     ratio as a 28px button at 6px, so small things stay proportionally as round
+     as big ones instead of rounder. `rounded-tag` stays as the NAME — a chip
+     should say what it is, and if the scale moves, it moves with it. */
+  --radius-tag: var(--radius-xs);
+  /* The panel shadow was `rgb(0 0 0 / 0.04)` inline — a black shadow that does
+     nothing on a dark panel. `--shadow-xs` is defined per theme. */
+  --shadow-panel: 0 0 0 1px var(--color-border-panel), var(--shadow-xs);
 
   /* Motion tokens DS components animate with (durations/eases the app lacks). */
-  --ease-out-quiet: cubic-bezier(0.16, 1, 0.30, 1);
-  --ease-standard: cubic-bezier(0.20, 0, 0.00, 1);
-  --ease-in-quiet: cubic-bezier(0.40, 0, 1, 1);
-  --ease-spring: cubic-bezier(0.34, 1.40, 0.64, 1);
+  --ease-out-quiet: cubic-bezier(0.23, 1, 0.32, 1);
+  /* Movement ON screen - something already in front of the reader changing
+     place or shape (a caret rotating, a highlight sweeping). It accelerates out
+     of rest, which is right for a thing that was already there and wrong for a
+     thing arriving: a drawer used to slide in on this, and an entrance that
+     holds still for its first frames is the sluggishness both motion skills
+     name first. Arrivals and departures take --ease-out-quiet. */
+  --ease-standard: cubic-bezier(0.77, 0, 0.175, 1);
+  /* Sheets and drawers: the iOS curve (Emil Kowalski / Ionic). A panel sliding in
+     from an edge settles like a physical sheet rather than a generic decelerate. */
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  /* Hover and colour changes: exactly CSS `ease`, spelled out so every curve reads and
+     parses the same way. Emil Kowalski's decision tree gives colour its own curve;
+     the strong ease-out put 97% of a 100ms wash into its first 50ms, a snap rather
+     than a wash. */
+  --ease-hover: cubic-bezier(0.25, 0.1, 0.25, 1);
+  /* Tailwind's OWN defaults, for a `transition-*` that names no duration or curve.
+     They were Tailwind's 150ms and cubic-bezier(0.4, 0, 0.2, 1), which measured on 12
+     of 52 transitioning elements on the tasks page: a third curve for colour. */
+  --default-transition-duration: var(--duration-fast);
+  --default-transition-timing-function: var(--ease-hover);
   --duration-instant: 20ms;
   --duration-fast: 100ms;
   --duration-base: 150ms;
   --duration-slow: 200ms;
-  --duration-slower: 200ms;
-  --duration-hold: 700ms;
+  /* Four rungs, and each one is a different number. `--duration-slower` was a
+     fifth NAME for 200ms - the same wait, said twice - and `--duration-hold`
+     (700ms) had no callers at all. A rung nobody can distinguish is how a scale
+     drifts back into two. */
 
-  /* Z-index registry DS overlays rely on. */
+  /* Z-index registry DS overlays rely on.
+     The DS scale (10–60) is the app's *in-page* ladder. Above it sit two things
+     the scale originally had no room for:
+       · --z-fullscreen — a whole-screen mode (triage, the ritual flow, the
+         portal preview, the image lightbox). These used to improvise 100 / 190 /
+         200 / z-modal, i.e. three raw values for ONE layer, all of them above
+         the entire DS scale and none of them agreeing.
+       · toast and tooltip must clear EVERYTHING they can be raised from. They
+         were 55 and 70, which put them UNDER every app overlay in the 100–210
+         range — so an Undo toast fired from quick-capture or the command palette
+         rendered behind it. Both moved up together, keeping their old relation
+         (tooltip over toast, toast over drag).
+       · --z-dropdown is the THIRD case of that same argument, found 2026-09-07
+         and fixed the same way. Every portalled floating surface in the DS —
+         popover, dropdown menu, select, combobox, hover card, filter, and the
+         date and time pickers — sits on this one layer, and at 40 it was under
+         every app overlay in the 60–200 range. Measured: opening the time
+         picker inside the calendar's event composer (a raw `z-[120]`) rendered
+         the list BEHIND the composer, so only the right-hand duration column
+         was visible and the times themselves were painted over. A popover is
+         raised FROM a surface and dismissed before anything else is touched, so
+         like a toast it has to clear everything it can be raised from —
+         including a fullscreen mode, whose forms have fields too. It keeps its
+         relation to the two layers above it (tooltip over toast over popover).
+         Radix closes an open popover when a modal opens, so nothing depends on
+         this layer sitting *under* the modal band. */
   --z-sticky: 10;
-  --z-dropdown: 40;
+  /* A record opened as a FULL PAGE inside the content pane (PageView), the way a
+     Docs page or a Notion page opens: the sidebar and top bar stay. It has to
+     cover the view it opened over, including that view's sticky headers (10),
+     and it has to stay UNDER the widget band (30) — the hover-expanding sidebar
+     floats over the content there, and a page above it would swallow the sidebar
+     the moment it expanded. Toasts, menus and dialogs are all far above. */
+  --z-page: 20;
+  /* Persistent floating CHROME that lives over the page but under everything
+     transient — the focus timer you drag around, and the hover-expanding
+     sidebar that floats over the content rather than reflowing it. It has to
+     clear a page's own sticky headers, which is why it is not --z-sticky.
+     Deliberately BELOW the overlay band: the timer shipped at a raw 90, which
+     put it above a DS modal (50) but below the command palette (200), so a
+     dialog sometimes covered it and sometimes did not. A dialog owns the
+     screen; this dims with everything else. */
+  --z-widget: 30;
   --z-overlay: 45;
   --z-modal: 50;
-  --z-toast: 55;
   --z-drag: 60;
-  --z-tooltip: 70;
+  --z-fullscreen: 300;
+  --z-dropdown: 310;   /* every portalled floating surface — see the note above */
+  --z-toast: 320;
+  --z-tooltip: 330;
+  /* The room's light. Above EVERYTHING, because it is not a layer of the app — it is the
+     statement that the app is in a mode, the way the OS draws a recording border over every
+     window. It never takes a pointer event, so nothing can hide behind it. */
+  --z-focus-edge: 400;
 
   /* Named animations (Radix data-state driven). */
   --animate-emerge: emerge var(--duration-base) var(--ease-out-quiet);
   --animate-rise: rise var(--duration-slow) var(--ease-out-quiet);
-  --animate-exit: exit var(--duration-fast) var(--ease-in-quiet);
-  --animate-slide-in-right: slide-in-right var(--duration-slow) var(--ease-standard);
-  --animate-slide-out-right: slide-out-right var(--duration-fast) var(--ease-in-quiet);
-  --animate-slide-in-bottom: slide-in-bottom var(--duration-slow) var(--ease-standard);
-  --animate-slide-out-bottom: slide-out-bottom var(--duration-fast) var(--ease-in-quiet);
-  --animate-ds-fadein: fadein var(--duration-base) var(--ease-out-quiet);
+  /* An exit takes the SAME curve family as its entrance, never an ease-in.
+     Both motion skills in use here say so: an ease-in holds nearly still for
+     its first frames, which is exactly when the reader is watching, so a menu
+     closing on one reads as sticky. The asymmetry an exit does want is
+     DURATION, and that is already here: exits run at --duration-fast against
+     the --duration-base an entrance takes. */
+  --animate-exit: exit var(--duration-fast) var(--ease-out-quiet);
+  --animate-slide-in-right: slide-in-right var(--duration-slow) var(--ease-drawer);
+  --animate-slide-out-right: slide-out-right var(--duration-fast) var(--ease-drawer);
+  --animate-slide-in-bottom: slide-in-bottom var(--duration-slow) var(--ease-drawer);
+  --animate-slide-out-bottom: slide-out-bottom var(--duration-fast) var(--ease-drawer);
+  --animate-slide-in-left: slide-in-left var(--duration-slow) var(--ease-drawer);
+  --animate-slide-out-left: slide-out-left var(--duration-fast) var(--ease-drawer);
+  /* ONE fade token. `animate-fadein` was used by six overlays and scrims (PageView,
+     Drawer, CommandMenu) with no --animate-fadein behind it, so Tailwind compiled
+     nothing and they cut in; `animate-ds-fadein` was a second name for the same
+     job. Both spellings are this one now. */
+  --animate-fadein: fadein var(--duration-base) var(--ease-out-quiet);
+  /* A scrim leaves WITH its panel, on the panel's exit timing. Every DS overlay
+     faded in and declared nothing for out, so Radix unmounted it at once while
+     the panel played its 100ms exit: a ghost dialog over a fully bright page. */
+  --animate-fadeout: fadeout var(--duration-fast) var(--ease-out-quiet);
+  --animate-settle-out: settle-out var(--duration-base) var(--ease-out-quiet) forwards;
+  /* The check ARRIVING. A tick is the most repeated confirmation in the app, so
+     this is deliberately the smallest motion in the vocabulary: no overshoot
+     (globals.css carried an unused 0.2 -> 1.1 -> 1 keyframe for years, and a
+     bounce on a control used dozens of times a day reads as a toy), one
+     --duration-fast, scale and opacity only. */
+  --animate-tick: tick var(--duration-fast) var(--ease-out-quiet);
   --animate-flash-highlight: flash-highlight 1200ms var(--ease-standard);
 }
 
-@keyframes emerge { from { opacity: 0; transform: translateY(4px) scale(0.96); } }
+/* An anchored surface grows out of the point its trigger gives it (the Radix
+   transform-origin) and never travels: the 4px rise this used to carry lifted
+   every menu BELOW its trigger up toward it, and slid its anchored corner. */
+@keyframes emerge { from { opacity: 0; transform: scale(0.96); } }
 @keyframes rise { from { opacity: 0; transform: translateY(8px) scale(0.98); } }
+@keyframes tick { from { opacity: 0; transform: scale(0.8); } }
 @keyframes exit { to { opacity: 0; transform: scale(0.99); } }
 @keyframes slide-in-right { from { transform: translateX(100%); } }
 @keyframes slide-out-right { to { transform: translateX(100%); } }
 @keyframes slide-in-bottom { from { transform: translateY(100%); } }
 @keyframes slide-out-bottom { to { transform: translateY(100%); } }
+/* The phone navigation drawer sits 8px in from the LEFT edge, so it starts one width
+   plus that inset off-screen. It used `slideIn` (translateX(100%)) and so entered from
+   the right, across the page: measured, its left edge at 238px on frame 0. */
+@keyframes slide-in-left { from { transform: translateX(calc(-100% - 8px)); } }
+@keyframes slide-out-left { to { transform: translateX(calc(-100% - 8px)); } }
 @keyframes fadein { from { opacity: 0; } }
+@keyframes fadeout { to { opacity: 0; } }
+/* A finished task leaving the active list. It has already sat in place for its
+   beat (lib/use-settling.ts), so this is only the last handoff — it fades and
+   gives up its height rather than sliding, because a row that travels draws the
+   eye to something you have finished thinking about. */
+@keyframes settle-out {
+  to { opacity: 0; transform: translateY(-2px); }
+}
 @keyframes indeterminate { from { translate: -110% 0; } to { translate: 350% 0; } }
 @keyframes shimmer { from { transform: translateX(-100%); } to { transform: translateX(200%); } }
 @keyframes reveal-down { from { height: 0; opacity: 0.4; } to { height: var(--radix-accordion-content-height); opacity: 1; } }
 @keyframes reveal-up { from { height: var(--radix-accordion-content-height); } to { height: 0; opacity: 0.4; } }
+/* "You arrived here" — one pulse, then gone.
+   The colour is `--sel-block`, the wash a swept block already wears, so
+   arriving at a block reads as that block being pointed at rather than as a
+   colour nobody has seen before. It used to be `--color-berry-alpha-20`, which
+   the generated palette resolves to PAPER at 20% — a near-white wash on a
+   near-white page, i.e. invisible. Nothing referenced this animation, so
+   nothing ever showed it; the first caller (block links) is what found it. */
 @keyframes flash-highlight {
   0%, 100% { background-color: transparent; }
-  25%, 75% { background-color: var(--color-berry-alpha-20, rgb(242 241 235 / 0.20)); }
+  25%, 75% { background-color: var(--sel-block); }
 }
 
 /* ── @utility helpers DS components apply directly (§6.6). ─────────────────── */
@@ -173,11 +312,304 @@
   }
 }
 @utility row-hover {
-  transition: background-color var(--duration-instant) var(--ease-out-quiet);
+  transition: background-color var(--duration-instant) var(--ease-hover);
   &:hover { background-color: var(--color-surface-hover); }
   &:active { background-color: var(--color-surface-active); }
+}
+/* A STATE over an element that has its OWN fill — a radio card, a dropzone, a
+   bookmark card, a filled search field. `hover:bg-surface-hover` REPLACES the
+   fill, so the wash would composite against whatever sits behind the element
+   rather than the element itself: the same card could hover lighter, darker or
+   not at all depending on where it was placed. `background-image` paints OVER
+   `background-color`, so the wash always lands on the element's own fill, and
+   unlike a `::after` layer it works on an <input>. Use as `hover:wash-over`. */
+/* The specular edge (see --edge-light, globals.css) as a class, for surfaces that carry no
+   shadow token of their own — a card sits, it does not float, but it is still made of something
+   and its top edge still catches the room. In light it resolves to a transparent no-op. */
+@utility surface-edge {
+  box-shadow: var(--edge-light);
+}
+@utility wash-over {
+  background-image: linear-gradient(var(--color-surface-hover), var(--color-surface-hover));
+}
+/* The inline composer shell — a bordered row wrapping a borderless input and a
+   commit button (add a task, log a touch, write a note). Clients, Projects and
+   Inbox each declared this same class string verbatim, and none of the three
+   showed focus: the input inside sets `outline: none`, so tabbing into the
+   app's most-used control lit up nothing at all. The ring lives on the SHELL
+   via `:focus-within`, because the visible box is the shell, not the input. */
+@utility composer-shell {
+  @apply flex items-center gap-2 rounded-lg border border-line-strong bg-surface-raised py-1 pl-3.5 pr-1.5;
+  transition: box-shadow var(--duration-fast) var(--ease-hover);
+  &:focus-within {
+    box-shadow: 0 0 0 2px var(--focus-offset, var(--color-surface-panel)), 0 0 0 4px var(--color-border-focus);
+  }
 }
 @utility truncate-1 { @apply truncate; }
 @utility scroll-fade-x {
   mask-image: linear-gradient(to right, transparent, black 24px, black calc(100% - 24px), transparent);
+}
+
+/* ── Row actions that appear on hover ──────────────────────────────────────────
+   Secondary row controls stay quiet until you hover the row (`.group`), reach
+   them by keyboard, or the row is otherwise active. The part everyone forgets:
+   **a touch device has no hover**, so an `opacity-0 group-hover:opacity-100`
+   group is a control a phone user can never see or reach. On a coarse pointer
+   these are simply always visible. `ListRow` already did this by hand; this is
+   that convention, named, so the other rows stop re-deriving it. */
+@utility reveal-on-hover {
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-hover);
+  &:focus-within { opacity: 1; }
+  .group:hover & { opacity: 1; }
+  @media (pointer: coarse) { opacity: 1; }
+}
+
+/* ── Rows that must stay tappable ──────────────────────────────────────────────
+   A menu row sized for a mouse is 32px, which is right — density is the point.
+   A finger is not a mouse: WCAG 2.5.5 asks for 44px, and a 32px row inside a
+   popover is the single most common place an app becomes unusable on a phone
+   while looking fine on a laptop. Same idea as `reveal-on-hover` above: the
+   coarse pointer gets the accommodation, the fine pointer keeps the density. */
+@utility touch-row {
+  @media (pointer: coarse) { min-height: 44px; }
+}
+
+/* ── A control a finger can actually hit ──────────────────────────────────────
+   WCAG 2.5.8 (AA) asks 24×24 of every target; 2.5.5 (AAA) asks 44×44, which
+   `IconButton` already gives an isolated icon control and `touch-row` gives a
+   row. This is the FLOOR for everything else, and it is 24 rather than 44 on
+   purpose: a dense row carries three chips six pixels apart, and 44px expanders
+   would overlap so the topmost steals its neighbour's taps — a bigger target
+   that hits the wrong thing is worse than a small one that hits the right thing.
+
+   Measured at 375px with a coarse pointer, 2026-09-12, before this existed: the
+   task checkbox 16×16, row menus 20×24, a date chip 46×17, a row title 61×20 —
+   19 controls under the floor on the project page alone.
+
+   An invisible centred ::after, so nothing about the layout moves. It sets
+   `position: relative`, so never put it on an absolutely positioned element or
+   on one that already owns an ::after. */
+@utility touch-min {
+  @media (pointer: coarse) {
+    position: relative;
+    &::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      translate: -50% -50%;
+      width: 100%;
+      height: 100%;
+      min-width: 24px;
+      min-height: 24px;
+    }
+  }
+}
+
+/* ── Z-index registry, as real utilities ───────────────────────────────────────
+   The `--z-*` values in @theme above are plain custom properties: Tailwind v4
+   has no `--z-*` theme namespace (its z-index utilities are the bare numeric
+   scale), so `z-modal`, `z-overlay` and friends compiled to NOTHING and every
+   DS overlay — Modal, Drawer, BottomSheet, Popover, Tooltip, Toaster, Combobox,
+   the pickers — sat at `z-index: auto`. That stays invisible until an overlay
+   meets a positioned element with a real z-index, at which point the page wins
+   and the dialog is painted over. Declaring them here makes the registry the
+   thing it always claimed to be. */
+/* A `light:` variant, so a component can state the ONE thing it needs to do
+   differently in daylight without a second component or a JS branch.
+   It exists because of a fact about light interfaces: a translucent wash cannot
+   separate surfaces. `rgb(255 255 255 / 0.05)` over near-black is a strong lift;
+   the mirrored `rgb(18 18 18 / 0.05)` over off-white measures 1.04:1 — nothing.
+   Dark separates with LUMINANCE, light separates with BORDERS. That is a real
+   asymmetry between the two themes, not a token that needs tuning, so the few
+   places it matters say so out loud: `light:border light:border-line`. */
+@custom-variant light (&:where([data-theme='light'] *));
+
+@utility z-sticky     { z-index: var(--z-sticky); }
+@utility z-page       { z-index: var(--z-page); }
+@utility z-widget     { z-index: var(--z-widget); }
+@utility z-dropdown   { z-index: var(--z-dropdown); }
+@utility z-overlay    { z-index: var(--z-overlay); }
+@utility z-modal      { z-index: var(--z-modal); }
+@utility z-drag       { z-index: var(--z-drag); }
+@utility z-fullscreen { z-index: var(--z-fullscreen); }
+@utility z-toast      { z-index: var(--z-toast); }
+@utility z-tooltip    { z-index: var(--z-tooltip); }
+@utility z-focus-edge { z-index: var(--z-focus-edge); }
+
+/* ── Line items: a price table that has to survive a phone ─────────────────────
+   §7M put this block in front of CLIENTS, and clients read proposals on phones.
+   Four fixed money columns need ~300px; below that the description column was
+   collapsing to a single letter and the header labels were printing on top of
+   each other — on the one artifact in the product where the numbers are the
+   whole message.
+
+   So below 560px the row stacks: description on its own line, then "qty × rate"
+   and the amount beneath it. That is the shape every invoice takes on a phone,
+   for the reason it takes it — all the figures stay visible at once. Above the
+   breakpoint it stays a single aligned grid, which is what lets someone verify
+   a column adds up to its own total by eye.
+
+   `display: contents` on the number pair is what keeps this ONE DOM: wide, the
+   quantity and rate dissolve into their own grid columns; narrow, the wrapper
+   becomes a flex row and carries them together with a × between. Two renderings
+   of a price is how a total comes to disagree with its column. */
+@utility line-items-row {
+  display: grid;
+  align-items: center;
+  gap: 4px;
+  grid-template-columns: minmax(0, 1fr) 68px 108px 96px 28px;
+
+  & > [data-col='nums'] { display: contents; }
+
+  @media (max-width: 560px) {
+    grid-template-columns: minmax(0, 1fr) 28px;
+    row-gap: 2px;
+    & > [data-col='desc']   { grid-column: 1; grid-row: 1; }
+    & > [data-col='act']    { grid-column: 2; grid-row: 1; }
+    & > [data-col='nums']   { display: flex; align-items: center; gap: 6px; grid-column: 1; grid-row: 2; }
+    & > [data-col='amount'] { grid-column: 2 / -1; grid-row: 2; justify-self: end; }
+  }
+}
+
+/* The column header labels what the stacked row labels itself ("2 × $750.50"). */
+@utility line-items-head {
+  display: grid;
+  align-items: center;
+  gap: 4px;
+  grid-template-columns: minmax(0, 1fr) 68px 108px 96px 28px;
+  @media (max-width: 560px) { display: none; }
+}
+
+/* Footer: "Add line" stays left, the total stays right, at every width. */
+@utility line-items-foot {
+  display: grid;
+  align-items: center;
+  gap: 4px;
+  grid-template-columns: minmax(0, 1fr) 68px 108px 96px 28px;
+  @media (max-width: 560px) {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    & > [data-col='pad'] { display: none; }
+  }
+}
+
+/* ── Week board: a card that thins with its column ─────────────────────────────
+   The seven day columns FLEX (lib/week-layout.ts), so a card's width is decided
+   by how wide the week is, not by the viewport — and a media query cannot see
+   that. A container query can: `.week-col` is the container, and below 200px
+   the shared task card (components/tasks/task-card.tsx) buys width back for its
+   title.
+
+   Nothing is LOST: a fact gives up its word to screen readers (the sr-only
+   recipe, never display:none) and keeps its glyph — a priority's bars, a
+   project's folder in its colour. The card gets quieter, never less truthful.
+   Re-aimed at the shared card 2026-09-22; it targeted the week board's own
+   chips (`data-week-chip*`), which are gone. */
+.week-col {
+  container-type: inline-size;
+  container-name: weekcol;
+}
+
+@container weekcol (max-width: 200px) {
+  .week-col [data-fact-word] {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip-path: inset(50%); white-space: nowrap;
+  }
+
+  /* THE CHROME BUDGET. A 140px column is not 140px of title: the column's
+     padding, the card's padding, the checkbox and the ••• together take ~90px,
+     which left about nine characters per line and titles reading
+     "Revi / the / lau…". Everything below buys that width back, and it is why
+     the floor can stay at 140 instead of the week going back to scrolling. */
+  .week-col [data-week-scroll] { padding-left: 8px; padding-right: 8px; }
+  .week-col [data-task-card] { padding: 8px; gap: 6px; }
+  /* Out of flow, not merely transparent: at this width its 24px is the
+     difference between two words on a line and one. It still appears on hover
+     and on keyboard focus, over the card's own corner. */
+  .week-col [data-task-card-menu] {
+    position: absolute; top: 4px; right: 4px;
+    background: var(--color-surface-raised); border-radius: var(--r-sm);
+  }
+  /* The title gets the room back as a fourth line rather than a wider one. */
+  .week-col [data-task-card-title] { -webkit-line-clamp: 4; }
+}
+
+/* ── THE SCROLL REGION ─────────────────────────────────────────────────────────
+   Zenboard has ONE scrolling rule, and this utility is it.
+
+   THE DEFECT IT FIXES, measured on the project page: the detail pane is 648px
+   wide on Overview (which scrolls) and 654px on Money (which does not). The
+   classic scrollbar takes 6px of LAYOUT width, so every crossing between a long
+   tab and a short one shifted the content sideways. Twelve page-level scroll
+   containers across six modules had each declared `overflow-y-auto` on their
+   own and not one of them reserved the gutter.
+
+   `scrollbar-gutter: stable` reserves the space whether or not a scrollbar is
+   present, so both states occupy the same width. It is the browser's own answer
+   to this; a right-padding hack would have to guess the scrollbar's width and
+   would be wrong on every platform that disagrees. Where scrollbars are overlays
+   (macOS default) it costs nothing, because nothing was being taken.
+
+   `overflow-x: hidden` is part of the rule, not a separate decision: a content
+   region that scrolls sideways as well as down is a layout bug, and the few
+   surfaces that genuinely pan horizontally (the week board, a wide table) own
+   their own scroller inside this one and opt out by not using this utility.
+
+   USE IT for any region that is "the part of a view that scrolls". Do NOT use it
+   for bounded overlays — menus, popovers, comboboxes — which are sized by their
+   own max-height and would only gain a permanent empty gutter. */
+@utility scroll-region {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+}
+
+/* ── A wide layout bleeds to the page's edges ─────────────────────────────────
+   An inline database's table or board keeps its first column on the text column
+   and runs out to both edges of the page, scrolling sideways there — Notion's
+   inline database. The distances are measured, never guessed (lib/bleed.ts
+   `bleed`, a callback ref that reads the page marked `data-bleed-root`); without a root they
+   are zero and the layout simply stays in its column. */
+@utility bleed-x {
+  margin-inline-start: calc(-1 * var(--bleed-start, 0px));
+  margin-inline-end: calc(-1 * var(--bleed-end, 0px));
+  padding-inline-start: var(--bleed-start, 0px);
+  padding-inline-end: var(--bleed-end, 0px);
+  scroll-padding-inline-start: var(--bleed-start, 0px);
+}
+
+/* ── A bled layout with handles in its margin ─────────────────────────────────
+   A table's rows carry a ⋮⋮ in the page's margin, to their left (database plan
+   T12, after Notion). Where the page leaves the table less margin than a handle
+   needs — a record open in a peek leaves none — the table takes the room itself:
+   its first column still lines up with the text, and its handles still show. A
+   phone keeps its gutter and its rows draw no handles. Use INSTEAD of `bleed-x`. */
+@utility bleed-x-handles {
+  margin-inline-start: calc(-1 * max(var(--bleed-start, 0px), 28px));
+  margin-inline-end: calc(-1 * var(--bleed-end, 0px));
+  padding-inline-start: max(var(--bleed-start, 0px), 28px);
+  padding-inline-end: var(--bleed-end, 0px);
+  scroll-padding-inline-start: max(var(--bleed-start, 0px), 28px);
+  @media (width < 40rem) {
+    margin-inline-start: calc(-1 * var(--bleed-start, 0px));
+    padding-inline-start: var(--bleed-start, 0px);
+    scroll-padding-inline-start: var(--bleed-start, 0px);
+  }
+}
+
+/* ── A sideways scroller that keeps its bar out of the way ───────────────────
+   A board or a wide table in a document scrolls sideways as a matter of course,
+   and the app's classic 6px bar (globals.css) drew a grey rule under every one of
+   them — the first thing on the page to catch the eye, under a board that fit
+   the screen but for its own padding (user screenshot, 2026-09-15: "our looks
+   cheap"). The bar appears while the pointer is over the scroller, which is when
+   it can be used; a trackpad, a wheel and a finger scroll it regardless. Engines
+   without `scrollbar-color` keep the global bar. */
+@utility scrollbar-quiet {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  &:hover, &:focus-within {
+    scrollbar-color: color-mix(in srgb, var(--ink-6) 50%, transparent) transparent;
+  }
 }

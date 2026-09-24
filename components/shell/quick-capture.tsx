@@ -6,12 +6,26 @@
 // (lib/task-parse.ts) shown under the input; a chip is the confirmation, and
 // dismissing it keeps the words as literal title text. Keyboard-first: Enter
 // saves & closes, Shift/⌘+Enter saves & keeps the field open, Esc closes.
+//
+// MEMORY (§7X §4.3, M2) rides on the SAME ONE FIELD. It is not a mode: there is
+// no Task/Memory toggle, because a toggle taxes every ordinary capture — which
+// is nearly all of them — to serve the rare one. The choice is made at COMMIT
+// time instead (⌥↵, or the Remember button), which is the moment you actually
+// know which of the two you typed.
+//
+// A fact captured here is about YOU (`self`) — there is no record context in a
+// global box, and it is the subject with no other surface in the product. The
+// footer says so out loud rather than filing it somewhere you did not expect;
+// facts about a CLIENT are captured on the client, where the subject is known.
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useFocusReturn } from '@/lib/use-focus-return';
 import { useRouter } from 'next/navigation';
-import { Inbox, Sun, CornerDownLeft, Check } from "@/components/ds/icons";
-import { Icon } from "@/components/ds/ui";
+import { Inbox, Sun, CornerDownLeft, Check, Brain } from "@/components/ds/icons";
+import { Icon, toast } from "@/components/ds/ui";
 import { ParsedChips } from '@/components/ui/parsed-chips';
 import { addTask } from '@/lib/actions/tasks';
+import { remember, forgetMemory } from '@/lib/actions/memory';
+import { SELF, bodyProblem, BODY_MAX } from '@/lib/memory';
 import { createClient } from '@/lib/supabase/client';
 import { parseTask, type ChipKind } from '@/lib/task-parse';
 
@@ -20,6 +34,7 @@ export const CAPTURE_EVENT = 'zb:capture';
 export function QuickCapture() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  useFocusReturn(open);
   const [val, setVal] = useState('');
   const [busy, setBusy] = useState(false);
   const [count, setCount] = useState(0); // captured this session (subtle feedback)
@@ -72,10 +87,56 @@ export function QuickCapture() {
     else close();
   }
 
+  /**
+   * The same words, committed as a FACT instead of a task.
+   *
+   * It takes the RAW text, not `parsed.title`: the task grammar strips `!high`,
+   * `~30m` and `#acme` because a task carries those as fields, but a fact is one
+   * sentence and stripping words out of it would change what it claims.
+   */
+  async function rememberIt() {
+    if (busy) return;
+    const body = val;
+    const problem = bodyProblem(body);
+    if (problem) {
+      setErr(problem === 'empty'
+        ? 'Write the fact first.'
+        : `A memory is one line — trim this to ${BODY_MAX} characters.`);
+      return;
+    }
+    setBusy(true);
+    let res: Awaited<ReturnType<typeof remember>>;
+    try {
+      res = await remember({ body, subject: SELF });
+    } catch {
+      setBusy(false);
+      setErr('That didn’t save. Check your connection and try again.');
+      return;
+    }
+    setBusy(false);
+    if ('error' in res) { setErr(res.error); return; }
+
+    const created = res.memory;
+    setVal('');
+    setCount((c) => c + 1);
+    router.refresh(); // /memory reflects it if that is the page behind this
+    close();
+    toast({
+      message: 'Remembered, about you.',
+      action: {
+        label: 'Undo',
+        onAction: () => { forgetMemory(created.id); router.refresh(); },
+      },
+    });
+  }
+
   if (!open) return null;
   const dest = parsed.scheduledDate ? (parsed.chips.find((c) => c.kind === 'when')?.label ?? 'Scheduled') : 'Inbox';
+  const canRemember = !bodyProblem(val);
+  // No entrance animation: the global "C" composer is a keyboard surface, and
+  // the same argument as the command palette applies — see its note.
   return (
-    <div onMouseDown={close} style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'color-mix(in srgb, var(--scrim-color) 38%, transparent)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '16vh', animation: 'fadein 140ms' }}>
+    <div onMouseDown={close} style={{ position: 'fixed', inset: 0, zIndex: 'var(--z-modal)', background: 'color-mix(in srgb, var(--scrim-color) 38%, transparent)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '16vh' }}>
       <div onMouseDown={(e) => e.stopPropagation()} style={{ width: 'min(560px, 92vw)', background: 'var(--color-surface-raised)', border: '1px solid var(--color-line-strong)', borderRadius: 'var(--r-xl)', boxShadow: 'var(--shadow-xl)', overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px' }}>
           <Icon icon={parsed.scheduledDate ? Sun : Inbox} size={20} style={{ color: 'var(--accent-text)', flexShrink: 0 }} />
@@ -84,15 +145,28 @@ export function QuickCapture() {
             value={val}
             onChange={(e) => { setVal(e.target.value); if (err) setErr(null); }}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') { e.preventDefault(); save(e.shiftKey || e.metaKey || e.ctrlKey); }
+              // ⌥↵ commits the same text as a memory. Checked BEFORE the plain
+              // Enter branch, and deliberately not ⌘↵ — that already means
+              // "save and keep the field open".
+              if (e.key === 'Enter' && e.altKey) { e.preventDefault(); rememberIt(); }
+              else if (e.key === 'Enter') { e.preventDefault(); save(e.shiftKey || e.metaKey || e.ctrlKey); }
               else if (e.key === 'Escape') { e.preventDefault(); close(); }
             }}
-            placeholder="Capture a thought…  (try: call Sam tomorrow !high 30m)"
+            // Short, because the Remember button took the room the old
+            // placeholder ran into — it clipped mid-word ("…call Sam tomorr").
+            // The typed-grammar example moved to the footer, which has space
+            // for it and is the surface already teaching this dialog.
+            placeholder="Capture a thought…"
             autoComplete="off" data-1p-ignore data-lpignore="true"
             style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 'var(--text-h2-size)', color: 'var(--ink)' }}
           />
+          <button onClick={rememberIt} disabled={busy || !canRemember} aria-label="Remember this about you"
+            title="Remember this about you  ⌥↵"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 30, padding: '0 10px', borderRadius: 'var(--r-md)', border: '1px solid var(--color-line-strong)', background: 'transparent', color: canRemember ? 'var(--text-secondary)' : 'var(--text-muted)', fontSize: 'var(--text-caption-size)', fontWeight: 600, cursor: canRemember ? 'pointer' : 'default', transition: 'color var(--duration-fast) var(--ease-hover), transform var(--duration-fast) var(--ease-out-quiet)' }}>
+            <Icon icon={Brain} size={14} /> Remember
+          </button>
           <button onClick={() => save(false)} disabled={busy || !parsed.title} aria-label={`Save to ${dest}`}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 30, padding: '0 12px', borderRadius: 'var(--r-md)', border: '1px solid var(--primary-deep)', background: parsed.title ? 'var(--primary)' : 'var(--paper-3)', color: parsed.title ? 'var(--on-primary)' : 'var(--text-secondary)', fontSize: 'var(--text-caption-size)', fontWeight: 600, cursor: parsed.title ? 'pointer' : 'default', transition: 'background 120ms, color 120ms' }}>
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 30, padding: '0 12px', borderRadius: 'var(--r-md)', border: '1px solid var(--primary-deep)', background: parsed.title ? 'var(--primary)' : 'var(--paper-3)', color: parsed.title ? 'var(--on-primary)' : 'var(--text-secondary)', fontSize: 'var(--text-caption-size)', fontWeight: 600, cursor: parsed.title ? 'pointer' : 'default', transition: 'background var(--duration-fast) var(--ease-hover), color var(--duration-fast) var(--ease-hover), transform var(--duration-fast) var(--ease-out-quiet)' }}>
             <Icon icon={CornerDownLeft} size={14} /> Save
           </button>
         </div>
@@ -104,9 +178,14 @@ export function QuickCapture() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderTop: '1px solid var(--line-2)', fontSize: 'var(--text-label-size)', color: 'var(--text-muted)' }}>
           {err ? (
             <span style={{ color: 'var(--red-text)' }}>{err}</span>
+          ) : !val.trim() ? (
+            // An empty field does not need to be told what Enter does — it needs
+            // to be told what it accepts. The commit keys take over the moment
+            // there is something to commit.
+            <span>Try <b style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>call Sam tomorrow !high 30m</b> — dates, priority and #project are parsed</span>
           ) : (
             <>
-              <span><b style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Enter</b> saves to <b style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{dest}</b> · <b style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Shift+Enter</b> to save &amp; add another · <b style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Esc</b> to close</span>
+              <span><b style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Enter</b> saves to <b style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{dest}</b> · <b style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Shift+Enter</b> adds another · <b style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>⌥Enter</b> remembers it about you</span>
               <span style={{ flex: 1 }} />
               {count > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--accent-text)' }}><Icon icon={Check} size={12} /> {count} captured</span>}
             </>

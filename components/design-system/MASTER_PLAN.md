@@ -100,7 +100,7 @@ Four layers. Each owns exactly one job; never reach past a layer.
 | `var(--red|amber|blue)` (chrome) | **remove** — neutral, or a §5 semantic token if it means something |
 | `var(--text-*-size)` | the `text-*` type scale (§6) |
 | `var(--r-*)` | `rounded-xs/sm/md/lg` · `rounded-tag` (5) · `rounded-panel` (12) |
-| `var(--dur-*)` / `--ease` | `duration-fast/base` · `ease-standard/out-quiet` |
+| `var(--duration-*)` / `--ease` | `duration-fast/base` · `ease-standard/out-quiet` |
 
 ---
 

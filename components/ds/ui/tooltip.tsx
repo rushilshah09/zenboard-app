@@ -12,6 +12,23 @@ export function TooltipProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+/**
+ * Does this focus ARRIVE at the control, or is focus being handed back to it?
+ *
+ * A tooltip names a control for someone arriving at it — by Tab, from another
+ * control. When a menu, dialog or listbox closes, Radix returns focus to the
+ * control that opened it, and a tooltip opening THERE took the next Escape: in a
+ * peek, after its mode menu, Escape closed the menu, then the tooltip, and only a
+ * third press closed the page. `from` is the focus event's `relatedTarget` — the
+ * element focus left — which is null once that element has unmounted.
+ */
+const HANDS_FOCUS_BACK =
+  '[role="menu"],[role="menuitem"],[role="menuitemcheckbox"],[role="menuitemradio"],'
+  + '[role="dialog"],[role="alertdialog"],[role="listbox"],[role="option"]';
+export function focusOpensTooltip(from: { closest(selectors: string): unknown } | null): boolean {
+  return !!from && !from.closest(HANDS_FOCUS_BACK);
+}
+
 export interface TooltipProps {
   content: React.ReactNode;
   children: React.ReactNode;
@@ -27,7 +44,10 @@ export function Tooltip({ content, children, side = "top", align = "center", arr
   if (disabled) return <>{children}</>;
   return (
     <RT.Root>
-      <RT.Trigger asChild>{children}</RT.Trigger>
+      {/* Radix skips its own open-on-focus once this handler prevents the event. */}
+      <RT.Trigger asChild onFocus={(e) => { if (!focusOpensTooltip(e.relatedTarget as Element | null)) e.preventDefault(); }}>
+        {children}
+      </RT.Trigger>
       <RT.Portal>
         <RT.Content
           side={side}
@@ -37,8 +57,8 @@ export function Tooltip({ content, children, side = "top", align = "center", arr
           className={cn(
             "z-tooltip max-w-[240px] rounded-sm bg-ink-900 px-2 py-1 text-meta text-paper shadow-lift-2",
             "select-none [&_kbd]:ms-1.5",
-            "data-[state=delayed-open]:animate-emerge data-[state=instant-open]:animate-emerge data-[state=closed]:animate-exit",
-            "data-[side=bottom]:origin-top data-[side=top]:origin-bottom data-[side=left]:origin-right data-[side=right]:origin-left",
+            "zb-enter data-[state=delayed-open]:animate-emerge data-[state=closed]:animate-exit",
+            "origin-(--radix-tooltip-content-transform-origin)",
           )}
         >
           {content}

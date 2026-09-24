@@ -9,28 +9,29 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Plus, Trash, Copy, ChevronUp, ChevronDown, Eye, Link2, Check,
-  ArrowLeft, Settings as SettingsIcon, X,
+  Plus, Trash, Copy, ChevronUp, ChevronDown, Eye, Link2, X,
+  Settings as SettingsIcon,
 } from '@/components/ds/icons';
 import {
-  Icon, Button, IconButton, Badge, TextInput, Textarea, Switch, Select,
+  Icon, Button, IconButton, TextInput, Textarea, Switch, Select,
   SegmentedControl, Popover, PopoverTrigger, PopoverContent, MenuItem, MenuLabel,
-  Modal, toast, type BadgeStatus,
+  Modal, toast, inlineEdit, inlineEditProps,
 } from '@/components/ds/ui';
 import { FormRenderer } from '@/components/forms/form-renderer';
+import { FormChrome } from '@/components/forms/form-chrome';
 import {
   BLOCK_META, FIELD_GROUPS, LOGIC_OPS, OP_LABEL, emptyBlock, hasOptions, isField,
   isUnaryOp, conditionSentence,
   type Condition, type FormBlock, type FormBlockType, type FormSettings, type LogicOp,
 } from '@/lib/form-schema';
-import { updateForm, publishForm, setFormStatus, rotateFormToken, setFormInPortal } from '@/lib/actions/forms';
+import { updateForm, publishForm, setFormStatus } from '@/lib/actions/forms';
 import type { FormRecord } from '@/lib/forms';
+import { useLatest } from '@/lib/use-latest';
 
-const STATUS_TONE: Record<string, BadgeStatus> = { draft: 'neutral', live: 'success', closed: 'neutral' };
-const STATUS_LABEL: Record<string, string> = { draft: 'Draft', live: 'Live', closed: 'Closed' };
-
-export function FormBuilder({ form, studio, backHref, demo = false }: {
-  form: FormRecord; studio: string; backHref: string;
+export function FormBuilder({ form, studio, responseCount, demo = false }: {
+  form: FormRecord; studio: string;
+  /** Printed on the Responses tab by the shared chrome. */
+  responseCount?: number;
   /** Harness mode: render everything, touch no server (dev-preview has no auth). */
   demo?: boolean;
 }) {
@@ -43,16 +44,13 @@ export function FormBuilder({ form, studio, backHref, demo = false }: {
   const [token, setToken] = useState(form.shareToken);
   const [selected, setSelected] = useState<string | null>(null);
   const [saving, setSaving] = useState<'idle' | 'saving' | 'saved'>('idle');
-  const [showSettings, setShowSettings] = useState(false);
   const [preview, setPreview] = useState(false);
-  const [shareOpen, setShareOpen] = useState(false);
   const [inPortal, setInPortal] = useState(form.showInPortal);
 
   // ── Autosave (the Library idiom): debounce every edit into one write.
   const dirty = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const latest = useRef({ title, description, blocks, settings });
-  latest.current = { title, description, blocks, settings };
+  const latest = useLatest({ title, description, blocks, settings });
 
   const queueSave = useCallback(() => {
     dirty.current = true;
@@ -85,8 +83,27 @@ export function FormBuilder({ form, studio, backHref, demo = false }: {
     requestAnimationFrame(() => document.getElementById(`label-${block.id}`)?.focus());
   }
   function removeBlock(id: string) {
+    const i = blocks.findIndex((b) => b.id === id);
+    if (i < 0) return;
+    const gone = blocks[i];
     edit(blocks.filter((b) => b.id !== id));
     if (selected === id) setSelected(null);
+    // Deliberately NOT a confirm (INTERACTION_STANDARDS §2.2): Backspace on an
+    // empty label removes a block too, so a dialog would fire mid-typing. Undo
+    // is the right safety net for an editor — it costs nothing to ignore.
+    // The label is in the message so rapid deletes don't dedupe into one toast
+    // whose Undo would restore the wrong block.
+    toast({
+      message: `“${gone.label?.trim() || BLOCK_META[gone.type].label}” removed.`,
+      action: {
+        label: 'Undo',
+        onAction: () => {
+          setBlocks((cur) => (cur.some((b) => b.id === gone.id) ? cur : [...cur.slice(0, i), gone, ...cur.slice(i)]));
+          queueSave();
+          setSelected(gone.id);
+        },
+      },
+    });
   }
   function duplicateBlock(id: string) {
     const i = blocks.findIndex((b) => b.id === id);
@@ -104,12 +121,17 @@ export function FormBuilder({ form, studio, backHref, demo = false }: {
   }
 
   async function doPublish() {
-    if (demo) { setStatus('live'); setToken(token ?? 'demo-token-preview'); setShareOpen(true); return; }
+    // Publishing MOVES you to Share. The old flow popped a modal with the link
+    // in it, which you dismissed and then could not find again without going
+    // back to Build. The link now lives at a URL, so the natural thing to do
+    // after making it is to go and stand where it is.
+    if (demo) { setStatus('live'); setToken(token ?? 'demo-token-preview'); return; }
     if (timer.current) clearTimeout(timer.current);
     await updateForm(form.id, latest.current); // flush before snapshotting
     const res = await publishForm(form.id);
     if ('error' in res) { toast({ message: res.error, variant: 'error' }); return; }
-    setStatus('live'); setToken(res.token); setSaving('saved'); setShareOpen(true);
+    setStatus('live'); setToken(res.token); setSaving('saved');
+    router.push(`/forms/${form.id}/share`);
     router.refresh();
   }
 
@@ -126,41 +148,64 @@ export function FormBuilder({ form, studio, backHref, demo = false }: {
     blocks, settings, studio,
   }), [form.id, form.version, title, description, blocks, settings, studio]);
 
-  const questionCount = blocks.filter((b) => isField(b.type)).length;
+  // The settings RAIL is gone: settings are a tab (app/(app)/forms/[id]/settings),
+  // and this file used to draw a second, subtly different copy of them beside
+  // the questions. One surface per idea — the rule this module already had for
+  // Share and had not applied to itself.
 
+  // THE BUILDER DRAWS INSIDE THE SHARED CHROME NOW.
+  //
+  // It used to build its own sticky header with its own back arrow, its own
+  // status badge and its own Settings button opening a 300px rail — while
+  // Settings, Responses and Share each existed as a real tab somewhere else.
+  // So the ONE tab you spend all your time on was the one tab with no tabs:
+  // from the builder there was no way to reach the responses without going
+  // backwards, and Settings existed twice in two different shapes.
+  //
+  // What is left here is what only the builder can own: Preview, which is a
+  // modal it holds the state for, and Publish, which is the act that turns a
+  // draft into a link.
   return (
-    <div className="flex min-h-[100dvh] flex-col">
-      {/* One header row — title left, actions right (Design Constitution §3) */}
-      <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center gap-3 border-b border-line-soft bg-canvas px-4">
-        <IconButton label="Back" variant="ghost" size="sm" icon={<Icon icon={ArrowLeft} size={16} />} onClick={() => router.push(backHref)} />
-        <span className="min-w-0 flex-1 truncate text-ui font-medium text-ink-900">{title || 'Untitled form'}</span>
-        <Badge status={STATUS_TONE[status]}>{STATUS_LABEL[status]}</Badge>
+    <FormChrome
+      form={{ id: form.id, title, status, projectId: form.projectId }}
+      responseCount={responseCount}
+      saving={
         <span className="hidden text-meta text-ink-500 sm:inline">
           {saving === 'saving' ? 'Saving…' : saving === 'saved' ? 'Saved' : ''}
         </span>
-        <Button variant="ghost" size="sm" icon={<Icon icon={SettingsIcon} size={15} />} onClick={() => setShowSettings((v) => !v)}>
-          Settings
-        </Button>
-        <Button variant="secondary" size="sm" icon={<Icon icon={Eye} size={15} />} onClick={() => setPreview(true)}>
-          Preview
-        </Button>
-        {status === 'live' ? (
-          <Button variant="secondary" size="sm" icon={<Icon icon={Link2} size={15} />} onClick={() => setShareOpen(true)}>Share</Button>
-        ) : (
-          <Button variant="primary" size="sm" onClick={doPublish}>Publish</Button>
-        )}
-      </header>
+      }
+      actions={
+        <>
+          <span className="sm:hidden">
+            <IconButton label="Preview" variant="secondary" size="sm" icon={<Icon icon={Eye} size={16} />} onClick={() => setPreview(true)} />
+          </span>
+          <Button className="hidden sm:inline-flex" variant="secondary" size="sm" icon={<Icon icon={Eye} size={16} />} onClick={() => setPreview(true)}>
+            Preview
+          </Button>
 
+          {/* Share is a TAB now, so a live form's primary action is nothing —
+              the work is done and the link is one click away in the row above.
+              A draft's primary action is the only one that matters. */}
+          {status === 'live' ? (
+            <Button variant="secondary" size="sm" icon={<Icon icon={Link2} size={16} />} onClick={() => router.push(`/forms/${form.id}/share`)}>
+              Share
+            </Button>
+          ) : (
+            <Button variant="primary" size="sm" onClick={doPublish}>Publish</Button>
+          )}
+        </>
+      }
+    >
       <div className="flex min-h-0 flex-1">
         {/* ── The page ─────────────────────────────────────────────── */}
-        <main className="min-w-0 flex-1 overflow-y-auto">
+        <main className="scroll-region min-w-0 flex-1">
           <div className="mx-auto w-full max-w-[720px] px-5 py-10 sm:px-8">
             <input
               value={title}
               onChange={(e) => { setTitle(e.target.value); queueSave(); }}
               placeholder="Untitled form"
               aria-label="Form title"
-              className="w-full border-0 bg-transparent p-0 font-display text-h1 text-ink-900 outline-none placeholder:text-ink-400"
+              className={inlineEdit({ as: 'title' })} {...inlineEditProps}
             />
             <textarea
               value={description}
@@ -168,7 +213,7 @@ export function FormBuilder({ form, studio, backHref, demo = false }: {
               placeholder="Add a short description…"
               aria-label="Form description"
               rows={2}
-              className="mt-3 w-full resize-none border-0 bg-transparent p-0 text-body-lg leading-relaxed text-ink-700 outline-none placeholder:text-ink-400"
+              className={inlineEdit({ as: 'subtitle', className: 'mt-3 resize-none' })} {...inlineEditProps}
             />
 
             <div className="mt-8 flex flex-col gap-2">
@@ -193,38 +238,24 @@ export function FormBuilder({ form, studio, backHref, demo = false }: {
 
             <div className="mt-4">
               <InsertMenu onPick={(t) => insertBlock(t)}>
-                <Button variant="ghost" size="sm" icon={<Icon icon={Plus} size={15} />}>Add question</Button>
+                <Button variant="ghost" size="sm" icon={<Icon icon={Plus} size={16} />}>Add question</Button>
               </InsertMenu>
             </div>
 
             {blocks.length === 0 && (
               <p className="mt-3 text-body text-ink-500">Start with a question — or press <kbd>/</kbd> in any question to change its type.</p>
             )}
+
+            {/* The logic summary used to hang off the settings rail. Deleting
+                the rail would have taken it with it, and it is the only place
+                the whole branching structure can be read in one go — so it came
+                here, under the questions it describes. */}
+            <div className="mt-8">
+              <LogicSummary blocks={blocks} />
+            </div>
           </div>
         </main>
 
-        {/* ── Settings rail ────────────────────────────────────────── */}
-        {showSettings && (
-          <aside className="hidden w-[300px] shrink-0 overflow-y-auto border-l border-line-soft bg-surface-secondary lg:block">
-            <SettingsRail
-              settings={settings}
-              status={status}
-              questionCount={questionCount}
-              blocks={blocks}
-              inPortal={inPortal}
-              canPortal={!!form.projectId}
-              onPortal={async (v) => {
-                setInPortal(v);
-                if (demo) return;
-                const res = await setFormInPortal(form.id, v);
-                if ('error' in res) { setInPortal(!v); toast({ message: res.error, variant: 'error' }); }
-              }}
-              onChange={(s) => { setSettings(s); queueSave(); }}
-              onStatus={changeStatus}
-              onClose={() => setShowSettings(false)}
-            />
-          </aside>
-        )}
       </div>
 
       {preview && (
@@ -235,20 +266,7 @@ export function FormBuilder({ form, studio, backHref, demo = false }: {
         </Modal>
       )}
 
-      {shareOpen && token && (
-        <ShareModal
-          token={token}
-          onClose={() => setShareOpen(false)}
-          onRotate={async () => {
-            if (demo) { toast({ message: 'Preview — the link is not rotated here.' }); return; }
-            const res = await rotateFormToken(form.id);
-            if ('error' in res) { toast({ message: 'Couldn’t create a new link.', variant: 'error' }); return; }
-            setToken(res.token);
-            toast({ message: 'New link created — the old one no longer works.', variant: 'success' });
-          }}
-        />
-      )}
-    </div>
+    </FormChrome>
   );
 }
 
@@ -284,7 +302,7 @@ function BlockEditor({
       }`}
     >
       <div className="flex items-start gap-2">
-        <span className="num mt-1.5 w-5 shrink-0 text-right text-meta text-ink-400">{index + 1}</span>
+        <span className="num mt-1.5 w-5 shrink-0 text-right text-meta text-ink-500">{index + 1}</span>
 
         <div className="min-w-0 flex-1">
           <input
@@ -297,7 +315,7 @@ function BlockEditor({
             onKeyDown={onLabelKeyDown}
             placeholder={field ? 'Ask a question…' : meta.label}
             aria-label={`Question ${index + 1}`}
-            className="w-full border-0 bg-transparent p-0 text-body font-medium text-ink-900 outline-none placeholder:font-normal placeholder:text-ink-400"
+            className={inlineEdit({ as: 'label' })} {...inlineEditProps}
           />
 
           {/* Read-only shape of the answer, so the page reads like the real form */}
@@ -310,7 +328,7 @@ function BlockEditor({
           )}
         </div>
 
-        <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+        <div className="reveal-on-hover flex shrink-0 items-center gap-0.5">
           <InsertMenu onPick={(t) => onPatch({ type: t, ...(hasOptions(t) && !block.options ? { options: ['Option 1', 'Option 2'] } : {}) })} open={slashOpen} onOpenChange={setSlashOpen} title="Change type">
             <IconButton label="Change question type" variant="ghost" size="xs" icon={<Icon icon={SettingsIcon} size={14} />} />
           </InsertMenu>
@@ -400,8 +418,8 @@ function ConditionEditor({ block, onPatch, earlier }: {
   return (
     <div className="flex flex-col gap-1.5 rounded-md border border-line-soft p-2">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-overline uppercase text-ink-500">Only show when</span>
-        <IconButton label="Remove condition" variant="ghost" size="xs" icon={<Icon icon={X} size={13} />} onClick={() => onPatch({ showWhen: undefined })} />
+        <span className="text-overline text-ink-500">Only show when</span>
+        <IconButton label="Remove condition" variant="ghost" size="xs" icon={<Icon icon={X} size={12} />} onClick={() => onPatch({ showWhen: undefined })} />
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5">
@@ -473,11 +491,11 @@ function OptionsEditor({ options, onChange }: { options: string[]; onChange: (o:
                 onChange(options.filter((_, j) => j !== i));
               }
             }}
-            className="min-w-0 flex-1 border-0 bg-transparent p-0 text-body text-ink-800 outline-none placeholder:text-ink-400"
+            className={inlineEdit({ as: 'body', className: 'min-w-0 flex-1' })} {...inlineEditProps}
             placeholder="Option"
           />
           {options.length > 1 && (
-            <IconButton label={`Remove option ${i + 1}`} variant="ghost" size="xs" icon={<Icon icon={X} size={13} />} onClick={() => onChange(options.filter((_, j) => j !== i))} />
+            <IconButton label={`Remove option ${i + 1}`} variant="ghost" size="xs" icon={<Icon icon={X} size={12} />} onClick={() => onChange(options.filter((_, j) => j !== i))} />
           )}
         </div>
       ))}
@@ -525,179 +543,6 @@ function InsertMenu({
         })}
       </PopoverContent>
     </Popover>
-  );
-}
-
-// ── Settings rail ─────────────────────────────────────────────────────────
-function SettingsRail({
-  settings, status, questionCount, blocks, inPortal, canPortal, onPortal, onChange, onStatus, onClose,
-}: {
-  settings: FormSettings; status: string; questionCount: number; blocks: FormBlock[];
-  inPortal: boolean; canPortal: boolean; onPortal: (v: boolean) => void;
-  onChange: (s: FormSettings) => void; onStatus: (s: 'draft' | 'live' | 'closed') => void; onClose: () => void;
-}) {
-  const set = (patch: Partial<FormSettings>) => onChange({ ...settings, ...patch });
-  return (
-    <div className="flex flex-col gap-5 p-4">
-      <div className="flex items-center justify-between">
-        <span className="text-overline uppercase text-ink-500">Settings</span>
-        <IconButton label="Close settings" variant="ghost" size="xs" icon={<Icon icon={X} size={14} />} onClick={onClose} />
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <span className="text-meta text-ink-600">How it's answered</span>
-        <SegmentedControl
-          aria-label="Filling mode"
-          value={settings.mode ?? 'page'}
-          onValueChange={(v) => set({ mode: v === 'focus' ? 'focus' : 'page' })}
-          options={[{ value: 'page', label: 'One page' }, { value: 'focus', label: 'One question' }]}
-        />
-        <p className="text-meta text-ink-500">
-          {settings.mode === 'focus'
-            ? 'One question at a time — best for anything longer than a few questions.'
-            : 'The whole form on one calm page.'}
-        </p>
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <span className="text-meta text-ink-600">After submitting</span>
-        <Textarea
-          rows={3}
-          value={settings.thanks ?? ''}
-          placeholder="Thank you. Your response has been sent."
-          onChange={(e) => set({ thanks: e.target.value })}
-        />
-      </div>
-
-      {canPortal && (
-        <label className="flex cursor-pointer items-center justify-between gap-3 text-body text-ink-800">
-          <span className="min-w-0">
-            Show in the client portal
-            <span className="mt-0.5 block text-meta text-ink-500">
-              {status === 'live' ? 'Appears under Forms for this project’s client.' : 'Publish the form to surface it.'}
-            </span>
-          </span>
-          <Switch checked={inPortal} onCheckedChange={onPortal} />
-        </label>
-      )}
-
-      <LogicSummary blocks={blocks} />
-
-      <label className="flex cursor-pointer items-center justify-between gap-3 text-body text-ink-800">
-        <span className="min-w-0">
-          Ask who they are
-          <span className="mt-0.5 block text-meta text-ink-500">Adds name + email at the end</span>
-        </span>
-        <Switch checked={!!settings.collectIdentity} onCheckedChange={(v) => set({ collectIdentity: v })} />
-      </label>
-
-      <label className="flex cursor-pointer items-center justify-between gap-3 text-body text-ink-800">
-        <span className="min-w-0">
-          Email me on each response
-          <span className="mt-0.5 block text-meta text-ink-500">A note to your account email when someone completes it</span>
-        </span>
-        <Switch checked={!!settings.notifyByEmail} onCheckedChange={(v) => set({ notifyByEmail: v })} />
-      </label>
-
-      <label className="flex cursor-pointer items-center justify-between gap-3 text-body text-ink-800">
-        <span className="min-w-0">
-          Require a spam check
-          <span className="mt-0.5 block text-meta text-ink-500">Adds a Cloudflare Turnstile challenge before someone can submit</span>
-        </span>
-        <Switch checked={!!settings.turnstile} onCheckedChange={(v) => set({ turnstile: v })} />
-      </label>
-
-      <div className="flex flex-col gap-1.5">
-        <span className="text-meta text-ink-600">Send responses to a URL</span>
-        <TextInput
-          size="sm"
-          type="url"
-          value={settings.webhookUrl ?? ''}
-          placeholder="https://…"
-          onChange={(e) => set({ webhookUrl: e.target.value.trim() || null })}
-        />
-        <p className="text-meta text-ink-500">Each completed response is POSTed here as JSON (webhook).</p>
-      </div>
-
-      {/* Payments are on hold until we choose a provider available in India
-          (Stripe isn't; Razorpay is the likely pick). The schema + renderer are
-          kept dormant so wiring a provider later just re-enables this control. */}
-      <div className="flex flex-col gap-1.5 rounded-md border border-dashed border-line-soft px-3 py-2.5">
-        <span className="flex items-center gap-2 text-meta text-ink-600">
-          Collect a payment
-          <span className="rounded-full bg-surface-fill px-1.5 py-0.5 text-caption text-ink-500">Coming soon</span>
-        </span>
-        <p className="text-meta text-ink-500">Charge a deposit or fee when someone submits — provider setup is on the way.</p>
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <span className="text-meta text-ink-600">Stop after</span>
-        <TextInput
-          size="sm"
-          inputMode="numeric"
-          value={settings.limit ? String(settings.limit) : ''}
-          placeholder="No limit"
-          unit="responses"
-          onChange={(e) => {
-            const n = parseInt(e.target.value.replace(/\D/g, ''), 10);
-            set({ limit: Number.isFinite(n) && n > 0 ? n : null });
-          }}
-        />
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <span className="text-meta text-ink-600">Close on</span>
-        <TextInput
-          size="sm"
-          type="date"
-          value={settings.closeAt ?? ''}
-          onChange={(e) => set({ closeAt: e.target.value || null })}
-        />
-      </div>
-
-      <div className="border-t border-line-soft pt-4">
-        <p className="text-meta text-ink-500">{questionCount} question{questionCount === 1 ? '' : 's'}</p>
-        {status === 'live' && (
-          <Button variant="secondary" size="sm" fullWidth className="mt-2.5" onClick={() => onStatus('closed')}>
-            Stop accepting responses
-          </Button>
-        )}
-        {status === 'closed' && (
-          <Button variant="secondary" size="sm" fullWidth className="mt-2.5" onClick={() => onStatus('live')}>
-            Reopen the form
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Share sheet ───────────────────────────────────────────────────────────
-function ShareModal({ token, onClose, onRotate }: { token: string; onClose: () => void; onRotate: () => void }) {
-  const [copied, setCopied] = useState(false);
-  const url = typeof window === 'undefined' ? `/f/${token}` : `${window.location.origin}/f/${token}`;
-
-  return (
-    <Modal open onOpenChange={onClose} title="Share this form" description="Anyone with the link can fill it in — no account needed.">
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center gap-2">
-          <TextInput value={url} readOnly aria-label="Form link" className="flex-1" onFocus={(e) => e.currentTarget.select()} />
-          <Button
-            variant="primary"
-            icon={<Icon icon={copied ? Check : Copy} size={15} />}
-            onClick={async () => {
-              try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1600); }
-              catch { toast({ message: 'Copy failed — select the link and copy it manually.', variant: 'error' }); }
-            }}
-          >
-            {copied ? 'Copied' : 'Copy'}
-          </Button>
-        </div>
-        <button onClick={onRotate} className="focus-ring w-fit rounded-sm text-meta text-ink-500 underline underline-offset-2 transition-colors hover:text-ink-800">
-          Create a new link (breaks the old one)
-        </button>
-      </div>
-    </Modal>
   );
 }
 

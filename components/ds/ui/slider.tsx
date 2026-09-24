@@ -81,9 +81,12 @@ export function Slider({
             }
           }}
           className={cn(
-            "focus-ring relative block size-4 rounded-full border border-line-strong bg-paper shadow-lift-1",
-            "transition-transform duration-instant hover:scale-110",
-            "active:scale-115 active:ring-4 active:ring-berry-alpha-20",
+            "focus-ring relative block size-4 rounded-full border border-line-control bg-paper shadow-lift-1",
+            "transition-transform duration-instant ease-hover hover:scale-110",
+            // The grabbed halo is the RANGE's colour (the accent) as a wash. It
+            // was `ring-berry-alpha-20`, which Tailwind never generated, so the
+            // ring drew currentColor: a solid ink band around a pressed thumb.
+            "active:scale-115 active:ring-4 active:ring-accent-wash",
             "data-[disabled]:border-transparent data-[disabled]:bg-ink-300 data-[disabled]:shadow-none",
           )}
         >

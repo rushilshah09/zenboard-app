@@ -1,4 +1,5 @@
 'use server';
+import { safeFilename } from '@/lib/attachments';
 // Form mutations. Owner actions run through the authenticated client (RLS scopes
 // them to their own forms). The three PUBLIC actions — start / save / submit —
 // run through the service role but are strictly token-scoped: they resolve the
@@ -7,7 +8,8 @@
 // policy anywhere; this file is the only path in.
 import { randomBytes } from 'crypto';
 import { revalidatePath } from 'next/cache';
-import { createClient, createServiceClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/server';
+import { requireSession } from '@/lib/auth';
 import { notifyOwner } from '@/lib/notify';
 import { postFormWebhook, buildWebhookAnswers } from '@/lib/webhook';
 import { sendEmail, siteOrigin } from '@/lib/email';
@@ -20,15 +22,16 @@ import {
 } from '@/lib/form-schema';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/database';
+import { intakeTask } from '@/lib/task-intake';
 
 type DB = SupabaseClient<Database>;
 type Result<T = unknown> = { error: string } | ({ ok: true } & T);
 
-async function requireUser() {
-  const supabase = (await createClient()) as unknown as DB;
-  const { data: { user } } = await (supabase as unknown as { auth: { getUser: () => Promise<{ data: { user: { id: string } | null } }> } }).auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-  return { supabase, user };
+// Same session as everywhere else; this file alone wants the client under its
+// own `DB` alias, so the cast stays here rather than in the shared helper.
+async function requireFormsSession() {
+  const { supabase, user } = await requireSession();
+  return { supabase: supabase as unknown as DB, user };
 }
 
 function newToken() {
@@ -41,26 +44,15 @@ function newToken() {
 // can't be used to push something huge.
 const FORM_UPLOAD_BUCKET = 'form-uploads';
 /** Longest original filename we keep (the rest is trimmed, extension preserved). */
-const MAX_FILENAME = 120;
 
 /** Make an arbitrary client filename safe for a storage key: no slashes, no dashes
  *  (a dash is our token/name delimiter), collapsed whitespace, length-capped. */
-function safeFilename(raw: string): string {
-  const name = (raw || 'file').split(/[\\/]/).pop() || 'file';
-  const dot = name.lastIndexOf('.');
-  const ext = dot > 0 ? name.slice(dot + 1).replace(/[^a-zA-Z0-9]/g, '').slice(0, 8) : '';
-  const stem = (dot > 0 ? name.slice(0, dot) : name)
-    .replace(/[^a-zA-Z0-9 ._]+/g, ' ')   // drop dashes and anything exotic
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, MAX_FILENAME) || 'file';
-  return ext ? `${stem}.${ext}` : stem;
-}
+
 
 // ── OWNER ─────────────────────────────────────────────────────────────────
 
 export async function createForm(scope: { clientId?: string; projectId?: string; title?: string; template?: string }): Promise<Result<{ id: string }>> {
-  const { supabase, user } = await requireUser();
+  const { supabase, user } = await requireFormsSession();
 
   // A home is OPTIONAL now: a form with no client/project starts in Drafts and can
   // be attached later (setFormHome). Inherit the space from the home when there is
@@ -106,7 +98,7 @@ export type FormPatch = {
 
 /** Autosave from the builder. Never changes status or token. */
 export async function updateForm(id: string, patch: FormPatch): Promise<Result> {
-  const { supabase } = await requireUser();
+  const { supabase } = await requireFormsSession();
   const update: Database['public']['Tables']['forms']['Update'] = {};
   if (patch.title !== undefined) update.title = patch.title.trim().slice(0, 200) || 'Untitled form';
   if (patch.description !== undefined) update.description = patch.description?.trim() || null;
@@ -124,7 +116,7 @@ export async function updateForm(id: string, patch: FormPatch): Promise<Result> 
  * existing responses stay attached to the questions they actually answered.
  */
 export async function publishForm(id: string): Promise<Result<{ token: string }>> {
-  const { supabase } = await requireUser();
+  const { supabase } = await requireFormsSession();
   const { data } = await supabase
     .from('forms').select('content, settings, version, share_token, status').eq('id', id).maybeSingle();
   if (!data) return { error: 'Form not found.' };
@@ -159,14 +151,14 @@ export async function publishForm(id: string): Promise<Result<{ token: string }>
 
 /** Back to draft — the live link stops working immediately (token is kept). */
 export async function unpublishForm(id: string): Promise<Result> {
-  const { supabase } = await requireUser();
+  const { supabase } = await requireFormsSession();
   const { error } = await supabase.from('forms').update({ status: 'draft' }).eq('id', id);
   return error ? { error: error.message } : { ok: true };
 }
 
 /** Show this project's form inside the client portal (opt-in, one switch). */
 export async function setFormInPortal(id: string, show: boolean): Promise<Result> {
-  const { supabase } = await requireUser();
+  const { supabase } = await requireFormsSession();
   const { error } = await supabase.from('forms').update({ show_in_portal: show }).eq('id', id);
   return error ? { error: error.message } : { ok: true };
 }
@@ -180,7 +172,7 @@ export async function setFormHome(
   id: string,
   home: { clientId: string } | { projectId: string } | null,
 ): Promise<Result> {
-  const { supabase } = await requireUser();
+  const { supabase } = await requireFormsSession();
   const patch: Database['public']['Tables']['forms']['Update'] = { client_id: null, project_id: null };
 
   if (home && 'projectId' in home) {
@@ -204,14 +196,14 @@ export async function setFormHome(
 
 /** Closed = link resolves but politely refuses new answers. */
 export async function setFormStatus(id: string, status: 'draft' | 'live' | 'closed'): Promise<Result> {
-  const { supabase } = await requireUser();
+  const { supabase } = await requireFormsSession();
   const { error } = await supabase.from('forms').update({ status }).eq('id', id);
   return error ? { error: error.message } : { ok: true };
 }
 
 /** Rotate the share link — every previously shared URL dies at once. */
 export async function rotateFormToken(id: string): Promise<Result<{ token: string }>> {
-  const { supabase } = await requireUser();
+  const { supabase } = await requireFormsSession();
   const token = newToken();
   const { error } = await supabase.from('forms').update({ share_token: token }).eq('id', id);
   return error ? { error: error.message } : { ok: true, token };
@@ -219,7 +211,7 @@ export async function rotateFormToken(id: string): Promise<Result<{ token: strin
 
 /** Copy a form's questions and settings into a new draft. Responses never come along. */
 export async function duplicateForm(id: string): Promise<Result<{ id: string }>> {
-  const { supabase, user } = await requireUser();
+  const { supabase, user } = await requireFormsSession();
   const { data } = await supabase
     .from('forms')
     .select('title, description, content, settings, client_id, project_id, space_id')
@@ -246,7 +238,7 @@ export async function duplicateForm(id: string): Promise<Result<{ id: string }>>
 }
 
 export async function deleteForm(id: string): Promise<Result> {
-  const { supabase } = await requireUser();
+  const { supabase } = await requireFormsSession();
   const { error } = await supabase.from('forms').delete().eq('id', id);
   return error ? { error: error.message } : { ok: true };
 }
@@ -257,7 +249,7 @@ export async function deleteForm(id: string): Promise<Result> {
  * the original request→task flow forgot to keep (0017).
  */
 export async function makeTaskFromResponse(responseId: string, title: string): Promise<Result<{ taskId: string }>> {
-  const { supabase, user } = await requireUser();
+  const { supabase, user } = await requireFormsSession();
 
   const { data: respData } = await supabase
     .from('form_responses').select('id, form_id, task_id').eq('id', responseId).maybeSingle();
@@ -270,14 +262,15 @@ export async function makeTaskFromResponse(responseId: string, title: string): P
   const form = formData as { space_id: string | null; project_id: string | null; title: string } | null;
   if (!form?.space_id) return { error: 'This form has no workspace to file a task in.' };
 
-  const clean = title.trim().slice(0, 200) || `Follow up on “${form.title}”`;
-  const { data: taskRow, error } = await supabase.from('tasks').insert({
-    user_id: user.id,
-    space_id: form.space_id,
-    project_id: form.project_id,
-    title: clean,
-    is_inbox: !form.project_id,   // no project to file under → it lands in Inbox
-  }).select('id').single();
+  // `lib/task-intake.ts` — the one rule for a task that arrives from elsewhere.
+  // This was that rule's first copy; it now calls it instead of restating it.
+  const { data: taskRow, error } = await supabase.from('tasks').insert(intakeTask({
+    userId: user.id,
+    spaceId: form.space_id,
+    projectId: form.project_id,
+    title,
+    fallbackTitle: `Follow up on “${form.title}”`,
+  })).select('id').single();
   if (error || !taskRow) return { error: error?.message ?? 'Could not create the task.' };
 
   const taskId = (taskRow as { id: string }).id;
@@ -286,7 +279,7 @@ export async function makeTaskFromResponse(responseId: string, title: string): P
 }
 
 export async function deleteResponse(id: string): Promise<Result> {
-  const { supabase } = await requireUser();
+  const { supabase } = await requireFormsSession();
   const { error } = await supabase.from('form_responses').delete().eq('id', id);
   return error ? { error: error.message } : { ok: true };
 }
@@ -298,7 +291,7 @@ export async function deleteResponse(id: string): Promise<Result> {
  * then does the service role sign the private object. F4.
  */
 export async function signFormUpload(path: string): Promise<Result<{ url: string }>> {
-  const { supabase } = await requireUser();
+  const { supabase } = await requireFormsSession();
   const formId = String(path).split('/')[0];
   if (!formId) return { error: 'Not found.' };
 

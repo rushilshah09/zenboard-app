@@ -71,7 +71,7 @@ export const RadioCard = React.forwardRef<HTMLButtonElement, RadioProps>(functio
       ref={ref}
       className={cn(
         "focus-ring group flex w-full items-start gap-3 rounded-md border p-3 text-start transition-colors duration-instant",
-        "border-line bg-paper hover:bg-paper-3",
+        "border-line bg-paper hover:wash-over",
         "data-[state=checked]:border-[var(--accent)] data-[state=checked]:bg-[var(--accent-soft)]",
         className,
       )}

@@ -48,12 +48,12 @@ export function ListRow({
       className={cn(
         "group relative flex items-center gap-2 px-2",
         "h-10 data-[density=compact]:h-8 [@media(pointer:coarse)]:h-11",
-        "rounded-sm transition-colors duration-instant hover:bg-paper-3",
+        "rounded-sm transition-colors duration-instant hover:bg-surface-hover",
         selected && "bg-berry-100 hover:bg-berry-100",
         className,
       )}
     >
-      <span aria-hidden className="-ms-1 cursor-grab text-ink-400 opacity-0 transition-opacity group-hover:opacity-100 [@media(pointer:coarse)]:opacity-100">
+      <span aria-hidden className="reveal-on-hover -ms-1 cursor-grab text-ink-500">
         <GripVertical className="size-3.5" />
       </span>
       {onCheck && (
@@ -64,8 +64,8 @@ export function ListRow({
         type="button"
         onClick={onOpen}
         className={cn(
-          "focus-ring min-w-0 flex-1 truncate rounded-xs text-start text-body",
-          completed ? "text-ink-400 line-through" : "text-ink-800",
+          "focus-ring min-w-0 flex-1 truncate rounded-xs text-start text-body [@media(pointer:coarse)]:min-h-6",
+          completed ? "text-ink-500 line-through" : "text-ink-800",
         )}
       >
         {title}
@@ -84,7 +84,7 @@ export function ListRow({
           {due}
         </span>
       )}
-      <span className={cn("opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 [@media(pointer:coarse)]:opacity-100")}>
+      <span className="reveal-on-hover">
         <IconButton label="More actions" icon={<MoreHorizontal className="size-4" />} size="sm" onClick={onMenu} />
       </span>
       {/* Separator inset to align with the title (§4.48) */}

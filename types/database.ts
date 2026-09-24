@@ -21,7 +21,20 @@ export interface Database {
           role: Role | null;
           avatar_url: string | null;
           onboarding_complete: boolean;
-          preferences: { accent?: string; density?: 'comfortable' | 'compact'; displayFont?: string };
+          /**
+           * Free-form per-user JSON. Already carries accent / density /
+           * displayFont, the Google-sync metadata, and now `pins` — the
+           * sidebar's own list (lib/pins.ts). The index signature is the point:
+           * this column is a bag of preferences, and typing only the keys one
+           * feature happens to know about is how the next feature clobbers them.
+           * Every write must READ-MODIFY-WRITE the whole object.
+           */
+          preferences: {
+            accent?: string;
+            density?: 'comfortable' | 'compact';
+            displayFont?: string;
+            pins?: { type: string; id: string; label: string }[];
+          } & Record<string, unknown>;
           hourly_rate: number;
         } & Timestamps;
         Insert: { id: string; full_name?: string | null; role?: Role | null; avatar_url?: string | null; onboarding_complete?: boolean; preferences?: Record<string, unknown>; hourly_rate?: number };
@@ -35,8 +48,8 @@ export interface Database {
         Relationships: [];
       };
       projects: {
-        Row: { id: string; user_id: string; space_id: string; client_id: string | null; name: string; color: string | null; status: string; deadline: string | null; deadline_label: string | null; portal_enabled: boolean; portal_token: string | null; share_progress: boolean; share_completed_tasks: boolean; share_open_tasks: boolean; share_timeline: boolean; share_files: boolean; share_invoices: boolean; allow_requests: boolean; portal_intro: string | null } & Timestamps;
-        Insert: { id?: string; user_id: string; space_id: string; client_id?: string | null; name: string; color?: string | null; status?: string; deadline?: string | null; deadline_label?: string | null; portal_enabled?: boolean; portal_token?: string | null; share_progress?: boolean; share_completed_tasks?: boolean; share_open_tasks?: boolean; share_timeline?: boolean; share_files?: boolean; share_invoices?: boolean; allow_requests?: boolean; portal_intro?: string | null };
+        Row: { id: string; user_id: string; space_id: string; client_id: string | null; name: string; color: string | null; icon: string | null; status: string; deadline: string | null; deadline_label: string | null; portal_enabled: boolean; portal_token: string | null; share_progress: boolean; share_completed_tasks: boolean; share_open_tasks: boolean; share_timeline: boolean; share_files: boolean; share_invoices: boolean; allow_requests: boolean; portal_intro: string | null } & Timestamps;
+        Insert: { id?: string; user_id: string; space_id: string; client_id?: string | null; name: string; color?: string | null; icon?: string | null; status?: string; deadline?: string | null; deadline_label?: string | null; portal_enabled?: boolean; portal_token?: string | null; share_progress?: boolean; share_completed_tasks?: boolean; share_open_tasks?: boolean; share_timeline?: boolean; share_files?: boolean; share_invoices?: boolean; allow_requests?: boolean; portal_intro?: string | null };
         Update: Partial<Database['public']['Tables']['projects']['Insert']>;
         Relationships: [];
       };
@@ -46,15 +59,87 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['project_activity']['Insert']>;
         Relationships: [];
       };
+      // The fabric's typed edge (0027 — VERIFIED APPLIED by a live probe on
+      // 2026-08-03, unlike 0028). `target_id` intentionally has no FK: the
+      // target is polymorphic, and a deleted target becomes a tombstone rather
+      // than taking its backlinks with it.
+      mentions: {
+        Row: { id: string; user_id: string; space_id: string | null; source_type: string; source_id: string; target_type: string; target_id: string; anchor: string | null; context: string | null; origin: 'mention' | 'suggested'; created_at: string };
+        Insert: { id?: string; user_id: string; space_id?: string | null; source_type: string; source_id: string; target_type: string; target_id: string; anchor?: string | null; context?: string | null; origin?: 'mention' | 'suggested' };
+        Update: Partial<Database['public']['Tables']['mentions']['Insert']>;
+        Relationships: [];
+      };
+      // Memory — the sixth layer (§7X, migration 0029, DRAFTED and NOT applied
+      // as of 2026-08-06). Typed here so the gated code compiles; every read and
+      // write goes through `memoriesSupported()` and degrades to nothing until
+      // the migration lands.
+      //
+      // `subject_id` is null for exactly one subject_type — 'self', which is you,
+      // and is the only subject with no row anywhere (0029's
+      // `memories_subject_shape`). `space_id` is null for the same rows: a fact
+      // about you is true in every space.
+      // Block comments (§7H, migration 0037 — WRITTEN, awaiting paste as of
+      // 2026-08-06). Typed here so the gated code compiles; every read and write
+      // goes through `commentsSupported()` and degrades to the pre-0037
+      // page-level comments in `pages.content` until the migration lands.
+      //
+      // `block_id` is TEXT with no foreign key on purpose: a block is not a row
+      // (see lib/block-link.ts). An anchor whose block was deleted is an orphan
+      // the read path shows, exactly like a `mentions` tombstone.
+      comments: {
+        Row: {
+          id: string; user_id: string; space_id: string | null;
+          page_id: string; block_id: string | null; thread_id: string;
+          body: string; author_name: string | null; resolved_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string; user_id: string; space_id?: string | null;
+          page_id: string; block_id?: string | null; thread_id?: string;
+          body: string; author_name?: string | null; resolved_at?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['comments']['Insert']>;
+        Relationships: [];
+      };
+      memories: {
+        Row: {
+          id: string; user_id: string; space_id: string | null;
+          body: string; kind: string;
+          subject_type: string; subject_id: string | null;
+          origin: string;
+          source_type: string | null; source_id: string | null; anchor: string | null;
+          valid_from: string; invalid_from: string | null; superseded_by: string | null;
+          confidence: number; recall_count: number; last_recalled_at: string | null;
+          pinned: boolean; archived_at: string | null;
+        } & Timestamps;
+        Insert: {
+          id?: string; user_id: string; space_id?: string | null;
+          body: string; kind?: string;
+          subject_type: string; subject_id?: string | null;
+          origin?: string;
+          source_type?: string | null; source_id?: string | null; anchor?: string | null;
+          valid_from?: string; invalid_from?: string | null; superseded_by?: string | null;
+          confidence?: number; recall_count?: number; last_recalled_at?: string | null;
+          pinned?: boolean; archived_at?: string | null;
+        };
+        Update: Partial<Database['public']['Tables']['memories']['Insert']>;
+        Relationships: [];
+      };
       goals: {
-        Row: { id: string; user_id: string; space_id: string; project_id: string | null; title: string; note: string | null; horizon: Horizon; cadence: 'weekly' | 'monthly'; progress: number; behind: boolean; last_reviewed: string | null; target_date: string | null; status: string } & Timestamps;
-        Insert: { id?: string; user_id: string; space_id: string; project_id?: string | null; title: string; note?: string | null; horizon?: Horizon; cadence?: 'weekly' | 'monthly'; progress?: number; behind?: boolean; last_reviewed?: string | null; target_date?: string | null; status?: string };
+        // progress_at_review + retro arrive with 0026 (drafted, NOT applied) — typed
+        // here so the gated code compiles; every write that touches them degrades.
+        Row: { id: string; user_id: string; space_id: string; project_id: string | null; title: string; note: string | null; horizon: Horizon; cadence: 'weekly' | 'monthly'; progress: number; behind: boolean; last_reviewed: string | null; target_date: string | null; status: string; progress_at_review?: number | null; retro?: string | null } & Timestamps;
+        Insert: { id?: string; user_id: string; space_id: string; project_id?: string | null; title: string; note?: string | null; horizon?: Horizon; cadence?: 'weekly' | 'monthly'; progress?: number; behind?: boolean; last_reviewed?: string | null; target_date?: string | null; status?: string; progress_at_review?: number | null; retro?: string | null };
         Update: Partial<Database['public']['Tables']['goals']['Insert']>;
         Relationships: [];
       };
       milestones: {
-        Row: { id: string; user_id: string; goal_id: string; title: string; done: boolean; sort_order: number } & Timestamps;
-        Insert: { id?: string; user_id: string; goal_id: string; title: string; done?: boolean; sort_order?: number };
+        // 0036 — a milestone belongs to a goal OR a project, exactly one
+        // (`milestones_one_owner`). `goal_id` was NOT NULL until then, which is
+        // why it is nullable here. `due_date` makes it a DATED checkpoint (§7E).
+        Row: { id: string; user_id: string; goal_id: string | null; project_id: string | null; title: string; done: boolean; due_date: string | null; sort_order: number } & Timestamps;
+        Insert: { id?: string; user_id: string; goal_id?: string | null; project_id?: string | null; title: string; done?: boolean; due_date?: string | null; sort_order?: number };
         Update: Partial<Database['public']['Tables']['milestones']['Insert']>;
         Relationships: [];
       };
@@ -64,14 +149,32 @@ export interface Database {
           parent_task_id: string | null; title: string; notes: string | null; priority: Priority; done: boolean;
           highlight: boolean; scheduled_date: string | null; due_date: string | null; is_inbox: boolean; estimate_minutes: number | null;
           elapsed_minutes: number; recurrence: Record<string, unknown> | null; completed_at: string | null; sort_order: number; client_visible: boolean; status: string | null; section_id: string | null; request_id: string | null;
+          // 0030 — the timebox twin (lib/timebox.ts). Gated: taskEventsSupported().
+          event_id: string | null;
+          // 0031 — the one reminder (lib/reminders.ts). Gated: remindersSupported().
+          // `remind_at` is WHEN to speak, `reminded_at` is when we did; the
+          // latter is what makes delivery claimable exactly once.
+          remind_at: string | null; reminded_at: string | null;
+          // 0038 — the task's list (lib/task-scopes.ts). Gated: taskListsSupported().
+          // Independent of `project_id`: a task may be in a list, a project,
+          // both, or neither — they answer different questions.
+          list_id: string | null;
         } & Timestamps;
         Insert: {
           id?: string; user_id: string; space_id: string; project_id?: string | null; goal_id?: string | null;
           parent_task_id?: string | null; title: string; notes?: string | null; priority?: Priority; done?: boolean;
           highlight?: boolean; scheduled_date?: string | null; due_date?: string | null; is_inbox?: boolean; estimate_minutes?: number | null;
-          elapsed_minutes?: number; recurrence?: Record<string, unknown> | null; completed_at?: string | null; sort_order?: number; client_visible?: boolean; status?: string | null; section_id?: string | null; request_id?: string | null;
+          elapsed_minutes?: number; recurrence?: Record<string, unknown> | null; completed_at?: string | null; sort_order?: number; client_visible?: boolean; status?: string | null; section_id?: string | null; request_id?: string | null; event_id?: string | null;
+          remind_at?: string | null; reminded_at?: string | null; list_id?: string | null;
         };
         Update: Partial<Database['public']['Tables']['tasks']['Insert']>;
+        Relationships: [];
+      };
+      // 0038 — Lists. A pile you keep your own work in, separate from projects.
+      task_lists: {
+        Row: { id: string; user_id: string; space_id: string; name: string; color: string | null; sort_order: number; created_at: string };
+        Insert: { id?: string; user_id: string; space_id: string; name: string; color?: string | null; sort_order?: number };
+        Update: Partial<Database['public']['Tables']['task_lists']['Insert']>;
         Relationships: [];
       };
       task_comments: {
@@ -98,9 +201,22 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['task_labels']['Insert']>;
         Relationships: [];
       };
+      // 0032 — dependencies (lib/task-links.ts). Gated: taskLinksSupported().
+      // One edge, read from both ends: `task_id` waits for `blocked_by_task_id`.
+      task_links: {
+        Row: { id: string; user_id: string; task_id: string; blocked_by_task_id: string; created_at: string };
+        Insert: { id?: string; user_id: string; task_id: string; blocked_by_task_id: string };
+        Update: Partial<Database['public']['Tables']['task_links']['Insert']>;
+        Relationships: [];
+      };
+      // A WORKSTREAM (lib/workstreams.ts). Still called `sections` because this
+      // table already WAS the Project → X → Task level; 0040 gave it the three
+      // fields that make it a workstream rather than a heading. All optional on
+      // Row: the columns do not exist until 0040 is applied, and every reader
+      // treats a missing `client_visible` as internal.
       sections: {
-        Row: { id: string; user_id: string; project_id: string; name: string; sort_order: number; created_at: string };
-        Insert: { id?: string; user_id: string; project_id: string; name: string; sort_order?: number };
+        Row: { id: string; user_id: string; project_id: string; name: string; sort_order: number; status?: string | null; due_date?: string | null; client_visible?: boolean; created_at: string };
+        Insert: { id?: string; user_id: string; project_id: string; name: string; sort_order?: number ; status?: string | null; due_date?: string | null; client_visible?: boolean };
         Update: Partial<Database['public']['Tables']['sections']['Insert']>;
         Relationships: [];
       };
@@ -111,20 +227,52 @@ export interface Database {
         Relationships: [];
       };
       habits: {
-        Row: { id: string; user_id: string; space_id: string | null; title: string; cadence: string; active: boolean; created_at: string; time_of_day: string; goal_target: number; goal_period: string; sort_order: number; archived: boolean; color: string | null };
-        Insert: { id?: string; user_id: string; space_id?: string | null; title: string; cadence?: string; active?: boolean; time_of_day?: string; goal_target?: number; goal_period?: string; sort_order?: number; archived?: boolean; color?: string | null };
+        // schedule_* (0025 §3) is which DAYS the habit is due; goal_target is how
+        // many times in such a day counts as done. goal_period is retained for
+        // back-compat and no longer read — see lib/habit-schedule.ts.
+        Row: { id: string; user_id: string; space_id: string | null; title: string; cadence: string; active: boolean; created_at: string; time_of_day: string; goal_target: number; goal_period: string; sort_order: number; archived: boolean; color: string | null; schedule_kind: string; schedule_days: number[]; schedule_count: number };
+        Insert: { id?: string; user_id: string; space_id?: string | null; title: string; cadence?: string; active?: boolean; time_of_day?: string; goal_target?: number; goal_period?: string; sort_order?: number; archived?: boolean; color?: string | null; schedule_kind?: string; schedule_days?: number[]; schedule_count?: number };
         Update: Partial<Database['public']['Tables']['habits']['Insert']>;
         Relationships: [];
       };
       habit_logs: {
-        Row: { id: string; user_id: string; habit_id: string; log_date: string; done: boolean; status: string };
-        Insert: { id?: string; user_id: string; habit_id: string; log_date: string; done?: boolean; status?: string };
+        // A partial day is `count > 0, done = false` — progress without a claim
+        // of completion, so everything that reads `done` is unaffected.
+        Row: { id: string; user_id: string; habit_id: string; log_date: string; done: boolean; status: string; count: number };
+        Insert: { id?: string; user_id: string; habit_id: string; log_date: string; done?: boolean; status?: string; count?: number };
         Update: Partial<Database['public']['Tables']['habit_logs']['Insert']>;
         Relationships: [];
       };
+      // 0033 — attachments (§7H). Gated: attachmentsSupported(). Exactly one of
+      // page_id / task_id / project_id is set (enforced by a CHECK in 0033).
+      attachments: {
+        // 0039 — `client_visible` is the same column, same default and same
+        // meaning as on `tasks` and `pages`, so one rule (lib/visibility.ts)
+        // reads all three. Optional on Row because the column does not exist
+        // until the migration is applied, and every reader treats missing as
+        // private.
+        Row: { id: string; user_id: string; space_id: string | null; page_id: string | null; task_id: string | null; project_id: string | null; path: string; filename: string; mime_type: string | null; size_bytes: number | null; client_visible?: boolean; created_at: string };
+        Insert: { id?: string; user_id: string; space_id?: string | null; page_id?: string | null; task_id?: string | null; project_id?: string | null; path: string; filename: string; mime_type?: string | null; size_bytes?: number | null; client_visible?: boolean };
+        Update: Partial<Database['public']['Tables']['attachments']['Insert']>;
+        Relationships: [];
+      };
+      // 0034 — acceptances (§7M). Gated: acceptancesSupported(). One row per
+      // signed accept block; `unique(page_id, block_id)` makes accepting
+      // idempotent. `invoice_id` is 0035 — gated separately, on the COLUMN.
+      //
+      // The Update type lists exactly the two columns the 0034 trigger permits,
+      // which is the immutability rule written where TypeScript can enforce it:
+      // who signed, when, for what, and from where are unwritable after the
+      // fact, while the crossing can still record which invoice it drafted.
+      acceptances: {
+        Row: { id: string; user_id: string; page_id: string; project_id: string | null; block_id: string; signer_name: string; signer_email: string | null; accepted_at: string; ip: string | null; user_agent: string | null; statement: string; content: unknown; content_hash: string; amount: number | null; invoice_id: string | null; created_at: string };
+        Insert: { id?: string; user_id: string; page_id: string; project_id?: string | null; block_id: string; signer_name: string; signer_email?: string | null; ip?: string | null; user_agent?: string | null; statement: string; content: unknown; content_hash: string; amount?: number | null };
+        Update: { invoice_id?: string | null; project_id?: string | null };
+        Relationships: [];
+      };
       calendar_events: {
-        Row: { id: string; user_id: string; space_id: string | null; title: string; starts_at: string; ends_at: string | null; all_day: boolean; source: string; external_id: string | null; created_at: string };
-        Insert: { id?: string; user_id: string; space_id?: string | null; title: string; starts_at: string; ends_at?: string | null; all_day?: boolean; source?: string; external_id?: string | null };
+        Row: { id: string; user_id: string; space_id: string | null; title: string; starts_at: string; ends_at: string | null; all_day: boolean; source: string; external_id: string | null; created_at: string; task_id: string | null };
+        Insert: { id?: string; user_id: string; space_id?: string | null; title: string; starts_at: string; ends_at?: string | null; all_day?: boolean; source?: string; external_id?: string | null; task_id?: string | null };
         Update: Partial<Database['public']['Tables']['calendar_events']['Insert']>;
         Relationships: [];
       };
@@ -183,9 +331,17 @@ export interface Database {
         Relationships: [];
       };
       pages: {
-        Row: { id: string; user_id: string; space_id: string; folder_id: string | null; project_id: string | null; title: string | null; type: string; content: Record<string, unknown>; tags: string[]; is_daily: boolean; daily_date: string | null; client_visible: boolean; parent_id: string | null; client_id: string | null; icon: string | null; cover: string | null; is_pinned: boolean; is_favorite: boolean; archived_at: string | null; sort_index: number } & Timestamps;
-        Insert: { id?: string; user_id: string; space_id: string; folder_id?: string | null; project_id?: string | null; title?: string | null; type?: string; content?: Record<string, unknown>; tags?: string[]; is_daily?: boolean; daily_date?: string | null; client_visible?: boolean; parent_id?: string | null; client_id?: string | null; icon?: string | null; cover?: string | null; is_pinned?: boolean; is_favorite?: boolean; archived_at?: string | null; sort_index?: number };
+        Row: { id: string; user_id: string; space_id: string; folder_id: string | null; project_id: string | null; title: string | null; type: string; content: Record<string, unknown>; tags: string[]; is_daily: boolean; daily_date: string | null; client_visible: boolean; parent_id: string | null; client_id: string | null; icon: string | null; cover: string | null; is_pinned: boolean; is_favorite: boolean; archived_at: string | null; sort_index: number; database_id: string | null; properties: Record<string, unknown>; row_order: string | null } & Timestamps;
+        Insert: { id?: string; user_id: string; space_id: string; folder_id?: string | null; project_id?: string | null; title?: string | null; type?: string; content?: Record<string, unknown>; tags?: string[]; is_daily?: boolean; daily_date?: string | null; client_visible?: boolean; parent_id?: string | null; client_id?: string | null; icon?: string | null; cover?: string | null; is_pinned?: boolean; is_favorite?: boolean; archived_at?: string | null; sort_index?: number; updated_at?: string; database_id?: string | null; properties?: Record<string, unknown>; row_order?: string | null };
         Update: Partial<Database['public']['Tables']['pages']['Insert']>;
+        Relationships: [];
+      };
+      // Shipped in 0001 and unused until version history (lib/actions/versions.ts).
+      // No user_id column — RLS resolves ownership through `pages`.
+      page_versions: {
+        Row: { id: string; page_id: string; content: Record<string, unknown>; created_at: string };
+        Insert: { id?: string; page_id: string; content: Record<string, unknown>; created_at?: string };
+        Update: Partial<Database['public']['Tables']['page_versions']['Insert']>;
         Relationships: [];
       };
       client_requests: {

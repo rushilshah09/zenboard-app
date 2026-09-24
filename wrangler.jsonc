@@ -10,5 +10,17 @@
   },
   "images": {
     "binding": "IMAGES"
+  },
+  // Run the Worker next to the database, not next to the visitor.
+  //
+  // Supabase (hctwmcqftwpefnisrhac) is in AWS ap-northeast-2, Seoul. Without
+  // this the Worker answers from the Cloudflare edge nearest the visitor
+  // (Singapore, for India) and every database query crosses to Seoul and back:
+  // measured at 90-240 ms each, up to seven in series per page. Placed in Seoul,
+  // a query costs a few ms and the visitor's request makes that trip once.
+  // Static assets are unaffected: Cloudflare always serves them from the edge
+  // nearest the visitor. Once live, responses carry `cf-placement: remote-…`.
+  "placement": {
+    "region": "aws:ap-northeast-2"
   }
 }

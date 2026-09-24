@@ -2,13 +2,14 @@
 
 import * as React from "react";
 import { cn } from "@/lib/cn";
+import { OVERLAY_CLASS } from "./menu";
 
 // Canonical editor / tool toolbar. Consolidates the hand-rolled TB_BTN / CODE_BTN
 // patterns copy-pasted across documents/*. Chrome selection = INK (per the DS
 // decision: the picked accent is reserved for data-entry controls, not chrome).
 
 export interface ToolbarProps extends React.HTMLAttributes<HTMLDivElement> {
-  /** Wrap the row in the floating-toolbar chrome (border + raised surface + lift). */
+  /** Wrap the row in the one overlay chrome (OVERLAY_CLASS) — it floats like a menu. */
   floating?: boolean;
 }
 
@@ -18,8 +19,7 @@ export function Toolbar({ className, floating = false, ...props }: ToolbarProps)
       role="toolbar"
       className={cn(
         "flex items-center gap-0.5",
-        floating &&
-          "rounded-lg border border-line-strong bg-surface-raised p-1 shadow-lift-2",
+        floating && cn(OVERLAY_CLASS, "p-1"),
         className,
       )}
       {...props}
@@ -60,7 +60,7 @@ export const ToolbarButton = React.forwardRef<
         active
           ? "bg-surface-selected text-ink-900"
           : "bg-transparent text-ink-600 hover:text-ink-900",
-        "disabled:pointer-events-none disabled:text-ink-300",
+        "disabled:pointer-events-none disabled:text-ink-500",
         className,
       )}
       {...props}

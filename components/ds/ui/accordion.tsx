@@ -18,13 +18,13 @@ export function AccordionTrigger({ className, children, ...props }: React.Compon
         <RA.Trigger
           className={cn(
             "focus-ring group flex h-11 w-full items-center gap-2 rounded-sm px-3 text-start text-body font-medium text-ink-800",
-            "transition-colors duration-instant hover:bg-paper-3",
+            "transition-colors duration-instant hover:bg-surface-hover",
             className,
           )}
           {...props}
         >
           <ChevronRight
-            className="size-3.5 shrink-0 text-ink-500 transition-transform duration-fast group-data-[state=open]:rotate-90"
+            className="size-3.5 shrink-0 text-ink-500 transition-transform duration-fast ease-standard group-data-[state=open]:rotate-90"
             aria-hidden
           />
           {children}
@@ -37,7 +37,7 @@ export function AccordionTrigger({ className, children, ...props }: React.Compon
 export function AccordionContent({ className, children, ...props }: React.ComponentPropsWithoutRef<typeof RA.Content>) {
   return (
     <RA.Content
-      className="overflow-hidden data-[state=open]:animate-[reveal-down_var(--duration-slow)_var(--ease-out-quiet)] data-[state=closed]:animate-[reveal-up_var(--duration-fast)_var(--ease-in-quiet)]"
+      className="overflow-hidden zb-enter data-[state=open]:animate-[reveal-down_var(--duration-slow)_var(--ease-out-quiet)] data-[state=closed]:animate-[reveal-up_var(--duration-fast)_var(--ease-out-quiet)]"
       {...props}
     >
       <div className={cn("px-3 pb-3 ps-8 text-body text-ink-700", className)}>{children}</div>

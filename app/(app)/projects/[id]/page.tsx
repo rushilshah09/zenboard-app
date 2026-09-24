@@ -1,24 +1,26 @@
-// Deep-link into the Projects hub with a project (and optionally a tab) pre-selected.
-// `?tab=portal` is what notifications point at, so the owner lands on the request
-// that fired the bell rather than a generic Overview.
+// Deep-link into the Projects hub with a project pre-selected.
+//
+// The TAB is not resolved here any more. It is a mode, so the component reads
+// and writes it in the URL itself (lib/hub-url.ts) — including the legacy
+// `?tab=forms` alias, which now lives beside the tab list it renames rather
+// than in this one route. Resolving it in both places was how `?tab=files`
+// ended up silently falling back to Overview: the route's whitelist had five
+// tabs and the hub had six.
 import { notFound } from 'next/navigation';
 import { loadProjectsData } from '@/lib/projects-data';
-import { ProjectsWorkspace, type DetailTab } from '@/components/projects/projects-workspace';
+import { ProjectsWorkspace } from '@/components/projects/projects-workspace';
+import { PageStamp } from '@/components/shell/page-stamp';
 
 export const dynamic = 'force-dynamic';
 
-const TABS: DetailTab[] = ['overview', 'tasks', 'docs', 'money', 'forms', 'portal'];
-
-export default async function ProjectPage({
-  params, searchParams,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string }>;
-}) {
+export default async function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { tab } = await searchParams;
   const data = await loadProjectsData();
   if (!data.projects.find((p) => p.id === id)) notFound();
-  const initialTab = TABS.includes(tab as DetailTab) ? (tab as DetailTab) : undefined;
-  return <ProjectsWorkspace {...data} initialProjectId={id} initialTab={initialTab} />;
+  return (
+    <>
+      <PageStamp />
+      <ProjectsWorkspace {...data} initialProjectId={id} />
+    </>
+  );
 }

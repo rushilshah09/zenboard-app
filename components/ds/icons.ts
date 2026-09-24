@@ -9,31 +9,53 @@
 // 1. One family. Sidebar & sub-nav (rail) icons come from the SAME set the
 //    primary shell uses — the Phosphor exports below (House, Folder, Users,
 //    Scroll…). Never mix a Tabler bulk-export glyph into a nav row next to them.
-// 2. One weight. Nav rows render `weight="regular"` (outline, strokeWidth 1.75),
-//    exactly like the shell (<Icon size={16|18} weight="regular">). `weight="fill"`
-//    is ONLY for tiny active-state affordances, never for a nav-row glyph.
+// 2. One weight, TWO cuts. Nav rows render `weight="regular"` (outline,
+//    strokeWidth 1.75) — and the SELECTED row renders `weight="fill"`, the
+//    filled cut of the same glyph.
+//
+//    REVISED 2026-09-07 (user directive). This rule used to read "`fill` is only
+//    for tiny active-state affordances, never for a nav-row glyph", and the
+//    consequence was that a selected nav row carried its state entirely in the
+//    wash behind it: correct up close, invisible at a glance, because an outline
+//    glyph has identical ink mass selected or not. Filling it changes the
+//    glyph's weight, not its shape or its family, which is precisely what
+//    Phosphor's weights are for. The rule is enforced in ONE place —
+//    `navWeight()` in components/shell/app-shell.tsx — so every sidebar row,
+//    project row and mobile tab answers it the same way. Do not re-derive it.
 // 3. One metaphor per concept (glossary): Draft=FileText · All=Cards ·
 //    Shared=ShareNetwork · Templates=Layout · a doc=FileText · a folder=Folder.
 //    Reuse the concept's glyph everywhere it appears (rail + type icon + menu).
 //
-// 2026-07-16: the Figma HIfi design draws its glyphs from Phosphor, so the names
-// the shell/Home screens use are re-pointed at @phosphor-icons/react below
-// (House → SquaresFour, Calendar → CalendarBlank, ChevronDown → CaretDown, …).
-// Everything else stays on @tabler/icons-react until its screen gets the
-// pixel-perfect pass. Both sets are thin-line at 16–18px, so the transition
-// state stays coherent.
+// 2026-08-01: **Phosphor is the ONE icon family** (user directive). The seam used
+// to be a hybrid — Phosphor for the screens that had taken the Figma pass, Tabler
+// for the rest — which meant two drawing styles could meet inside a single row.
+// The remaining ~160 Tabler glyphs were re-pointed at their Phosphor equivalents
+// in one pass, so every glyph in the app now comes from the same family.
 //
-// To re-point an icon at the design set: add `export const Name = phosphor(Ph.Glyph);`
-// and REMOVE the Tabler line of the same name (duplicate exports won't compile).
+// To add an icon: `export const Name = glyph("<PhosphorName>");`, then run
+// `node scripts/gen-icon-glyphs.mjs` to add its paths to the table. Never import an icon
+// library directly in a component — this file is the only place that may.
 // ─────────────────────────────────────────────────────────────────────────────
 import * as React from "react";
-import * as Ph from "@phosphor-icons/react";
+import { GLYPHS, type GlyphPart } from "./icon-glyphs.generated";
 
-// Adapt a Phosphor glyph to the Tabler-shaped API the app's call sites use.
-// Phosphor icons are FILLED paths: the DS <Icon> wrapper's `fill="none"` +
-// `strokeWidth` must not reach the <svg> (they'd blank the glyph), and the
-// wrapper's weight="fill" shim (fill="currentColor") maps to Phosphor's
-// weight="fill".
+// ── HOW A GLYPH IS DRAWN ─────────────────────────────────────────────────────
+// Phosphor is still the one family; what changed (2026-09-11) is that its
+// COMPONENTS no longer ship. Each Phosphor component carries its paths in six
+// weights, and this seam only ever draws two — `regular`, and `fill` when the
+// DS <Icon> asks for weight="fill" (its "bold" is a stroke width, which
+// Phosphor's filled paths ignore). Four dead weights × ~380 glyphs were two
+// thirds of the largest chunk in a worker that had reached 3,006 of
+// Cloudflare's 3,072 KiB ceiling, and of every page's client JavaScript.
+//
+// So `scripts/gen-icon-glyphs.mjs` reads Phosphor's own definitions and writes
+// just those two weights to `icon-glyphs.generated.ts`, and `glyph()` draws
+// them with the SAME markup Phosphor's IconBase produces — same attributes,
+// same order, same defaults. `icon-glyphs.test.ts` renders every glyph both
+// ways and requires them to be identical, so nothing on screen moved.
+//
+// The one-file-swap property holds: this module and its generator are still the
+// only places that know which icon package the app uses.
 type AdapterProps = {
   size?: number | string;
   strokeWidth?: number | string;
@@ -42,242 +64,284 @@ type AdapterProps = {
   style?: React.CSSProperties;
 } & Omit<React.SVGProps<SVGSVGElement>, "fill" | "ref">;
 
-function phosphor(G: Ph.Icon) {
-  return React.forwardRef<SVGSVGElement, AdapterProps>(function PhosphorAdapter(
-    { strokeWidth: _strokeWidth, fill, ...rest },
+const SVG_NS = "http://www.w3.org/2000/svg";
+const draw = (parts: readonly GlyphPart[]) => parts.map(([tag, attrs]) => React.createElement(tag, attrs));
+
+/**
+ * One glyph, by its Phosphor name. The DS <Icon> passes `fill="none"` and a
+ * `strokeWidth` for every glyph; neither may reach this <svg> (a filled path
+ * with fill="none" is blank), and fill="currentColor" selects the fill weight.
+ * A picker-only glyph has no fill weight in the table and draws regular.
+ */
+function glyph(name: string) {
+  const def = GLYPHS[name];
+  if (!def) throw new Error(`Icon glyph "${name}" is not in the generated table — run: node scripts/gen-icon-glyphs.mjs`);
+  const Glyph = React.forwardRef<SVGSVGElement, AdapterProps>(function Glyph(
+    // `strokeWidth` is named only to keep it OUT of `rest` — see above.
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    { strokeWidth: _strokeWidth, fill, size, color, ...rest },
     ref,
   ) {
-    return React.createElement(G, {
+    return React.createElement("svg", {
       ref,
-      weight: fill === "currentColor" ? "fill" : "regular",
+      xmlns: SVG_NS,
+      width: size ?? "1em",
+      height: size ?? "1em",
+      fill: color ?? "currentColor",
+      viewBox: "0 0 256 256",
       ...rest,
-    });
+    }, ...draw(fill === "currentColor" && def.f ? def.f : def.r));
   });
+  Glyph.displayName = `${name}Glyph`;
+  return Glyph;
 }
 
 // ── Figma HIfi glyphs (Phosphor) — shell, Home, tasks, schedule ──────────────
-export const House = phosphor(Ph.SquaresFour);          // Home/Dashboard
-export const SquarePen = phosphor(Ph.CheckSquareOffset); // Tasks
-export const Calendar = phosphor(Ph.CalendarBlank);
-export const CalendarDays = phosphor(Ph.CalendarBlank);
-export const Target = phosphor(Ph.Target);               // Goals
-export const Flame = phosphor(Ph.Fire);                  // Habits
-export const Folder = phosphor(Ph.FolderNotchIcon);      // Projects
-export const FolderOpen = phosphor(Ph.FolderNotchOpenIcon);
-export const Users = phosphor(Ph.Users);                 // Clients
-export const Landmark = phosphor(Ph.Bank);               // Finance
-export const Scroll = phosphor(Ph.FileText);             // Documents
-export const FileText = phosphor(Ph.FileText);
-export const Forms = phosphor(Ph.ClipboardText);         // Forms hub
-export const Cards = phosphor(Ph.Cards);                 // "All documents" collection (Docs rail)
-export const ShareNetwork = phosphor(Ph.ShareNetwork);   // Shared (Docs rail)
-export const Layout = phosphor(Ph.Layout);               // Templates / template doc-type
-export const ChevronDown = phosphor(Ph.CaretDown);
-export const ChevronUp = phosphor(Ph.CaretUp);
-export const ChevronLeft = phosphor(Ph.CaretLeft);
-export const ChevronRight = phosphor(Ph.CaretRight);
-export const Search = phosphor(Ph.MagnifyingGlass);
-export const Bell = phosphor(Ph.Bell);
-export const Plus = phosphor(Ph.Plus);
-export const X = phosphor(Ph.X);
-export const Moon = phosphor(Ph.Moon);
-export const Sun = phosphor(Ph.Sun);
-export const PanelLeft = phosphor(Ph.SidebarSimple);
-export const Power = phosphor(Ph.Power);
-export const Check = phosphor(Ph.Check);
-export const Play = phosphor(Ph.Play);
-export const Ellipsis = phosphor(Ph.DotsThree);
-export const MoreHorizontal = phosphor(Ph.DotsThree);
-export const EllipsisVertical = phosphor(Ph.DotsThreeVertical);
-export const Settings = phosphor(Ph.GearSix);
-export const UnfoldHorizontal = phosphor(Ph.ArrowsOutLineHorizontal);
-export const FoldHorizontal = phosphor(Ph.ArrowsInLineHorizontal);
-export const MousePointerClick = phosphor(Ph.CursorClick);
-export const List = phosphor(Ph.List);
-export const Inbox = phosphor(Ph.Tray);
-export const Keyboard = phosphor(Ph.Keyboard);
-export const LogOut = phosphor(Ph.SignOut);
-export const Star = phosphor(Ph.Star);
-export const Clock = phosphor(Ph.Clock);
-export const Flag = phosphor(Ph.Flag);
-export const Pencil = phosphor(Ph.PencilSimple);
-export const Trash = phosphor(Ph.Trash);
-export const Trash2 = phosphor(Ph.Trash);
-export const GripVertical = phosphor(Ph.DotsSixVertical);
+export const House = glyph("SquaresFour");          // Home/Dashboard
+export const SquarePen = glyph("CheckSquareOffset"); // Tasks
+export const Calendar = glyph("CalendarBlank");
+export const CalendarDays = glyph("CalendarBlank");
+export const Target = glyph("Target");               // Goals
+export const Flame = glyph("Fire");                  // Habits
+export const Folder = glyph("FolderNotchIcon");      // Projects
+export const FolderOpen = glyph("FolderNotchOpenIcon");
+export const Users = glyph("Users");                 // Clients
+export const Landmark = glyph("Bank");               // Finance
+export const Scroll = glyph("FileText");             // Documents
+export const FileText = glyph("FileText");
+export const Forms = glyph("ClipboardText");         // Forms hub
+export const Cards = glyph("Cards");                 // "All documents" collection (Docs rail)
+export const ShareNetwork = glyph("ShareNetwork");   // Shared (Docs rail)
+export const Layout = glyph("Layout");               // Templates / template doc-type
+export const ChevronDown = glyph("CaretDown");
+export const ChevronUp = glyph("CaretUp");
+export const ChevronLeft = glyph("CaretLeft");
+export const ChevronRight = glyph("CaretRight");
+export const Search = glyph("MagnifyingGlass");
+export const Bell = glyph("Bell");
+// The portal's Updates section — something the studio SAID, as distinct from
+// the Bell's "something happened to you".
+export const Megaphone = glyph("Megaphone");
+export const Plus = glyph("Plus");
+export const X = glyph("X");
+export const Moon = glyph("Moon");
+export const Sun = glyph("Sun");
+// "Follow the OS" in the appearance submenu. A monitor, not a gear: the choice
+// is about which machine decides, so the glyph names the machine.
+export const Desktop = glyph("Desktop");
+// The Content inbox — the pile you dump into before deciding what it is.
+export const Tray = glyph("Tray");
+// The morning counterpart to Moon on Home's staged prompts (§7V) — a sun on the
+// horizon reads as "start of day" where a plain Sun reads as "light/theme".
+export const Sunrise = glyph("SunHorizon");
+export const PanelLeft = glyph("SidebarSimple");
+export const Power = glyph("Power");
+export const Check = glyph("Check");
+export const Play = glyph("Play");
+export const Ellipsis = glyph("DotsThree");
+export const MoreHorizontal = glyph("DotsThree");
+export const EllipsisVertical = glyph("DotsThreeVertical");
+export const Settings = glyph("GearSix");
+export const UnfoldHorizontal = glyph("ArrowsOutLineHorizontal");
+export const FoldHorizontal = glyph("ArrowsInLineHorizontal");
+export const MousePointerClick = glyph("CursorClick");
+export const List = glyph("List");
+export const Inbox = glyph("Tray");
+export const Keyboard = glyph("Keyboard");
+export const LogOut = glyph("SignOut");
+export const Star = glyph("Star");
+export const Clock = glyph("Clock");
+export const Flag = glyph("Flag");
+export const Pencil = glyph("PencilSimple");
+export const Trash = glyph("Trash");
+export const Trash2 = glyph("Trash");
+export const GripVertical = glyph("DotsSixVertical");
 
-// ── Remaining glyphs (Tabler) — screens not yet on the Figma pass ────────────
-export {
-  IconActivity as Activity,
-  IconAlarm as AlarmClock,
-  IconAlignCenter as AlignCenter,
-  IconAlignLeft as AlignLeft,
-  IconAlignRight as AlignRight,
-  IconArchive as Archive,
-  IconArrowDown as ArrowDown,
-  IconArrowDownRight as ArrowDownRight,
-  IconArrowsUpDown as ArrowDownUp,
-  IconArrowLeft as ArrowLeft,
-  IconArrowsHorizontal as ArrowLeftRight,
-  IconArrowRight as ArrowRight,
-  IconArrowUp as ArrowUp,
-  IconArrowsUpDown as ArrowUpDown,
-  IconArrowUpRight as ArrowUpRight,
-  IconAt as AtSign,
-  IconAtom as Atom,
-  IconBike as Bike,
-  IconBold as Bold,
-  IconBook as Book,
-  IconBook2 as BookOpen,
-  IconBookmark as Bookmark,
-  IconBrain as Brain,
-  IconBriefcase as Briefcase,
-  IconBuilding as Building2,
-  IconCalendarCheck as CalendarCheck,
-  IconCamera as Camera,
-  IconCar as Car,
-  IconLetterCase as CaseSensitive,
-  IconChartBar as ChartBar,
-  IconChartPie as ChartPie,
-  IconCircleCheck as CheckCircle,
-  IconCircle as Circle,
-  IconAlertCircle as CircleAlert,
-  IconCircleCheck as CircleCheck,
-  IconCircleChevronDown as CircleChevronDown,
-  IconCircleDashed as CircleDashed,
-  IconUserCircle as CircleUser,
-  IconClipboardList as ClipboardList,
-  IconCloud as Cloud,
-  IconCloudOff as CloudOff,
-  IconCloud as CloudSun,
-  IconCode as Code,
-  IconCode as Code2,
-  IconCode as CodeXml,
-  IconCoffee as Coffee,
-  IconComponents as Component,
-  IconContrast as Contrast,
-  IconCopy as Copy,
-  IconCornerDownLeft as CornerDownLeft,
-  IconCornerUpRight as CornerUpRight,
-  IconCreditCard as CreditCard,
-  IconCross as Cross,
-  IconDatabase as Database,
-  IconDownload as Download,
-  IconBarbell as Dumbbell,
-  IconExternalLink as ExternalLink,
-  IconEye as Eye,
-  IconEyeOff as EyeOff,
-  IconFile as File,
-  IconFiles as Files,
-  IconFilter as Filter,
-  IconFingerprint as Fingerprint,
-  IconFlask as FlaskConical,
-  IconFlower as Flower,
-  IconFlower as Flower2,
-  IconDeviceGamepad2 as Gamepad2,
-  IconGift as Gift,
-  IconGitBranch as GitBranch,
-  IconGlobe as Globe,
-  IconSchool as GraduationCap,
-  IconLayoutGrid as Grid2x2,
-  IconStack2 as Group,
-  IconHash as Hash,
-  IconH1 as Heading1,
-  IconH2 as Heading2,
-  IconH3 as Heading3,
-  IconHeart as Heart,
-  IconHistory as History,
-  IconPhoto as Image,
-  IconInfoCircle as Info,
-  IconItalic as Italic,
-  IconLayoutKanban as Kanban,
-  IconKey as Key,
-  IconStack2 as Layers,
-  IconLayoutGrid as LayoutGrid,
-  IconLayout as LayoutTemplate,
-  IconLeaf as Leaf,
-  IconBulb as Lightbulb,
-  IconLink as Link,
-  IconLink as Link2,
-  IconListCheck as ListChecks,
-  IconFilter as ListFilter,
-  IconListNumbers as ListOrdered,
-  IconLoader2 as Loader2,
-  IconLock as Lock,
-  IconMail as Mail,
-  IconMapPin as MapPin,
-  IconMaximize as Maximize2,
-  IconMedal2 as Medal,
-  IconMessageCircle as MessageCircle,
-  IconMessage as MessageSquare,
-  IconMessageExclamation as MessageSquareWarning,
-  IconMinus as Minus,
-  IconDeviceDesktop as Monitor,
-  IconMountain as Mountain,
-  IconArrowsMove as Move,
-  IconArrowsHorizontal as MoveHorizontal,
-  IconMusic as Music,
-  IconNotebook as Notebook,
-  IconAlertOctagon as OctagonAlert,
-  IconGalaxy as Orbit,
-  IconBrush as Paintbrush,
-  IconPalette as Palette,
-  IconLayoutSidebarLeftCollapse as PanelLeftClose,
-  IconLayoutSidebarLeftExpand as PanelLeftOpen,
-  IconLayoutDashboard as PanelsTopLeft,
-  IconPaperclip as Paperclip,
-  IconPlayerPause as Pause,
-  IconPencil as PenTool,
-  IconRulerMeasure as PencilRuler,
-  IconPhone as Phone,
-  IconColorPicker as Pipette,
-  IconPlane as Plane,
-  IconPlug as Plug,
-  IconQuote as Quote,
-  IconReceipt as Receipt,
-  IconRefresh as RefreshCw,
-  IconRepeat as Repeat,
-  IconRocket as Rocket,
-  IconRotate2 as RotateCcw,
-  IconLayoutRows as Rows3,
-  IconSend as Send,
-  IconShare as Share2,
-  IconShield as Shield,
-  IconShoppingCart as ShoppingCart,
-  IconArrowsShuffle as Shuffle,
-  IconAdjustmentsHorizontal as SlidersHorizontal,
-  IconMoodSmile as Smile,
-  IconSparkles as Sparkles,
-  IconSquareCheck as SquareCheck,
-  IconSquareCheck as SquareCheckBig,
-  IconMathFunction as SquareFunction,
-  IconSquarePlus as SquarePlus,
-  IconNote as StickyNote,
-  IconStrikethrough as Strikethrough,
-  IconTable as Table,
-  IconTable as Table2,
-  IconTag as Tag,
-  IconTerminal as Terminal,
-  IconCursorText as TextCursorInput,
-  IconStopwatch as Timer,
-  IconTrees as Trees,
-  IconAlertTriangle as TriangleAlert,
-  IconTrophy as Trophy,
-  IconTypography as Type,
-  IconUmbrella as Umbrella,
-  IconUnderline as Underline,
-  IconArrowBackUp as Undo2,
-  IconUnlink as Unlink,
-  IconUpload as Upload,
-  IconCloudUpload as UploadCloud,
-  IconUser as User,
-  IconToolsKitchen2 as Utensils,
-  IconVideo as Video,
-  IconVolume as Volume2,
-  IconWallet as Wallet,
-  IconRipple as Waves,
-  IconTextWrap as WrapText,
-  IconTool as Wrench,
-} from "@tabler/icons-react";
+// ── Remaining glyphs — Phosphor (ONE family, per the DS icon rule) ───────────
+export const Activity = glyph("Pulse");
+export const AlarmClock = glyph("Alarm");
+export const AlignCenter = glyph("TextAlignCenter");
+export const AlignLeft = glyph("TextAlignLeft");
+export const AlignRight = glyph("TextAlignRight");
+export const Archive = glyph("Archive");
+export const ArrowDown = glyph("ArrowDown");
+export const ArrowDownRight = glyph("ArrowDownRight");
+export const ArrowDownUp = glyph("ArrowsDownUp");
+export const ArrowLeft = glyph("ArrowLeft");
+export const ArrowLeftRight = glyph("ArrowsLeftRight");
+export const ArrowRight = glyph("ArrowRight");
+export const ArrowUp = glyph("ArrowUp");
+export const ArrowUpDown = glyph("ArrowsDownUp");
+export const ArrowUpRight = glyph("ArrowUpRight");
+export const AtSign = glyph("At");
+export const Atom = glyph("Atom");
+export const Bike = glyph("Bicycle");
+export const Bold = glyph("TextB");
+export const Book = glyph("Book");
+export const BookOpen = glyph("BookOpen");
+export const Bookmark = glyph("BookmarkSimple");
+export const Brain = glyph("Brain");
+export const Briefcase = glyph("Briefcase");
+export const Building2 = glyph("Buildings");
+export const CalendarCheck = glyph("CalendarCheck");
+export const Camera = glyph("Camera");
+export const Car = glyph("Car");
+export const CaseSensitive = glyph("TextAa");
+export const ChartBar = glyph("ChartBar");
+export const ChartBarHorizontal = glyph("ChartBarHorizontal"); // the Timeline layout: bars across time
+export const ChartPie = glyph("ChartPie");
+export const CheckCircle = glyph("CheckCircle");
+export const Circle = glyph("Circle");
+export const CircleAlert = glyph("WarningCircle");
+export const CircleCheck = glyph("CheckCircle");
+export const CircleChevronDown = glyph("CaretCircleDown");
+export const CircleDashed = glyph("CircleDashed");
+export const CircleUser = glyph("UserCircle");
+export const ClipboardList = glyph("ClipboardText");
+export const Cloud = glyph("Cloud");
+export const CloudOff = glyph("CloudSlash");
+export const CloudSun = glyph("CloudSun");
+export const Code = glyph("Code");
+export const Code2 = glyph("CodeSimple");
+export const CodeXml = glyph("CodeBlock");
+export const Coffee = glyph("Coffee");
+export const Component = glyph("PuzzlePiece");
+export const Contrast = glyph("CircleHalf");
+export const Copy = glyph("Copy");
+export const CornerDownLeft = glyph("ArrowElbowDownLeft");
+export const CornerUpRight = glyph("ArrowElbowUpRight");
+export const CreditCard = glyph("CreditCard");
+export const Cross = glyph("Plus");
+export const Database = glyph("Database");
+export const Download = glyph("DownloadSimple");
+export const Dumbbell = glyph("Barbell");
+export const ExternalLink = glyph("ArrowSquareOut");
+export const Eye = glyph("Eye");
+export const EyeOff = glyph("EyeSlash");
+export const File = glyph("File");
+export const Files = glyph("Files");
+export const Filter = glyph("FunnelSimple");
+export const Fingerprint = glyph("Fingerprint");
+export const FlaskConical = glyph("Flask");
+export const Flower = glyph("Flower");
+export const Flower2 = glyph("FlowerLotus");
+export const Gamepad2 = glyph("GameController");
+export const Gift = glyph("Gift");
+export const GitBranch = glyph("GitBranch");
+export const Globe = glyph("Globe");
+export const GraduationCap = glyph("GraduationCap");
+export const Grid2x2 = glyph("GridFour");
+export const Group = glyph("Stack");
+export const Hash = glyph("Hash");
+export const Heading1 = glyph("TextHOne");
+export const Heading2 = glyph("TextHTwo");
+export const Heading3 = glyph("TextHThree");
+export const Heart = glyph("Heart");
+export const History = glyph("ClockCounterClockwise");
+export const Image = glyph("Image");
+/** A database's Collection layout — pictures of different sizes, overlapping. */
+export const Images = glyph("Images");
+export const Info = glyph("Info");
+export const Italic = glyph("TextItalic");
+export const Kanban = glyph("Kanban");
+export const Key = glyph("Key");
+export const Layers = glyph("Stack");
+export const LayoutGrid = glyph("SquaresFour");
+export const LayoutTemplate = glyph("Layout");
+export const Leaf = glyph("Leaf");
+export const Lightbulb = glyph("Lightbulb");
+export const Link = glyph("Link");
+export const Link2 = glyph("LinkSimple");
+export const ListChecks = glyph("ListChecks");
+export const ListFilter = glyph("FunnelSimple");
+export const ListOrdered = glyph("ListNumbers");
+export const Loader2 = glyph("CircleNotch");
+export const Lock = glyph("Lock");
+export const Mail = glyph("Envelope");
+export const MapPin = glyph("MapPin");
+export const Maximize2 = glyph("ArrowsOut");
+export const Medal = glyph("Medal");
+export const MessageCircle = glyph("ChatCircle");
+export const MessageSquare = glyph("Chat");
+export const MessageSquareWarning = glyph("ChatCenteredDots");
+export const Minus = glyph("Minus");
+export const Monitor = glyph("Monitor");
+export const Mountain = glyph("Mountains");
+export const Move = glyph("ArrowsOutCardinal");
+/** A Collection's canvas: a frame with handles, where things are arranged by hand. */
+export const BoundingBox = glyph("BoundingBox");
+/** Fit the canvas to what is on it. */
+export const FrameCorners = glyph("FrameCorners");
+export const MoveHorizontal = glyph("ArrowsHorizontal");
+export const Music = glyph("MusicNote");
+export const Notebook = glyph("Notebook");
+export const OctagonAlert = glyph("WarningOctagon");
+export const Orbit = glyph("Planet");
+export const Paintbrush = glyph("PaintBrush");
+export const Palette = glyph("Palette");
+export const PanelLeftClose = glyph("SidebarSimple");
+export const PanelLeftOpen = glyph("Sidebar");
+export const ModeSidePeek = glyph("SidebarSimple");
+export const ModeCenterPeek = glyph("AppWindow");
+export const ModeFullPage = glyph("CornersOut");
+export const PanelsTopLeft = glyph("Layout");
+export const Paperclip = glyph("Paperclip");
+export const Pause = glyph("Pause");
+export const PenTool = glyph("PenNib");
+export const PencilRuler = glyph("Ruler");
+export const Phone = glyph("Phone");
+export const Pipette = glyph("Eyedropper");
+export const Plane = glyph("AirplaneTilt");
+export const Plug = glyph("Plug");
+export const Quote = glyph("Quotes");
+export const Receipt = glyph("Receipt");
+export const RefreshCw = glyph("ArrowsClockwise");
+export const Repeat = glyph("Repeat");
+export const Rocket = glyph("Rocket");
+export const RotateCcw = glyph("ArrowCounterClockwise");
+export const Rows3 = glyph("Rows");
+export const Send = glyph("PaperPlaneTilt");
+export const Share2 = glyph("ShareNetwork");
+export const Shield = glyph("Shield");
+export const ShoppingCart = glyph("ShoppingCart");
+export const Shuffle = glyph("Shuffle");
+export const SlidersHorizontal = glyph("SlidersHorizontal");
+export const Smile = glyph("Smiley");
+export const Sparkles = glyph("Sparkle");
+export const Square = glyph("Square");
+export const SquareCheck = glyph("CheckSquare");
+export const SquareCheckBig = glyph("CheckSquare");
+export const SquareFunction = glyph("MathOperations");
+export const SquarePlus = glyph("PlusSquare");
+export const StickyNote = glyph("Note");
+export const Strikethrough = glyph("TextStrikethrough");
+export const Table = glyph("Table");
+export const Table2 = glyph("Table");
+export const Tag = glyph("Tag");
+export const Terminal = glyph("Terminal");
+export const TextCursorInput = glyph("CursorText");
+export const Timer = glyph("Timer");
+export const SkipForward = glyph("SkipForward");
+export const Minimize2 = glyph("ArrowsIn");
+export const VolumeX = glyph("SpeakerX");
+export const Trees = glyph("Tree");
+export const TriangleAlert = glyph("Warning");
+export const Trophy = glyph("Trophy");
+export const Type = glyph("TextT");
+export const Umbrella = glyph("Umbrella");
+export const Underline = glyph("TextUnderline");
+export const Undo2 = glyph("ArrowUUpLeft");
+export const Unlink = glyph("LinkBreak");
+export const Upload = glyph("UploadSimple");
+export const UploadCloud = glyph("CloudArrowUp");
+export const User = glyph("User");
+export const Utensils = glyph("ForkKnife");
+export const Video = glyph("VideoCamera");
+export const Volume2 = glyph("SpeakerHigh");
+export const Wallet = glyph("Wallet");
+export const Waves = glyph("Waves");
+export const WrapText = glyph("TextAlignJustify");
+export const Wrench = glyph("Wrench");
 
 // Structural icon-component type — both Tabler and adapted Phosphor glyphs
 // satisfy it, so `icon: <Component>` call sites type-check across the mix.
@@ -290,3 +354,119 @@ export type IconType = React.ComponentType<{
   "aria-hidden"?: boolean | "true" | "false";
   "aria-label"?: string;
 }>;
+
+// ── PLATFORM MARKS ───────────────────────────────────────────────────────────
+// The logos of the places creators publish to and save from, drawn in the ONE
+// family (Phosphor's own brand glyphs) and in ink — so a link from YouTube reads
+// as YouTube in a black-and-white interface, the way Eden draws them, rather than
+// as whatever favicon a site happens to serve. `lib/platforms.ts` decides which
+// platform a link or channel is; the DS `LinkMark` / `ChannelMark` draw it.
+// (Vimeo is recognised there but has no glyph here, so it keeps its favicon.)
+export const YoutubeLogo = glyph("YoutubeLogo");
+export const XLogo = glyph("XLogo");
+export const InstagramLogo = glyph("InstagramLogo");
+export const TiktokLogo = glyph("TiktokLogo");
+export const LinkedinLogo = glyph("LinkedinLogo");
+export const ThreadsLogo = glyph("ThreadsLogo");
+export const FacebookLogo = glyph("FacebookLogo");
+export const PinterestLogo = glyph("PinterestLogo");
+export const BehanceLogo = glyph("BehanceLogo");
+export const DribbbleLogo = glyph("DribbbleLogo");
+export const SpotifyLogo = glyph("SpotifyLogo");
+export const TwitchLogo = glyph("TwitchLogo");
+export const RedditLogo = glyph("RedditLogo");
+export const MediumLogo = glyph("MediumLogo");
+export const FigmaLogo = glyph("FigmaLogo");
+export const GithubLogo = glyph("GithubLogo");
+
+// ── THE PICKER CATALOGUE ─────────────────────────────────────────────────────
+// Every glyph a person may choose FOR A RECORD — a project, a page, a list.
+//
+// It lives here, and not in the picker, because of the rule at the top of this
+// file: this module is the only one allowed to import an icon package. A
+// picker that reached for Phosphor directly would be the second importer, and
+// the one-file-swap property would be gone.
+//
+// It is a CATALOGUE rather than 260 named exports because nothing imports these
+// by name — they are looked up by a stored string (`ph:Rocket`). Exporting each
+// one individually would add 169 symbols no call site references, which reads
+// as an API and is really a data table.
+//
+// WHAT IS IN IT, and what is deliberately not: objects, places, creatures,
+// tools, subjects — things a piece of work can be ABOUT. No chevrons, arrows,
+// spinners or carets. The app has 229 named exports above for interface
+// chrome; a project called "↓" is not a project anyone meant to create, and
+// letting UI glyphs into the picker is how an icon set stops meaning anything.
+//
+// Keys are the Phosphor name and are STORED (`projects.icon`, page icons), so
+// they must stay stable. Renaming one orphans every row that chose it.
+export const PICKER_ICONS: Record<string, IconType> = {
+  Airplane: glyph("Airplane"), Alarm: AlarmClock, Alien: glyph("Alien"), Anchor: glyph("Anchor"),
+  Aperture: glyph("Aperture"), Archive, Armchair: glyph("Armchair"), Article: glyph("Article"),
+  At: AtSign, Atom, Avocado: glyph("Avocado"), Balloon: glyph("Balloon"),
+  Bandaids: glyph("Bandaids"), Bank: Landmark, Barbell: Dumbbell, Barcode: glyph("Barcode"),
+  Baseball: glyph("Baseball"), Basket: glyph("Basket"), Basketball: glyph("Basketball"), Bathtub: glyph("Bathtub"),
+  BatteryFull: glyph("BatteryFull"), BeachBall: glyph("BeachBall"), Bed: glyph("Bed"), BeerStein: glyph("BeerStein"),
+  Bell, Bicycle: Bike, Binoculars: glyph("Binoculars"), Bird: glyph("Bird"),
+  Boat: glyph("Boat"), BookOpen, Bookmark: glyph("Bookmark"), Books: glyph("Books"),
+  BowlFood: glyph("BowlFood"), Brain, Bread: glyph("Bread"), Briefcase,
+  Broadcast: glyph("Broadcast"), Broom: glyph("Broom"), Browser: glyph("Browser"), Bug: glyph("Bug"),
+  Buildings: Building2, Butterfly: glyph("Butterfly"), Cactus: glyph("Cactus"), Cake: glyph("Cake"),
+  Calendar: glyph("Calendar"), CalendarCheck, Camera, Campfire: glyph("Campfire"),
+  Car, Cards, Carrot: glyph("Carrot"), Cat: glyph("Cat"),
+  Certificate: glyph("Certificate"), ChartBar, ChartLine: glyph("ChartLine"), ChartPie,
+  Chat: MessageSquare, Chats: glyph("Chats"), Checks: glyph("Checks"), Cherries: glyph("Cherries"),
+  Circle, Circuitry: glyph("Circuitry"), Clipboard: glyph("Clipboard"), Clock,
+  Cloud, CloudRain: glyph("CloudRain"), Code, Coffee,
+  Coins: glyph("Coins"), Compass: glyph("Compass"), Confetti: glyph("Confetti"), Cookie: glyph("Cookie"),
+  Cpu: glyph("Cpu"), CreditCard, Crosshair: glyph("Crosshair"), Crown: glyph("Crown"),
+  Cube: glyph("Cube"), Database, Desktop, DeviceMobile: glyph("DeviceMobile"),
+  Devices: glyph("Devices"), Diamond: glyph("Diamond"), Dna: glyph("Dna"), Dog: glyph("Dog"),
+  Door: glyph("Door"), Drop: glyph("Drop"), Egg: glyph("Egg"), Envelope: Mail,
+  Eye, Factory: glyph("Factory"), File, FilmReel: glyph("FilmReel"),
+  FilmSlate: glyph("FilmSlate"), Fingerprint, Fire: Flame, FirstAid: glyph("FirstAid"),
+  Fish: glyph("Fish"), Flag, Flask: FlaskConical, Flower,
+  Folder: glyph("Folder"), Football: glyph("Football"), ForkKnife: Utensils, Gavel: glyph("Gavel"),
+  Gear: glyph("Gear"), Ghost: glyph("Ghost"), Gift, GitBranch,
+  Globe, Graph: glyph("Graph"), Guitar: glyph("Guitar"), Hamburger: glyph("Hamburger"),
+  Hammer: glyph("Hammer"), Handshake: glyph("Handshake"), HardDrives: glyph("HardDrives"), Hash,
+  Headphones: glyph("Headphones"), Heart, Heartbeat: glyph("Heartbeat"), Hexagon: glyph("Hexagon"),
+  Hourglass: glyph("Hourglass"), House: glyph("House"), IceCream: glyph("IceCream"), Image,
+  Images: glyph("Images"), Infinity: glyph("Infinity"), Invoice: glyph("Invoice"), Island: glyph("Island"),
+  Kanban, Key, Ladder: glyph("Ladder"), Lamp: glyph("Lamp"),
+  Laptop: glyph("Laptop"), Layout: PanelsTopLeft, Leaf, Lifebuoy: glyph("Lifebuoy"),
+  Lightbulb, Lightning: glyph("Lightning"), Link, ListChecks,
+  Lock, LockOpen: glyph("LockOpen"), MagicWand: glyph("MagicWand"), MapPin,
+  MapTrifold: glyph("MapTrifold"), Martini: glyph("Martini"), Medal, Megaphone,
+  Microphone: glyph("Microphone"), MicrophoneStage: glyph("MicrophoneStage"), Microscope: glyph("Microscope"), Money: glyph("Money"),
+  Moon, Motorcycle: glyph("Motorcycle"), Mountains: Mountain, MusicNote: Music,
+  MusicNotes: glyph("MusicNotes"), Needle: glyph("Needle"), Newspaper: glyph("Newspaper"), Note: StickyNote,
+  NotePencil: glyph("NotePencil"), Notebook, Nut: glyph("Nut"), Orange: glyph("Orange"),
+  Package: glyph("Package"), PaintBrush: Paintbrush, PaintBucket: glyph("PaintBucket"), PaintRoller: glyph("PaintRoller"),
+  Palette, PaperPlane: glyph("PaperPlane"), Path: glyph("Path"), PawPrint: glyph("PawPrint"),
+  PenNib: PenTool, Pencil: glyph("Pencil"), Person: glyph("Person"), PersonSimpleRun: glyph("PersonSimpleRun"),
+  PersonSimpleSwim: glyph("PersonSimpleSwim"), Phone, PianoKeys: glyph("PianoKeys"), PiggyBank: glyph("PiggyBank"),
+  Pill: glyph("Pill"), Pizza: glyph("Pizza"), Planet: Orbit, Plant: glyph("Plant"),
+  Playlist: glyph("Playlist"), Plug, Presentation: glyph("Presentation"), Pulse: Activity,
+  Radio: glyph("Radio"), Rainbow: glyph("Rainbow"), Receipt, Robot: glyph("Robot"),
+  Rocket, Rows: Rows3, Ruler: PencilRuler, Sailboat: glyph("Sailboat"),
+  Scales: glyph("Scales"), Scissors: glyph("Scissors"), Screwdriver: glyph("Screwdriver"), Scroll: glyph("Scroll"),
+  Seal: glyph("Seal"), Shapes: glyph("Shapes"), Share: glyph("Share"), ShareNetwork: Share2,
+  Shield, ShieldCheck: glyph("ShieldCheck"), ShoppingBag: glyph("ShoppingBag"), ShoppingCart,
+  Skull: glyph("Skull"), Smiley: Smile, Snowflake: glyph("Snowflake"), SoccerBall: glyph("SoccerBall"),
+  Sparkle: Sparkles, SpeakerHigh: Volume2, Sphere: glyph("Sphere"), Spiral: glyph("Spiral"),
+  Square, Stairs: glyph("Stairs"), Stamp: glyph("Stamp"), Star,
+  Stethoscope: glyph("Stethoscope"), Sticker: glyph("Sticker"), Storefront: glyph("Storefront"), Suitcase: glyph("Suitcase"),
+  Sun, Swatches: glyph("Swatches"), Sword: glyph("Sword"), Tag,
+  Target, Television: glyph("Television"), TennisBall: glyph("TennisBall"), Tent: glyph("Tent"),
+  Terminal, TestTube: glyph("TestTube"), ThumbsUp: glyph("ThumbsUp"), Ticket: glyph("Ticket"),
+  Timer, Toolbox: glyph("Toolbox"), Tooth: glyph("Tooth"), Train: glyph("Train"),
+  Tray: Inbox, Tree: Trees, TreeStructure: glyph("TreeStructure"), TrendUp: glyph("TrendUp"),
+  Triangle: glyph("Triangle"), Trophy, Truck: glyph("Truck"), User,
+  UserCircle: CircleUser, Users, UsersThree: glyph("UsersThree"), Video: glyph("Video"),
+  VinylRecord: glyph("VinylRecord"), Wallet, Warehouse: glyph("Warehouse"), Watch: glyph("Watch"),
+  Waves, Wind: glyph("Wind"), Wine: glyph("Wine"), Wrench,
+};
+
+/** Sorted keys, for a grid that must not reorder between renders. */
+export const PICKER_ICON_NAMES: readonly string[] = Object.keys(PICKER_ICONS).sort();

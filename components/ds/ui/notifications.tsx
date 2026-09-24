@@ -71,7 +71,7 @@ export function NotificationsBell({ items, onRead, onMarkAllRead }: Notification
                 onClick={() => setTab(t)}
                 className={cn(
                   "focus-ring h-7 rounded-sm px-2.5 text-ui transition-colors duration-instant",
-                  tab === t ? "bg-paper-4 font-medium text-ink-900" : "text-ink-600 hover:bg-paper-3",
+                  tab === t ? "bg-surface-active font-medium text-ink-900" : "text-ink-600 hover:bg-surface-hover",
                 )}
               >
                 {t}
@@ -92,15 +92,15 @@ export function NotificationsBell({ items, onRead, onMarkAllRead }: Notification
                 if (!rows.length) return null;
                 return (
                   <div key={sec}>
-                    <div className="sticky top-0 bg-paper px-3 py-1.5 text-overline uppercase text-ink-500">{sec}</div>
+                    <div className="sticky top-0 bg-surface-raised px-3 py-1.5 text-overline text-ink-500">{sec}</div>
                     {rows.map((n) => (
                       <button
                         key={n.id}
                         type="button"
                         onClick={() => onRead(n.id)}
                         className={cn(
-                          "focus-ring relative flex w-full items-start gap-3 rounded-sm p-3 text-start transition-colors duration-instant hover:bg-paper-3",
-                          n.unread && "bg-berry-050",
+                          "group/row focus-ring relative flex w-full items-start gap-3 rounded-sm p-3 text-start transition-colors duration-instant hover:bg-surface-hover",
+                          n.unread && "bg-berry-050 hover:bg-surface-active",
                         )}
                       >
                         {n.unread && <span aria-hidden className="absolute start-1 top-1/2 size-1.5 -translate-y-1/2 rounded-full bg-berry-500" />}
@@ -110,9 +110,9 @@ export function NotificationsBell({ items, onRead, onMarkAllRead }: Notification
                             <span className="font-medium text-ink-900">{n.actor}</span> {n.verb}{" "}
                             <span className="font-medium text-ink-900">{n.object}</span>
                           </span>
-                          {n.context && <span className="block text-meta text-ink-500">{n.context}</span>}
+                          {n.context && <span className={`block text-meta ${n.unread ? "text-ink-700" : "text-ink-500 group-hover/row:text-ink-700"}`}>{n.context}</span>}
                         </span>
-                        <span className="shrink-0 font-mono text-mono-sm text-ink-400">{n.time}</span>
+                        <span className={`shrink-0 font-mono text-mono-sm ${n.unread ? "text-ink-700" : "text-ink-500 group-hover/row:text-ink-700"}`}>{n.time}</span>
                       </button>
                     ))}
                   </div>

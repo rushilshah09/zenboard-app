@@ -9,6 +9,8 @@ import { ChevronLeft, ChevronRight } from "@/components/ds/icons";
 import { Icon, IconButton } from "@/components/ds/ui";
 import { cn } from "@/lib/cn";
 import { MONTHS, WEEKDAYS, monthCells, addMonths, addDays, startOfDay, localISODate, isToday, sameDay } from '@/lib/calendar';
+import { WEEK_STARTS_ON } from '@/lib/date';
+import { useChanged } from "@/lib/use-changed";
 
 export type DateRange = { start: Date; end: Date };
 const MAX_RANGE = 21; // days — keeps the resulting range view usable
@@ -21,7 +23,10 @@ export function MiniMonth({ selected, onPick, range, onSelectRange }: {
   onSelectRange?: (start: Date, end: Date) => void;
 }) {
   const [month, setMonth] = useState<Date>(() => new Date(selected.getFullYear(), selected.getMonth(), 1));
-  useEffect(() => { setMonth(new Date(selected.getFullYear(), selected.getMonth(), 1)); }, [selected]);
+  // Compare the MONTH, not the Date object: `selected` is a fresh instance on
+  // every render, so comparing it would reset the view on each one.
+  const selectedMonth = `${selected.getFullYear()}-${selected.getMonth()}`;
+  if (useChanged(selectedMonth)) setMonth(new Date(selected.getFullYear(), selected.getMonth(), 1));
 
   const cells = monthCells(month);
   const m = month.getMonth();
@@ -89,9 +94,11 @@ export function MiniMonth({ selected, onPick, range, onSelectRange }: {
         <IconButton size="xs" variant="ghost" onClick={() => setMonth(addMonths(month, 1))} label="Next month" icon={<Icon icon={ChevronRight} size={14} weight="bold" />} />
       </div>
 
-      {/* Weekday labels */}
+      {/* Weekday labels — rotated to the app's week start. `WEEKDAYS` is indexed
+          by `getDay()` (Sunday first), so printing it as-is over a Monday-first
+          grid labels every column with the wrong day. */}
       <div className="mb-0.5 grid grid-cols-7">
-        {WEEKDAYS.map((w) => (
+        {Array.from({ length: 7 }, (_, i) => WEEKDAYS[(i + WEEK_STARTS_ON) % 7]).map((w) => (
           <div key={w} className="pb-1 text-center text-caption font-medium text-ink-500">{w.slice(0, 2)}</div>
         ))}
       </div>
@@ -102,7 +109,10 @@ export function MiniMonth({ selected, onPick, range, onSelectRange }: {
           const iso = localISODate(d);
           const inMonth = d.getMonth() === m;
           const today = isToday(d);
-          const col = d.getDay();
+          // Column INDEX in the grid, not the weekday number: the two only
+          // agree on a Sunday-first grid. It decides which end of a selected
+          // range gets a rounded cap.
+          const col = (d.getDay() - WEEK_STARTS_ON + 7) % 7;
           const rng = !!active && dayNum(d) >= dayNum(active.start) && dayNum(d) <= dayNum(active.end);
           const isStart = !!active && sameDay(d, active.start);
           const isEnd = !!active && sameDay(d, active.end);
@@ -129,7 +139,7 @@ export function MiniMonth({ selected, onPick, range, onSelectRange }: {
               <span className={cn(
                 'relative grid size-6 place-items-center rounded-full text-meta tabular-nums transition-colors duration-fast',
                 dot || today ? 'font-semibold' : 'font-normal',
-                dot ? 'bg-ink-900 text-onsolid' : rng ? 'text-ink-800' : !inMonth ? 'text-ink-500' : today ? 'text-ink-900' : 'text-ink-800',
+                dot ? 'bg-[var(--accent)] text-[var(--on-accent)]' : rng ? 'text-ink-800' : !inMonth ? 'text-ink-500' : today ? 'text-ink-900' : 'text-ink-800',
                 today && !dot && !rng && 'ring-[1.5px] ring-inset ring-line-strong',
                 !dot && 'group-hover:bg-surface-hover',
               )}>{d.getDate()}</span>

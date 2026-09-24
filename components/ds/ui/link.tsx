@@ -29,7 +29,7 @@ export const Link = React.forwardRef<HTMLAnchorElement, LinkProps>(function Link
       {children}
       {external && (
         <>
-          <ArrowUpRight className="ms-0.5 inline size-3 align-[-0.1em] text-ink-400" aria-hidden />
+          <ArrowUpRight className="ms-0.5 inline size-3 align-[-0.1em] text-ink-500" aria-hidden />
           <span className="sr-only"> (opens in a new tab)</span>
         </>
       )}

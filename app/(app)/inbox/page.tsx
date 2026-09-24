@@ -1,25 +1,12 @@
-// Inbox — triage captured thoughts (tasks flagged is_inbox, not yet scheduled or
-// filed). RLS scopes to the signed-in user; auth is enforced by the (app) layout.
-import { createClient } from '@/lib/supabase/server';
-import { activeSpaceId } from '@/lib/active-space';
-import { InboxView, type InboxTask, type InboxProject } from '@/components/inbox/inbox-view';
+// The Inbox is a view inside Tasks, not a page of its own — there were two of
+// them, this one and the Tasks rail's, listing the same rows from the same query.
+// This one owned Triage; that flow moved into the Tasks view with the merge, so
+// nothing was lost along with the page.
+//
+// The route stays, as a redirect rather than a 404: bookmarks, the "g i" chord,
+// and any link written before the merge all still point here.
+import { redirect } from 'next/navigation';
 
-export const dynamic = 'force-dynamic';
-
-export default async function InboxPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const sid = await activeSpaceId(supabase, user!.id);
-  const [{ data: tasks }, { data: projects }] = await Promise.all([
-    supabase
-      .from('tasks')
-      .select('id, title, priority, done, is_inbox, created_at, project_id')
-      .eq('space_id', sid)
-      .eq('is_inbox', true)
-      .eq('done', false)
-      .is('parent_task_id', null)
-      .order('created_at', { ascending: false }),
-    supabase.from('projects').select('id, name, color').eq('space_id', sid).order('created_at'),
-  ]);
-  return <InboxView initialTasks={(tasks as InboxTask[]) ?? []} projects={(projects as InboxProject[]) ?? []} />;
+export default function InboxPage() {
+  redirect('/tasks?view=inbox');
 }

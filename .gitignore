@@ -48,3 +48,6 @@ next-env.d.ts
 .open-next/
 .wrangler/
 .dev.vars
+
+# performance harness state (mock keys, session cookie, traces, results)
+/.perf/

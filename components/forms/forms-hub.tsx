@@ -6,27 +6,27 @@
 // has a "Move to…" menu to attach one to a client or project (or detach) later.
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Link2, Check, Trash, ArrowRight, Copy, Folder, Users, Forms as FormsIcon } from '@/components/ds/icons';
+import { Plus, Link2, Check, Trash, ArrowRight, Copy, Folder, Users, MoreHorizontal, Forms as FormsIcon } from '@/components/ds/icons';
 import {
   Icon, Button, IconButton, Badge, toast, Modal, Select, SegmentedControl, EmptyState,
   Popover, PopoverTrigger, PopoverContent, MenuItem, MenuLabel,
-  type BadgeStatus, type SelectGroup,
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuSeparator,
+  useConfirm, EmptyLine, type BadgeStatus, type SelectGroup,
 } from '@/components/ds/ui';
-import { ViewContainer } from '@/components/ui/view-container';
+import { formDeleteConfirm } from './form-delete';
+import { PageLayout } from '@/components/ui/page-layout';
 import { createForm, deleteForm, duplicateForm, setFormHome } from '@/lib/actions/forms';
 import { FORM_TEMPLATES } from '@/lib/form-templates';
 import type { FormHubItem } from '@/lib/forms';
+import { formatAgo } from '@/lib/date';
 
 const STATUS_TONE: Record<string, BadgeStatus> = { draft: 'neutral', live: 'success', closed: 'neutral' };
 const STATUS_LABEL: Record<string, string> = { draft: 'Draft', live: 'Live', closed: 'Closed' };
 
-const rel = (iso: string) => {
-  const days = Math.floor((Date.now() - Date.parse(iso)) / 86400000);
-  if (days <= 0) return 'today';
-  if (days === 1) return 'yesterday';
-  if (days < 30) return `${days}d ago`;
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-};
+// Elapsed time comes from the one date vocabulary (lib/date.ts) — this used to
+// be a private copy here AND in forms-panel, both hardcoding 'en-US'.
+const rel = (iso: string) => formatAgo(iso) ?? '';
 
 type NameRef = { id: string; name: string };
 type Filter = 'all' | 'live' | 'draft' | 'closed';
@@ -40,6 +40,7 @@ export function FormsHub({ items, projects, clients }: { items: FormHubItem[]; p
   const [filter, setFilter] = useState<Filter>('all');
   const [newOpen, setNewOpen] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
+  const [confirm, confirmUI] = useConfirm();
 
   const shown = useMemo(() => (filter === 'all' ? items : items.filter((f) => f.status === filter)), [items, filter]);
 
@@ -48,10 +49,11 @@ export function FormsHub({ items, projects, clients }: { items: FormHubItem[]; p
     if ('error' in res) { toast({ message: res.error, variant: 'error' }); return; }
     router.push(`/forms/${res.id}`);
   }
-  async function remove(id: string, title: string) {
-    const res = await deleteForm(id);
+  async function remove(f: FormHubItem) {
+    if (!(await confirm(formDeleteConfirm(f)))) return;
+    const res = await deleteForm(f.id);
     if ('error' in res) { toast({ message: res.error, variant: 'error' }); return; }
-    toast({ message: `“${title}” deleted.` });
+    toast({ message: `“${f.title}” deleted.` });
     router.refresh();
   }
   async function copyLink(token: string, id: string) {
@@ -67,23 +69,24 @@ export function FormsHub({ items, projects, clients }: { items: FormHubItem[]; p
     router.refresh();
   }
 
+  // Filter LEFT, actions RIGHT (DESIGN_REFERENCES R1). The status filter is
+  // navigation — where you're looking — so it sits in the header's left
+  // lane. Putting it beside "New form" made a navigation control read as a
+  // verb. The lane scrolls on a phone; the primary action never leaves.
   return (
-    <ViewContainer className="pt-[var(--view-pt)] pb-[var(--view-pb)]">
-      <div className="mb-[var(--view-gap)] flex items-center gap-3">
-        <SegmentedControl aria-label="Filter forms by status" options={FILTERS} value={filter} onValueChange={(v) => setFilter(v as Filter)} fit="content" />
-        <span className="flex-1" />
-        <Button variant="primary" icon={<Icon icon={Plus} size={16} />} onClick={() => setNewOpen(true)}>New form</Button>
-      </div>
-
+    <PageLayout
+      tabs={<SegmentedControl aria-label="Filter forms by status" options={FILTERS} value={filter} onValueChange={(v) => setFilter(v as Filter)} fit="content" />}
+      actions={<Button size="sm" variant="secondary" icon={<Icon icon={Plus} size={16} />} onClick={() => setNewOpen(true)}>New form</Button>}
+    >
       {items.length === 0 ? (
         <EmptyState
           illustration={<Icon icon={FormsIcon} size={20} />}
           title="No forms yet"
-          description="Collect a brief, feedback, or a testimonial — people fill it in without an account. Start one in Drafts and attach it to a client or project whenever you like."
+          description="Collect a brief or feedback — no account needed."
           primary={<Button variant="primary" icon={<Icon icon={Plus} size={16} />} onClick={() => setNewOpen(true)}>New form</Button>}
         />
       ) : shown.length === 0 ? (
-        <div className="py-1.5 text-ui text-ink-500">No {filter} forms.</div>
+        <EmptyLine>No {filter} forms.</EmptyLine>
       ) : (
         <div>
           {shown.map((f) => (
@@ -101,7 +104,11 @@ export function FormsHub({ items, projects, clients }: { items: FormHubItem[]; p
                 </span>
               </button>
 
-              <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+              {/* Four icon buttons plus a badge and a count leave a phone ~79px of
+                  title. On sm+ they sit inline and reveal on hover; below sm they
+                  collapse into one always-visible ⋯ menu (a touch device has no
+                  hover, so they must be reachable some other way). */}
+              <div className="reveal-on-hover hidden shrink-0 items-center gap-0.5 sm:flex">
                 {f.shareToken && f.status === 'live' && (
                   <IconButton label={copied === f.id ? 'Copied' : 'Copy link'} variant="ghost" size="xs"
                     icon={<Icon icon={copied === f.id ? Check : Link2} size={14} />} onClick={() => copyLink(f.shareToken!, f.id)} />
@@ -125,7 +132,35 @@ export function FormsHub({ items, projects, clients }: { items: FormHubItem[]; p
                   </Popover>
                 )}
                 <IconButton label="Duplicate form" variant="ghost" size="xs" icon={<Icon icon={Copy} size={14} />} onClick={() => duplicate(f.id)} />
-                <IconButton label="Delete form" variant="ghost" size="xs" icon={<Icon icon={Trash} size={14} />} onClick={() => remove(f.id, f.title)} />
+                <IconButton label="Delete form" variant="ghost" size="xs" icon={<Icon icon={Trash} size={14} />} onClick={() => remove(f)} />
+              </div>
+
+              <div className="shrink-0 sm:hidden">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <IconButton label={`Actions for ${f.title}`} variant="ghost" size="xs" icon={<Icon icon={MoreHorizontal} size={16} />} />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {f.shareToken && f.status === 'live' && (
+                      <DropdownMenuItem onClick={() => copyLink(f.shareToken!, f.id)}>
+                        {copied === f.id ? 'Copied' : 'Copy link'}
+                      </DropdownMenuItem>
+                    )}
+                    {(projects.length > 0 || clients.length > 0) && (
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>Move to</DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent className="max-h-[320px] overflow-y-auto">
+                          {f.context && <DropdownMenuItem onClick={() => move(f.id, null)}>Drafts (no home)</DropdownMenuItem>}
+                          {projects.map((p) => <DropdownMenuItem key={p.id} onClick={() => move(f.id, { projectId: p.id })}>{p.name}</DropdownMenuItem>)}
+                          {clients.map((c) => <DropdownMenuItem key={c.id} onClick={() => move(f.id, { clientId: c.id })}>{c.name}</DropdownMenuItem>)}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+                    )}
+                    <DropdownMenuItem onClick={() => duplicate(f.id)}>Duplicate</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem danger onClick={() => remove(f)}>Delete</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
 
               <Badge status={STATUS_TONE[f.status]}>{STATUS_LABEL[f.status]}</Badge>
@@ -133,7 +168,7 @@ export function FormsHub({ items, projects, clients }: { items: FormHubItem[]; p
               <button onClick={() => router.push(`/forms/${f.id}/responses`)} aria-label={`${f.responses} responses`}
                 className="focus-ring flex shrink-0 items-center gap-1 rounded-sm text-ink-500 transition-colors hover:text-ink-900">
                 <span className="tabular-nums text-ui text-ink-800">{f.responses}</span>
-                <Icon icon={ArrowRight} size={13} />
+                <Icon icon={ArrowRight} size={12} />
               </button>
             </div>
           ))}
@@ -141,7 +176,8 @@ export function FormsHub({ items, projects, clients }: { items: FormHubItem[]; p
       )}
 
       <NewFormModal open={newOpen} onOpenChange={setNewOpen} projects={projects} clients={clients} />
-    </ViewContainer>
+      {confirmUI}
+    </PageLayout>
   );
 }
 
@@ -177,7 +213,7 @@ function NewFormModal({ open, onOpenChange, projects, clients }: {
       <div className="flex flex-col gap-4">
         {hasHomes && (
           <div className="flex flex-col gap-1.5">
-            <label className="text-caption text-ink-500">Home <span className="text-ink-400">(optional)</span></label>
+            <label className="text-caption text-ink-500">Home <span className="text-ink-500">(optional)</span></label>
             <Select groups={groups} value={scope} onValueChange={setScope} aria-label="Form home" />
           </div>
         )}

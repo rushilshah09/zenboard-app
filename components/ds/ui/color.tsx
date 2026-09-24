@@ -238,7 +238,7 @@ export function ColorPicker({ value, onValueChange, className }: { value: string
           onChange={(e) => setHexDraft(e.target.value)}
           onBlur={() => parseHex(hexDraft)}
           onKeyDown={(e) => e.key === "Enter" && parseHex(hexDraft)}
-          className="h-7 w-24 rounded-sm border border-line-strong bg-paper px-2 font-mono text-mono-sm text-ink-900 focus:border-berry-500 focus:outline-none focus:ring-2 focus:ring-berry-alpha-20"
+          className="h-7 w-24 rounded-sm border border-line-strong bg-paper px-2 font-mono text-mono-sm text-ink-900 focus-ring"
         />
         {supportsEyeDropper && (
           <button
@@ -253,7 +253,7 @@ export function ColorPicker({ value, onValueChange, className }: { value: string
                 /* cancelled */
               }
             }}
-            className="focus-ring grid size-7 place-items-center rounded-sm text-ink-500 hover:bg-paper-3 hover:text-ink-800"
+            className="focus-ring grid size-7 place-items-center rounded-sm text-ink-500 hover:bg-surface-hover hover:text-ink-800"
           >
             <Pipette className="size-3.5" aria-hidden />
           </button>

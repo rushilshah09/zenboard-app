@@ -1,0 +1,453 @@
+/* ============================================================================
+   THE PAPER SKIN — the whole product as a printed sheet.
+   ============================================================================
+   User, 2026-09-23: "give users a new theme that is mostly paper … the entire
+   theme changes the app into paper … it looks like 100% real paper", with
+   references: a studio works index, a draw-entry form, a Govino spec sheet, a
+   CAD title block, a Herman Miller order form, manila folder tabs.
+
+   What those references have in common is NOT a beige colour. It is:
+
+     · stock — an off-white sheet with visible fibre, sitting on a darker desk;
+     · rules — 1px ink lines that BOX things, not soft hairlines that hint at them;
+     · square corners — print has no 12px radius;
+     · no elevation — a scan is flat; there is no drop shadow on a form;
+     · monospaced labels and figures, set in capitals, the way a spec sheet sets
+       SKU / QUANTITY / TOTAL.
+
+   ── HOW IT IS BUILT ───────────────────────────────────────────────────────
+   One layer, not a second palette. `theme-shadcn.css` is the source of truth
+   for the SEMANTIC tokens and `tokens-light.css` re-points Zenboard's 558
+   primitives at them, so overriding the ~20 semantic values here re-colours the
+   entire app — every card, menu, rail, chip and wash follows with no call site
+   touched. This file is imported LAST, and `html[data-skin='paper']` is (0,1,1),
+   the same weight as the dark block it must beat, so order decides it.
+
+   Paper is a SEPARATE AXIS from light/dark (`lib/theme.ts`): it resolves to the
+   light surfaces, because paper is a light material and a dark paper is a
+   different material. The stored light/dark choice is untouched while it is on.
+
+   ── THE ONE DELIBERATE BREAK WITH THE HOUSE RULES ─────────────────────────
+   CLAUDE.md caps surface chroma at 0.004 and forbids monospace outside IDs.
+   Both are rules for the DEFAULT skin, and both exist for the same reason: the
+   Notion palette directive (2026-09-08) that reversed a warm pass which had put
+   3–4× Notion's tint on the largest surfaces. Paper is that warmth ON PURPOSE,
+   chosen by the person using it, in one place they can switch off. The default
+   skin is untouched; the guards scope themselves to it (design-system.test.ts).
+   ========================================================================= */
+
+html[data-skin='paper'] {
+  /* ── THE STOCK ──────────────────────────────────────────────────────────
+     Three weights of paper and a desk to lay them on. Measured against ink
+     #26241E: sheet 15.0:1, desk 13.2:1 — both far above AA, because print is
+     the highest-contrast medium we have and washing it out is how "paper"
+     becomes "beige mush". */
+  /* MEASURED, and this is the change that made the skin stop looking like a beige app: the desk
+     was #EAE6DB against a #FAF8F2 sheet — **1.17:1**. A sheet of paper on a real desk sits at
+     roughly 1.4–1.6:1 against what it is lying on, which is how the eye knows it is an OBJECT
+     rather than a panel. No amount of grain fixes a separation that small; nothing was lying on
+     anything. The desk is now linen board at 1.43:1, and the ink still reads 10.5:1 on it for the
+     few things that sit directly on the desk (a page title, a greeting). */
+  --background: #CBC5B4;          /* the desk — linen board, and you can see it */
+  --card: #F4F1E7;                /* a sheet */
+  --popover: #F9F7EF;             /* a slip laid on top of the sheet */
+  --muted: #E9E5D8;               /* an inset, a rail, a filled cell */
+  --secondary: #E9E5D8;
+  --accent-surface: #DFD9C6;      /* selected — a highlighter pass, in stock */
+  --sidebar: #E4E0D2;             /* the folder the sheets live in */
+  --sidebar-accent: #D6D1BF;
+
+  /* ── THE INK ────────────────────────────────────────────────────────────
+     One ink, printed at three strengths. `--muted-foreground` is the lightest
+     that still clears 4.5:1 on ALL THREE stocks (sheet 5.9 / desk 5.2 / inset
+     5.0), which is the same rule the default skin's secondary ink follows. */
+  --foreground: #26241E;
+  --card-foreground: #26241E;
+  --popover-foreground: #26241E;
+  --secondary-foreground: #26241E;
+  --accent-surface-foreground: #26241E;
+  --sidebar-foreground: #26241E;
+  --sidebar-primary-foreground: #F4F1E7;
+  --muted-foreground: #565040;
+
+  /* Ink prints solid, so a primary button is a block of it. */
+  --primary: #26241E;
+  --primary-foreground: #F4F1E7;
+  --primary-solid: #26241E;
+  --primary-solid-foreground: #F4F1E7;
+  --sidebar-primary: #26241E;
+
+  /* ── THE RULES ──────────────────────────────────────────────────────────
+     A form's lines are drawn, not implied: the decorative tier is a real rule
+     (3.0:1 on the sheet, where the default skin's is 1.1) and the control tier
+     is darker still. This is the single biggest reason the skin reads as print
+     rather than as a beige app. */
+  --border: #9E9683;
+  --sidebar-border: #9E9683;
+  /* The INTERNAL rule — a row divider inside a sheet. The default skin draws it at
+     ink 7%, which on paper is a smudge; a form rules its rows. Kept well below the
+     structural edge above so a list still reads as one block, not a cage. */
+  --color-border-soft: rgb(38 36 30 / 0.20);
+  --border-control: #4E4A3E;
+  --input: var(--border-control);
+  --ring: #6A6353;
+  /* Two colours means two colours. A stamp red was the last hue standing here, and it had to go
+     with the rest — a destructive control is told apart by the HATCH below, not by being the one
+     coloured thing on a monochrome page. */
+  --destructive: var(--foreground);
+  --destructive-foreground: var(--card);
+
+  /* ── TWO COLOURS, AND ONLY TWO ──────────────────────────────────────────
+     User, 2026-09-24, with a letterpress invoice: "I want same to same this in our UI … only 2
+     colours and textures". That is not a preference, it is what the reference IS. A form printed
+     on one press has ONE ink; everything it needs to say — this is paid, this is overdue, this is
+     the total — it says with a BOX, a RULE, a STAMP or a HATCH, because hue was never available.
+
+     So the status ramps resolve to ink and stock here. Nothing else in the app changes: a badge
+     still asks for `--color-success-600`, and on paper that is ink. What replaces the hue is form,
+     and the form already exists — the stamp above, and the hatch below.
+
+     Note the accent needs no line: `--accent` is already `var(--foreground)` (tokens-light), so
+     the one hue in the default skin is ink here for free. */
+  --color-success-700: var(--foreground);  --color-success-600: var(--foreground);
+  --color-success-500: var(--foreground);  --color-success-300: var(--border);
+  --color-success-100: var(--muted);
+  --color-warning-700: var(--foreground);  --color-warning-600: var(--foreground);
+  --color-warning-500: var(--foreground);  --color-warning-300: var(--border);
+  --color-warning-100: var(--muted);
+  --color-info-700: var(--foreground);     --color-info-600: var(--foreground);
+  --color-info-500: var(--foreground);     --color-info-300: var(--border);
+  --color-info-100: var(--muted);
+  --color-danger-700: var(--foreground);   --color-danger-600: var(--foreground);
+  --color-danger-500: var(--foreground);   --color-danger-300: var(--border);
+  --color-danger-100: var(--muted);
+
+  /* ── THE HATCH — the second tone a one-ink press can make ────────────────
+     Look at what the reference does where it needs weight without a second colour: it HATCHES.
+     Fine diagonal ruling reads as a tone from across the room and as separate lines up close,
+     which is exactly how engravers have made greys since before colour printing existed.
+     It is the skin's only "fill" that is not solid ink, and it is what carries danger — the one
+     place the default skin leans on hue hardest. */
+  --paper-hatch: repeating-linear-gradient(
+    45deg,
+    var(--foreground) 0 1px,
+    transparent 1px 4px
+  );
+
+  /* ── SQUARE CORNERS ─────────────────────────────────────────────────────
+     Print has none. The radius tokens are the source the whole app reads, so
+     two lines square every card, menu, field, button and panel at once. The
+     pill stays a pill: a switch and an avatar are objects, not boxes. */
+  --radius: 3px;
+  --radius-xs: 2px;
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 3px;
+  --radius-xl: 4px;
+  --r-2xl: 6px;
+  --radius-panel: 3px;
+  --radius-tag: 2px;
+
+  /* ── A SHEET HAS THICKNESS ──────────────────────────────────────────────
+     The first pass modelled a SCAN — flat, no shadow, because a scanner presses the paper against
+     glass and takes the depth out of it. The user asked for the other thing: "100% real looking
+     authentic analog paper", which is a sheet lying ON A DESK. A sheet has an edge, the edge
+     catches light, and the sheet drops a short shadow a few millimetres wide. That is the whole
+     difference between a beige rectangle and a piece of paper.
+
+     So: a CONTACT shadow, tight and warm (ink, never black — a shadow on paper is the colour of
+     the light that made it), plus the cut edge as a hairline of light along the top. Nothing
+     floats; a sheet at rest is 1–2mm above the desk, and these numbers are that. */
+  --paper-contact: 0 1px 1px -0.5px rgb(38 36 30 / 0.10), 0 2px 5px -2px rgb(38 36 30 / 0.08);
+  --paper-cut-edge: inset 0 1px 0 0 rgb(255 255 255 / 0.55);
+  /* Light falls off towards the edge of a sheet; a sheet lit perfectly evenly reads as a fill. */
+  --paper-falloff: inset 0 0 36px -28px rgb(38 36 30 / 0.55);
+  --paper-sheet: var(--paper-cut-edge), var(--paper-falloff), var(--paper-contact);
+
+  --shadow-xs: var(--paper-sheet);
+  --shadow-sm: var(--paper-sheet);
+  --shadow-crisp: var(--paper-contact);
+  --shadow-card: 0 0 0 1px var(--border), var(--paper-sheet);
+  --shadow-lift-1: var(--paper-contact);
+  --shadow-lift-2: 0 0 0 1px var(--border), var(--paper-sheet);
+  --shadow-lift-3: 0 0 0 1px var(--border), var(--paper-sheet);
+  --shadow-lift-4: 0 0 0 1px var(--border), var(--paper-sheet);
+  --shadow-toast: 0 0 0 1px var(--border), var(--paper-sheet);
+  --shadow-panel: 0 0 0 1px var(--border), var(--paper-sheet);
+  --shadow-popover: 0 0 0 1px var(--border-control), var(--paper-sheet);
+
+  /* ── THE GRAIN ──────────────────────────────────────────────────────────
+     Two turbulences, because real stock has two scales of structure: a fine
+     speckle (the tooth) and long, soft fibres running through it.
+
+     The trick is HOW they are composited. Laid over the fill at low alpha, grey
+     noise just greys the page — measured, invisible at 16% and dirty at 40%.
+     Paper does not work that way: its tooth SUBTRACTS light where a fibre sits
+     proud. So each turbulence is compressed into the top of the range by a
+     component transfer (tooth 0.66–1.0, fibre 0.80–1.0 — measured, not guessed: the
+     turbulence clusters near the middle, so the nominal range is ~4× the spread
+     that actually lands on the sheet) and MULTIPLIED into the
+     stock below (`background-blend-mode`), which is what the material does —
+     never darker than a tenth of a stop, and never flat.
+
+     Inline SVG: no image request, nothing to lose, and `stitchTiles` makes the
+     tile seamless so there is no visible repeat at any window size. */
+  --paper-tooth: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='t'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0.46' intercept='0.54'/%3E%3CfeFuncG type='linear' slope='0.46' intercept='0.54'/%3E%3CfeFuncB type='linear' slope='0.46' intercept='0.54'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23t)'/%3E%3C/svg%3E");
+  --paper-fibre: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='360'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.02 0.055' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0.22' intercept='0.78'/%3E%3CfeFuncG type='linear' slope='0.22' intercept='0.78'/%3E%3CfeFuncB type='linear' slope='0.22' intercept='0.78'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='360' height='360' filter='url(%23f)'/%3E%3C/svg%3E");
+  /* The third scale, and the one that ages the sheet: MOTTLE. Tooth is millimetres and fibre is
+     centimetres; mottle is the whole page — the slow, cloudy unevenness of a sheet that has sat in
+     a book for forty years. It is far too low a frequency to read as noise, which is the point: it
+     is why two corners of the same sheet are not quite the same colour. */
+  --paper-mottle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='700' height='700'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.006' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0.12' intercept='0.88'/%3E%3CfeFuncG type='linear' slope='0.12' intercept='0.88'/%3E%3CfeFuncB type='linear' slope='0.12' intercept='0.88'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='700' height='700' filter='url(%23m)'/%3E%3C/svg%3E");
+
+  /* ── THE IMPRESSION ─────────────────────────────────────────────────────
+     The last thing between this and a photograph of a printed page, and the reason the user could
+     still tell: the STOCK had tooth but the INK did not. Grain drawn as a background sits UNDER
+     the type and under every rule, so the letters and the lines stayed digitally perfect on top of
+     a textured sheet — a sheet that had been printed by a laser, not pressed.
+     This layer is the press: one fixed sheet of tooth multiplied over the ENTIRE app, so a glyph,
+     a rule, a stamp and the stock all break up together, the way ink does when it meets paper.
+     Finer and much shallower than the stock's own tooth (0.87–1.0, so the deepest speckle takes a
+     tenth of a stop) — enough to bite, never enough to muddy 13px type. */
+  --paper-press: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='1' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0.13' intercept='0.87'/%3E%3CfeFuncG type='linear' slope='0.13' intercept='0.87'/%3E%3CfeFuncB type='linear' slope='0.13' intercept='0.87'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23p)'/%3E%3C/svg%3E");
+
+  --paper-stock: var(--paper-mottle), var(--paper-fibre), var(--paper-tooth);
+  --paper-blend: multiply, multiply, multiply;
+
+  /* ── THE DESK IS RULED ──────────────────────────────────────────────────
+     From the references the user sent (2026-09-24): engineering paper under the work. It rules
+     the DESK only — never a sheet. Real graph paper is what the sheets are lying ON, and a grid
+     running under text is a different product (a spreadsheet); this is why the rule is on `body`
+     and nothing else. Two repeating gradients at 4.5% ink, one square of the layout scale apart,
+     so the ruling lines up with the app's own spacing instead of arguing with it. */
+  --paper-rule: rgb(38 36 30 / 0.032);
+  --paper-grid: 24px;
+
+  /* Laid lines: the fine parallel ribs pressed into the sheet by the mould, about a millimetre
+     apart. They are the single most recognisable thing about good stock in the hand, and at 2%
+     they are felt rather than seen — which is exactly how they work on real paper. */
+  --paper-laid: repeating-linear-gradient(
+    to bottom,
+    rgb(38 36 30 / 0.022) 0 1px,
+    transparent 1px 4px
+  );
+}
+
+/* The desk. `fixed` so the grain does not swim under scrolling content — paper
+   does not move while you read it. */
+html[data-skin='paper'] body {
+  background-image:
+    repeating-linear-gradient(to right, var(--paper-rule) 0 1px, transparent 1px var(--paper-grid)),
+    repeating-linear-gradient(to bottom, var(--paper-rule) 0 1px, transparent 1px var(--paper-grid)),
+    var(--paper-stock);
+  /* The ruling is PRINTED on the stock (normal), the stock's own tooth is IN it (multiply). */
+  background-blend-mode: normal, normal, var(--paper-blend);
+  background-attachment: fixed;
+}
+
+/* The sheets. The hook is the TOKEN'S OWN CLASS NAME, so anything drawn on a
+   paper surface — a card, a panel, a menu, a rail, a filled cell — takes the
+   grain without one component knowing this skin exists. `:where()` keeps the
+   specificity at the attribute alone, so a component can still override.  */
+html[data-skin='paper'] :where(
+  .bg-surface-raised, .bg-paper, .bg-paper-2, .bg-paper-3, .bg-popover, .bg-card,
+  .bg-surface-sunken, .bg-surface-secondary, .bg-background, .bg-canvas, .bg-sidebar
+) {
+  background-image: var(--paper-laid), var(--paper-stock);
+  background-blend-mode: normal, var(--paper-blend);
+}
+
+/* THE PRESS. Everything the app draws passes under one sheet of tooth: type, rules, icons,
+   stamps, menus, the lot. `multiply` is the operation ink performs — it can only darken what is
+   already there — and `fixed` keeps the texture on the SHEET rather than on the content, so it
+   does not swim when a list scrolls. It is inert: no pointer events, no tab stop, nothing to hit.
+   At the top of the registry because the sheet's surface is above everything printed on it. */
+html[data-skin='paper'] body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-focus-edge);
+  pointer-events: none;
+  background-image: var(--paper-press);
+  mix-blend-mode: multiply;
+}
+
+/* A wash (hover, selected) is a PASS OVER the stock, not a replacement for it —
+   without this the grain blinks off under the pointer, which is the one thing a
+   sheet of paper never does. The wash is stacked above the grain. */
+html[data-skin='paper'] .hover\:wash-over:hover,
+html[data-skin='paper'] .wash-over {
+  background-image:
+    linear-gradient(var(--color-surface-hover), var(--color-surface-hover)),
+    var(--paper-laid),
+    var(--paper-stock);
+  background-blend-mode: normal, normal, var(--paper-blend);
+}
+
+/* ── THE SKIN DOES NOT MOVE ANYTHING ──────────────────────────────────────
+   There WAS a block here that made the content pane a sheet: a scaling desk margin around it, a
+   ruled border, its own contact shadow. It was removed on the user's word — "I don't want this
+   much gap, this looks not good, keep app shell same" — and they are right twice over.
+
+   Once for the look: the app's own reading column already centres the work, so a second inset
+   around it left the content stranded in the middle of a wide sheet.
+
+   And once for the rule: a skin changes what things are MADE OF, never where they are. Every other
+   line in this file is a material — stock, ink, rules, stamps, voice — and layout belongs to the
+   shell, which is the same in both skins. That is also what keeps this file a re-skin rather than
+   a second app. Guarded below ("changes materials, never layout").  */
+
+/* ── PRINTED OBJECTS, NOT WEB CONTROLS ────────────────────────────────────
+   The last thing that gave the skin away was the controls. A checkbox that fills solid with the
+   accent, a badge shaped like a pill, a segmented control with a sliding thumb — none of those
+   exist on paper, and no amount of stock underneath them fixes it. On a form:
+
+     · a checkbox is a PRINTED BOX and the tick is added in ink by hand;
+     · a status is a STAMP — boxed, set in capitals, in the ink it was stamped with;
+     · a chooser is a ROW OF RULED CELLS with the chosen one inked solid.
+
+   Each is reached through the design system's own `data-slot`, so no component knows this skin
+   exists (two of them had no slot and got one — the house marks its parts this way already). */
+
+/* The box is printed; the tick is ink. Never a solid accent block — that is a web checkbox. */
+html[data-skin='paper'] [data-slot='checkbox'] {
+  border-radius: 1px;
+  border-color: var(--border-control);
+  background: transparent;
+  box-shadow: none;
+}
+html[data-skin='paper'] [data-slot='checkbox'][data-state='checked'] {
+  background: transparent;
+  border-color: var(--foreground);
+  color: var(--foreground);
+}
+
+/* A stamp: the box and the letters are the same ink, and the ink is the status's own. The fill
+   goes — a stamp is pressed onto the sheet, it does not sit in a coloured pill. */
+html[data-skin='paper'] [data-slot='badge'] {
+  border-radius: 1px;
+  background: transparent;
+  border-color: currentColor;
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding-inline: 5px;
+}
+
+/* A chooser is a row of cells inside one ruled box. The chosen cell is INKED — solid, with the
+   label knocked out of it — which is how a printed form shows a selection, and it is why the
+   sliding thumb has nothing to do here. */
+html[data-skin='paper'] [data-slot='segmented'][data-variant='well'] {
+  border-radius: 1px;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--border-control) !important;
+}
+html[data-skin='paper'] [data-slot='segmented-thumb'] { display: none; }
+html[data-skin='paper'] [data-slot='segmented'][data-variant='well'] [data-slot='segmented-item'] {
+  border-radius: 0;
+  border-inline-start: 1px solid var(--border-control);
+}
+html[data-skin='paper'] [data-slot='segmented'][data-variant='well'] [data-slot='segmented-item']:first-child {
+  border-inline-start: 0;
+}
+html[data-skin='paper'] [data-slot='segmented-item'][data-state='checked'] {
+  background: var(--foreground);
+  color: var(--card);
+}
+
+/* Danger, without red. A destructive control is the one thing that must not look like every
+   other button when the ink is the same — so it is hatched, which is louder than a fill at a
+   glance and unmistakable up close. The label keeps its solid ink on a knocked-out ground so it
+   never sits on top of the ruling. */
+html[data-skin='paper'] [data-slot='button'][data-variant='danger'] {
+  background-color: var(--card);
+  background-image: var(--paper-hatch);
+  color: var(--foreground);
+  border-color: var(--foreground);
+  text-shadow: 0 0 2px var(--card), 0 0 2px var(--card), 0 0 3px var(--card);
+}
+
+/* ── A LOADER IS A BLANK, NOT A SWEEP ─────────────────────────────────────
+   User, 2026-09-24: "those loaders look more modern, I want an authentic 100% real paper
+   experience … like people experience a book experience in Kindle."
+
+   They were right, and it was the loudest thing left. A shimmer is a GRADIENT SWEEPING ACROSS A
+   SURFACE — there is no physical event it depicts, it exists only in web software, and it was
+   playing on every navigation in the app. Paper has its own, much older answer to "this is not
+   filled in yet", and the reference is covered in it: a BLANK RULED CELL. A line of text that has
+   not arrived is the rule it will be written on; a block that has not arrived is the box it will
+   be printed in.
+
+   Nothing sweeps and nothing pulses. The arrival of the real content is the feedback — which is
+   also Emil's frequency rule holding: this is seen on every navigation, and something seen that
+   often earns no animation at all. */
+html[data-skin='paper'] [data-slot='skeleton'] {
+  background-color: transparent;
+  border-radius: 0;
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+html[data-skin='paper'] [data-slot='skeleton'][data-shape='line'] {
+  box-shadow: inset 0 -1px 0 0 var(--border-control);
+}
+html[data-skin='paper'] [data-slot='skeleton'][data-shape='circle'] {
+  border-radius: var(--radius-pill, 999px);
+}
+html[data-skin='paper'] [data-slot='skeleton-sweep'] { display: none; }
+
+/* ── THE VOICE IS PRINTED, NOT SCREEN ─────────────────────────────────────
+   The last thing still saying "web app" out loud was the typeface. Geist is a screen grotesk —
+   drawn for pixels, at home next to a cursor. Paper has two voices and neither is that: TEXT is
+   set in a book serif, and DATA is set on a typewriter's grid.
+
+   Source Serif 4 is already loaded by the app (`--font-serif`), so this costs nothing to ship and
+   nothing to download: one line re-voices every word in the skin, and the mono roles below keep
+   the figures, labels and IDs on their grid. */
+html[data-skin='paper'] {
+  --font-sans: var(--font-serif);
+  --font-ui: var(--font-serif);
+  /* Both references are true at once, and they divide cleanly. The invoice is a FORM: its labels,
+     figures and furniture are typeset on a typewriter's grid, in capitals. Kindle is a BOOK: its
+     running text is a serif you read for an hour without noticing it. So the chrome speaks in
+     mono (the roles below, plus the stamps and the column heads) and everything you actually READ
+     — a task, a note, a document — stays in the book serif. Setting every word in mono would have
+     been faithful to one reference and unreadable by the other. */
+  --font-body: var(--font-serif);
+  --font-editorial: var(--font-serif);
+}
+
+/* A column head on a form is a printed label, not a sentence — `JOB`, `DESCRIPTION`, `QTY`. */
+html[data-skin='paper'] th {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* And so is the face of a button: on a form, the thing you act on is stamped. */
+html[data-skin='paper'] [data-slot='button'] {
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+
+/* ── THE PRINT VOICE ───────────────────────────────────────────────────────
+   Labels and figures set the way a form sets them: monospaced, in capitals,
+   tracked — the tracking is the reason capitals are legible at all, which is
+   exactly why the default skin dropped both together when it went sentence
+   case. No string changes anywhere: the skin re-sets the ROLE.  */
+html[data-skin='paper'] .text-overline {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+}
+
+/* Figures are typeset, not just aligned: a total on a form is monospaced. */
+html[data-skin='paper'] :where(.tabular-nums, [data-numeric]) {
+  font-family: var(--font-mono);
+  letter-spacing: -0.01em;
+}
+
+/* A field on a form is a ruled box: the rule is the whole affordance, so it
+   stays visible at rest rather than appearing on focus. */
+html[data-skin='paper'] :where(input, textarea, select) {
+  background-image: none;
+}

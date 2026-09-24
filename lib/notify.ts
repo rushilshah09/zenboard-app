@@ -15,7 +15,12 @@ export type NotifyKind =
   | 'portal.request'   // client submitted a new request
   | 'portal.reply'     // client replied in a request thread
   | 'portal.approval'  // client approved / requested changes on a deliverable
-  | 'form.response';   // someone completed a form
+  | 'portal.accept'    // client signed an accept block on a proposal (§7M)
+  | 'form.response'    // someone completed a form
+  // A task's own reminder came due (§7O channel 3). The one kind the OWNER
+  // caused rather than a client — and the one written by the signed-in user's
+  // client rather than the service role, since they are notifying themselves.
+  | 'task.reminder';
 
 /** A destination the bell can navigate to when the row is clicked. */
 export type NotifyLink = { href: string };

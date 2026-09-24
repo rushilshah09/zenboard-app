@@ -17,9 +17,14 @@ export interface StepIndicatorProps {
   className?: string;
 }
 
+// The current step's halo is its dot's own ink as a WASH, so it reads on any
+// ground (measured 1.17:1 light, 1.23:1 dark). It was `ring-berry-alpha-20`, a
+// Paper-OS name Tailwind never had: the ring drew currentColor — the onsolid
+// label, which is nearly the page itself (1.04:1 light, 1.08:1 dark) — so the
+// current step had no halo at all.
 const CIRCLE: Record<StepState, string> = {
   complete: "bg-ink-800 text-paper",
-  current: "bg-berry-500 text-onsolid ring-4 ring-berry-alpha-20",
+  current: "bg-berry-500 text-onsolid ring-4 ring-surface-active",
   upcoming: "bg-paper-5 text-ink-500",
   error: "bg-danger-500 text-onsolid",
 };

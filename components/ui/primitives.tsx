@@ -3,12 +3,12 @@
 // source (components/ds/ui, generated from design-system/src at :5175). Each
 // export keeps its existing app-facing API so no feature call site changes, but
 // renders the DS component underneath. A few app-specific pieces the DS has no
-// equivalent for (RadioIndicator, QuickAddRow, SwitchTrack, Spinner) and the
+// equivalent for (RadioIndicator, SwitchTrack, Spinner) and the
 // lossy form fields (Field/Input/Textarea) stay token-driven locals — they use
 // the same DS-aligned tokens (globals.css) and now render the DS Tabler Icon,
 // so the legacy legacy icon set is fully gone from this layer.
 import { forwardRef } from 'react';
-import { Plus, type IconType } from '@/components/ds/icons';
+import { type IconType } from '@/components/ds/icons';
 import {
   Button as DSButton,
   SplitButton as DSSplitButton,
@@ -174,28 +174,9 @@ export function RadioIndicator({ checked, className }: { checked?: boolean; clas
   return (
     <span
       aria-hidden
-      className={cx('inline-block w-4 h-4 rounded-full shrink-0 transition-[background,border-color,box-shadow] duration-150', !checked && 'border border-line-strong', className)}
+      className={cx('inline-block w-4 h-4 rounded-full shrink-0 transition-[background,border-color,box-shadow] duration-fast', !checked && 'border border-line-control', className)}
       style={checked ? { background: 'var(--color-paper-2)', boxShadow: 'inset 0 0 0 5px var(--accent)' } : undefined}
     />
-  );
-}
-
-// ── QuickAddRow ──────────────────────────────────────────────
-// App-specific wide "＋ Add" affordance; no DS equivalent. Renders the DS Icon.
-export function QuickAddRow({ label = 'Add Task', onClick, className }: { label?: string; onClick?: () => void; className?: string }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cx(
-        'flex items-center gap-2.5 w-full h-12 px-4 bg-paper-2 border border-line rounded-lg',
-        'text-left text-body text-ink-500 cursor-text transition-colors [transition-duration:var(--dur-instant)] hover:bg-surface-hover',
-        className,
-      )}
-    >
-      <Icon icon={Plus} size={16} />
-      {label}
-    </button>
   );
 }
 
@@ -217,7 +198,7 @@ export function SwitchTrack({ on, size = 'md' }: { on: boolean; size?: 'sm' | 'm
     <span
       aria-hidden
       className={cx(
-        'relative inline-block shrink-0 rounded-full transition-colors [transition-duration:var(--dur-base)]',
+        'relative inline-block shrink-0 rounded-full transition-colors duration-fast',
         geom.track,
         on
           ? 'bg-[var(--accent)]'
@@ -226,11 +207,13 @@ export function SwitchTrack({ on, size = 'md' }: { on: boolean; size?: 'sm' | 'm
     >
       <span
         className={cx(
-          'absolute top-0.5 rounded-full bg-white transition-[left] [transition-duration:var(--dur-base)]',
+          'absolute top-0.5 left-0 rounded-full bg-white transition-transform duration-fast ease-standard',
           'shadow-[0_1px_2px_rgb(30_28_26/0.20),0_0_0_0.5px_rgb(30_28_26/0.06)]',
           geom.thumb,
         )}
-        style={{ left: on ? geom.on : geom.off }}
+        // Moved, not re-positioned: `left` re-runs layout on every frame. The thumb and
+        // the track colour share one 100ms, so they land on the same frame.
+        style={{ transform: `translateX(${on ? geom.on : geom.off}px)` }}
       />
     </span>
   );

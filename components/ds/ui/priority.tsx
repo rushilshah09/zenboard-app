@@ -16,11 +16,6 @@ const FILL: Record<PriorityLevel, string> = {
   med: "fill-warning-500",
   high: "fill-danger-500",
 };
-const LABEL_INK: Record<PriorityLevel, string> = {
-  low: "text-ink-500",
-  med: "text-warning-600",
-  high: "text-danger-600",
-};
 const LABEL: Record<PriorityLevel, string> = { low: "Low", med: "Medium", high: "High" };
 
 // Three ascending bars; bar i (1-based) is coloured when i ≤ the level's rank,
@@ -39,28 +34,32 @@ export function PriorityBars({ level, size = 12, className }: { level: PriorityL
 
 export interface PriorityBadgeProps {
   level: PriorityLevel;
-  /** `bars` — inline glyph (+ optional label) for dense rows; `chip` — the
-   *  surface-fill tag used on roomy rows and in the composer. */
-  variant?: "bars" | "chip";
   showLabel?: boolean;
+  /**
+   * Classes for the WORD alone. How a dense row drops "Medium" in a narrow
+   * container (`@max-md:sr-only`) while keeping the bars, which carry the
+   * level on their own — the `title` still names it on hover.
+   */
+  labelClassName?: string;
   size?: number;
   className?: string;
 }
 
-export function PriorityBadge({ level, variant = "chip", showLabel = true, size = 12, className }: PriorityBadgeProps) {
-  const glyph = <PriorityBars level={level} size={size} />;
-  if (variant === "bars") {
-    return (
-      <span className={cn("inline-flex items-center gap-1", className)} title={`${LABEL[level]} priority`}>
-        {glyph}
-        {showLabel && <span className={cn("text-caption font-medium", LABEL_INK[level])}>{LABEL[level]}</span>}
-      </span>
-    );
-  }
+/**
+ * The glyph and its word. The COLOUR is the glyph's alone: a red "High" beside
+ * red bars said the level twice, and the word is the larger area — the chroma
+ * rule puts a hue on the smallest thing that can carry it (2026-09-22). The
+ * word is meta ink, like every other fact beside it (components/tasks/task-meta.tsx).
+ *
+ * There was also a `chip` variant — the bars in a grey capsule, for the Tasks
+ * page's old two-line row. That row is gone and so is the capsule: a task's
+ * facts are glyph-and-word, never filled chips.
+ */
+export function PriorityBadge({ level, showLabel = true, labelClassName, size = 12, className }: PriorityBadgeProps) {
   return (
-    <span className={cn("inline-flex shrink-0 items-center gap-1 rounded-tag bg-surface-fill p-1", className)}>
-      {glyph}
-      {showLabel && <span className="text-meta leading-none text-ink-600">{LABEL[level]}</span>}
+    <span className={cn("inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-caption text-ink-500", className)} title={`${LABEL[level]} priority`}>
+      <PriorityBars level={level} size={size} />
+      {showLabel && <span data-fact-word className={labelClassName}>{LABEL[level]}</span>}
     </span>
   );
 }

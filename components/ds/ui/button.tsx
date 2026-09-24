@@ -14,7 +14,7 @@ export const button = cva(
   "focus-ring relative inline-flex items-center justify-center font-medium whitespace-nowrap select-none " +
     // Motion: colors only, 100ms (--duration-fast) — inside the 100–150ms band the
     // constitution mandates (CLAUDE.md §Interaction). No scale/lift/shadow (§6.3).
-    "transition-colors duration-fast ease-standard cursor-pointer " +
+    "transition-colors duration-fast ease-hover cursor-pointer " +
     // WCAG 2.5.5 target size: on coarse pointers a zero-ink ::after extends the hit
     // area to ≥44px tall (h-11) at the drawn width — VERTICAL only, so horizontally
     // adjacent members (ButtonGroup / SplitButton) never overlap. IconButton adds the
@@ -25,8 +25,15 @@ export const button = cva(
     // Loading ≠ disabled (§5.1 / B1.1): inert via data-loading + pointer-events-none,
     // so the variant's fill/width/name survive. Real disabled keeps its own treatment,
     // with a transparent border so it doesn't read as a broken enabled control (B3.13).
-    "disabled:pointer-events-none disabled:bg-surface-disabled disabled:text-ink-300 disabled:border-transparent " +
-    // No transforms on click (§6.3) — pressed feedback is the variant's active: fill only.
+    "disabled:pointer-events-none disabled:bg-surface-disabled disabled:text-ink-500 disabled:border-transparent " +
+    // PRESS. This used to read "no transforms on click (§6.3) — pressed feedback
+    // is the variant's active: fill only", and that rule is why the app felt
+    // static: an active FILL is a colour change, indistinguishable at a glance
+    // from the hover it replaces, so a click produced no evidence it landed.
+    // `zb-tap` (globals.css) adds a 20ms scale that releases on a spring —
+    // movement no hover can be confused with, and it happens before any network
+    // does. Reversed on the user's report, twice, that the app "feels laggy".
+    "zb-tap " +
     "data-[loading]:pointer-events-none data-[loading]:cursor-progress",
   {
     variants: {
@@ -35,8 +42,14 @@ export const button = cva(
         // #121212 label) — at most one per view.
         primary: "bg-ink-900 text-onsolid hover:bg-ink-700 active:bg-ink-900",
         // B&G secondary (Figma 1:811): white-12% fill, no border, default ink label.
+        // `light:border` is not decoration. A secondary button is `surface-fill`
+        // — #F5F5F5 in light — and on a white panel that measures 1.04:1
+        // against its own background, so the control has no edge and reads as
+        // nothing. Dark gets its edge from luminance (a white wash on near
+        // black); light has to draw one. See the `light:` variant in
+        // ds-theme.css for why this asymmetry is stated rather than tuned away.
         secondary:
-          "bg-surface-fill text-ink-800 hover:bg-surface-fill-hover hover:text-ink-900 active:bg-surface-fill",
+          "bg-surface-fill text-ink-800 hover:bg-surface-fill-hover hover:text-ink-900 active:bg-surface-fill light:border light:border-line",
         // Outline — the ONE bordered exception to the fills-only rule (button-spec §8).
         // Transparent + hairline (border-line-strong), for actions on an already-filled
         // surface where a 12% fill would read as a nested tile. Stays monochrome.
@@ -51,7 +64,11 @@ export const button = cva(
         // B&G tinted: the neutral selected wash — no colored washes in chrome.
         tinted: "bg-surface-selected text-ink-900 hover:bg-surface-fill active:bg-surface-fill",
         // Solid red is reserved for confirm dialogs (§5.1); distinct pressed fill (B2.8).
-        danger: "bg-danger-500 text-onsolid hover:bg-danger-600 active:bg-danger-700",
+        // Pressed RETURNS to the resting fill, as primary and secondary do: hover
+        // moves the fill, pressing lets go of it. This was `active:bg-danger-700`,
+        // a step the danger ramp has never had (100/300/500/600) — Tailwind drew
+        // nothing, so a pressed danger button looked exactly like a hovered one.
+        danger: "bg-danger-500 text-onsolid hover:bg-danger-600 active:bg-danger-500",
         // The DEFAULT destructive: ghost style, danger ink, pale-chip hover (§5.1).
         dangerGhost:
           "border border-transparent text-danger-600 hover:bg-danger-100 active:bg-danger-100",
@@ -72,8 +89,10 @@ export const button = cva(
       fullWidth: { true: "w-full" },
       iconOnly: { true: "aspect-square px-0" },
       // Toggle styling is opt-in, not baked into the base — a toggled primary must
-      // never flip berry → paper-4 with unreadable text (B2.9). Pair with aria-pressed.
-      toggle: { true: "aria-[pressed=true]:bg-paper-4 aria-[pressed=true]:text-ink-900" },
+      // never flip to a surface with unreadable text (B2.9). Pair with aria-pressed.
+      // Pressed is a WASH, not an elevation: it was paper-4, which IS the card in
+      // light, so a toggle pressed on a card or inside a menu showed no change.
+      toggle: { true: "aria-[pressed=true]:bg-surface-active aria-[pressed=true]:text-ink-900" },
     },
     compoundVariants: [
       // A link is inline text, not a box: no height or padding, and no hit-area ::after.
@@ -100,6 +119,11 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
   return (
     <Comp
       ref={ref}
+      // The design system marks its own parts, so a SKIN can reach them without any
+      // component learning that a skin exists (CLAUDE.md). Paper stamps a button's face
+      // in mono and hatches the danger variant, both through these two attributes.
+      data-slot="button"
+      data-variant={variant ?? "secondary"}
       className={cn(button({ variant, size, fullWidth, iconOnly, toggle }), className)}
       aria-busy={loading || undefined}
       data-loading={loading || undefined}

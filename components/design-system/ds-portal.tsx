@@ -16,7 +16,8 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
   Skeleton, Breadcrumbs,
 } from '@/components/ds/ui';
-import { Panel, PanelHeader, PanelBody, FigmaTag } from '@/components/ui/panels';
+import { Panel, PanelHeader, PanelBody } from '@/components/ui/panels';
+import { TaskMeta } from '@/components/tasks/task-meta';
 import { DS_USAGE } from './usage.generated';
 
 /* ── Registry ────────────────────────────────────────────────────────────── */
@@ -35,7 +36,7 @@ function Swatch({ token, label }: { token: string; label: string }) {
     <div className="flex w-[120px] flex-col gap-1.5">
       <div className="h-12 rounded-md border border-line" style={{ background: `var(${token})` }} />
       <div className="text-[12px]" style={{ color: 'var(--color-ink-600)' }}>{label}</div>
-      <code className="text-[11px]" style={{ color: 'var(--color-ink-400)' }}>{token}</code>
+      <code className="text-[11px]" style={{ color: 'var(--color-ink-500)' }}>{token}</code>
     </div>
   );
 }
@@ -132,7 +133,7 @@ const GROUPS: Group[] = [
             <span className="text-[16px] leading-5" style={{ color: 'var(--color-ink-800)' }}>Subheading 16 · Regular</span>
             <span className="text-[14px] leading-5" style={{ color: 'var(--color-ink-800)' }}>Body 14 · the default UI size</span>
             <span className="text-[12px]" style={{ color: 'var(--color-ink-600)' }}>Label 12 · secondary</span>
-            <span className="text-[11px] uppercase tracking-[0.04em]" style={{ color: 'var(--color-ink-500)' }}>Section label 11</span>
+            <span className="text-overline" style={{ color: 'var(--color-ink-500)' }}>Section label 12 · sentence case</span>
             <span className="text-[14px] tabular-nums" style={{ color: 'var(--color-ink-800)' }}>0123456789 · tabular-nums</span>
           </div>
         ),
@@ -144,7 +145,7 @@ const GROUPS: Group[] = [
             <Mark size={24} />
             <Logo height={22} />
             <span className="relative inline-flex">
-              <Icon icon={Star} size={18} />
+              <Icon icon={Star} size={20} />
               <span className="absolute -top-1 -right-1 size-2.5 rounded-full border" style={{ background: 'var(--color-berry-500)', borderColor: 'var(--paper)' }} />
             </span>
           </div>
@@ -223,26 +224,30 @@ const GROUPS: Group[] = [
         ),
       },
       {
-        name: 'Tag', keys: ['Tag', 'FigmaTag', 'Pill'], desc: 'White-12% fill chips. User/label colour is allowed; chrome stays neutral.',
+        name: 'Tag', keys: ['Tag', 'Pill'], desc: 'White-12% fill chips. User/label colour is allowed; chrome stays neutral.',
         render: () => (
           <div className="flex flex-wrap items-center gap-3">
             <Tag>Design</Tag>
             <Tag color="stone" size="sm" icon={<Icon icon={Star} size={12} />}>Starred</Tag>
-            <FigmaTag icon={<Icon icon={Folder} size={12} weight="fill" style={{ color: 'var(--yellow-dot)' }} />}>TechSpark</FigmaTag>
           </div>
         ),
       },
       {
-        name: 'PriorityBadge', keys: ['PriorityBadge', 'PriorityBars', 'priority', 'signal'], desc: 'The one priority representation app-wide. Semantic signal-bars: low = neutral ink, med = warning, high = danger. Colour carries meaning; nothing else does.',
+        name: 'TaskMeta', keys: ['TaskMeta', 'task facts', 'FigmaTag', 'chips'], desc: 'The facts of a task, drawn one way on every surface — glyph and word, never capsules, in one order; only what is set. Words give way to glyphs in a narrow container.',
+        render: () => (
+          <div className="flex flex-col gap-3">
+            <TaskMeta project={{ name: 'TechSpark', color: 'amber' }} priority="high" sub={{ done: 2, total: 5 }} estimate={90} />
+            <TaskMeta blocked labels={[{ name: 'Errand', color: 'teal' }]} priority="med" recurring when="2026-09-24" estimate={30} highlight />
+          </div>
+        ),
+      },
+      {
+        name: 'PriorityBadge', keys: ['PriorityBadge', 'PriorityBars', 'priority', 'signal'], desc: 'The one priority representation app-wide. Semantic signal-bars: low = neutral ink, med = warning, high = danger. The colour is the glyph’s alone; the word is meta ink.',
         render: () => (
           <div className="flex flex-wrap items-center gap-4">
-            <PriorityBadge level="high" variant="chip" />
-            <PriorityBadge level="med" variant="chip" />
-            <PriorityBadge level="low" variant="chip" />
-            <span className="h-4 w-px bg-line-soft" />
-            <PriorityBadge level="high" variant="bars" />
-            <PriorityBadge level="med" variant="bars" />
-            <PriorityBadge level="low" variant="bars" />
+            <PriorityBadge level="high" />
+            <PriorityBadge level="med" />
+            <PriorityBadge level="low" />
           </div>
         ),
       },
@@ -273,7 +278,7 @@ const GROUPS: Group[] = [
         render: () => (
           <div className="flex items-center gap-4">
             <Icon icon={Search} size={16} />
-            <Icon icon={Settings} size={18} />
+            <Icon icon={Settings} size={20} />
             <Icon icon={Check} size={20} weight="bold" />
             <Icon icon={Trash} size={24} strokeWidth={1.25} />
           </div>
@@ -363,7 +368,7 @@ const GROUPS: Group[] = [
         render: () => (
           <div className="w-full max-w-[520px]">
             <Panel frame="shadow">
-              <PanelHeader icon={<Icon icon={Star} size={18} />} title="Panel title" count={3} />
+              <PanelHeader icon={<Icon icon={Star} size={20} />} title="Panel title" count={3} />
               <PanelBody>
                 <div className="p-4 text-[14px] leading-5" style={{ color: 'var(--color-ink-800)' }}>
                   Inner card body — surfaces separate by contrast, not borders.
@@ -403,10 +408,10 @@ export function DsPortal() {
     <TooltipProvider>
       <div className="flex h-full min-h-0">
         {/* Side rail — the component list */}
-        <nav aria-label="Components" className="flex w-[230px] shrink-0 flex-col gap-4 overflow-y-auto border-r p-3" style={{ borderColor: 'var(--color-border-soft)' }}>
+        <nav aria-label="Components" className="flex w-[var(--rail-w)] shrink-0 flex-col gap-4 overflow-y-auto border-r p-3" style={{ borderColor: 'var(--color-border-soft)' }}>
           {GROUPS.map((g) => (
             <div key={g.label} className="flex flex-col gap-1">
-              <div className="px-2 pb-1 text-[11px] font-medium uppercase tracking-[0.04em]" style={{ color: 'var(--color-ink-500)' }}>{g.label}</div>
+              <div className="px-2 pb-1 text-overline" style={{ color: 'var(--color-ink-500)' }}>{g.label}</div>
               {g.items.map((e) => {
                 const active = e.name === selected;
                 const count = e.keys.reduce((n, k) => n + (DS_USAGE[k]?.length ?? 0), 0);
@@ -423,7 +428,7 @@ export function DsPortal() {
                     }}
                   >
                     <span className="truncate">{e.name}</span>
-                    {count > 0 && <span className="shrink-0 text-[11px] tabular-nums" style={{ color: 'var(--color-ink-400)' }}>{count}</span>}
+                    {count > 0 && <span className="shrink-0 text-[11px] tabular-nums" style={{ color: 'var(--color-ink-500)' }}>{count}</span>}
                   </button>
                 );
               })}
@@ -446,7 +451,7 @@ export function DsPortal() {
 
             {/* Used in — the real import scan */}
             <section className="flex flex-col gap-2">
-              <div className="text-[11px] font-medium uppercase tracking-[0.04em]" style={{ color: 'var(--color-ink-500)' }}>
+              <div className="text-overline" style={{ color: 'var(--color-ink-500)' }}>
                 Used in {usedIn.length > 0 ? `${usedIn.length} ${usedIn.length === 1 ? 'file' : 'files'}` : 'the design system only'}
               </div>
               {usedIn.length > 0 && (

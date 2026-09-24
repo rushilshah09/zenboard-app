@@ -4,26 +4,27 @@
 // the loop works whether or not migration 0004 is applied. Where 0004 adds
 // columns (time_entries.invoiced_invoice_id, invoices 'void'), we degrade.
 import { createClient } from '@/lib/supabase/server';
+import { userTimezone } from '@/lib/user-tz';
+import { todayISO } from '@/lib/date';
+import { nextInvoiceNumber } from '@/lib/invoice-number';
+import { formatDay } from '@/lib/date';
+import { requireSession } from '@/lib/auth';
 
-async function requireUser() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-  return { supabase, user };
-}
-
-async function nextNumber(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const { count } = await supabase.from('invoices').select('id', { count: 'exact', head: true });
-  return `INV-${String((count ?? 0) + 1).padStart(3, '0')}`;
-}
+// Numbering moved to lib/invoice-number.ts when §7M's accept crossing became a
+// second caller — one that runs through the service role, where the RLS this
+// used to lean on for scoping does not apply. It is also max-based now rather
+// than count-based, so a deleted or voided invoice cannot hand its number out
+// a second time.
+const nextNumber = (supabase: Awaited<ReturnType<typeof createClient>>, userId: string) =>
+  nextInvoiceNumber(supabase, userId);
 
 export type LineInput = { description: string; quantity: number; unit_amount: number; timeEntryId?: string | null };
 
 export async function addInvoice(input: {
   clientId?: string | null; projectId?: string | null; dueDate?: string | null; notes?: string | null; items: LineInput[];
 }): Promise<{ error: string } | { id: string; number: string }> {
-  const { supabase, user } = await requireUser();
-  const number = await nextNumber(supabase);
+  const { supabase, user } = await requireSession();
+  const number = await nextNumber(supabase, user.id);
   const { data: inv, error } = await supabase.from('invoices')
     .insert({ user_id: user.id, number, client_id: input.clientId ?? null, project_id: input.projectId ?? null, due_date: input.dueDate || null, notes: input.notes?.trim() || null, status: 'draft' })
     .select('id').single();
@@ -42,18 +43,18 @@ export async function addInvoice(input: {
 }
 
 export async function updateInvoiceStatus(id: string, status: 'draft' | 'sent' | 'paid' | 'overdue' | 'void'): Promise<{ error: string } | { ok: true }> {
-  const { supabase } = await requireUser();
+  const { supabase } = await requireSession();
   const { error } = await supabase.from('invoices').update({ status }).eq('id', id);
   return error ? { error: error.message } : { ok: true };
 }
 
 // Record a manual payment; if the invoice is now fully covered, mark it paid.
 export async function recordPayment(input: { invoiceId: string; amount: number; paidOn?: string | null; method?: string | null; note?: string | null }): Promise<{ error: string } | { id: string }> {
-  const { supabase, user } = await requireUser();
+  const { supabase, user } = await requireSession();
   const amount = Number(input.amount);
   if (!amount || amount <= 0) return { error: 'Enter a positive amount.' };
   const { data: pay, error } = await supabase.from('payments')
-    .insert({ user_id: user.id, invoice_id: input.invoiceId, amount, paid_on: input.paidOn || new Date().toISOString().slice(0, 10), method: input.method?.trim() || null })
+    .insert({ user_id: user.id, invoice_id: input.invoiceId, amount, paid_on: input.paidOn || todayISO(await userTimezone()), method: input.method?.trim() || null })
     .select('id').single();
   if (error || !pay) return { error: error?.message ?? 'Could not record payment.' };
 
@@ -71,17 +72,17 @@ export async function recordPayment(input: { invoiceId: string; amount: number; 
 // Void requires migration 0004 (status CHECK includes 'void'). Returns the
 // constraint error if not applied so the UI can roll back + explain.
 export async function voidInvoice(id: string): Promise<{ error: string } | { ok: true }> {
-  const { supabase } = await requireUser();
+  const { supabase } = await requireSession();
   const { error } = await supabase.from('invoices').update({ status: 'void' }).eq('id', id);
   return error ? { error: error.message } : { ok: true };
 }
 
 // Duplicate an invoice as a fresh draft (copies line items, not payments/links).
 export async function duplicateInvoice(id: string): Promise<{ error: string } | { id: string; number: string }> {
-  const { supabase, user } = await requireUser();
+  const { supabase, user } = await requireSession();
   const { data: src } = await supabase.from('invoices').select('client_id, project_id, notes').eq('id', id).maybeSingle();
   if (!src) return { error: 'Invoice not found.' };
-  const number = await nextNumber(supabase);
+  const number = await nextNumber(supabase, user.id);
   const { data: inv, error } = await supabase.from('invoices')
     .insert({ user_id: user.id, number, client_id: src.client_id, project_id: src.project_id, notes: src.notes, status: 'draft' })
     .select('id').single();
@@ -96,7 +97,7 @@ export async function duplicateInvoice(id: string): Promise<{ error: string } | 
 // Edit a draft invoice: update due date + replace its line items (delete & insert).
 // Draft-only is enforced in the UI; here we just write what's given.
 export async function updateInvoiceDraft(input: { invoiceId: string; dueDate?: string | null; items: LineInput[] }): Promise<{ error: string } | { ok: true }> {
-  const { supabase } = await requireUser();
+  const { supabase } = await requireSession();
   const { error: ue } = await supabase.from('invoices').update({ due_date: input.dueDate || null }).eq('id', input.invoiceId);
   if (ue) return { error: ue.message };
   const { error: de } = await supabase.from('invoice_items').delete().eq('invoice_id', input.invoiceId);
@@ -118,7 +119,7 @@ export async function updateInvoiceDraft(input: { invoiceId: string; dueDate?: s
 // user prices before sending). Idempotent-ish: entries already billed are
 // skipped, so a second click on the same project invoices nothing.
 export async function invoiceUnbilledTime(projectId: string): Promise<{ error: string } | { id: string; number: string; lineCount: number }> {
-  const { supabase, user } = await requireUser();
+  const { supabase, user } = await requireSession();
 
   const [proj, prof, entriesRes] = await Promise.all([
     supabase.from('projects').select('client_id, name').eq('id', projectId).maybeSingle(),
@@ -132,13 +133,13 @@ export async function invoiceUnbilledTime(projectId: string): Promise<{ error: s
   const projName = proj.data?.name ?? 'Project';
   const clientId = proj.data?.client_id ?? null;
 
-  const number = await nextNumber(supabase);
+  const number = await nextNumber(supabase, user.id);
   const { data: inv, error } = await supabase.from('invoices')
     .insert({ user_id: user.id, number, client_id: clientId, project_id: projectId, status: 'draft' })
     .select('id').single();
   if (error || !inv) return { error: error?.message ?? 'Could not create invoice.' };
 
-  const dayLabel = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const dayLabel = (iso: string) => formatDay(iso) ?? '';
   const rows = entries.map((e, idx) => ({
     invoice_id: inv.id,
     description: e.note?.trim() || `${projName} — ${dayLabel(e.started_at)}`,
@@ -159,7 +160,7 @@ export async function invoiceUnbilledTime(projectId: string): Promise<{ error: s
 
 // Manual time log against a project (and optionally a task). Lands in Unbilled.
 export async function addTimeEntry(input: { projectId: string; taskId?: string | null; minutes: number; loggedAt?: string | null }): Promise<{ error: string } | { id: string }> {
-  const { supabase, user } = await requireUser();
+  const { supabase, user } = await requireSession();
   const minutes = Math.round(Number(input.minutes));
   if (!minutes || minutes <= 0) return { error: 'Enter minutes greater than zero.' };
   const ended = input.loggedAt ? new Date(input.loggedAt + 'T12:00:00') : new Date();

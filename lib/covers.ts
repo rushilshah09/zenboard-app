@@ -2,7 +2,9 @@
 // Japanese color vocabulary (sakura, matcha, ai, sumi…). These are content
 // assets (artwork, like a user-uploaded image), not UI chrome, so they carry
 // fixed colors by design and render identically in light and dark themes.
-// A cover value is either one of these ids or an uploaded image data-URL.
+// A cover value is one of these ids, an `attachment:<uuid>` reference to an
+// uploaded image (§7H), a pasted http(s) URL, or — for anything uploaded before
+// 2026-08-04 — an inline data-URL.
 
 export type CoverDef = { id: string; name: string; css: string };
 
@@ -29,8 +31,35 @@ export const DOC_COVERS: CoverDef[] = [
   { id: 'tsuki', name: 'Tsuki', css: 'linear-gradient(135deg,#F4F1E4 0%,#E4DDC6 60%,#CDC3A2 100%)' },
 ];
 
-// Uploaded covers are stored inline as data-URLs (no storage bucket needed).
-export const isImageCover = (c?: string) => !!c && (c.startsWith('data:') || c.startsWith('http'));
+// ── Uploaded covers ──────────────────────────────────────────────────────────
+//
+// A cover used to be base64'd straight into `pages.content`, which is the one
+// place bytes must not go: that column is re-read on every page open, re-written
+// on every autosave, and copied into `page_versions` on every save. An icon can
+// afford it (180px square, its own column, ~10 KB); a 1600px cover cannot.
+//
+// So an uploaded cover is now a REFERENCE to an attachment row, and the bytes
+// live in the private bucket like every other file. The prefix keeps the value a
+// single string, so nothing about how a cover is stored, passed or compared had
+// to change — the parse and format functions live next to each other because
+// they are one rule read in two directions.
+const ATTACHMENT_PREFIX = 'attachment:';
+
+export const attachmentCover = (id: string): string => `${ATTACHMENT_PREFIX}${id}`;
+
+/** The attachment id behind an uploaded cover, or null for every other kind. */
+export const coverAttachmentId = (c?: string): string | null =>
+  c?.startsWith(ATTACHMENT_PREFIX) ? c.slice(ATTACHMENT_PREFIX.length) || null : null;
+
+/**
+ * Is this cover a picture rather than one of the gradients?
+ *
+ * `data:` is still here and must stay: covers uploaded before the move are real
+ * data-URLs sitting in real documents, and they render exactly as they always
+ * did. There is nothing to migrate — the old form simply keeps working.
+ */
+export const isImageCover = (c?: string) =>
+  !!c && (c.startsWith(ATTACHMENT_PREFIX) || c.startsWith('data:') || c.startsWith('http'));
 
 export const coverCss = (id?: string) => DOC_COVERS.find((c) => c.id === id)?.css;
 

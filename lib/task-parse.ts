@@ -18,6 +18,7 @@
 //   inbox     inbox · someday (explicitly file to Inbox)
 
 import { describeRecurrence, type Recurrence } from './recurrence';
+import { formatDay } from '@/lib/date';
 
 export type ChipKind = 'when' | 'due' | 'priority' | 'estimate' | 'project' | 'repeat' | 'inbox';
 
@@ -52,8 +53,7 @@ const dayLabel = (iso: string) => {
   const today = isoOf(new Date());
   if (iso === today) return 'Today';
   if (iso === isoOf(addDays(1))) return 'Tomorrow';
-  const d = new Date(iso + 'T00:00:00');
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  return formatDay(iso, { weekday: true }) ?? '';
 };
 
 // A date phrase inside `due …` or standing alone as a "when".

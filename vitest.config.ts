@@ -6,6 +6,10 @@ import { fileURLToPath } from 'node:url';
 // without this only because none of them had crossed an aliased import yet.
 export default defineConfig({
   resolve: {
-    alias: { '@': fileURLToPath(new URL('.', import.meta.url)) },
+    alias: {
+      '@': fileURLToPath(new URL('.', import.meta.url)),
+      // See test/stubs/server-only.ts for why this is safe.
+      'server-only': fileURLToPath(new URL('./test/stubs/server-only.ts', import.meta.url)),
+    },
   },
 });

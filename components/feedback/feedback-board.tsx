@@ -10,9 +10,9 @@ import { MessageSquare, Plus, Rocket, Check, ArrowRight } from '@/components/ds/
 import {
   Icon, Button, EmptyState, Modal, Field, TextInput,
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
-  type BadgeStatus,
-} from '@/components/ds/ui';
+  type BadgeStatus, cardClass } from '@/components/ds/ui';
 import { cn } from '@/lib/cn';
+import { formatMoneyCompact } from '@/lib/money';
 
 export type FeedbackStatus = 'open' | 'planned' | 'in_progress' | 'shipped' | 'declined';
 
@@ -33,8 +33,8 @@ const COLUMNS: { id: Exclude<FeedbackStatus, 'declined'>; label: string; hint: s
   { id: 'shipped', label: 'Shipped', hint: 'Delivered' },
 ];
 
-const money = (n: number) =>
-  n >= 1000 ? '$' + (n / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 }) + 'k' : '$' + n;
+// Feedback ranks by money at stake, so magnitude is the message — "$37k".
+const money = (n: number) => formatMoneyCompact(n);
 
 const dealValue = (f: FeedbackItem) => f.deals.reduce((a, d) => a + d.value, 0);
 
@@ -57,9 +57,9 @@ function FeedbackCard({ item, onAdvance, onShip, onDecline, onReopen }: {
     : null;
 
   return (
-    <div className="group rounded-lg border border-line-soft bg-surface-raised p-3 transition-colors hover:border-line">
+    <div className={cardClass('group p-3')}>
       <div className="flex items-start gap-2">
-        <span className="mt-px shrink-0 tabular-nums text-meta text-ink-400">#{item.number}</span>
+        <span className="mt-px shrink-0 tabular-nums text-meta text-ink-500">#{item.number}</span>
         <p className="min-w-0 flex-1 text-ui text-ink-900">{item.title}</p>
       </div>
       {(stake > 0 || rest) && (
@@ -67,21 +67,21 @@ function FeedbackCard({ item, onAdvance, onShip, onDecline, onReopen }: {
           {stake > 0 && (
             <span className="tabular-nums font-medium text-ink-700" title={`${item.deals.length} deal${item.deals.length === 1 ? '' : 's'} want this`}>{money(stake)}</span>
           )}
-          {rest && <span className="text-ink-400">{stake > 0 ? `· ${rest}` : rest}</span>}
+          {rest && <span className="text-ink-500">{stake > 0 ? `· ${rest}` : rest}</span>}
         </div>
       )}
       <div className="mt-2.5 flex items-center gap-1.5 pl-6">
         {item.status === 'shipped' ? (
-          <span className="inline-flex items-center gap-1 text-meta text-success-700"><Icon icon={Check} size={13} /> Shipped</span>
+          <span className="inline-flex items-center gap-1 text-meta text-success"><Icon icon={Check} size={12} /> Shipped</span>
         ) : forward && (
-          <Button size="xs" variant="secondary" iconRight={<Icon icon={forward.icon} size={13} />} onClick={forward.run}>
+          <Button size="xs" variant="secondary" iconRight={<Icon icon={forward.icon} size={12} />} onClick={forward.run}>
             {forward.label}
           </Button>
         )}
         <span className="flex-1" />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button size="xs" variant="ghost" className="opacity-0 group-hover:opacity-100" aria-label="More actions">⋯</Button>
+            <Button size="xs" variant="ghost" className="reveal-on-hover" aria-label="More actions">⋯</Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {item.status !== 'open' && <DropdownMenuItem onSelect={onReopen}>Move to open</DropdownMenuItem>}
@@ -125,7 +125,7 @@ export function AddFeedbackModal({ deals, onClose, onAdd, presetDealIds }: {
                 <button key={d.id} type="button" onClick={() => toggle(d.id)}
                   className={cn('flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-ui transition-colors hover:bg-surface-hover', picked.has(d.id) && 'bg-surface-hover')}>
                   <span className={cn('grid size-4 shrink-0 place-items-center rounded border', picked.has(d.id) ? 'border-accent bg-accent text-white' : 'border-line')}>
-                    {picked.has(d.id) && <Icon icon={Check} size={11} />}
+                    {picked.has(d.id) && <Icon icon={Check} size={12} />}
                   </span>
                   <span className="min-w-0 flex-1 truncate text-ink-900">{d.name}</span>
                   <span className="shrink-0 tabular-nums text-meta text-ink-500">{money(d.value)}</span>
@@ -140,14 +140,13 @@ export function AddFeedbackModal({ deals, onClose, onAdd, presetDealIds }: {
 }
 
 // ── Board ────────────────────────────────────────────────────────────────────
-export function FeedbackBoard({ items, deals, onNew, onSetStatus, onShip }: {
+export function FeedbackBoard({ items, onRequestNew, onSetStatus, onShip }: {
   items: FeedbackItem[];
-  deals: FeedbackDeal[];
-  onNew: (input: { title: string; dealIds: string[] }) => void;
+  /** Opens the one "Log feedback" modal, which the host owns (see below). */
+  onRequestNew: () => void;
   onSetStatus: (id: string, status: FeedbackStatus) => void;
   onShip: (id: string) => void;
 }) {
-  const [showAdd, setShowAdd] = useState(false);
   const live = useMemo(() => items.filter((i) => i.status !== 'declined'), [items]);
 
   const openStake = live.filter((i) => i.status === 'open' || i.status === 'planned').reduce((a, i) => a + dealValue(i), 0);
@@ -156,13 +155,17 @@ export function FeedbackBoard({ items, deals, onNew, onSetStatus, onShip }: {
   const advance: Record<string, FeedbackStatus> = { open: 'planned', in_progress: 'shipped' };
 
   return (
-    <div className="flex h-full flex-col p-6" style={{ animation: 'fadein 220ms' }}>
-      {/* Header row */}
-      <div className="mb-1 flex items-center gap-3">
-        <h2 className="text-title-4 text-ink-900">Feedback</h2>
-        <span className="flex-1" />
-        <Button size="sm" variant="primary" icon={<Icon icon={Plus} size={16} />} onClick={() => setShowAdd(true)}>New feedback</Button>
-      </div>
+    // No padding and no entrance of its own: this board is a PANE inside the
+    // Clients hub, and the hub's detail column already supplies both. It used to
+    // add 24px on top of the column's own gutter and fade a second time, 40ms
+    // slower, which is what "one screen, two design systems" looks like up close.
+    <div className="flex h-full flex-col">
+      {/* No "Feedback" heading and no create button here. The page header's
+          segmented already says Feedback, and it carries the one create action —
+          this pane used to name the section a third time and offer a SECOND,
+          differently-worded button for the same modal ("New feedback" here,
+          "Log feedback" in the empty state, both filled, both on screen at
+          once). One name, one action, one primary. */}
       <p className="mb-4 text-ui text-ink-500">
         What customers are asking for, ranked by the deals that want it — build the top of the list first.
       </p>
@@ -180,8 +183,8 @@ export function FeedbackBoard({ items, deals, onNew, onSetStatus, onShip }: {
           <EmptyState
             illustration={<Icon icon={MessageSquare} size={20} />}
             title="No feedback yet"
-            description="Log what customers ask for. Link the deals that want it, then ship the ones worth the most."
-            primary={<Button variant="primary" icon={<Icon icon={Plus} size={16} />} onClick={() => setShowAdd(true)}>Log feedback</Button>}
+            description="Log what customers ask for, and which deals want it."
+            primary={<Button variant="primary" icon={<Icon icon={Plus} size={16} />} onClick={onRequestNew}>Log feedback</Button>}
           />
         </div>
       ) : (
@@ -209,7 +212,7 @@ export function FeedbackBoard({ items, deals, onNew, onSetStatus, onShip }: {
                     />
                   ))}
                   {colItems.length === 0 && (
-                    <div className="rounded-md border border-dashed border-line-soft px-2 py-4 text-center text-caption text-ink-400">{col.hint}</div>
+                    <div className="rounded-md border border-dashed border-line-soft px-2 py-4 text-center text-caption text-ink-500">{col.hint}</div>
                   )}
                 </div>
               </div>
@@ -218,7 +221,9 @@ export function FeedbackBoard({ items, deals, onNew, onSetStatus, onShip }: {
         </div>
       )}
 
-      {showAdd && <AddFeedbackModal deals={deals} onClose={() => setShowAdd(false)} onAdd={onNew} />}
+      {/* The modal is the HOST's — Clients already rendered two AddFeedbackModal
+          instances (one for a deal, one for a client); a third owned here made
+          the same dialog reachable three ways with three bits of state. */}
     </div>
   );
 }

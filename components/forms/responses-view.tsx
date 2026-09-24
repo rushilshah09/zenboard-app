@@ -1,45 +1,61 @@
 'use client';
-// Responses — the owner's read of what came back. A Linear-grade table (newest
-// first, keyboard ↑↓ ⏎) with the full answer set in the app's one-drawer pattern.
+// Responses — WHO filled the form in and what they said. A Linear-grade table
+// (newest first, keyboard ↑↓ ⏎) with the full answer set in the app's one-drawer
+// pattern.
+//
+// The numbers that used to sit on top of this table — views, completion rate,
+// median time, where people stop — moved to the Insights tab. They were
+// answering a different question ("is this form working?") and always lost to
+// the table, because the table is the thing that grows. This screen is now one
+// job: find a person, read what they said, turn it into work.
+//
+// It also draws inside `FormChrome` now, like every other section. It used to
+// build its own full-height page with its own back arrow, so walking to
+// Responses made the form's tabs disappear — the one screen in the module you
+// could not navigate away from without going backwards.
 //
 // Partials are kept out of the default view on purpose: they're in-progress
 // attempts, not results. They stay one filter click away because they're how you
 // learn where people give up.
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Download, Trash, FileText, SquareCheck, Check } from '@/components/ds/icons';
+import { Download, Trash, FileText, SquareCheck, Check } from '@/components/ds/icons';
 import {
-  Icon, Button, IconButton, Badge, Drawer, SegmentedControl, EmptyState,
-  Table, TableHeader, TableBody, TableRow, TableHead, TableCell, toast,
+  Icon, Button, Badge, PageView, DropdownMenuItem, SegmentedControl, EmptyState,
+  Table, TableHeader, TableBody, TableRow, TableHead, TableCell, toast, useConfirm,
 } from '@/components/ds/ui';
+import { formatDayTime, formatMinutes } from '@/lib/date';
 import { deleteResponse, makeTaskFromResponse, signFormUpload } from '@/lib/actions/forms';
 import { answerToText, isField, type FormBlock } from '@/lib/form-schema';
 import type { FormRecord, ResponseRecord } from '@/lib/forms';
+import { useServerState } from '@/lib/use-server-state';
 
 type Filter = 'complete' | 'partial' | 'all';
 
-const fmtWhen = (iso: string) =>
-  new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+const fmtWhen = (iso: string) => formatDayTime(iso) ?? '';
 
+// How long a response took. Sub-minute resolution matters here and nowhere else
+// in the app — a form filled in 45 seconds is a different fact from one that
+// took a minute — so the seconds branch is local; everything above a minute goes
+// through the vocabulary, which is where the hour arithmetic belongs.
 const fmtDuration = (s?: number) => {
   if (!s || s < 1) return '—';
   if (s < 60) return `${s}s`;
-  const m = Math.floor(s / 60);
-  return m < 60 ? `${m}m` : `${Math.floor(m / 60)}h ${m % 60}m`;
+  return formatMinutes(Math.floor(s / 60));
 };
 
-export function ResponsesView({ form, responses: initial, backHref, demo = false }: {
-  form: FormRecord; responses: ResponseRecord[]; backHref: string;
+export function ResponsesView({ form, responses: initial, demo = false }: {
+  form: FormRecord; responses: ResponseRecord[];
   /** Harness mode: render everything, touch no server. */
   demo?: boolean;
 }) {
   const router = useRouter();
-  const [responses, setResponses] = useState(initial);
+  const [responses, setResponses] = useServerState(initial);
   const [filter, setFilter] = useState<Filter>('complete');
   const [openId, setOpenId] = useState<string | null>(null);
   const [linking, setLinking] = useState(false);
+  const [confirm, confirmUI] = useConfirm();
 
-  useEffect(() => setResponses(initial), [initial]);
 
   const questions = useMemo(() => form.blocks.filter((b) => isField(b.type)), [form.blocks]);
   const rows = useMemo(
@@ -50,41 +66,6 @@ export function ResponsesView({ form, responses: initial, backHref, demo = false
     complete: responses.filter((r) => r.status === 'complete').length,
     partial: responses.filter((r) => r.status === 'partial').length,
   }), [responses]);
-
-  // Five numbers, no chart wall (§7R: the review, not the dashboard).
-  const stats = useMemo(() => {
-    const starts = responses.length;
-    const done = responses.filter((r) => r.status === 'complete');
-    const durations = done.map((r) => r.meta.duration_s).filter((d): d is number => typeof d === 'number' && d > 0).sort((a, b) => a - b);
-    const median = durations.length ? durations[Math.floor(durations.length / 2)] : 0;
-    return {
-      views: form.views,
-      starts,
-      completed: done.length,
-      // Rate is against STARTS, not views: views count anyone who opened the
-      // link (including the owner testing it), which would flatter nothing.
-      rate: starts ? Math.round((done.length / starts) * 100) : 0,
-      median,
-    };
-  }, [responses, form.views]);
-
-  /**
-   * Where people stop. Counts each unfinished response against the last field
-   * it touched — the single most actionable thing this screen can tell you
-   * ("30% quit at Phone" is a fix you can make today).
-   */
-  const dropOff = useMemo(() => {
-    const tally = new Map<string, number>();
-    for (const r of responses) {
-      if (r.status !== 'partial') continue;
-      const id = r.meta.last_field_id;
-      if (!id) continue;
-      tally.set(id, (tally.get(id) ?? 0) + 1);
-    }
-    return [...tally.entries()]
-      .map(([id, count]) => ({ id, count, label: questions.find((q) => q.id === id)?.label || 'A deleted question' }))
-      .sort((a, b) => b.count - a.count);
-  }, [responses, questions]);
 
   const open = rows.find((r) => r.id === openId) ?? null;
 
@@ -100,6 +81,14 @@ export function ResponsesView({ form, responses: initial, backHref, demo = false
   }, [rows]);
 
   async function remove(id: string) {
+    // A response is someone else's submission — there is no draft of it
+    // anywhere and no undo, so it never goes on a single click.
+    const ok = await confirm({
+      title: 'Delete this response?',
+      body: 'The answers and any uploaded files go with it. This can’t be undone.',
+      actionLabel: 'Delete response',
+    });
+    if (!ok) return;
     if (demo) { setResponses((rs) => rs.filter((r) => r.id !== id)); setOpenId(null); return; }
     const res = await deleteResponse(id);
     if ('error' in res) { toast({ message: res.error, variant: 'error' }); return; }
@@ -156,61 +145,29 @@ export function ResponsesView({ form, responses: initial, backHref, demo = false
   }
 
   return (
-    <div className="flex min-h-[100dvh] flex-col">
-      <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center gap-3 border-b border-line-soft bg-canvas px-4">
-        <IconButton label="Back to the form" variant="ghost" size="sm" icon={<Icon icon={ArrowLeft} size={16} />} onClick={() => router.push(`/forms/${form.id}`)} />
-        <span className="min-w-0 flex-1 truncate text-ui font-medium text-ink-900">{form.title}</span>
-        <Button variant="secondary" size="sm" icon={<Icon icon={Download} size={15} />} onClick={exportCsv}>Export CSV</Button>
-      </header>
-
+    <div className="flex min-h-0 flex-col">
       <main className="mx-auto w-full max-w-[1080px] flex-1 px-5 py-8 sm:px-8">
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="font-display text-h2 text-ink-900">Responses</h1>
-            <p className="mt-1 text-body text-ink-500">
-              <span className="num">{counts.complete}</span> completed
-              {counts.partial > 0 && <> · <span className="num">{counts.partial}</span> in progress</>}
-            </p>
-          </div>
+        {/* One control row: which responses, and getting them out. The counts
+            ride on the filter itself rather than in a heading above it — the
+            page already has a title in the chrome, and "Completed 9 / In
+            progress 0" IS the filter. */}
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <SegmentedControl
             aria-label="Filter responses"
             fit="content"
             value={filter}
             onValueChange={(v) => setFilter(v as Filter)}
             options={[
-              { value: 'complete', label: 'Completed' },
-              { value: 'partial', label: 'In progress' },
-              { value: 'all', label: 'All' },
+              { value: 'complete', label: `Completed ${counts.complete}` },
+              { value: 'partial', label: `In progress ${counts.partial}` },
+              { value: 'all', label: `All ${counts.complete + counts.partial}` },
             ]}
           />
+          <Button variant="secondary" size="sm" icon={<Icon icon={Download} size={16} />}
+            disabled={counts.complete === 0} onClick={exportCsv}>
+            Export CSV
+          </Button>
         </div>
-
-        {/* The strip — five numbers on hairlines, no tiles, no charts. */}
-        {stats.starts > 0 && (
-          <div className="mb-6 grid grid-cols-2 gap-x-6 gap-y-4 border-y border-line-soft py-4 sm:grid-cols-5">
-            <Metric label="Views" value={String(stats.views)} />
-            <Metric label="Started" value={String(stats.starts)} />
-            <Metric label="Completed" value={String(stats.completed)} />
-            <Metric label="Completion" value={`${stats.rate}%`} />
-            <Metric label="Median time" value={fmtDuration(stats.median)} />
-          </div>
-        )}
-
-        {dropOff.length > 0 && (
-          <div className="mb-8">
-            <span className="text-overline uppercase text-ink-500">Where people stop</span>
-            <div className="mt-2">
-              {dropOff.map((d) => (
-                <div key={d.id} className="flex items-baseline gap-3 border-b border-line-soft py-2 last:border-0">
-                  <span className="min-w-0 flex-1 truncate text-ui text-ink-800">{d.label}</span>
-                  <span className="shrink-0 tabular-nums text-meta text-ink-500">
-                    {d.count} {d.count === 1 ? 'person' : 'people'}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {rows.length === 0 ? (
           <EmptyState
@@ -248,7 +205,7 @@ export function ResponsesView({ form, responses: initial, backHref, demo = false
                     </TableCell>
                     {questions.slice(0, 2).map((q) => (
                       <TableCell key={q.id} className="max-w-[260px] truncate text-ink-700">
-                        {answerToText(q, r.answers[q.id] ?? null) || <span className="text-ink-400">—</span>}
+                        {answerToText(q, r.answers[q.id] ?? null) || <span className="text-ink-500">—</span>}
                       </TableCell>
                     ))}
                     <TableCell className="num whitespace-nowrap text-ink-500">{fmtDuration(r.meta.duration_s)}</TableCell>
@@ -261,12 +218,18 @@ export function ResponsesView({ form, responses: initial, backHref, demo = false
       </main>
 
       {open && (
-        <Drawer
+        // A submission is a RECORD, so it opens through the one component every
+        // record opens through. `form-response` rather than `form`: a form is
+        // the thing you came to build and takes the whole page, while a
+        // submission is read WHILE working down a table that has to stay
+        // visible behind it.
+        <PageView
           open
           onOpenChange={() => setOpenId(null)}
+          contentType="form-response"
           title="Response"
-          actions={
-            <IconButton label="Delete response" variant="ghost" size="sm" icon={<Icon icon={Trash} size={15} />} onClick={() => remove(open.id)} />
+          more={
+            <DropdownMenuItem danger icon={<Icon icon={Trash} size={14} />} onSelect={() => remove(open.id)}>Delete response</DropdownMenuItem>
           }
           footer={
             <div className="flex items-center gap-2">
@@ -283,7 +246,7 @@ export function ResponsesView({ form, responses: initial, backHref, demo = false
             </div>
           }
         >
-          <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-5 p-5">
             <div className="flex flex-wrap items-center gap-2 text-meta text-ink-500">
               <span className="num">{fmtWhen(open.createdAt)}</span>
               <span>·</span>
@@ -306,8 +269,9 @@ export function ResponsesView({ form, responses: initial, backHref, demo = false
               ))}
             </div>
           </div>
-        </Drawer>
+        </PageView>
       )}
+      {confirmUI}
     </div>
   );
 }
@@ -317,7 +281,7 @@ function Answer({ block, value }: { block: FormBlock; value: string }) {
     <div className="border-t border-line-soft pt-3 first:border-0 first:pt-0">
       <div className="text-meta text-ink-500">{block.label || 'Question'}</div>
       <div className="mt-1 whitespace-pre-wrap text-body text-ink-900">
-        {value || <span className="text-ink-400">No answer</span>}
+        {value || <span className="text-ink-500">No answer</span>}
       </div>
     </div>
   );
@@ -344,29 +308,20 @@ function FileAnswer({ block, path, name, demo }: { block: FormBlock; path: strin
       <div className="text-meta text-ink-500">{block.label || 'Question'}</div>
       {name ? (
         <div className="mt-1.5 flex items-center gap-2">
-          <Icon icon={FileText} size={15} className="shrink-0 text-ink-400" />
+          <Icon icon={FileText} size={16} className="shrink-0 text-ink-500" />
           <span className="min-w-0 flex-1 truncate text-body text-ink-900">{name}</span>
           <Button variant="secondary" size="sm" loading={busy} icon={<Icon icon={Download} size={14} />} onClick={openFile}>
             Download
           </Button>
         </div>
       ) : (
-        <div className="mt-1 text-body text-ink-400">No file</div>
+        <div className="mt-1 text-body text-ink-500">No file</div>
       )}
     </div>
   );
 }
 
 /** One number in the analytics strip. Sans tabular — mono is for IDs only. */
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div className="text-overline uppercase text-ink-500">{label}</div>
-      <div className="mt-1 font-display text-h3 tabular-nums text-ink-900">{value}</div>
-    </div>
-  );
-}
-
 /**
  * A task title a human would have written: lead with who it's from, fall back to
  * their first substantive answer, then to the form's own name.

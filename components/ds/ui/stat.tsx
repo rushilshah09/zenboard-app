@@ -22,7 +22,7 @@ export interface StatProps {
 export function Stat({ label, value, delta, sparkline, loading, className }: StatProps) {
   return (
     <div className={cn("flex flex-col gap-1", className)}>
-      <span className="text-caption font-medium uppercase tracking-wide text-ink-500">{label}</span>
+      <span className="text-overline text-ink-500">{label}</span>
       {loading ? (
         <Skeleton shape="line" className="h-8 w-32" />
       ) : value === null ? (

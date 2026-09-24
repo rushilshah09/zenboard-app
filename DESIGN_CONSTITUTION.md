@@ -134,9 +134,26 @@ Maintain consistent line height, font weight, and letter spacing.
 
 ### Spacing
 
-Only use spacing tokens: 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96.
+**Layout** — the space between and inside blocks: 4, 8, 12, 16, 20, 24, 32, 40,
+48, 64, 80, 96.
 
-Never invent spacing values.
+**Control inline padding** — the space inside a button, chip, menu item or
+field: 4, 6, 8, 10, 12. A finer set, and deliberately so: at a 28px control the
+layout scale offers only 8 (cramped) or 12 (loose), so every small control in
+every real design system uses half-steps. Measured across four Zenboard pages,
+**10px is the single most common control padding in the app** — it was doing
+real work under a rule that forbade it, which makes the rule wrong rather than
+the code.
+
+**A panel's inset is `--panel-px`, not a number.** Its header and its rows both
+take it, so a row lines up with the title above it. `PanelBody` deliberately
+does not pad itself (a row needs full-bleed hover), but "the consumer owns the
+padding" is how headers at 16 ended up above rows at 12 and 14 inside the same
+card.
+
+Never invent spacing values — and if you find yourself needing one, MEASURE
+whether it is already common. An unnamed rung used sixteen times is a missing
+token, not sixteen mistakes.
 
 ### Radius
 
