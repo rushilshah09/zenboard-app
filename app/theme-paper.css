@@ -208,30 +208,40 @@ html[data-skin='paper'] {
      Print has none. The radius tokens are the source the whole app reads, so
      two lines square every card, menu, field, button and panel at once. The
      pill stays a pill: a switch and an avatar are objects, not boxes. */
-  --radius: 3px;
+  --radius: 2px;
   --radius-xs: 2px;
   --radius-sm: 2px;
-  --radius-md: 3px;
-  --radius-lg: 3px;
-  --radius-xl: 4px;
-  --r-2xl: 6px;
-  --radius-panel: 3px;
+  --radius-md: 2px;
+  --radius-lg: 2px;
+  --radius-xl: 2px;
+  --r-2xl: 3px;
+  --radius-panel: 2px;
   --radius-tag: 2px;
 
-  /* ── A SHEET HAS THICKNESS ──────────────────────────────────────────────
-     The first pass modelled a SCAN — flat, no shadow, because a scanner presses the paper against
-     glass and takes the depth out of it. The user asked for the other thing: "100% real looking
-     authentic analog paper", which is a sheet lying ON A DESK. A sheet has an edge, the edge
-     catches light, and the sheet drops a short shadow a few millimetres wide. That is the whole
-     difference between a beige rectangle and a piece of paper.
+  /* ── THE PAGE IS FLAT ───────────────────────────────────────────────────
+     This block used to model a sheet lying ON A DESK: a contact shadow, and the cut edge as a
+     hairline of light along the top. That came from an earlier brief ("100% real looking authentic
+     analog paper"), and it was a reasonable reading of it.
 
-     So: a CONTACT shadow, tight and warm (ink, never black — a shadow on paper is the colour of
-     the light that made it), plus the cut edge as a hairline of light along the top. Nothing
-     floats; a sheet at rest is 1–2mm above the desk, and these numbers are that. */
-  --paper-contact: 0 1px 1px -0.5px rgb(38 36 30 / 0.10), 0 2px 5px -2px rgb(38 36 30 / 0.08);
-  --paper-cut-edge: inset 0 1px 0 0 rgb(255 255 255 / 0.55);
+     The user then put a 4× zoom of this UI beside a 4× zoom of the reference and said it still does
+     not look the same — and with both at that scale the difference is not subtle. Ours had a soft
+     drop shadow and a white gloss along the top edge. The reference has NEITHER. It is a printed
+     page: no elevation, no specular highlight, no blur anywhere. The gloss in particular is the
+     single most "modern UI" mark on the screen — a 55% white inset is how a glassy web card catches
+     a light source, and paper has no light source to catch. It was ours, not the reference's.
+
+     So the sheet is flat. What remains is the falloff, which is not elevation: it is the slight
+     darkening a real page shows towards its edges, and it survives a scan because it is in the
+     paper rather than above it. Everything that composes `--paper-sheet` keeps its name, so the
+     shadow tokens below are unchanged and no call site moves.
+
+     Both values are still SHADOWS, never `none`: `none` inside a box-shadow list invalidates the
+     whole declaration, which would silently take the ink ring with it (the same trap `--edge-light`
+     hit in the light theme). */
+  --paper-contact: 0 0 0 0 transparent;
+  --paper-cut-edge: inset 0 0 0 0 transparent;
   /* Light falls off towards the edge of a sheet; a sheet lit perfectly evenly reads as a fill. */
-  --paper-falloff: inset 0 0 36px -28px rgb(38 36 30 / 0.55);
+  --paper-falloff: inset 0 0 36px -28px rgb(38 36 30 / 0.40);
   --paper-sheet: var(--paper-cut-edge), var(--paper-falloff), var(--paper-contact);
 
   --shadow-xs: var(--paper-sheet);

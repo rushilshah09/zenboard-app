@@ -64,31 +64,39 @@ describe('the paper skin', () => {
     expect(ratio(value('--border')!, value('--card')!)).toBeGreaterThanOrEqual(1.5);
   });
 
-  it('lies ON something: a sheet has thickness, and its shadow is ink', () => {
-    // REVISED 2026-09-24. The first model was a SCAN — flat, shadowless, because a scanner
-    // presses the depth out of paper. The user asked for the other thing ("authentic analog
-    // paper"), which is a sheet on a desk: it has a cut edge that catches light, light that falls
-    // off towards its border, and a short contact shadow. What must NEVER come back is the web
-    // drop shadow — a big soft black cloud that makes paper look like a floating div.
+  it('is flat: a printed page has no elevation and catches no light', () => {
+    // REVISED TWICE, and the second revision is the one that matters.
+    //
+    // v1 modelled a SCAN — flat and shadowless. v2 modelled a sheet ON A DESK, with a contact
+    // shadow and a cut edge catching light, because the brief said "authentic analog paper".
+    // v3 is this: the user put a 4x zoom of our UI beside a 4x zoom of the reference and said it
+    // still does not match. At that scale the difference was not subtle — ours had a soft drop
+    // shadow and a WHITE GLOSS along the top edge; the reference, a printed invoice, has neither.
+    //
+    // A 55% white inset is how a glassy web card catches a light source. Paper has no light source
+    // to catch, so that highlight was ours rather than the reference's, and it was the single most
+    // "modern UI" mark left on the screen. The lesson is the one this sprint kept relearning: the
+    // rendered page at real zoom is the evidence, not the model in my head.
     const shadows = [...block.matchAll(/^\s*(--shadow-[a-z0-9-]+):\s*([^;]+);/gm)];
     expect(shadows.length).toBeGreaterThanOrEqual(8);
     for (const [, name, v] of shadows) {
       const ok = v === 'none' || /^0 0 0 1px var\(--border(-control)?\)$/.test(v) || /var\(--paper-(sheet|contact)\)/.test(v);
       expect(ok, `${name}: ${v}`).toBe(true);
     }
-    // The contact shadow is INK at a few pixels — the colour of the light that made it, and the
-    // distance a sheet actually sits above a desk. Never black, never a 24px cloud.
-    const contact = value('--paper-contact')!;
-    // DERIVED from the ink, not pinned to a triple: this used to spell `rgb(36 34 28 …)` and so
-    // it failed the next time the palette was retuned — a test that guards a hex rather than the
-    // rule it stands for. The rule is that a shadow on paper is the colour of the light that made
-    // it, which is the ink, so the ink is where the expectation comes from.
+    // NOTHING is raised: no offset, no blur, no spread anywhere in the elevation tokens.
+    expect(value('--paper-contact')).toMatch(/^0 0 0 0 transparent$/);
+    // And nothing catches light: no white, at any alpha, along any edge.
+    const cut = value('--paper-cut-edge')!;
+    expect(cut).toMatch(/^inset 0 0 0 0 transparent$/);
+    expect(cut, 'a printed page has no specular highlight').not.toMatch(/255 255 255/);
+    // Both are still SHADOWS, not `none` — `none` inside a box-shadow list invalidates the whole
+    // declaration and would silently take the ink ring with it, the same trap `--edge-light` hit.
+    expect(value('--paper-contact')).not.toBe('none');
+    expect(cut).not.toBe('none');
+    // What survives is the falloff, which is IN the paper rather than above it, so it scans.
     const inkRgb = [1, 3, 5].map((i) => parseInt(value('--foreground')!.slice(i, i + 2), 16)).join(' ');
-    expect(contact).toContain(`rgb(${inkRgb} /`);
-    expect(contact).not.toMatch(/rgba?\(0[ ,]/);
-    for (const blur of contact.matchAll(/(\d+)px/g)) expect(Number(blur[1]), `blur ${blur[1]}px`).toBeLessThanOrEqual(6);
-    // And the cut edge is light, not another rule.
-    expect(value('--paper-cut-edge')).toMatch(/^inset 0 1px 0 0 rgb\(255 255 255 \/ 0\.\d+\)$/);
+    expect(value('--paper-falloff')).toContain(`rgb(${inkRgb} /`);
+    expect(value('--paper-falloff')).toMatch(/^inset /);
   });
 
   it('separates the sheet from the desk enough to be an OBJECT', () => {
