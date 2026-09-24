@@ -316,6 +316,22 @@ html[data-skin='paper'] {
     radial-gradient(circle at 3px calc(100% - 3px), var(--foreground) 0 1.2px, transparent 1.3px),
     radial-gradient(circle at calc(100% - 3px) calc(100% - 3px), var(--foreground) 0 1.2px, transparent 1.3px);
 
+  /* ── INK BREAKUP, FOR THE MARK ──────────────────────────────────────────
+     The press overlay cannot touch the logo. It composites with `multiply`, which can only
+     DARKEN, and the mark is already near-black — so it stayed a perfectly clean vector on a
+     textured page, which is the one thing a printed mark never is. Look at the anvil on the
+     reference: the ink did not fully transfer, so the solid shape is speckled with bare paper.
+     On dark ink the texture has to REMOVE ink, not add shadow.
+
+     So this is a MASK, not a blend. The noise is written into the ALPHA channel directly (the
+     colour matrix sends luminance to alpha and forces RGB to white) rather than relying on
+     `mask-mode: luminance`, which Safari does not honour on `-webkit-mask-image` — an alpha mask
+     behaves identically in both. The range is 0.55–1.0: the deepest pits drop just under half the
+     ink, which reads as bite at a glance and never as a broken logo. */
+  --paper-ink-break: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='k'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0.2126 0.7152 0.0722 0 0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='0.45' intercept='0.55'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23k)'/%3E%3C/svg%3E");
+
+  --paper-ink-break-fine: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='kf'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.3' numOctaves='1' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0.2126 0.7152 0.0722 0 0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='0.18' intercept='0.82'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23kf)'/%3E%3C/svg%3E");
+
   --paper-stock: var(--paper-mottle), var(--paper-fibre), var(--paper-tooth);
   --paper-blend: multiply, multiply, multiply;
 
@@ -395,6 +411,21 @@ html[data-skin='paper'] :where(.bg-surface-sunken, .bg-surface-raised, .bg-paper
      accent, twice in one sprint. Drawn as a shadow rather than a border because a border would
      add a pixel and move the content, and the skin does not move anything. */
   box-shadow: 0 0 0 1px var(--border), var(--paper-sheet);
+}
+
+/* The mark is PRINTED, so its ink breaks up like any other. Reached through the design system's
+   own slot, so neither the mark nor the lockup knows a skin exists. */
+html[data-skin='paper'] :where([data-slot='mark']) {
+  -webkit-mask-image: var(--paper-ink-break);
+  mask-image: var(--paper-ink-break);
+}
+
+/* An icon is printed too, but it is drawn at 16px in 1.75px strokes, where the mark's bite would
+   read as damage rather than as ink. Same noise, a third of the depth (0.82–1.0): enough that the
+   glyph stops looking like a vector sitting on top of the page, never enough to eat a stroke. */
+html[data-skin='paper'] :where([data-slot='icon']) {
+  -webkit-mask-image: var(--paper-ink-break-fine);
+  mask-image: var(--paper-ink-break-fine);
 }
 
 /* THE PRESS. Everything the app draws passes under one sheet of tooth: type, rules, icons,
