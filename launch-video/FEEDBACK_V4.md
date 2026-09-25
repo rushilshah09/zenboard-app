@@ -109,7 +109,14 @@ The product UI in the film should look like the green "Project Status" reference
   point, then three dots lead into Zenboard (ref: "Bringing together").
 - One line: soft colour waves ripple along a line and settle into a single Berry line (ref: layered waves).
 
-### D10+ — (more directions to come)
+### D10 — Camera movement (ref: Fostr AI / beliv8 product film)
+- Product UI floats as a 3D window: tilted back 12–18° with some yaw, slow dolly-in and rise, shallow depth
+  of field (far edge soft). Macro push along rows, then rotate flat to camera whenever it must be read.
+- Light-flash whip between shots: the frame overexposes to a white bloom for ~10 frames and resolves
+  into the next shot. Used for scene 3 → 4.
+- Every storyboard frame now carries a Camera note.
+
+### D11+ — (more directions to come)
 
 ## Brand note
 The Zenboard brand guidelines (Paper / Ink / single Berry accent, eight flat field colours, no gradients)

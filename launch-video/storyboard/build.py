@@ -210,7 +210,7 @@ def berry_field():
 
 def f_4_1():
     s = berry_field() + at(50, 5, lockup(12, "#fff", "#fff"))
-    s += at(45, 31, f'<div class="frost">{today_card()}</div>')
+    s += at(45, 31, f'<div class="frost tilt">{today_card()}</div>')
     s += at(66, 17, '<div class="float"><div class="hl-l">Today\'s highlight</div><div class="hl-t">Send invoice for July to TechSpark</div>'
                     '<div class="hl-b"><span class="btn">' + ph("Play", "fill", size="1em") + ' Start focus</span><span class="btn g">' + ph("Check", "bold", size="1em") + ' Mark done</span></div></div>')
     s += caption("Your whole day. One view.", y=52, size=2.2, color="#fff")
@@ -218,7 +218,7 @@ def f_4_1():
 
 def f_4_2():
     s = berry_field() + at(50, 5, lockup(12, "#fff", "#fff"))
-    s += at(50, 30, f'<div class="frost" style="transform:scale(1.35)">{today_card()}</div>', "", "filter:blur(.12cqw)")
+    s += at(46, 34, f'<div class="frost tilt close">{today_card()}</div>')
     s += at(64, 30, '<div class="float"><div class="hl-l">Today\'s highlight</div><div class="hl-t"><s>Send invoice for July to TechSpark</s></div>'
                     '<div class="hl-b"><span class="btn g on">' + ph("Check", "bold", size="1em") + ' Done</span></div></div><div class="cursor"></div>')
     return s
@@ -373,6 +373,23 @@ def f_8_2():
     s += at(50, 40, '<span class="avail">Available today</span>')
     return s
 
+CAMERA = {
+ "1.1": "Locked off, slow 2% push-in from 0:00.",
+ "1.2": "Slow orbit drift, 3° of roll across the beat; tiles parallax at different depths.",
+ "1.3": "Push-in 108%, rack focus: portrait sharp, outer tiles fall into bokeh.",
+ "2.1": "Hard hold (freeze), then the camera alone keeps drifting 1%.",
+ "2.2": "Whip pan right along the arc, heavy motion blur for 8 frames.",
+ "2.3": "Settle: ease out from the whip, dead still for the wordmark.",
+ "3.1": "Truck left to right following the hairlines to the bright point.",
+ "3.2": "Keep trucking along the line; at the panel, light flash whip (overexposed white bloom, 10 frames) into scene 4.",
+ "4.1": "Out of the flash: the window floats in 3D, tilted 14° back and 8° yaw, slow dolly-in and rise; shallow depth of field, far edge soft.",
+ "4.2": "Close-up push on the tilted window along the plan rows (ref: macro dolly over the sidebar), then rotate flat to camera for the click.",
+ "5.1": "Flat to camera (readable). Left list moves, right panel steps with a 2% scale pulse per feature.",
+ "6.1": "Slow 4° tilt up across the wall, rows at two depths.",
+ "7.1": "Low angle on the tiles, slight dolly left with each step.",
+ "8.1": "Slow pull-back revealing the full ring; cards at three depths with DOF.",
+ "8.2": "Dead still. Nothing moves in the last 2 seconds.",
+}
 # ---------- storyboard ----------
 SCENES = [
  dict(n=1, name="Juggling", t="0:00–0:10", purpose="Show the person at the centre of too many apps before anything is explained.",
@@ -396,7 +413,7 @@ SCENES = [
             "“Everything you juggle.”", "Cable hum, soft tick as each line lands"),
           ("3.2", "0:19", f_3_2, "Four soft colour waves ripple along the line, then settle into one flat Berry line as they pass through the Zenboard node. The line hits a panel that wipes open to the real Today screen.",
             "“In one place.”", "Swish on the wipe")],
-  out="The Today panel grows to fill the frame while the background floods to the Berry field (colour wipe)."),
+  out="Light flash whip: the panel overexposes to a white bloom for 10 frames and we come out on the tilted window over the Berry field."),
  dict(n=4, name="Product hero", t="0:22–0:28", purpose="The first real look at the product, in the D6 card style.",
   frames=[("4.1", "0:22", f_4_1, "Berry field from dark to light, with the Zenboard mark large and subtly blended in. The logo sits above. The frosted Today card floats in the centre with a crisp white highlight card overlapping its corner.",
             "“Your whole day. One view.”", "Music enters"),
@@ -434,7 +451,7 @@ def frame_html(fid, tc, fn, action, onscreen, sfx):
   <figcaption>
     <div class="fh"><span class="fid">{fid}</span><span class="tc">{tc}</span></div>
     <p>{H.escape(action)}</p>
-    <dl><dt>On screen</dt><dd>{H.escape(onscreen)}</dd><dt>Sound</dt><dd>{H.escape(sfx)}</dd></dl>
+    <dl><dt>On screen</dt><dd>{H.escape(onscreen)}</dd><dt>Camera</dt><dd>{H.escape(CAMERA.get(fid, CAMERA.get(fid[:2] + "1", "")))}</dd><dt>Sound</dt><dd>{H.escape(sfx)}</dd></dl>
   </figcaption>
 </figure>'''
 
