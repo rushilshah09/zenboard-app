@@ -33,8 +33,8 @@ export const S3AllInOne: React.FC = () => {
       <PaperStage glow={0.55} />
       {/* lockup letters depart as the mark leaves */}
       {f < 40 ? <At x={50} y={24.5} style={blurOut(f, 0, 22)}><Lockup width={40} markColor="transparent" /></At> : null}
-      <div className="stage" style={{ transform: `translateX(${-62 * truck}cqw)`, filter: vel > 0.2 ? `blur(${Math.min(6, vel)}px)` : undefined }}>
-        {/* 3.1 fans */}
+      {/* one world, one hub: fans converge on the hub; after it the colour waves carry on to the desktop; the camera trucks along */}
+      <div className="stage" style={{ transform: `translateX(${-62 * truck}cqw) scale(${push})`, transformOrigin: `${138 - 62}% 52%`, filter: vel > 0.2 ? `blur(${Math.min(6, vel)}px)` : undefined }}>
         <Fans sources={srcs} fx={58} fy={CY} draw={fans} />
         {srcs.map(([x, y], i) => {
           const p = pop(f, 30 + i * 7, 210, 15);
@@ -42,18 +42,15 @@ export const S3AllInOne: React.FC = () => {
         })}
         <At x={58} y={CY} style={{ transform: `scale(${spark * (1 + 0.15 * Math.sin(f / 7))})`, opacity: spark }}><span className="spark" /></At>
         {[4.5, 8.5, 12].map((dx, i) => (
-          <At key={i} x={58 + dx} y={CY} style={{ opacity: ease(f, 175 + i * 6, 185 + i * 6, 0, 1) }}>
+          <At key={i} x={58 + dx} y={CY} style={{ opacity: ease(f, 175 + i * 6, 185 + i * 6, 0, 1) * (1 - ease(f, 214, 226, 0, 1)) }}>
             <span className={`dot2${Math.floor(f / 12) % 3 === i ? " lit" : ""}`} />
           </At>
         ))}
+        {/* waves leave from the hub's right edge and settle into one Berry line that runs into the panel */}
+        <Waves settle={settle} phase={f / 9} x1={89.5} x2={122} draw={ease(f, 205, 300, 0, 1, CURVE.settle)} tail={9} />
         <At x={82} y={CY} style={{ transform: `scale(${node})`, opacity: node }}><div className="node" /></At>
         <At x={mx} y={my}><Mark size={8.4 - 0.9 * travel} /></At>
-      </div>
-      {/* 3.2 enters from the right */}
-      <div className="stage" style={{ opacity: ease(f, 222, 250, 0, 1), transform: `translateX(${62 * (1 - truck)}cqw) scale(${push})`, transformOrigin: "76% 52%", filter: vel > 0.2 ? `blur(${Math.min(6, vel)}px)` : undefined }}>
-        <Waves settle={settle} phase={f / 9} />
-        <At x={46} y={CY}><div className="node sm"><Mark size={4.2} /></div></At>
-        <At x={76} y={CY}>
+        <At x={138} y={CY}>
           <div className="wipe desk" style={{ clipPath: `inset(0 ${(1 - wipe) * 100}% 0 0 round 1.8cqw)` }}>
             <div className="wipe-in"><div className="deskfit"><Dashboard rowStyle={(i) => ({ opacity: soft(f, 320 + i * 6, 160, 22) })} /></div></div>
           </div>

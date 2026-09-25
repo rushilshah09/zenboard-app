@@ -42,10 +42,10 @@ export const Fans: React.FC<{ sources: [number, number, string][]; fx: number; f
 );
 
 /** Colour waves that ripple along a line and settle into one Berry line. `settle` 0 → wavy, 1 → flat. `phase` animates the ripple. */
-export const Waves: React.FC<{ settle: number; phase: number; x1?: number; x2?: number; y?: number }> = ({ settle, phase, x1 = -2, x2 = 46, y = 28.1 }) => {
+export const Waves: React.FC<{ settle: number; phase: number; x1?: number; x2?: number; y?: number; draw?: number; tail?: number }> = ({ settle, phase, x1 = -2, x2 = 46, y = 28.1, draw = 1, tail = 14 }) => {
   const cols = ["#EAB9CB", "#ECBF9B", "#B8BDEE", "#A6D1E0"];
   return (
-    <svg className="stage" viewBox="0 0 100 56.25" preserveAspectRatio="none">
+    <svg className="stage" viewBox="0 0 100 56.25" preserveAspectRatio="none" style={{ overflow: "visible" }}>
       {cols.map((c, k) => {
         const amp = [5.5, -3.5, 4.2, -2.6][k] * (1 - settle);
         const pts: string[] = [];
@@ -54,9 +54,10 @@ export const Waves: React.FC<{ settle: number; phase: number; x1?: number; x2?: 
           const env = Math.sin((Math.PI * i) / 60) ** 1.5;
           pts.push(`${x.toFixed(2)},${(y + amp * env * Math.sin(i / 6 + phase + k * 1.3)).toFixed(2)}`);
         }
-        return <polyline key={k} points={pts.join(" ")} fill="none" stroke={c} strokeWidth={0.55} strokeLinecap="round" strokeLinejoin="round" />;
+        return <polyline key={k} points={pts.join(" ")} fill="none" stroke={c} strokeWidth={0.55} strokeLinecap="round" strokeLinejoin="round" pathLength={1} strokeDasharray="1 1" strokeDashoffset={1 - draw} opacity={1 - 0.95 * settle ** 2} />;
       })}
-      <line x1={x2 - 6} y1={y} x2={x2 + 14} y2={y} stroke="#C41C72" strokeWidth={0.55} strokeLinecap="round" />
+      <line x1={x1} y1={y} x2={x2 + tail} y2={y} stroke="#C41C72" opacity={settle ** 1.5} strokeWidth={0.55} strokeLinecap="round" pathLength={1} strokeDasharray="1 1" strokeDashoffset={1 - draw} />
+      <line x1={x2 - 6} y1={y} x2={x2 + tail} y2={y} stroke="#C41C72" strokeWidth={0.55} strokeLinecap="round" pathLength={1} strokeDasharray="1 1" strokeDashoffset={1 - Math.max(0, Math.min(1, (draw - 0.6) / 0.4))} />
     </svg>
   );
 };
