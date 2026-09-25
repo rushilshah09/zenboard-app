@@ -24,3 +24,6 @@ node tools/build.mjs                          # → film.html (open it in a brow
 node tools/render.cjs stills 3,12,20,40       # → out/contact.jpg
 node tools/render.cjs video 60                # → out/zenboard-launch-1080p60.mp4 (with sound)
 ```
+
+Final storyboard (published as the "Zenboard Final Storyboard" artifact): `storyboard/gen.py` + `tpl.html` build
+`index.html` from 45 stills (`STILLS_DIR=board node tools/render.cjs stills <times>`, converted to `frames/fNN.jpg`).

@@ -22,7 +22,7 @@ const seek = (p, t) => p.evaluate((t) => { window.film.seek(t, false); return ne
 
 async function stills(times) {
   const { b, p } = await open();
-  const dir = path.join(OUT, "stills"); fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
+  const dir = path.join(OUT, process.env.STILLS_DIR || "stills"); fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
   for (const [i, t] of times.entries()) {
     await seek(p, t);
     await p.screenshot({ path: path.join(dir, `${String(i).padStart(2, "0")}-${t.toFixed(1)}s.png`) });
