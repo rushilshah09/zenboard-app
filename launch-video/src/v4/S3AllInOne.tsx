@@ -5,6 +5,7 @@
  */
 import React from "react";
 import { useCurrentFrame } from "remotion";
+import { LOCKUP_MARK } from "../brand/logo.generated";
 import { At, CURVE, Frame, Lockup, Mark, PaperStage, Words, blurOut, ease, pop, soft } from "./kit";
 import { KINDS, Tile } from "./S1Juggling";
 import { Fans, STRAND, Waves } from "./lines";
@@ -26,15 +27,17 @@ export const S3AllInOne: React.FC = () => {
   const vel = Math.abs(ease(f, 223, 291, 0, 1, CURVE.glide) - truck) * 60;
   const settle = ease(f, 270, 350, 0, 1, CURVE.settle);
   const wipe = ease(f, 300, 350, 0, 1, CURVE.settle);
-  const push = ease(f, 330, 420, 1, 1.06, CURVE.depart);
+  const push = ease(f, 330, 380, 1, 1.05, CURVE.breathe) * ease(f, 380, 420, 1, 2.1, CURVE.depart);
+  const whip = ease(f, 392, 420, 0, 1, CURVE.depart);
   const srcs: [number, number, string][] = YS.map((y, i) => [12 + (i % 2 ? 2.5 : 0), y, STRAND[i]]);
   return (
     <Frame>
-      <PaperStage glow={0.55} />
+      <PaperStage glow={0.614 - 0.064 * ease(f, 0, 40, 0, 1)} />
+      {f < 40 ? <At x={50} y={33.5} style={blurOut(f, 0, 20)}><span className="withask">with <svg viewBox="-1 -1 34 34" style={{ width: "2.6cqw", height: "2.6cqw", display: "block" }}><path d={LOCKUP_MARK} fill="url(#zgrad)" /></svg> <b>Ask</b></span></At> : null}
       {/* lockup letters depart as the mark leaves */}
       {f < 40 ? <At x={50} y={24.5} style={blurOut(f, 0, 22)}><Lockup width={40} markColor="transparent" /></At> : null}
       {/* one world, one hub: fans converge on the hub; after it the colour waves carry on to the desktop; the camera trucks along */}
-      <div className="stage" style={{ transform: `translateX(${-62 * truck}cqw) scale(${push})`, transformOrigin: `${138 - 62}% 52%`, filter: vel > 0.2 ? `blur(${Math.min(6, vel)}px)` : undefined }}>
+      <div className="stage" style={{ transform: `translateX(${-62 * truck}cqw) scale(${push})`, transformOrigin: `${138 - 62}% 52%`, filter: vel > 0.2 || whip > 0 ? `blur(${Math.min(6, vel) + whip * 14}px)` : undefined }}>
         <Fans sources={srcs} fx={58} fy={CY} draw={fans} />
         {srcs.map(([x, y], i) => {
           const p = pop(f, 30 + i * 7, 210, 15);

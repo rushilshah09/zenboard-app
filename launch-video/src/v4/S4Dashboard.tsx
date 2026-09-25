@@ -7,6 +7,7 @@ import React from "react";
 import { useCurrentFrame } from "remotion";
 import { At, CURVE, Frame, Halftone, Icon, Lockup, Mark, Words, blurIn, ease, mix, pop, soft } from "./kit";
 import { Dashboard } from "./Dashboard";
+import { DONE_TARGET, FeatBg } from "./S5Features";
 
 export const BerryField: React.FC<{ style?: React.CSSProperties; drift?: number }> = ({ style, drift = 0 }) => (
   <div className="stage" style={{ overflow: "hidden", ...style }}>
@@ -25,7 +26,8 @@ export const S4Dashboard: React.FC = () => {
   const close = ease(f, 200, 275, 0, 1, CURVE.glide);
   const out = ease(f, 318, 360, 0, 1, CURVE.glide);
   const persp = lerp(80, 50, close), rx = lerp(lerp(26, 12, intro), 16, close), ry = lerp(lerp(-14, -7, intro), -12, close);
-  const sc = lerp(lerp(0.9, 1, intro), 1.35, close) * (1 - 0.12 * out);
+  const sc = lerp(lerp(1.22, 1, intro), 1.35, close) * (1 - 0.12 * out);
+  const whipOut = 1 - ease(f, 0, 24, 0, 1, CURVE.settle);
   const dx = lerp(49, 46, close), dy = lerp(lerp(33, 29.3, intro), 32, close);
   const click = f >= 290;
   const press = f >= 286 && f < 296 ? 0.94 : 1;
@@ -39,7 +41,11 @@ export const S4Dashboard: React.FC = () => {
     <Frame>
       <div className="stage paper" />
       <BerryField drift={f / 60} style={{ clipPath: inset }} />
-      <div className="stage" style={{ clipPath: inset, opacity: 1 - ease(f, 322, 350, 0, 1) }}>
+      {/* the field turns into scene 5's Tasks field as it shrinks into the panel */}
+      <div className="rpanel" style={{ left: `${34 * out}%`, top: `${3 * out}%`, right: `${2.2 * out}%`, bottom: `${3 * out}%`, borderRadius: `${2 * out}cqw`, opacity: ease(f, 312, 356, 0, 1, CURVE.breathe) }}>
+        <FeatBg i={0} f={0} />
+      </div>
+      <div className="stage" style={{ clipPath: inset, opacity: 1 - ease(f, 322, 350, 0, 1), filter: whipOut > 0.01 ? `blur(${whipOut * 12}px)` : undefined }}>
         <At x={50} y={5} style={mix(blurIn(f, 24, 12), { opacity: 1 - close })}><Lockup width={12} color="#fff" markColor="#fff" /></At>
         <At x={dx} y={dy}>
           <div className="frost" style={{ transform: `perspective(${persp}cqw) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${0.6 * (1 - close)}deg) scale(${sc})`, transformOrigin: "50% 60%",
@@ -61,7 +67,7 @@ export const S4Dashboard: React.FC = () => {
       </div>
       {/* the Done pill flies to become the first feature pill of scene 5 */}
       {doneFly > 0 ? (
-        <At x={lerp(fx + 1, 10.5, doneFly)} y={lerp(fy + 6, 28.1, doneFly)} style={{ transform: `scale(${lerp(1, 1.4, doneFly)})` }}>
+        <At x={lerp(fx + 1, DONE_TARGET.x, doneFly)} y={lerp(fy + 6, DONE_TARGET.y, doneFly)} style={{ transform: `scale(${lerp(1, DONE_TARGET.scale, doneFly)})` }}>
           <span className="btn g on" style={{ fontSize: "1cqw" }}><Icon name="check" weight="bold" size="1em" /> Done</span>
         </At>
       ) : null}

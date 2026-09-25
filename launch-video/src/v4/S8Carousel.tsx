@@ -24,11 +24,11 @@ export const S8Carousel: React.FC = () => {
   return (
     <Frame>
       <div className="stage" style={{ background: "#16060F" }} />
-      <div className="stage floorglow" style={{ opacity: ease(f, 0, 40, 0.3, 1) }} />
-      <div className="stage rays" style={{ transform: `rotate(${Math.sin(f / 80) * 2}deg)` }} />
+      <div className="stage floorglow" style={{ opacity: ease(f, 0, 70, 0, 1, CURVE.breathe) }} />
+      <div className="stage rays" style={{ transform: `rotate(${Math.sin(f / 80) * 2}deg)`, opacity: ease(f, 10, 80, 0, 1) }} />
       {Array.from({ length: 26 }, (_, i) => (
         <At key={i} x={(rnd(i) * 100 + f * (0.01 + rnd(i + 3) * 0.02)) % 100} y={4 + rnd(i + 7) * 30 - f * 0.004 * (1 + rnd(i))}
-          style={{ width: `${0.16 + rnd(i + 5) * 0.7}cqw`, height: `${0.16 + rnd(i + 5) * 0.7}cqw`, borderRadius: "50%", background: `rgba(255,220,235,${0.05 + rnd(i + 9) * 0.17})` }} />
+          style={{ width: `${0.16 + rnd(i + 5) * 0.7}cqw`, height: `${0.16 + rnd(i + 5) * 0.7}cqw`, borderRadius: "50%", background: `rgba(255,220,235,${0.05 + rnd(i + 9) * 0.17})`, opacity: ease(f, 10 + i * 2, 60 + i * 2, 0, 1) }} />
       ))}
       <At x={50} y={6.5} style={blurIn(f, 20, 10)}><Lockup width={17} color="#F7F1E8" markColor="#F7F1E8" /></At>
       {STRIP.map(([name, c, g, ic], i) => {
@@ -36,26 +36,28 @@ export const S8Carousel: React.FC = () => {
         if (Math.abs(rel) > 2.6) return null;
         const a = Math.abs(rel);
         const size = a < 1 ? 18 - 5 * a : 13 - 2 * Math.min(1, a - 1);
-        const x = 50 + Math.sign(rel) * (a < 1 ? 26 * a : 26 + 22 * (a - 1));
-        const lift = i === 2 && f < 30 ? (1 - soft(f, 0, 140, 22)) * 4 : 0;
+        const fan = soft(f, 8 + Math.abs(i - 2) * 6, 70, 18);
+        const x = 50 + Math.sign(rel) * (a < 1 ? 26 * a : 26 + 22 * (a - 1)) * (i === 2 ? 1 : fan);
+        const lift = 0;
+        const scatter = ease(f, 340, 405, 0, 1, CURVE.depart);
         return (
           <React.Fragment key={name}>
-            <At x={x} y={25 - (a < 1 ? 1 - a : 0) * 1 + lift} style={{ zIndex: 10 - Math.round(a * 3) }}>
+            <At x={50 + (x - 50) * (1 + 1.4 * scatter)} y={25 - (a < 1 ? 1 - a : 0) * 1 + lift - 6 * scatter * (1 - a * 0.4)} style={{ zIndex: 10 - Math.round(a * 3), opacity: (i === 2 ? 1 : Math.min(1, fan * 1.4)) * (1 - scatter), filter: scatter > 0.01 ? `blur(${scatter * 12}px)` : undefined, transform: `scale(${(i === 2 ? 1 : 0.6 + 0.4 * fan) * (1 + 0.3 * scatter)})` }}>
               <div className="i3" style={{ width: `${size}cqw`, height: `${size}cqw`, ["--c" as string]: c, color: g, filter: a > 1.4 ? `blur(${(a - 1.4) * 2}px)` : undefined }}>
                 <span className="i3g"><Icon name={ic} size="100%" /></span>
               </div>
             </At>
-            {a > 0.5 ? <At x={x} y={25 + size / 2 + 2.4} style={{ opacity: Math.min(1, (a - 0.5) * 2) }}><span className="i3lab">{name}</span></At> : null}
+            {a > 0.5 ? <At x={x} y={25 + size / 2 + 2.4} style={{ opacity: Math.min(1, (a - 0.5) * 2) * ease(f, 30, 60, 0, 1) }}><span className="i3lab">{name}</span></At> : null}
           </React.Fragment>
         );
       })}
       <At x={50} y={40.5}><span className="lbl" key={cur} style={blurIn(f, cur === 2 ? 20 : STEPS[cur - 3] + 6, 8, 8)}>{STRIP[cur][0]}</span></At>
-      <At x={50} y={51.5}>
+      <At x={50} y={51.5} style={{ opacity: ease(f, 30, 60, 0, 1) }}>
         <span className="cstep">{Array.from({ length: 8 }, (_, k) => <i key={k} className={k === cur - 2 + 0 ? "on" : ""} />)}<em>0{cur - 1} / 08</em></span>
       </At>
       <Grain f={f} opacity={0.12} />
-      <div className="stage" style={{ background: "radial-gradient(circle at 50% 100%, #FBFAF6 0%, #FBFAF6 40%, rgba(251,250,246,0) 70%)", opacity: bloom, transform: `scale(${1 + bloom * 1.5})`, transformOrigin: "50% 100%" }} />
-      <div className="stage" style={{ background: "#FBFAF6", opacity: ease(f, 395, 420, 0, 1) }} />
+      <div className="stage" style={{ background: "radial-gradient(circle at 50% 100%, #FBFAF6 0%, #FBFAF6 40%, rgba(251,250,246,0) 70%)", opacity: bloom, transform: `scale(${1 + bloom * 1.5})`, transformOrigin: "50% 100%", zIndex: 50 }} />
+      <div className="stage" style={{ background: "#FBFAF6", opacity: ease(f, 392, 419, 0, 1, CURVE.breathe), zIndex: 51 }} />
     </Frame>
   );
 };

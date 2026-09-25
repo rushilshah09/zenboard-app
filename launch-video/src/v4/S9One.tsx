@@ -35,6 +35,7 @@ export const S9One: React.FC = () => {
       {f < 360 ? (
         <>
           <PaperStage glow={0.35} />
+          <div className="stage" style={{ background: "#FBFAF6", opacity: 1 - ease(f, 0, 40, 0, 1, CURVE.breathe) }} />
           <div className="stage" style={{ transform: `scale(${pull})` }}>
             {CARDS.map((c, i) => {
               const dx = c.x - 50, dy = c.y - CY;

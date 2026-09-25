@@ -43,7 +43,7 @@ export const ease = (f: number, a: number, b: number, from: number, to: number, 
 
 /** Pop spring: small overshoot (~6%) then a soft land. 0 → 1. */
 export const pop = (f: number, at: number, stiffness = 190, damping = 15) =>
-  spring({ frame: f - at, fps: FPS, config: { stiffness, damping, mass: 0.9 } });
+  spring({ frame: f - at, fps: FPS, config: { stiffness: stiffness * 0.7, damping: damping * 1.18, mass: 1 } });
 
 /** Soft spring: no visible overshoot. 0 → 1. */
 export const soft = (f: number, at: number, stiffness = 120, damping = 26) =>

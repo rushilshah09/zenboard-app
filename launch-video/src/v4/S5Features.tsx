@@ -5,7 +5,7 @@
  */
 import React from "react";
 import { spring, useCurrentFrame } from "remotion";
-import { At, BERRY, CURVE, Face, Frame, Icon, Mark, PAPER, ease, mix, pop, soft } from "./kit";
+import { At, BERRY, CURVE, Face, Frame, Icon, Mark, PAPER, blurIn, blurOut, ease, mix, pop, soft } from "./kit";
 import { IconName } from "./icons.generated";
 
 type Feat = { name: string; icon: IconName; bg: string; fg: string; d: string; m: string; l: string; tone: string };
@@ -20,6 +20,19 @@ export const FEATS: Feat[] = [
   { name: "Focus", icon: "timer", bg: "#E7EAEC", fg: "#46505A", d: "#15181C", m: "#46505A", l: "#BCC3CA", tone: "#1B1E22" },
 ];
 const STEP = 90;
+/** The feature field (gradient + drifting mark lobes); also used by scene 4 to hand off into it. */
+export const FeatBg: React.FC<{ i: number; f: number; lobes?: number }> = ({ i, f, lobes = 1 }) => {
+  const F = FEATS[i];
+  return (
+    <>
+      <div className="stage" style={{ background: `radial-gradient(130% 120% at 100% 100%,${F.l} 0%,${F.m} 38%,${F.d} 100%)` }} />
+      <At x={84 - f / 90} y={45} className="lobes" style={{ opacity: 0.16 * lobes }}><Mark size={46} color="#fff" /></At>
+      <At x={58 + f / 120} y={4} className="lobes" style={{ opacity: 0.16 * lobes }}><Mark size={30} color="#fff" /></At>
+    </>
+  );
+};
+/** Where scene 4's Done pill lands: the centre of the active Tasks pill. */
+export const DONE_TARGET = { x: 17.7, y: 56.25 / 2, scale: 2.2 };
 // stepped hierarchy (storyboard review): active pill is the focal point, each step away smaller and fainter
 const SC = [1.45, 1.08, 1.0, 0.95, 0.92], OP = [1, 0.92, 0.62, 0.38, 0];
 const dialX = (a: number) => 11.5 - 6.2 * a ** 0.85;
@@ -143,6 +156,7 @@ export const S5Features: React.FC = () => {
   for (let k = 1; k < FEATS.length; k++) pos += spring({ frame: f - k * STEP, fps: 60, config: { stiffness: 420, damping: 19, mass: 0.55 } });
   const active = Math.min(FEATS.length - 1, Math.floor((f + 6) / STEP));
   const out = ease(f, 690, 720, 0, 1, CURVE.glide); // hand-off: panel fills the frame for the automation scene
+  const exitAll = 1 - ease(f, 664, 698, 0, 1, CURVE.breathe); // cards and lobes leave before the panel takes the frame
   return (
     <Frame>
       <div className="stage" style={{ background: PAPER }} />
@@ -155,9 +169,10 @@ export const S5Features: React.FC = () => {
           const idx = ((k % 8) + 8) % 8;
           const on = k === active;
           const a = Math.min(4, Math.abs(rel));
-          const enter = pop(f, 4 + Math.abs(j - 2) * 3, 200, 18);
+          const enter = k === 0 ? 1 : pop(f, 10 + Math.abs(j - 2) * 4, 200, 18);
+          const handoff = k === 0 && f < 30 ? blurIn(f, 0, 0, 10) : {};
           return (
-            <At key={j} x={dialX(a)} y={56.25 / 2 + dialY(rel)} style={{ transform: `translate(0,-50%)`, opacity: tbl(OP, a) * Math.min(1, enter * 1.3) }}>
+            <At key={j} x={dialX(a)} y={56.25 / 2 + dialY(rel)} style={mix({ transform: `translate(0,-50%)`, opacity: tbl(OP, a) * Math.min(1, enter * 1.3) }, handoff)}>
               <div className={`fp${on ? " on" : ""}`} style={{ transform: `scale(${tbl(SC, a) * (0.94 + 0.06 * enter)})`, transformOrigin: "0 50%",
                 ...(on ? { background: FEATS[idx].m, borderColor: FEATS[idx].m, boxShadow: `0 .8cqw 2cqw ${FEATS[idx].m}55` } : {}) }}>
                 <span className="pico" style={{ width: "2.5cqw", height: "2.5cqw", background: on ? `color-mix(in srgb, ${FEATS[idx].m} 12%, #fff)` : `color-mix(in srgb, ${FEATS[idx].l} 30%, #fff)`, color: on ? FEATS[idx].tone : FEATS[idx].m }}><Icon name={FEATS[idx].icon} weight="duotone" size="58%" /></span>
@@ -167,23 +182,27 @@ export const S5Features: React.FC = () => {
           );
         })}
       </div>
+      {/* the Done pill from scene 4 dissolves into the Tasks pill */}
+      {f < 24 ? (
+        <At x={DONE_TARGET.x} y={DONE_TARGET.y} style={mix({ transform: `scale(${DONE_TARGET.scale})` }, blurOut(f, 0, 18, 10))}>
+          <span className="btn g on" style={{ fontSize: "1cqw" }}><Icon name="check" weight="bold" size="1em" /> Done</span>
+        </At>
+      ) : null}
       {/* right: field + cards per feature, crossfading on each step */}
       <div className="rpanel" style={{ left: `${34 * (1 - out)}%`, top: `${3 * (1 - out)}%`, right: `${2.2 * (1 - out)}%`, bottom: `${3 * (1 - out)}%`, borderRadius: `${2 * (1 - out)}cqw` }}>
         {FEATS.map((F, i) => {
           const inP = i === 0 ? 1 : soft(f, i * STEP - 2, 150, 24);
           const outP = i === FEATS.length - 1 ? 0 : soft(f, (i + 1) * STEP - 2, 170, 24);
           if (inP < 0.001 || outP > 0.999) return null;
-          const card = i === 0 ? 1 : soft(f, i * STEP + 2, 160, 20);
-          const fl = pop(f, i * STEP + (i === 0 ? 10 : 8), 220, 15);
+          const card = i === 0 ? soft(f, 14, 120, 22) : soft(f, i * STEP + 2, 160, 20);
+          const fl = pop(f, i === 0 ? 30 : i * STEP + 8, 220, 15);
           return (
             <div key={F.name} className="stage" style={{ opacity: inP }}>
-              <div className="stage" style={{ background: `radial-gradient(130% 120% at 100% 100%,${F.l} 0%,${F.m} 38%,${F.d} 100%)` }} />
-              <At x={84 - f / 90} y={45} className="lobes"><Mark size={46} color="#fff" /></At>
-              <At x={58 + f / 120} y={4} className="lobes"><Mark size={30} color="#fff" /></At>
-              <div className="tcard" style={mix({ color: F.tone, ["--tone" as string]: F.tone, ["--light" as string]: F.l, transform: `translateY(${(1 - card) * 5 - outP * 4}cqw) scale(${1 + 0.02 * Math.sin(Math.PI * card)})`, opacity: Math.min(1, card * 1.5) * (1 - outP), filter: `blur(${(1 - Math.min(1, card)) * 8 + outP * 6}px)` })}>
+              <FeatBg i={i} f={f} lobes={exitAll} />
+              <div className="tcard" style={mix({ color: F.tone, ["--tone" as string]: F.tone, ["--light" as string]: F.l, transform: `translateY(${(1 - card) * 5 - outP * 4}cqw) scale(${1 + 0.02 * Math.sin(Math.PI * card)})`, opacity: Math.min(1, card * 1.5) * (1 - outP) * exitAll, filter: `blur(${(1 - Math.min(1, card)) * 8 + outP * 6}px)` })}>
                 <FeatUI i={i} />
               </div>
-              <div className="fcard" style={{ ["--tone" as string]: F.tone, transform: `scale(${0.8 + 0.2 * fl}) translateY(${(1 - fl) * 1.5}cqw)`, opacity: Math.min(1, fl * 1.5) * (1 - outP), transformOrigin: "80% 20%" }}>
+              <div className="fcard" style={{ ["--tone" as string]: F.tone, transform: `scale(${0.8 + 0.2 * fl}) translateY(${(1 - fl) * 1.5}cqw)`, opacity: Math.min(1, fl * 1.5) * (1 - outP) * exitAll, transformOrigin: "80% 20%" }}>
                 <Float i={i} />
               </div>
             </div>

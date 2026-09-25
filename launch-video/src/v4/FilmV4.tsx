@@ -23,8 +23,8 @@ const Flashes: React.FC = () => {
   const f = useCurrentFrame();
   return (
     <>
-      <Flash f={f} at={s(22)} len={10} />
-      <Flash f={f} at={s(64)} len={10} />
+      <Flash f={f} at={s(23.5)} len={10} />
+      <Flash f={f} at={s(65.5)} len={10} />
     </>
   );
 };
@@ -50,6 +50,6 @@ export const FilmV4: React.FC<{ score?: boolean }> = () => (
         <Audio src={staticFile(`audio/vo4/${id}.wav`)} volume={1.15} />
       </Sequence>
     ))}
-    <Audio src={staticFile("audio/film-score.wav")} volume={(f) => 0.3 * duck(f) * interpolate(f, [0, 30, s(69), s(72)], [0, 1, 1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })} />
+    <Audio src={staticFile("audio/film-score.wav")} volume={(f) => 0.3 * duck(f) * interpolate(f, [0, 30, s(70.5), s(73.5)], [0, 1, 1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })} />
   </AbsoluteFill>
 );

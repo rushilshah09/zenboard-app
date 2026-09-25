@@ -1,7 +1,8 @@
 /**
- * Scene 6 · Zenboard does the work (0:40–0:46). The last feature panel collapses into the Zenboard badge,
- * "Effortless automation" with real pieces floating around (6.1), a 12× zoom-through into Create (6.2),
- * and the automation running by itself (6.3). Ref: Google Workspace "Effortless automation".
+ * Scene 6 · Zenboard does the work (0:40–0:46). One continuous camera: the Focus panel collapses into the
+ * Zenboard badge, "Effortless automation" builds (6.1), the camera flies into the real Create button
+ * (6.2, a true zoom, not a second copy), and pulls back out while the same prompt and steps cards glide
+ * into the 6.3 layout and the automation runs.
  */
 import React from "react";
 import { useCurrentFrame } from "remotion";
@@ -37,43 +38,65 @@ const Steps: React.FC<{ state?: number; spin?: number }> = ({ state, spin = 0 })
 );
 
 const TEXT = "When an invoice is 7 days overdue, send a friendly reminder and move it to Today";
-const Prompt: React.FC<{ typed: number; pressed?: boolean }> = ({ typed, pressed }) => (
-  <div className="acard prompt">
+/** Prompt card with the Create button at a fixed place, so the camera can fly into it exactly. */
+const BTN = { x: 9.3, y: 2.5 }; // button centre relative to the card centre (card units)
+const Prompt: React.FC<{ typed: number; press: number; gloss: number; ring: number }> = ({ typed, press, gloss, ring }) => (
+  <div className="acard prompt" style={{ position: "relative", height: "9.2cqw", boxSizing: "border-box" }}>
     <small>Describe a task for Zenboard</small>
     <p>{TEXT.slice(0, Math.round(TEXT.length * typed))}<span className="caret" /></p>
-    <span className={`cbtn${pressed ? " pressed" : ""}`}><Icon name="sparkle" size="1em" /> Create</span>
+    <span className="cbtn" style={{
+      position: "absolute", right: "1.2cqw", bottom: "1cqw", width: "7cqw", height: "2.2cqw", padding: 0, justifyContent: "center", boxSizing: "border-box",
+      transform: `scale(${1 - 0.05 * press})`,
+      background: "radial-gradient(120% 140% at 30% 0%,#E0468F 0%,#C41C72 45%,#A3155E 100%)",
+      boxShadow: `inset 0 ${0.12 * gloss}cqw ${0.1 * gloss}cqw rgba(255,255,255,${0.45 * gloss}),inset 0 -${0.16 * gloss}cqw ${0.28 * gloss}cqw rgba(74,10,44,${0.35 * gloss}),0 0 0 ${0.28 + ring * 0.9}cqw rgba(196,28,114,${0.14 * (1 - ring)}),0 .5cqw 1.2cqw rgba(196,28,114,.3)`,
+    }}>
+      <Icon name="sparkle" size="1em" /> Create
+    </span>
   </div>
 );
 
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+
 export const S6Automation: React.FC = () => {
   const f = useCurrentFrame();
-  // hand-off: the Focus panel (full frame) collapses into the badge
   const collapse = ease(f, 0, 34, 0, 1, CURVE.glide);
   const F = FEATS[7];
   const badge = pop(f, 22, 190, 14);
-  // 6.2 zoom-through (120–215)
-  const zin = ease(f, 118, 150, 0, 1, CURVE.depart);
-  const zout = ease(f, 196, 222, 0, 1, CURVE.settle);
-  const macro = ease(f, 142, 156, 0, 1) * (1 - ease(f, 196, 208, 0, 1));
-  const press = f >= 172 && f < 184;
-  const ring = ease(f, 176, 200, 0, 1, CURVE.settle);
-  // 6.3 run
-  const run = f >= 210;
-  const state = f < 232 ? 0 : f < 262 ? 1 : f < 292 ? 2 : 2 + ease(f, 292, 300, 0, 1) > 2.99 ? 3 : 2;
-  const sceneScale = 1 + 11 * zin; // zoom into Create
+
+  // shared cards: 6.1 place → 6.3 place (e = the pull-back progress)
+  const e = ease(f, 200, 252, 0, 1, CURVE.glide);
+  const G = { x: lerp(21, 25, e), y: lerp(44, 22, e), s: lerp(0.82, 1.15, e) };
+  const Sx = lerp(21, 66, e), Sy = lerp(12.5, 25, e), Ss = lerp(0.82, 1.25, e);
+  const B = { x: G.x + BTN.x * G.s, y: G.y + BTN.y * G.s };
+
+  // camera: fly into the button, hold on the macro, pull back
+  const zin = ease(f, 126, 164, 0, 1, CURVE.glide);
+  const z = f < 200 ? lerp(1, 6, zin) : lerp(6, 1, e);
+  const k = f < 200 ? zin : 1 - e; // how much the camera is locked on the button
+  const cx = lerp(50, B.x, k), cy = lerp(CY, B.y, k);
+  const zNext = f < 200 ? lerp(1, 6, ease(f + 1, 126, 164, 0, 1, CURVE.glide)) : lerp(6, 1, ease(f + 1, 200, 252, 0, 1, CURVE.glide));
+  const speed = Math.abs(zNext - z) / z; // relative zoom speed per frame → motion blur
+  const mblur = Math.min(10, speed * 90);
+
+  const press = f >= 172 && f < 186 ? soft(f, 172, 400, 30) * (1 - soft(f, 180, 400, 30)) : 0;
+  const ring = ease(f, 178, 204, 0, 1, CURVE.settle);
+  const gloss = ease(f, 140, 166, 0, 1);
+  const run = f >= 214;
+  const state = f < 262 ? 0 : f < 292 ? 1 : f < 312 ? 2 : 3;
+  const intro = 1 - ease(f, 150, 176, 0, 1); // 6.1-only pieces fade once we are inside the button
+  const fly = ease(f, 334, 360, 0, 1, CURVE.glide);
+
   return (
     <Frame>
       <PaperStage glow={0} />
       <div className="stage" style={{ background: "radial-gradient(46% 58% at 50% 50%,rgba(234,185,203,.55),rgba(250,237,244,.35) 45%,transparent 75%)" }} />
-      {/* 6.1 composition */}
-      {!run ? (
-        <div className="stage" style={{ transform: `scale(${sceneScale})`, transformOrigin: "29.3% 84.5%", filter: zin > 0.05 && zin < 0.98 ? `blur(${zin * 6}px)` : undefined, opacity: 1 - macro }}>
-          <At x={21} y={12.5} style={mix(blurIn(f, 40, 30), { transform: "scale(.82)" })}><Steps /></At>
+      <div className="stage" style={{ transformOrigin: `${cx}cqw ${cy}cqw`, transform: `translate(${50 - cx}cqw, ${CY - cy}cqw) scale(${z})`, filter: mblur > 0.3 ? `blur(${mblur}px)` : undefined }}>
+        {/* 6.1-only pieces */}
+        <div className="stage" style={{ opacity: intro }}>
           <At x={79} y={12.5} style={mix(blurIn(f, 48, 30), { transform: "scale(.82)" })}>
             <div className="acard doc"><div className="dl" /><div className="dl" /><div className="dl s" /><div className="dl" /><div className="dl s" /></div>
             <div className="chipx"><Icon name="file-text" size="1.1cqw" /> Add to a doc</div>
           </At>
-          <At x={21} y={44} style={mix(blurIn(f, 56, 30), { transform: "scale(.82)" })}><Prompt typed={ease(f, 60, 130, 0.35, 1, CURVE.breathe)} /></At>
           <At x={79} y={44} style={mix(blurIn(f, 64, 30), { transform: "scale(.82)" })}>
             <div className="acard chart"><small>Q3 revenue</small><div className="semi" /><div className="pct"><b>$18.4k</b><span>paid</span><b>$4.3k</b><span>open</span></div></div>
           </At>
@@ -83,36 +106,31 @@ export const S6Automation: React.FC = () => {
           <At x={50} y={27.3}><Words f={f} at={44} text="Effortless automation" className="head" stagger={6} style={{ fontSize: "5.4cqw", letterSpacing: "-.045em" }} /></At>
           <At x={50} y={34.6}><Words f={f} at={66} text="Describe it once. Zenboard does the work." style={{ fontSize: "2.1cqw", color: "#5E5A52", fontWeight: 400 }} /></At>
         </div>
+        {/* shared: the steps card and the prompt card live through the whole scene */}
+        <At x={Sx} y={Sy} style={mix(blurIn(f, 40, 30), { transform: `scale(${Ss})` }, run ? blurOut(f, 322, 16) : {})}><Steps state={run ? state : undefined} spin={f * 9} /></At>
+        <At x={G.x} y={G.y} style={mix(blurIn(f, 56, 30), { transform: `scale(${G.s})` }, run ? blurOut(f, 318, 16) : {})}>
+          <Prompt typed={ease(f, 60, 130, 0.35, 1, CURVE.breathe)} press={press} gloss={gloss * (1 - e)} ring={ring} />
+        </At>
+      </div>
+      {/* the cursor lives in screen space while we are inside the button */}
+      {f > 146 && f < 212 ? (
+        <div className="cursor zc2" style={{
+          left: `${lerp(86, 57, ease(f, 146, 172, 0, 1, CURVE.glide))}%`, top: `${lerp(92, 60, ease(f, 146, 172, 0, 1, CURVE.glide))}%`,
+          transform: `rotate(-30deg) scale(${1 - 0.1 * press})`, opacity: ease(f, 146, 156, 0, 1) * (1 - ease(f, 196, 210, 0, 1)),
+        }} />
       ) : null}
-      {/* 6.2 macro close-up on Create, continuing 6.1 */}
-      {macro > 0 ? (
-        <div className="stage" style={{ opacity: macro, transform: `scale(${1.25 - 0.25 * ease(f, 142, 176, 0, 1) + 3 * zout})`, filter: zout > 0.02 ? `blur(${zout * 8}px)` : undefined }}>
-          <div className="stage paper"><div className="dots" style={{ backgroundSize: "4cqw 4cqw" }} /></div>
-          <div className="stage" style={{ background: "radial-gradient(60% 70% at 40% 45%,rgba(234,185,203,.5),transparent 75%)" }} />
-          <div className="zcard2"><p>due, send a friendly<br />reminder and move it to Today<span className="caret big" /></p></div>
-          <At x={62} y={32} style={{ transform: `scale(${press ? 0.96 : 1})` }}>
-            <div className="gbtn berry" style={{ boxShadow: `inset 0 .6cqw .5cqw rgba(255,255,255,.45),inset 0 -.8cqw 1.4cqw rgba(74,10,44,.35),0 0 0 ${1.4 + ring * 4}cqw rgba(196,28,114,${0.14 * (1 - ring)}),0 2.4cqw 5cqw rgba(196,28,114,.35)` }}>
-              <span className="gtxt"><Icon name="sparkle" size="1em" /> Create</span>
-            </div>
-          </At>
-          <div className="cursor zc2" style={{ left: `${73 + (1 - ease(f, 150, 172, 0, 1, CURVE.glide)) * 14}%`, top: `${66 + (1 - ease(f, 150, 172, 0, 1, CURVE.glide)) * 18}%`, transform: `rotate(-30deg) scale(${press ? 0.9 : 1})` }} />
-        </div>
-      ) : null}
-      {/* 6.3 Zenboard runs it */}
+      {/* 6.3: Zenboard runs it */}
       {run ? (
-        <div className="stage" style={{ opacity: ease(f, 204, 222, 0, 1), transform: `scale(${1.08 - 0.08 * soft(f, 204, 120, 24)})` }}>
-          <At x={25} y={22} style={{ transform: "scale(1.15)", ...blurOut(f, 318, 16) }}><Prompt typed={1} pressed /></At>
-          <At x={66} y={25} style={mix({ transform: "scale(1.25)" }, blurOut(f, 322, 16))}><Steps state={state} spin={f * 9} /></At>
+        <>
           <At x={40} y={45} style={mix(blurIn(f, 262, 24), blurOut(f, 326, 16))}>
             <div className="acard mail"><small>Draft · to Fernwood Hotels</small><b>INV-019 is a week overdue</b><p>Hi Marco, a friendly nudge on INV-019 ($1,500). Happy to resend it if that helps.</p></div>
           </At>
-          <At x={8} y={50} style={{ transform: `scale(${pop(f, 214, 200, 15)})`, ...blurOut(f, 320, 14) }}><div className="flogo" style={{ width: "4.2cqw", height: "4.2cqw" }}><Mark size={2.1} color="#fff" /></div></At>
-          {/* toast: pops, then flies to centre and becomes the first pill of the wall */}
-          <At x={84 - 34 * ease(f, 330, 360, 0, 1, CURVE.glide)} y={49 - 21 * ease(f, 330, 360, 0, 1, CURVE.glide)} style={{ transform: `scale(${pop(f, 298, 210, 14) * (1 + 0.5 * ease(f, 330, 360, 0, 1, CURVE.glide))})` }}>
+          <At x={8} y={50} style={{ transform: `scale(${0.9 + 0.1 * pop(f, 220, 200, 15)})`, opacity: soft(f, 220), ...blurOut(f, 320, 14) }}><div className="flogo" style={{ width: "4.2cqw", height: "4.2cqw" }}><Mark size={2.1} color="#fff" /></div></At>
+          <At x={lerp(84, 50, fly)} y={lerp(49, 28.1, fly)} style={{ opacity: soft(f, 312, 160, 22), transform: `scale(${(0.92 + 0.08 * pop(f, 312, 210, 16)) * lerp(1, 1.5, fly)})` }}>
             <div className="toast"><Icon name="check-circle" size="1.2cqw" color="#6FCF9D" /> Reminder sent to Fernwood Hotels</div>
           </At>
-          <At x={50} y={52.5}><Words f={f} at={236} exitAt={320} text="Zenboard does the work." style={{ fontSize: "2.3cqw" }} /></At>
-        </div>
+          <At x={50} y={52.5}><Words f={f} at={240} exitAt={320} text="Zenboard does the work." style={{ fontSize: "2.3cqw" }} /></At>
+        </>
       ) : null}
       {/* the Focus panel from scene 5 collapsing into the badge */}
       {collapse < 1 ? (
