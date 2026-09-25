@@ -94,4 +94,13 @@ describe('the mark means your one thing today', () => {
     expect(read('components/memory/memory-row.tsx')).toMatch(/icon=\{Star\}/);
     expect(read('components/documents/documents-view.tsx')).not.toMatch(/icon=\{Highlight\}/);
   });
+
+  it('names the action "highlight" wherever a person can take it — never "star"', () => {
+    // design-plans/home-highlight-empty-state-copy.md (improve-ui, 2026-09-25): Home's empty state said "Star a
+    // task" while every control that does it — the row toggle, its menu, the panel's own button — says
+    // highlight. One name per concept (CLAUDE.md).
+    const home = read('components/today/today-view.tsx');
+    expect(home).not.toMatch(/Star a task/);
+    expect(home).toMatch(/Highlight a task to make it today’s focus/);
+  });
 });

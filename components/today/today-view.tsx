@@ -11,7 +11,7 @@
 
 import { useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Plus, Moon, Sunrise, Check, Play, ChevronRight, X, Star, Sun, Flame, type IconType, Highlight } from "@/components/ds/icons";
+import { Plus, Moon, Sunrise, Check, Play, ChevronRight, X, Sun, Flame, type IconType, Highlight } from "@/components/ds/icons";
 import { Button, Icon, IconButton, Mark, EmptyState, TooltipProvider, addLine, toastReverted } from '@/components/ds/ui';
 import { cn } from '@/lib/cn';
 import { Panel, PanelHeader, PanelBody } from '@/components/ui/panels';
@@ -313,7 +313,7 @@ export function TodayView({
                   size="inline"
                   illustration={<Icon icon={Highlight} size={20} />}
                   title="No highlight yet"
-                  description="Star a task to make it today’s focus — it surfaces here to tackle first."
+                  description="Highlight a task to make it today’s focus — it surfaces here to tackle first."
                   primary={<Button variant="secondary" size="sm" onClick={() => router.push('/tasks')}>Browse tasks</Button>}
                 />
               ) : (() => {
