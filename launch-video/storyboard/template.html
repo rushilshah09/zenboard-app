@@ -122,9 +122,9 @@ dd{margin:0;color:var(--ink)}
     <div>
       <div class="lk">{{LOCKUP}}</div>
       <h1>Launch film storyboard, v4</h1>
-      <p>Nine scenes, 30 keyframes. It follows the review directions D1–D7: the juggling opener, the Flike-style resolve and funnel, the Berry product field, the split-screen modules, the plain pill wall, the 3D icon carousel and a calm ending.</p>
+      <p>Nine scenes, 31 keyframes. It follows the review directions D1–D7: the juggling opener, the Flike-style resolve and funnel, the Berry product field, the split-screen modules, the plain pill wall, the 3D icon carousel and a calm ending.</p>
     </div>
-    <div class="meta"><span>1:10</span><span>120 BPM</span><span>16:9 · 1080p60</span><span>Geist</span></div>
+    <div class="meta"><span>1:12</span><span>120 BPM</span><span>16:9 · 1080p60</span><span>Geist</span></div>
   </div>
   <div class="how"><b>How to review:</b> reply with frame numbers, e.g. <code>approve 1.1–2.3</code>, <code>change 4.1: darker field</code>. These are layout keyframes. Final frames get real rendering, 3D lighting, depth of field and grain.</div>
   <ul class="assume">
@@ -463,3 +463,14 @@ dd{margin:0;color:var(--ink)}
 .tcard .meta{justify-content:flex-start}
 </style>
 <style>.fmeta{display:flex;align-items:center;gap:.5cqw;font-size:.85cqw;opacity:.8}.fmeta .fface{margin:0}</style>
+<style>
+/* 9.5 end screen: black, graphite app icon with the mark (ref: terminal icon) */
+.bicon{width:26cqw;height:26cqw;border-radius:27%;position:relative;display:flex;align-items:flex-end;justify-content:center;padding-bottom:3.4cqw;
+  background:radial-gradient(120% 100% at 30% 10%,#46464B 0%,#2C2C30 45%,#1D1D20 100%);
+  box-shadow:inset 0 .25cqw .2cqw rgba(255,255,255,.22),inset 0 0 0 .25cqw rgba(255,255,255,.08),inset 0 -.6cqw 1cqw rgba(0,0,0,.55),0 0 0 .18cqw #0B0B0C,0 2.4cqw 4cqw rgba(0,0,0,.8)}
+.bicon::before{content:"";position:absolute;inset:.4cqw;border-radius:26%;border:.12cqw solid rgba(255,255,255,.1);pointer-events:none}
+.bwell{width:20cqw;height:9.6cqw;border-radius:4.8cqw;display:grid;place-items:center;
+  background:linear-gradient(180deg,#141416,#1E1E21);box-shadow:inset 0 .5cqw .9cqw rgba(0,0,0,.75),inset 0 -.12cqw .1cqw rgba(255,255,255,.1),0 .1cqw 0 rgba(255,255,255,.06)}
+.bwell svg{filter:drop-shadow(0 .12cqw 0 rgba(0,0,0,.8)) drop-shadow(0 -.06cqw 0 rgba(255,255,255,.18))}
+</style>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="greyg" x1="0" y1="0" x2="0" y2="32" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#9A9AA0"/><stop offset="1" stop-color="#5E5E64"/></linearGradient></defs></svg>

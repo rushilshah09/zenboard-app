@@ -720,12 +720,21 @@ def f_logo_anim():
         s += at(x, y, f'<span class="anote">{t}</span>')
     return s
 
+
+def f_end_icon():
+    """Last screen: black, white/graphite only. The Zenboard mark as a chunky graphite app icon
+    (ref: terminal icon), engraved in an inset pill like a keycap."""
+    s = '<div class="stage" style="background:#000"></div>'
+    s += at(50, 28.1, f'<div class="bicon"><div class="bwell">{mark(6.8, "url(#greyg)")}</div></div>')
+    return s
+
 def f_8_2(): return blueprint(1.0)
 def f_8_3(): return blueprint(.55, tagline=True)
 
 CAMERA = {
  "9.3": "Locked off on the lockup; a 1% push-in across the build.",
- "9.4": "Dead still. Nothing moves in the last 2 seconds.",
+ "9.4": "Dead still for the tagline.",
+ "9.5": "Locked off, centred. Fade up from black, a 2% scale settle, a 1.5s hold, then fade to black.",
  "6.2": "Zoom-through from 6.1: a 12× push into the Create button, motion blur on the way in, then a locked macro with shallow depth of field. On the press the camera pulls back out into 6.3 (reverse zoom).",
  "6.3": "Rack focus from the prompt card to the steps card as it runs; slight push-in on each tick.",
  "2.4": "Locked off; the only motion is the mark's spin.",
@@ -807,7 +816,7 @@ SCENES = [
           ("8.2", "0:54", f_7_2, "The row steps sideways with a spring snap, holds, and steps again: Tasks → Projects → Money → Habits.",
             "Habits", "Clack per step, on the beat")],
   out="The glow blooms to Paper and the tiles scatter outward into a ring of cards."),
- dict(n=9, name="The one", t="0:58–1:10", purpose="A calm resolution: everything around one workspace, then the logo.",
+ dict(n=9, name="The one", t="0:58–1:12", purpose="A calm resolution: everything around one workspace, then the logo.",
   frames=[("9.1", "0:58", f_8_1, "A ring of designed UI cards built from the real app's content in the premium card language: calendar day, today's highlight, outstanding $4,300 with client bars, Meridian Studio with Sarah's face, paid and unbilled stat pills, a 12-day habit streak, inbox, the Acme proposal with Mara's approval and a focus timer. They sit around a centred headline and drift slowly at three depths.",
             "“Work, life and business. One workspace.”", "Music opens up"),
           ("9.2", "1:04", f_8_2, "Light flash into the outro. On the Berry field (dark to light, fine grain) a blueprint draws on in hairlines and dotted lines: the construction of the Zenboard mark (32-unit box, four lobe circles, diagonals, star angle), a Geist type specimen, outline component cards, grid blocks and mono notes. The lockup lands in the centre, crisp white, framed by rails with corner handles.",
@@ -815,7 +824,9 @@ SCENES = [
           ("9.3", "1:05", f_logo_anim, "End logo animation, shown as onion-skin keyframes. First the four lobes of the mark fly in from the corners on soft curves and fuse, with a spring overshoot. Then the star cut-out opens and turns 90°. Finally the wordmark rises letter by letter, staggered 2 frames apart, and the lockup settles with a soft white glow.",
             "Zenboard", "Four soft taps as the lobes land, a glassy swirl on the turn, the chime on the settle"),
           ("9.4", "1:07", f_8_3, "The blueprint dims to about half so the lockup owns the frame. The tagline rises word by word, then Available today. Nothing moves in the last two seconds.",
-            "The single platform to manage work, life, and business. · Available today", "The chime resolves, held chord")],
+            "The single platform to manage work, life, and business. · Available today", "The chime resolves, held chord")
+          ,("9.5", "1:09", f_end_icon, "Last screen. Hard cut to pure black, black and white only. The Zenboard mark returns as a chunky graphite app icon, in the style of the terminal icon reference. It is a soft squircle with a bevelled edge catching a thin highlight, lit from the top left, with the mark engraved in a recessed pill like a keycap. It fades up from black with a slow 2% scale settle, holds, and fades out.",
+            "—", "Silence, then one low soft tap as the icon settles")],
   out=None),
 ]
 

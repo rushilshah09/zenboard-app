@@ -146,7 +146,12 @@ The product UI in the film should look like the green "Project Status" reference
   It shows a prompt-card corner, a glossy glass pill with an iridescent edge, the Zenboard mark in a frosted
   knob, and grain. The cursor press squashes it, a glow pulses and the knob slides; reverse zoom out into 6.3.
 
-### D16+ — (more directions to come)
+### D16 — End screen (ref: graphite terminal app icon)
+- Final frame 9.5, black and white only: pure black stage, the Zenboard mark as a chunky graphite app icon
+  (bevelled squircle, top-left light, mark engraved in a recessed keycap pill). Fade up, 2% settle, hold, fade out.
+  Film is now 1:12.
+
+### D17+ — (more directions to come)
 
 ## Brand note
 The Zenboard brand guidelines (Paper / Ink / single Berry accent, eight flat field colours, no gradients)
