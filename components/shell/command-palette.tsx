@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusReturn } from '@/lib/use-focus-return';
 import { usePathname, useRouter } from 'next/navigation';
-import { Sun, House, Flame, Calendar, Target, Kanban, Users, Landmark, BookOpen, Forms, Timer, Moon, Repeat, Plus, Search, SquareCheck, SquarePen, FileText, ListChecks, Inbox, Receipt, Brain, type IconType, Video, CalendarCheck } from '@/components/ds/icons';
+import { Sun, House, Flame, Calendar, Target, Kanban, Users, MessageCircle, Landmark, BookOpen, Forms, Timer, Moon, Repeat, Plus, Search, SquareCheck, SquarePen, FileText, ListChecks, Inbox, Receipt, Brain, type IconType, Video, CalendarCheck } from '@/components/ds/icons';
 import { Icon } from "@/components/ds/ui";
 import { Kbd } from '@/components/ds/ui';
 import { createClient } from '@/lib/supabase/client';
@@ -85,6 +85,7 @@ function staticItems(): Item[] {
     // the module should not mean re-deriving this.
     { id: 'n-projects', group: 'Navigate', label: 'Go to Projects', icon: Kanban, href: '/projects', kbd: 'G P' },
     { id: 'n-clients', group: 'Navigate', label: 'Go to Clients', icon: Users, href: '/clients', kbd: 'G C' },
+    { id: 'n-messages', group: 'Navigate', label: 'Go to Messages', icon: MessageCircle, href: '/messages' },
     { id: 'n-forms', group: 'Navigate', label: 'Go to Forms', icon: Forms, href: '/forms' },
     { id: 'n-documents', group: 'Navigate', label: 'Go to Docs', icon: BookOpen, href: '/documents', kbd: 'G D' },
     { id: 'n-money', group: 'Navigate', label: 'Go to Finance', icon: Landmark, href: '/money', kbd: 'G M' },

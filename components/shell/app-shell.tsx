@@ -32,7 +32,7 @@ import { useNarrow } from '@/lib/use-narrow';
 import * as RDlg from '@radix-ui/react-dialog';
 import { RAIL_MOTION, railFade } from '@/components/shell/rail-motion';
 import { usePathname, useRouter } from 'next/navigation';
-import { Calendar, Target, Folder, Users, Landmark, Scroll, Forms, Video, Search, ChevronDown, ChevronRight, Plus, Settings, LogOut, Keyboard, SquarePen, House, Flame, PanelLeft, List, Power, Timer, UnfoldHorizontal, FoldHorizontal, MousePointerClick, Circle, type IconType } from "@/components/ds/icons";
+import { Calendar, Target, Folder, Users, MessageCircle, Landmark, Scroll, Forms, Video, Search, ChevronDown, ChevronRight, Plus, Settings, LogOut, Keyboard, SquarePen, House, Flame, PanelLeft, List, Power, Timer, UnfoldHorizontal, FoldHorizontal, MousePointerClick, Circle, type IconType } from "@/components/ds/icons";
 import { Icon, Logo, Button, IconButton, Tooltip, Toaster, CONTENT_PANE_SURFACE } from "@/components/ds/ui";
 import { FocusEdge } from '@/components/shell/focus-edge';
 import { BootSplash } from '@/components/shell/boot-splash';
@@ -76,6 +76,9 @@ const MY_DAY: NavDef[] = [
 const WORK: NavDef[] = [
   { id: 'projects', label: 'Projects', icon: Folder, href: '/projects' },
   { id: 'clients', label: 'Clients', icon: Users, href: '/clients' },
+  // Beside Clients because that is who it is WITH: a conversation per project, shared with the
+  // client through its portal (CHAT_PLAN.md).
+  { id: 'messages', label: 'Messages', icon: MessageCircle, href: '/messages' },
   { id: 'forms', label: 'Forms', icon: Forms, href: '/forms' },
   // Content sits between the work you do FOR people and the knowledge you keep:
   // it is the studio's own output, and PRODUCT_THINKING §9 is explicit that an

@@ -3,12 +3,28 @@
 // (migrated off the retired zen layer) + the doc sections render. 404s in prod.
 import { notFound } from 'next/navigation';
 import { PortalDocument } from '@/components/portal/portal-document';
+import type { ChannelView } from '@/lib/actions/chat';
 import type { PortalView } from '@/lib/portal';
 import type { PortalRequestStatus } from '@/lib/request-status';
 
 const iso = (n: number) => new Date(Date.now() - n * 86400000).toISOString();
 
+// The client's side of the same conversation the Messages harness shows: read up to before the
+// studio's last reply, so the "New" line and the nav badge both have something to mark.
+const ago = (min: number) => new Date(Date.now() - min * 60_000).toISOString();
+const DEMO_CHAT: ChannelView = {
+  names: { team: 'Meridian Studio', client: 'Priya Nair' },
+  lastReadAt: ago(120),
+  messages: [
+    { id: 'x1', projectId: 'p', author: 'client', authorName: 'Priya Nair', body: 'Quick one — is the launch still on for the 30th?', createdAt: ago(180), editedAt: null, deleted: false },
+    { id: 'x2', projectId: 'p', author: 'team', authorName: 'Meridian Studio', body: 'Yes, still the 30th. Final files land on the 27th so you have a buffer.', createdAt: ago(90), editedAt: null, deleted: false },
+    { id: 'x3', projectId: 'p', author: 'team', authorName: 'Meridian Studio', body: 'I’ll share the press kit in Documents by Friday.', createdAt: ago(89), editedAt: null, deleted: false },
+  ],
+};
+
 const VIEW: PortalView = {
+  // Two unread, so the Messages nav badge is exercised by the harness.
+  chat: { unread: 2 },
   studio: 'Meridian Studio',
   projectName: 'Brand identity',
   status: 'active',
@@ -121,7 +137,7 @@ export default function PortalPreviewPage() {
       {/* No `preview` here: the harness shows the buttons in their real enabled
           state (they're inert without a token). "Preview as client" still passes
           `preview` to disable actions for the owner. */}
-      <PortalDocument view={VIEW} demoStatuses={DEMO_STATUSES} />
+      <PortalDocument view={VIEW} demoStatuses={DEMO_STATUSES} demoChat={DEMO_CHAT} />
     </div>
   );
 }

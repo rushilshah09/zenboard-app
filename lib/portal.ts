@@ -95,6 +95,12 @@ export type PortalView = {
   invoices: PortalInvoice[] | null;
   approvals: PortalApproval[] | null;
   forms: PortalForm[] | null;
+  /**
+   * The project's conversation (0043, CHAT_PLAN.md). `null` until the migration is applied, so the
+   * Messages section never appears half-working; otherwise how many of the team's messages the
+   * client has not read yet, for the nav badge.
+   */
+  chat: { unread: number } | null;
 };
 
 type ProjectRow = {
@@ -209,8 +215,29 @@ async function loadAcceptances(db: DB, pageIds: string[]): Promise<Map<string, A
 // Fetch the safe raw rows for a project and build the gated projection. Used by
 // both the public (service-role) and preview (owner RLS) entry points with the
 // SAME client interface, guaranteeing identical output.
+/**
+ * The client's unread count, in ONE round trip: where they have read to, and the team's recent
+ * messages, fetched side by side and compared here. A table that is not there yet (0043 unapplied)
+ * resolves to `null` — no Messages section — rather than an error.
+ */
+async function loadChatSummary(db: DB, projectId: string): Promise<{ unread: number } | null> {
+  try {
+    const [read, recent] = await Promise.all([
+      db.from('project_message_reads').select('last_read_at').eq('project_id', projectId).eq('reader', 'client').maybeSingle(),
+      db.from('project_messages').select('created_at').eq('project_id', projectId).eq('author', 'team')
+        .is('deleted_at', null).order('created_at', { ascending: false }).limit(100),
+    ]);
+    if (read.error || recent.error) return null;
+    const at = (read.data as { last_read_at: string } | null)?.last_read_at ?? null;
+    const unread = ((recent.data as { created_at: string }[]) ?? []).filter((r) => at === null || r.created_at > at).length;
+    return { unread };
+  } catch {
+    return null;
+  }
+}
+
 async function build(db: DB, project: ProjectRow): Promise<PortalView> {
-  const [spaceRes, tasksRes, docsRes, invoices, approvalsAll, formsAll, streamRes, fileRes, updateRes] = await Promise.all([
+  const [spaceRes, tasksRes, docsRes, invoices, approvalsAll, formsAll, streamRes, fileRes, updateRes, chat] = await Promise.all([
     db.from('spaces').select('name').eq('id', project.space_id).maybeSingle(),
     // titles + flags ONLY — never notes/estimate/elapsed/$.
     db.from('tasks').select('id, title, done, completed_at, client_visible, parent_task_id, section_id')
@@ -244,6 +271,8 @@ async function build(db: DB, project: ProjectRow): Promise<PortalView> {
           .eq('project_id', project.id).eq('type', CLIENT_UPDATE)
           .order('created_at', { ascending: false }).limit(20)
       : Promise.resolve({ data: [] as unknown[], error: null }),
+    // The conversation (0043): one parallel branch, one round trip.
+    loadChatSummary(db, project.id),
   ]);
 
   const studio = (spaceRes.data as { name: string } | null)?.name?.trim() || 'Studio';
@@ -386,6 +415,7 @@ async function build(db: DB, project: ProjectRow): Promise<PortalView> {
     // Empty → null so the portal simply omits the section when there's nothing to review.
     approvals: approvalsAll.length ? approvalsAll : null,
     forms: formsAll.length ? formsAll : null,
+    chat,
   };
 }
 

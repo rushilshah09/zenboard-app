@@ -356,6 +356,19 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['request_messages']['Insert']>;
         Relationships: [];
       };
+      // 0043 — a Slack-style channel per project (CHAT_PLAN.md). Gated by `chatSupported()`.
+      project_messages: {
+        Row: { id: string; project_id: string; author: 'team' | 'client'; author_name: string | null; body: string; created_at: string; edited_at: string | null; deleted_at: string | null };
+        Insert: { id?: string; project_id: string; author: 'team' | 'client'; author_name?: string | null; body: string; created_at?: string; edited_at?: string | null; deleted_at?: string | null };
+        Update: Partial<Database['public']['Tables']['project_messages']['Insert']>;
+        Relationships: [];
+      };
+      project_message_reads: {
+        Row: { project_id: string; reader: 'team' | 'client'; last_read_at: string };
+        Insert: { project_id: string; reader: 'team' | 'client'; last_read_at?: string };
+        Update: Partial<Database['public']['Tables']['project_message_reads']['Insert']>;
+        Relationships: [];
+      };
       approvals: {
         Row: { id: string; project_id: string; page_id: string; title: string | null; status: 'awaiting' | 'approved' | 'changes_requested'; note: string | null; decided_at: string | null; created_at: string; updated_at: string };
         Insert: { id?: string; project_id: string; page_id: string; title?: string | null; status?: 'awaiting' | 'approved' | 'changes_requested'; note?: string | null; decided_at?: string | null; created_at?: string };

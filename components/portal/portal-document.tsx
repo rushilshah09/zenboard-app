@@ -18,7 +18,7 @@
 import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import {
   CheckCircle, Circle, FileText, Files, Send, Sparkles,
-  LayoutGrid, Inbox, Receipt, List, ArrowRight, SquarePen, Megaphone,
+  LayoutGrid, Inbox, Receipt, List, ArrowRight, SquarePen, Megaphone, MessageCircle,
 } from '@/components/ds/icons';
 import { Icon, Badge, Button, button, EmptyLine, type BadgeStatus, CARD_CLASS } from '@/components/ds/ui';
 import type { IconType } from '@/lib/icons';
@@ -26,6 +26,8 @@ import { TextInput, Textarea } from '@/components/ds/ui';
 import { submitClientRequest, submitClientReply, getClientRequestStatuses, submitApprovalDecision, signPortalFile } from '@/lib/actions/portal';
 import { CLIENT_LABEL_TONE, type PortalRequestStatus } from '@/lib/request-status';
 import { RequestThread, type ThreadMessage } from '@/components/portal/request-thread';
+import { PortalChat } from '@/components/chat/portal-chat';
+import type { ChannelView } from '@/lib/actions/chat';
 import type { PortalView, PortalInvoice, PortalApproval, PortalForm, PortalDoc, PortalAccept, PortalStream, PortalFile, PortalUpdate } from '@/lib/portal';
 import { formatBytes } from '@/lib/attachments';
 import { LineItemsBlock } from '@/components/documents/line-items-block';
@@ -62,7 +64,7 @@ const invoiceLabel = (s: PortalInvoice['status']) => (s === 'overdue' ? 'Overdue
 // A client reading their own invoice wants the exact figure, cents included.
 const money = (n: number) => formatMoney(n, { exact: true });
 
-type SectionId = 'overview' | 'updates' | 'approvals' | 'forms' | 'requests' | 'work' | 'invoices' | 'documents';
+type SectionId = 'overview' | 'updates' | 'approvals' | 'forms' | 'requests' | 'work' | 'invoices' | 'documents' | 'messages';
 type NavItem = { id: SectionId; label: string; icon: IconType; count?: number };
 
 // Shared small-caps section label (used inside Overview groups).
@@ -71,7 +73,7 @@ type NavItem = { id: SectionId; label: string; icon: IconType; count?: number };
 // capitals legible, and went with them.
 const labelStyle: React.CSSProperties = { fontSize: 'var(--text-label-size)', fontWeight: 500, color: 'var(--text-secondary)', margin: 0 };
 
-export function PortalDocument({ view, token, preview = false, demoStatuses, embedded = false }: { view: PortalView; token?: string; preview?: boolean; demoStatuses?: PortalRequestStatus[]; embedded?: boolean }) {
+export function PortalDocument({ view, token, preview = false, demoStatuses, demoChat, embedded = false }: { view: PortalView; token?: string; preview?: boolean; demoStatuses?: PortalRequestStatus[]; /** Harness-only, like `demoStatuses`: drives the conversation with no network. */ demoChat?: ChannelView; embedded?: boolean }) {
   // Request lifecycle state is lifted here so the nav badge, the Overview
   // summary, and the Requests section all read one source.
   const [requests, setRequests] = useState<PortalRequestStatus[]>(demoStatuses ?? []);
@@ -98,6 +100,9 @@ export function PortalDocument({ view, token, preview = false, demoStatuses, emb
   // Derived, section-agnostic counts.
   const awaitingCount = view.approvals?.filter((a) => a.status === 'awaiting').length ?? 0;
   const needsInputCount = requests.filter((r) => r.canReply).length;
+  // The conversation's unread count arrives with the page (server-side, in the same wave) and clears
+  // the moment the client has seen the messages.
+  const [chatUnread, setChatUnread] = useState(view.chat?.unread ?? 0);
   const unpaid = (view.invoices ?? []).filter((i) => i.status !== 'paid');
   const unpaidTotal = unpaid.reduce((s, i) => s + i.total, 0);
 
@@ -111,10 +116,13 @@ export function PortalDocument({ view, token, preview = false, demoStatuses, emb
     view.approvals ? { id: 'approvals', label: 'To review', icon: CheckCircle, count: awaitingCount || undefined } : null,
     view.forms ? { id: 'forms', label: 'Forms', icon: SquarePen, count: view.forms.length || undefined } : null,
     (view.allowRequests || requests.length) ? { id: 'requests', label: 'Requests', icon: Inbox, count: needsInputCount || undefined } : null,
+    // A conversation with the studio (CHAT_PLAN.md). Absent until migration 0043 is applied, so it
+    // never appears half-working — the same "hidden sections never appear" rule as the rest.
+    view.chat ? { id: 'messages', label: 'Messages', icon: MessageCircle, count: chatUnread || undefined } : null,
     (view.open || view.completed || view.streams) ? { id: 'work', label: 'Work', icon: List } : null,
     view.invoices ? { id: 'invoices', label: 'Invoices', icon: Receipt, count: unpaid.length || undefined } : null,
     (view.docs || view.files) ? { id: 'documents', label: 'Documents', icon: Files } : null,
-  ].filter(Boolean) as NavItem[]), [view, requests.length, awaitingCount, needsInputCount, unpaid.length]);
+  ].filter(Boolean) as NavItem[]), [view, requests.length, awaitingCount, needsInputCount, unpaid.length, chatUnread]);
 
   const [active, setActive] = useState<SectionId>('overview');
   const go = (id: SectionId) => setActive(id);
@@ -189,6 +197,22 @@ export function PortalDocument({ view, token, preview = false, demoStatuses, emb
           {active === 'work' && <WorkSection {...sectionProps} />}
           {active === 'invoices' && <InvoicesSection {...sectionProps} />}
           {active === 'documents' && <DocumentsSection {...sectionProps} />}
+          {active === 'messages' && (
+            <section>
+              <PageHeader title="Messages" caption={`Talk to ${view.studio} directly. No account needed.`} />
+              {demoChat ? (
+                <PortalChat token="demo" studio={view.studio} demo={demoChat} onRead={() => setChatUnread(0)} />
+              ) : token && !preview ? (
+                <PortalChat token={token} studio={view.studio} onRead={() => setChatUnread(0)} />
+              ) : (
+                // The owner's PREVIEW has no token, so it cannot open the live conversation. It says
+                // so, rather than showing a chat that does nothing — they reply from Messages.
+                <div className={cn(CARD_CLASS, 'p-6 text-ui text-ink-700')}>
+                  Your client talks to you here. You reply from <strong className="font-medium text-ink-900">Messages</strong> in Zenboard.
+                </div>
+              )}
+            </section>
+          )}
         </div>
       </main>
     </div>

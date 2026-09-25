@@ -8,10 +8,15 @@ import { useFieldProps } from "./field";
 export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   autoGrow?: boolean;
   showCount?: boolean;
+  /**
+   * Start at ONE line instead of three, and grow from there — a message composer. A chat box that
+   * opens three lines tall reads as a form to fill in, not a line to type on; Slack's opens at one.
+   */
+  compact?: boolean;
 }
 
 export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(function Textarea(
-  { autoGrow = true, showCount, className, value, defaultValue, maxLength, onKeyDown, onInput, ...props },
+  { autoGrow = true, showCount, compact = false, className, value, defaultValue, maxLength, onKeyDown, onInput, ...props },
   ref,
 ) {
   const fieldProps = useFieldProps(props);
@@ -30,13 +35,13 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(fun
       <div className="relative grid">
         {/* The mirror sits in the same grid cell and sets the height. */}
         {autoGrow && (
-          <div aria-hidden className={cn(shared, "invisible max-h-64 min-h-20 whitespace-pre-wrap break-words [grid-area:1/1]")}>
+          <div aria-hidden className={cn(shared, "invisible max-h-64 whitespace-pre-wrap break-words [grid-area:1/1]", compact ? "min-h-9" : "min-h-20")}>
             {current + "\n"}
           </div>
         )}
         <textarea
           ref={ref}
-          rows={3}
+          rows={compact ? 1 : 3}
           value={value}
           defaultValue={value === undefined ? defaultValue : undefined}
           maxLength={maxLength}
@@ -65,8 +70,9 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(fun
             "disabled:bg-surface-disabled disabled:text-ink-500 disabled:border-transparent",
             "read-only:bg-paper-3 read-only:border-transparent read-only:text-ink-700",
             autoGrow
-              ? "max-h-64 min-h-20 resize-none overflow-y-auto [grid-area:1/1]"
-              : "min-h-20 resize-y",
+              ? "max-h-64 resize-none overflow-y-auto [grid-area:1/1]"
+              : "resize-y",
+            compact ? "min-h-9" : "min-h-20",
           )}
           {...props}
           {...fieldProps}

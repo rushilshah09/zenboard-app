@@ -1070,7 +1070,11 @@ describe('no action fails in silence', () => {
         // Every channel a surface actually uses to tell someone. `fail`, `flash`
         // and `note` are three local names for the same act, which is its own
         // small finding — but they all reach the person.
-        const speaks = /toastReverted\(|toast\(|flash\(|fail\(|note\(|setHint\(|setErr\(|setError\(|setFormError\(|setNote\(|setMsg\(|setState\('error'\)|setDocState\('error'\)|throw new Error\(/.test(branch);
+        // `failed: true` is chat's channel: it turns the message itself into an inline `role="alert"`
+        // "Not sent · Retry" — Slack's pattern, attached to the words that failed rather than floated
+        // off in a toast. `lib/chat-ui.test.ts` proves that alert really renders, so this entry
+        // cannot become a way to mark an error handled while showing nothing.
+        const speaks = /toastReverted\(|toast\(|flash\(|fail\(|note\(|setHint\(|setErr\(|setError\(|setFormError\(|setNote\(|setMsg\(|setState\('error'\)|setDocState\('error'\)|throw new Error\(|failed: true/.test(branch);
         // Handing the error back to a caller that renders it counts too.
         const propagates = /return (res|r|checked)(\.error)?;|return \{ error/.test(branch);
         const justified = /\/\/ silent:/.test([raw[i - 1], raw[i - 2], raw[i - 3]].join(' '));

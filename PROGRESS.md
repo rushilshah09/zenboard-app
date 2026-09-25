@@ -17236,3 +17236,46 @@ under the last. **2697 tests / 178 files** · tsc clean · eslint clean.
 
 **Owed** — other lists (clients, projects, forms responses) are flex rows, not tables; each should be
 checked against the same vocabulary next.
+
+## Chat, C1 — a Slack-style conversation per project, with the client in it — 2026-09-25
+
+The user: *"introduce a chat feature — from the client to me and other users of the application"*, then
+*"same to same like Slack"*. Plan and benchmark in `CHAT_PLAN.md`.
+
+**What shipped** — Messages in the sidebar and ⌘K; a channel per project with a client, grouped by client
+like Slack's sections; unread counts; the conversation with author runs, day dividers and a "New" line;
+a one-line composer (Enter sends, Shift+Enter breaks, an IME's Enter never sends); optimistic sends that
+turn into "Not sent · Retry" rather than vanishing. The CLIENT has the same conversation, drawn by the
+same components, as a Messages section in their portal. Migration `0043_project_messages.sql`, gated by
+`chatSupported()`: before it is applied the page says so and the portal shows no Messages section.
+
+**The decisions that mattered**
+- **A conversation belongs to a PROJECT**, because the portal token is a project token. A leaked link can
+  then never read more than the portal already exposes; per-client chat would widen that to every project
+  the client has.
+- **The client has no RLS policy at all.** Every client call re-resolves the token on the service role,
+  scoped to that one project, can only author as `client`, and is burst-capped. The owner's inserts are
+  held to `author = 'team'` by the database itself.
+- **Delivery**: the owner's side streams over its OWN realtime channel into state — never the shared
+  `RealtimeSync`, which answers every change with a ~1.2s `router.refresh()`. The client polls through
+  the token action while the tab is visible, because streaming to an anonymous reader would need an anon
+  SELECT policy exposing every project's messages.
+- **Team chat was NOT built**: Zenboard has no multi-user model, and adding one means rewriting RLS on
+  every table. Awaiting the user's decision; nothing here is wasted by it.
+
+**Proved** — `lib/chat.test.ts` (16: runs, dividers, the unread line, optimistic ordering, the body bound),
+`lib/actions/chat.test.ts` (15 security guards, MUTATION-TESTED: exporting the service-role resolver,
+posting as the team through a link, trusting a disabled portal and dropping the burst cap each fail a
+guard — the burst guard first MISSED its mutant and was tightened), `lib/chat-ui.test.ts` (6: a failed
+send renders an alert; markup in a message renders as text). In the browser, both sides and both themes:
+Shift+Enter breaks without sending, Enter sends instantly (pending ink → confirmed ink), the author name
+holds through confirmation (a harness flicker was caught and fixed), the unread badge clears on open.
+**2733 tests / 181 files** · tsc clean · eslint clean on every chat file.
+
+**Owed**
+- **Migration 0043 must be applied** (paste `supabase/migrations/0043_project_messages.sql`). Until then
+  Messages says so and nothing breaks.
+- C2: edit/delete, hover actions, a "New messages" jump pill, older history. C3 threads and reactions.
+  C4 files and Bell notifications.
+- Two PRE-EXISTING `set-state-in-effect` lint errors in `components/shell/app-shell.tsx` (line 669) and
+  `command-palette.tsx`, present at HEAD before this sprint; left for their own change.
