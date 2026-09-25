@@ -8,7 +8,7 @@ import { Easing, interpolate, staticFile } from "remotion";
  */
 
 // Fonts are bundled in public/fonts (OFL) so renders work offline.
-const FACES: [family: string, file: string, weight: string][] = [
+const FACES: [family: string, file: string, weight: string, style?: string][] = [
   ["Geist", "geist-latin-400-normal", "400"],
   ["Geist", "geist-latin-500-normal", "500"],
   ["Geist", "geist-latin-600-normal", "600"],
@@ -17,9 +17,11 @@ const FACES: [family: string, file: string, weight: string][] = [
   ["Geist Mono", "geist-mono-latin-500-normal", "500"],
   ["Source Serif 4", "source-serif-4-latin-400-normal", "400"],
   ["Source Serif 4", "source-serif-4-latin-600-normal", "600"],
+  ["Source Serif 4", "source-serif-4-latin-400-italic", "400", "italic"],
+  ["Source Serif 4", "source-serif-4-latin-500-italic", "500", "italic"],
 ];
-for (const [family, file, weight] of FACES) {
-  loadFont({ family, weight, url: staticFile(`fonts/${file}.woff2`) });
+for (const [family, file, weight, style = "normal"] of FACES) {
+  loadFont({ family, weight, style, url: staticFile(`fonts/${file}.woff2`) });
 }
 
 export const font = {
@@ -58,6 +60,7 @@ export const color = {
   success600: "#7FC49E",
   success100: "#1E2C24",
   warning500: "#D2A150",
+  danger500: "#E5675E",
   info500: "#5E92BE",
   info600: "#9DBBD6",
   // Labels (user data palette)
@@ -67,9 +70,26 @@ export const color = {
   labelStone: "#8B877E",
 } as const;
 
+/**
+ * Illustration grounds — warm, desaturated tints of the label palette, used
+ * behind the hand-drawn ink illustrations (which are multiplied onto them).
+ */
+export const ground = {
+  cream: "#F2F1EB",
+  sand: "#E9DCC2",
+  clay: "#D8A788",
+  terracotta: "#C97A55",
+  stone: "#C9C8C2",
+  sage: "#BCCDBF",
+  mist: "#BFD0DE",
+  blush: "#EFC9D8",
+  sticky: "#F4DD8A",
+} as const;
+
 /** Light "paper" scenes invert the product palette: ink becomes the ground. */
 export const light = {
   bg: color.ink900,
+  surface: "#FFFFFF",
   text: color.paper,
   muted: "rgba(18, 18, 18, 0.42)",
   faint: "rgba(18, 18, 18, 0.10)",
@@ -111,3 +131,17 @@ export const tween = (
 /** Number of characters of `text` visible for a typewriter starting at `start`. */
 export const typed = (frame: number, start: number, text: string, cps = 22) =>
   text.slice(0, Math.max(0, Math.floor(((frame - start) / FPS) * cps)));
+
+/** Deterministic pseudo-random in [0, 1) for a seed. */
+export const rand = (seed: number) => {
+  const x = Math.sin(seed * 12.9898 + 78.233) * 43758.5453;
+  return x - Math.floor(x);
+};
+
+/** Decaying camera shake that starts at `at`. Returns a CSS translate. */
+export const shake = (frame: number, at: number, strength = 10, length = 12) => {
+  const t = frame - at;
+  if (t < 0 || t > length) return "0px 0px";
+  const k = (1 - t / length) * strength;
+  return `${Math.sin(t * 2.7) * k}px ${Math.cos(t * 3.3) * k}px`;
+};
