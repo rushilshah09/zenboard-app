@@ -38,7 +38,7 @@ export const Stage: React.FC<{ kind: "ink" | "ivory"; haze?: number; children: R
 );
 
 /** Film finish over everything: grain 3% and a 10% burgundy vignette (never black). */
-export const Finish: React.FC<{ grain?: number }> = ({ grain = 0.03 }) => (
+export const Finish: React.FC<{ grain?: number }> = ({ grain = 0.015 }) => (
   <>
     <AbsoluteFill style={{ pointerEvents: "none", background: `radial-gradient(ellipse 85% 80% at 50% 50%, transparent 55%, rgba(40, 4, 23, 0.10) 100%)` }} />
     {grain > 0 && hasFile("img/IMG-04.png") ? (

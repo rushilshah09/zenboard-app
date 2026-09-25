@@ -12,6 +12,10 @@ import { S7Styleframe } from "./scenes/S7One";
 import { PillsStyleframe } from "./scenes/Pills";
 import { OUTRO_FRAMES, Outro, OutroStyleframe } from "./scenes/Outro";
 import { MOSAIC_FRAMES, MosaicMorph } from "./scenes/MosaicMorph";
+import { AppTest } from "./dev/AppTest";
+import { Film } from "./Film";
+import { SCENES } from "./scenes/film";
+import { FILM, FILM_FRAMES, FilmScene, len } from "./timeline/film";
 
 const size = { width: 1920, height: 1080, fps: FPS };
 
@@ -33,6 +37,12 @@ export const STYLEFRAMES: { id: string; component: React.FC }[] = [
 
 export const RemotionRoot: React.FC = () => (
   <>
+    <Composition id="Film" component={Film} durationInFrames={FILM_FRAMES} {...size} defaultProps={{ score: true }} />
+    <Folder name="Scenes">
+      {(Object.keys(FILM) as FilmScene[]).map((s) => (
+        <Composition key={s} id={`Scene-${s}`} component={SCENES[s]} durationInFrames={len(s)} {...size} />
+      ))}
+    </Folder>
     <Folder name="Styleframes">
       {STYLEFRAMES.map((s) => (
         <Composition key={s.id} id={s.id} component={s.component} durationInFrames={1} {...size} />
@@ -41,6 +51,7 @@ export const RemotionRoot: React.FC = () => (
     <Folder name="Tests">
       <Composition id="MosaicMorph" component={MosaicMorph} durationInFrames={MOSAIC_FRAMES} {...size} />
       <Composition id="Outro" component={Outro} durationInFrames={OUTRO_FRAMES} {...size} />
+      <Composition id="AppTest" component={AppTest} durationInFrames={1} {...size} />
     </Folder>
   </>
 );
