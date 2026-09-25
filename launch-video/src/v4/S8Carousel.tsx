@@ -5,7 +5,7 @@
  */
 import React from "react";
 import { useCurrentFrame } from "remotion";
-import { At, BERRY, CURVE, FIELD, Frame, Grain, Icon, Lockup, blurIn, ease, rnd, soft } from "./kit";
+import { At, BERRY, CURVE, M, FIELD, Frame, Grain, Icon, Lockup, blurIn, ease, rnd, soft } from "./kit";
 import { IconName } from "./icons.generated";
 
 const STRIP: [string, string, string, IconName][] = [
@@ -25,7 +25,7 @@ export const S8Carousel: React.FC = () => {
     <Frame>
       <div className="stage" style={{ background: "#16060F" }} />
       <div className="stage floorglow" style={{ opacity: ease(f, 0, 70, 0, 1, CURVE.breathe) }} />
-      <div className="stage rays" style={{ transform: `rotate(${Math.sin(f / 80) * 2}deg)`, opacity: ease(f, 10, 80, 0, 1) }} />
+      <div className="stage rays" style={{ transform: `rotate(${ease(f, 0, 420, -1.5, 1.5, M.inOut)}deg)`, opacity: ease(f, 10, 80, 0, 1) }} />
       {Array.from({ length: 26 }, (_, i) => (
         <At key={i} x={(rnd(i) * 100 + f * (0.01 + rnd(i + 3) * 0.02)) % 100} y={4 + rnd(i + 7) * 30 - f * 0.004 * (1 + rnd(i))}
           style={{ width: `${0.16 + rnd(i + 5) * 0.7}cqw`, height: `${0.16 + rnd(i + 5) * 0.7}cqw`, borderRadius: "50%", background: `rgba(255,220,235,${0.05 + rnd(i + 9) * 0.17})`, opacity: ease(f, 10 + i * 2, 60 + i * 2, 0, 1) }} />

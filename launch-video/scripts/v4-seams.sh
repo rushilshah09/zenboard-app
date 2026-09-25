@@ -7,7 +7,7 @@ SC=${1:-0.25}
 B=/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell
 D=out/v4/seams; rm -rf $D; mkdir -p $D
 # scene starts in seconds (keep in sync with src/v4/timeline.ts)
-for t in 10 16.5 23.5 29.5 41.5 47.5 52.5 59.5; do
+for t in 17.5 24.5 30.5 42.5 48.5 53.5 60.5; do
   f=$(python3 -c "print(round($t*60))")
   for g in $((f-1)) $f; do
     npx remotion still src/index.ts FilmV4 $D/$g.png --frame=$g --scale=$SC --browser-executable=$B --log=error >/dev/null
@@ -18,7 +18,7 @@ import sys, glob
 from PIL import Image, ImageChops, ImageStat
 D = sys.argv[1]
 rows = []
-for t in (10, 16.5, 23.5, 29.5, 41.5, 47.5, 52.5, 59.5):
+for t in (17.5, 24.5, 30.5, 42.5, 48.5, 53.5, 60.5):
     f = round(t * 60)
     a, b = Image.open(f"{D}/{f-1}.png").convert("RGB"), Image.open(f"{D}/{f}.png").convert("RGB")
     diff = sum(ImageStat.Stat(ImageChops.difference(a, b)).mean) / 3

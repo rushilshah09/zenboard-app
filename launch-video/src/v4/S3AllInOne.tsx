@@ -6,7 +6,7 @@
 import React from "react";
 import { useCurrentFrame } from "remotion";
 import { LOCKUP_MARK } from "../brand/logo.generated";
-import { At, CURVE, Frame, Lockup, Mark, PaperStage, Words, blurOut, ease, pop, soft } from "./kit";
+import { At, CURVE, Frame, bump, Lockup, Mark, PaperStage, Words, blurOut, ease, pop, soft } from "./kit";
 import { KINDS, Tile } from "./S1Juggling";
 import { Fans, STRAND, Waves } from "./lines";
 import { Dashboard } from "./Dashboard";
@@ -50,7 +50,7 @@ export const S3AllInOne: React.FC = () => {
           const p = pop(f, 30 + i * 7, 210, 15);
           return <At key={i} x={x - (1 - p) * 8} y={y} style={{ opacity: Math.min(1, p * 1.3) }}><Tile kind={KINDS[i]} size={5.2} /></At>;
         })}
-        <At x={58} y={CY} style={{ transform: `scale(${spark * (1 + 0.15 * Math.sin(f / 7))})`, opacity: spark }}><span className="spark" /></At>
+        <At x={58} y={CY} style={{ transform: `scale(${spark * (1 + 0.15 * bump(f, 168, 186, 214))})`, opacity: spark }}><span className="spark" /></At>
         {[4.5, 8.5, 12].map((dx, i) => (
           <At key={i} x={58 + dx} y={CY} style={{ opacity: ease(f, 175 + i * 6, 185 + i * 6, 0, 1) * (1 - ease(f, 214, 226, 0, 1)) }}>
             <span className={`dot2${Math.floor(f / 12) % 3 === i ? " lit" : ""}`} />

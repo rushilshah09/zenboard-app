@@ -5,7 +5,7 @@
  */
 import React from "react";
 import { staticFile, useCurrentFrame } from "remotion";
-import { At, BERRY, CURVE, Frame, Grain, Halftone, Lockup, Mark, PaperStage, Words, blurIn, ease, mix, soft } from "./kit";
+import { At, BERRY, CURVE, M, Frame, Grain, Halftone, Lockup, Mark, PaperStage, Words, blurIn, ease, mix, soft } from "./kit";
 import { LOCKUP_MARK as MARK_D } from "../brand/logo.generated";
 import { BLUEPRINT_SVG, RING_CARDS } from "./finale.generated";
 
@@ -61,7 +61,7 @@ export const S9One: React.FC = () => {
           {CARDS.map((c, i) => {
             const dx = c.x - 50, dy = c.y - CY;
             const inP = soft(f, 4 + i * 4, 110, 20);
-            const fl = Math.sin(f / 50 + i) * 0.35;
+            const fl = (i % 2 ? -0.5 : 0.5) * ease(f, 0, 290, 0, 1, M.inOut); // a slow parallax drift, not a bob
             const k = (1 - inP) * 0.35 + 1 - gather;
             return (
               <At key={i} x={50 + dx * k} y={CY + dy * k + fl} style={mix(

@@ -6,14 +6,14 @@ import LINES from "../../public/audio/vo4/lines.json";
 
 export const VO4: [keyof typeof LINES, number][] = [
   ["apps", 2.15], ["all", 6.4],
-  ["meet", 15.1],
-  ["juggle", 18.4], ["place", 22.15],
-  ["day", 25.15],
-  ["tasks", 29.7], ["projects", 31.15], ["docs", 32.65], ["calendar", 34.15], ["clients", 35.65], ["money", 37.15], ["habits", 38.65], ["focus", 40.15],
-  ["auto", 42.3], ["work", 45.25],
-  ["need", 48.2],
-  ["made", 53.7],
-  ["one", 60.05],
-  ["zenboard", 68.7], ["tagline", 69.3], ["today", 70.8],
+  ["meet", 15.7],
+  ["juggle", 19.4], ["place", 23.15],
+  ["day", 26.15],
+  ["tasks", 30.7], ["projects", 32.15], ["docs", 33.65], ["calendar", 35.15], ["clients", 36.65], ["money", 38.15], ["habits", 39.65], ["focus", 41.15],
+  ["auto", 43.3], ["work", 46.25],
+  ["need", 49.2],
+  ["made", 54.7],
+  ["one", 61.05],
+  ["zenboard", 69.7], ["tagline", 70.3], ["today", 71.8],
 ];
 export const voDur = (id: keyof typeof LINES) => LINES[id];

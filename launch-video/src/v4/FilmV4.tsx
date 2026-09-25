@@ -39,6 +39,6 @@ export const FilmV4: React.FC<{ score?: boolean }> = () => (
         <Audio src={staticFile(`audio/vo4/${id}.wav`)} volume={1.15} />
       </Sequence>
     ))}
-    <Audio src={staticFile("audio/film-score.wav")} volume={(f) => 0.3 * duck(f) * interpolate(f, [0, 30, s(70.5), s(73.5)], [0, 1, 1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })} />
+    <Audio src={staticFile("audio/film-score.wav")} volume={(f) => 0.3 * duck(f) * interpolate(f, [0, 30, s(71.5), s(74.5)], [0, 1, 1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })} />
   </AbsoluteFill>
 );
