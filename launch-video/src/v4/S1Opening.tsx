@@ -1,5 +1,5 @@
 /**
- * Opening (0:00–0:17.5): scenes 1 and 2 as one continuous movement. Storyboard 1.1–2.5.
+ * Opening (0:00–0:16.5): scenes 1 and 2 as one continuous movement. Storyboard 1.1–2.5.
  *
  * Build → accelerate → reveal → breathe:
  *   the person lands, the apps arrive on the beat and orbit (1.1–1.2); the feed piles up while the orbit gathers
@@ -73,8 +73,17 @@ const arc = (cx: number, cy: number, r: number, sq: number, a0: number, a1: numb
 const BADGES = [15, 7, null, 19, 4, 20, null, 9];
 const EARLY = [null, 3, null, 1, null, 2, null, null];
 
+/**
+ * Screen time → choreography time. The film keeps its 1:13.5: the opening has 16.5s on screen for 17.5s of
+ * choreography, so between 7s and 9s the acceleration plays faster on a smooth speed curve (1× → 1.75× → 1×).
+ */
+const remap = (f: number) => {
+  const u = clamp01((f - s(7)) / s(2));
+  return f + s(1) * u * u * (3 - 2 * u);
+};
+
 export const S1Opening: React.FC = () => {
-  const f = useCurrentFrame();
+  const f = remap(useCurrentFrame());
   const orbit = orbitAt(f);
 
   /* ---- layout of the orbit ---- */
