@@ -141,7 +141,12 @@ The product UI in the film should look like the green "Project Status" reference
 - The Automations scene centre badge is the Zenboard logo (white mark on a Berry circle); one cohesive
   Berry/petal light and a symmetric card layout.
 
-### D15+ — (more directions to come)
+### D15 — Macro zoom on Create (ref: glass toggle close-up)
+- New 6.2: a 12× zoom-through from 6.1 into the Create button, then a macro close-up on the Berry field.
+  It shows a prompt-card corner, a glossy glass pill with an iridescent edge, the Zenboard mark in a frosted
+  knob, and grain. The cursor press squashes it, a glow pulses and the knob slides; reverse zoom out into 6.3.
+
+### D16+ — (more directions to come)
 
 ## Brand note
 The Zenboard brand guidelines (Paper / Ink / single Berry accent, eight flat field colours, no gradients)

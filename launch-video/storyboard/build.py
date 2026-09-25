@@ -443,6 +443,17 @@ def f_auto_1():
     s += at(50, 34, "Describe it once. Zenboard does the work.", "cap", "font-size:1.6cqw;color:#77736A;font-weight:400")
     return s
 
+def f_auto_zoom():
+    """Macro zoom on Create (ref: glass toggle close-up): card corner on a Berry field, a glossy glass button,
+    the Zenboard mark in a glass knob, grain; the cursor tip presses it."""
+    s = '<div class="stage" style="background:radial-gradient(120% 120% at 100% 0%,#D94C92 0%,#A3155E 45%,#4A0A2C 100%)"></div>'
+    s += '<div class="zcard"></div>'
+    s += at(46, 31, f'<div class="gbtn"><span class="gtxt">{ph("Sparkle", "fill", size="1em")} Create</span>'
+                    f'<span class="gknob">{mark(5.6, "rgba(255,255,255,.75)")}</span></div>')
+    s += '<div class="cursor zc"></div>'
+    s += '<div class="stage grain" style="opacity:.22"></div>'
+    return s
+
 def f_auto_2():
     s = auto_stage()
     s += at(25, 22, prompt_card("When an invoice is 7 days overdue, send a friendly reminder and move it to Today", pressed=True), "", "transform:translate(-50%,-50%) scale(1.15)")
@@ -627,6 +638,8 @@ def f_8_2(): return blueprint(1.0)
 def f_8_3(): return blueprint(.55, tagline=True)
 
 CAMERA = {
+ "6.2": "Zoom-through from 6.1: a 12× push into the Create button, motion blur on the way in, then a locked macro with shallow depth of field. On the press the camera pulls back out into 6.3 (reverse zoom).",
+ "6.3": "Rack focus from the prompt card to the steps card as it runs; slight push-in on each tick.",
  "2.4": "Locked off; the only motion is the mark's spin.",
  "2.5": "Locked off, dead still for the lockup.",
  "6.1": "Slow push-in on the headline; the floating cards drift outward at three depths with DOF (far cards soft).",
@@ -692,7 +705,9 @@ SCENES = [
  dict(n=6, name="Zenboard does the work", t="0:40–0:46", purpose="Automation: describe a job once and watch Zenboard do it (ref: Effortless automation).",
   frames=[("6.1", "0:40", f_auto_1, "Paper stage with soft coloured light. The Zenboard logo (white mark on a Berry circle) pops in at the centre, the headline rises word by word, and real Zenboard pieces float around it at different depths: the automation steps card, a doc with Add to a doc, the prompt card, a Q3 revenue chart, the Zenboard mark as a soft glowing sparkle and a Money tile.",
             "Effortless automation · Describe it once. Zenboard does the work.", "Soft whoosh as the cards drift in, a chime on the logo"),
-          ("6.2", "0:43", f_auto_2, "Zenboard opens the work: the prompt card comes forward, the cursor presses Create, and the steps card runs by itself. Trigger and draft tick green, Move to Today spins, the client portal step waits. A drafted reminder to Fernwood Hotels slides in and a toast confirms it was sent.",
+          ("6.2", "0:42", f_auto_zoom, "Zoom transition: the camera dives into the Create button until it fills the frame. Macro close-up: the corner of the prompt card on the Berry field, and the button as a glossy glass pill with an iridescent petal-to-apricot edge. The Zenboard mark sits in a frosted knob. The cursor tip presses it: the pill squashes 4%, a glow ring pulses out, and the knob slides across like a toggle.",
+            "Create", "Deep glassy click, a short rising shimmer"),
+          ("6.3", "0:43.5", f_auto_2, "Zenboard opens the work: the prompt card comes forward, the cursor presses Create, and the steps card runs by itself. Trigger and draft tick green, Move to Today spins, the client portal step waits. A drafted reminder to Fernwood Hotels slides in and a toast confirms it was sent.",
             "Zenboard does the work.", "Click on Create, a tick per step, a soft send whoosh")],
   out="The toast pill multiplies into rows of pills: the pill wall."),
  dict(n=7, name="Pill wall", t="0:46–0:51", purpose="The breadth of Zenboard at a glance.",
