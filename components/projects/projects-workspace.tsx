@@ -13,7 +13,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { todayISO, formatDay, formatAgo, formatMinutes, formatMonthYear, formatRelativeDay } from '@/lib/date';
 import { usePathname, useRouter } from 'next/navigation';
-import { Plus, Pencil, Share2, Eye, Kanban, Timer, Star, Landmark, Circle, Target, Calendar, User, Clock, FileText, Trash, Activity, Sparkles } from "@/components/ds/icons";
+import { Plus, Pencil, Share2, Eye, Kanban, Timer, Landmark, Circle, Target, Calendar, User, Clock, FileText, Trash, Activity, Sparkles, Highlight } from "@/components/ds/icons";
 import {
   Icon, Button, IconButton, Badge, Stat, Tabs, SegmentedControl, Checkbox,
   EmptyState, ActivityFeed as DSActivityFeed, Modal, Field, TextInput, Textarea, DatePicker,
@@ -1581,7 +1581,7 @@ function Overview({ tasks, events, notes, onOpenTask, onToggle, canLog, onLog, u
                 <div key={t.id} className="group -mx-2 flex items-center gap-2.5 rounded-sm px-2 py-1.5 transition-colors hover:bg-surface-hover">
                   <Checkbox size="sm" checked={false} onCheckedChange={() => onToggle(t.id)} aria-label={`Complete ${t.title}`} className="shrink-0" />
                   <button onClick={() => onOpenTask(t.id)} className="focus-ring min-w-0 flex-1 truncate rounded-xs text-left text-ui text-ink-800 [@media(pointer:coarse)]:min-h-6">{t.title}</button>
-                  {t.highlight && <Icon icon={Star} size={14} weight="fill" className="shrink-0 text-ink-600" />}
+                  {t.highlight && <Icon icon={Highlight} size={14} weight="fill" className="shrink-0 text-ink-600" />}
                 </div>
               ))}
             </div>}

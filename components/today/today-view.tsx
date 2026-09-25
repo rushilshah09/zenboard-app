@@ -11,8 +11,7 @@
 
 import { useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import {
-  Plus, Moon, Sunrise, Check, Play, ChevronRight, X, Star, Sun, Flame, type IconType } from "@/components/ds/icons";
+import { Plus, Moon, Sunrise, Check, Play, ChevronRight, X, Star, Sun, Flame, type IconType, Highlight } from "@/components/ds/icons";
 import { Button, Icon, IconButton, Mark, EmptyState, TooltipProvider, addLine, toastReverted } from '@/components/ds/ui';
 import { cn } from '@/lib/cn';
 import { Panel, PanelHeader, PanelBody } from '@/components/ui/panels';
@@ -305,14 +304,14 @@ export function TodayView({
               title="Today’s highlight"
               summary="Do this first"
               action={topHighlight
-                ? <IconButton label="Remove highlight" size="sm" icon={<Icon icon={Star} size={16} weight="fill" className="text-[var(--accent)]" />} onClick={() => toggleHl(topHighlight.id)} />
+                ? <IconButton label="Remove highlight" size="sm" icon={<Icon icon={Highlight} size={16} weight="fill" className="text-[var(--accent)]" />} onClick={() => toggleHl(topHighlight.id)} />
                 : <IconButton label="View all tasks" size="sm" icon={<Icon icon={ChevronRight} size={16} />} onClick={() => router.push('/tasks')} />}
             />
             <PanelBody>
               {!topHighlight ? (
                 <EmptyState
                   size="inline"
-                  illustration={<Icon icon={Star} size={20} />}
+                  illustration={<Icon icon={Highlight} size={20} />}
                   title="No highlight yet"
                   description="Star a task to make it today’s focus — it surfaces here to tackle first."
                   primary={<Button variant="secondary" size="sm" onClick={() => router.push('/tasks')}>Browse tasks</Button>}

@@ -12,7 +12,7 @@
 // you just typed, which is why it cannot drift from the product.
 //
 // It is furniture: `aria-hidden`, no pointer events, no tab stop. A screen reader hears the form.
-import { Sun, Flame, Moon, Star, Folder } from '@/components/ds/icons';
+import { Sun, Flame, Moon, Folder, Highlight } from '@/components/ds/icons';
 import { Icon, Checkbox, Panel, PanelHeader, PanelBody } from '@/components/ds/ui';
 import { cn } from '@/lib/cn';
 
@@ -81,7 +81,7 @@ export function OnboardingPreview({ state }: { state: PreviewState }) {
                     </span>
                   )}
                   {/* The first one is the highlight — which is exactly what `finish()` writes. */}
-                  {i === 0 && <Icon icon={Star} size={14} weight="fill" className="shrink-0 text-[var(--accent)]" />}
+                  {i === 0 && <Icon icon={Highlight} size={14} weight="fill" className="shrink-0 text-[var(--accent)]" />}
                 </div>
               ))
             )}

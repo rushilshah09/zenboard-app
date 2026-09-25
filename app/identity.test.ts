@@ -58,3 +58,38 @@ describe('the UI keeps its own face', () => {
     }
   });
 });
+
+describe('the mark means your one thing today', () => {
+  const seam = read('components/ds/icons.ts');
+
+  it('is a glyph in the seam, drawn in the seam’s two weights', () => {
+    expect(seam).toMatch(/export const Highlight = React\.forwardRef/);
+    // Solid when highlighted, outline when not — the grammar every Phosphor glyph speaks.
+    expect(seam).toMatch(/const solid = fill === "currentColor";/);
+  });
+
+  it('shares ONE geometry with the logo', () => {
+    expect(seam).toMatch(/export const MARK_PATH = "M18\.4226/);
+    const logo = read('components/ds/ui/icon.tsx');
+    expect(logo).toMatch(/<path d=\{MARK_PATH\} \/>/);
+    // …and no second copy of the path survives anywhere in the logo.
+    expect(logo).not.toMatch(/d="M18\.4226/);
+  });
+
+  it('marks the highlight everywhere the highlight is shown', () => {
+    for (const file of [
+      'components/tasks/task-row.tsx', 'components/tasks/task-meta.tsx', 'components/tasks/task-card.tsx',
+      'components/today/today-view.tsx', 'components/projects/projects-workspace.tsx', 'components/onboarding/onboarding-preview.tsx',
+    ]) {
+      expect(read(file), file).toMatch(/icon=\{Highlight\}/);
+    }
+  });
+
+  it('leaves the star to the things it still means', () => {
+    // The star meant THREE things; now it means two — a favourite doc and a pinned memory — and
+    // the rating control keeps its stars. None of those became the mark.
+    expect(read('components/documents/documents-view.tsx')).toMatch(/icon=\{Star\}/);
+    expect(read('components/memory/memory-row.tsx')).toMatch(/icon=\{Star\}/);
+    expect(read('components/documents/documents-view.tsx')).not.toMatch(/icon=\{Highlight\}/);
+  });
+});

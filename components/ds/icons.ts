@@ -96,6 +96,46 @@ function glyph(name: string) {
   return Glyph;
 }
 
+// ── ZENBOARD'S OWN GLYPH ────────────────────────────────────────────────────
+//
+// Identity move 2 (IDENTITY_BRIEF.md, 2026-09-25). The one icon in this seam that is not
+// Phosphor's: the Zenboard mark, drawn at icon size, meaning "your one thing today" — the
+// highlight. Linear owns its status glyphs; this is Zenboard's. It also UNTANGLES a glyph that
+// meant three things: the star stood for the highlight, a pinned memory AND a favourite doc. The
+// highlight now has its own mark; pins and favourites keep the star.
+//
+// It speaks the seam's two-weight grammar exactly: `fill="currentColor"` (what <Icon weight="fill">
+// passes) draws the solid mark — highlighted; anything else draws its outline — not highlighted.
+// The geometry lives HERE, once: the logo's <Mark> (components/ds/ui/icon.tsx) reads this path too,
+// so the glyph and the logo cannot drift.
+
+/** The Zenboard mark's geometry, in a 20×20 box. The ONE copy — the logo reads it from here. */
+export const MARK_PATH = "M18.4226 8.14215L18.6403 7.92451C20.4532 6.11147 20.4532 3.1733 18.6403 1.36026L18.6383 1.35832C16.8254 -0.452773 13.8873 -0.452773 12.0763 1.35832L11.8567 1.57791C10.8326 2.60199 9.16736 2.60199 8.14137 1.57791L7.92373 1.36026C6.11076 -0.452773 3.1727 -0.452773 1.35973 1.36026C-0.453243 3.1733 -0.453243 6.11147 1.35973 7.92451L1.57736 8.14215C2.60141 9.16818 2.60141 10.8335 1.57736 11.8576L1.35973 12.0753C-0.453243 13.8883 -0.453243 16.8265 1.35973 18.6395C3.1727 20.4525 6.11076 20.4545 7.92373 18.6395L8.14137 18.4219C9.16736 17.3958 10.8326 17.3958 11.8567 18.4219L12.0743 18.6395C13.8873 20.4525 16.8254 20.4525 18.6383 18.6395H18.6403V18.6376C20.4532 16.8245 20.4532 13.8863 18.6403 12.0733L18.4226 11.8557C17.3966 10.8316 17.3966 9.16623 18.4226 8.1402V8.14215ZM4.85936 15.1397C7.69832 12.3007 7.69832 7.69909 4.85936 4.86003C7.69832 7.69909 12.3017 7.69909 15.1406 4.86003C12.3017 7.69909 12.3017 12.3007 15.1406 15.1397C12.3017 12.3007 7.69832 12.3007 4.85936 15.1397Z";
+
+export const Highlight = React.forwardRef<SVGSVGElement, AdapterProps>(function Highlight(
+  // `strokeWidth` is named only to keep it OUT of `rest`: the outline's weight is set below to
+  // match Phosphor's regular stroke at icon size, whatever the caller passes.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  { strokeWidth: _strokeWidth, fill, size, color, ...rest },
+  ref,
+) {
+  const solid = fill === "currentColor";
+  return React.createElement("svg", {
+    ref,
+    xmlns: SVG_NS,
+    width: size ?? "1em",
+    height: size ?? "1em",
+    // A pixel of air round the 20-unit mark, so the outline's stroke is never clipped at the edge.
+    viewBox: "-1 -1 22 22",
+    fill: solid ? (color ?? "currentColor") : "none",
+    stroke: solid ? "none" : (color ?? "currentColor"),
+    strokeWidth: solid ? undefined : 1.4,
+    strokeLinejoin: "round",
+    ...rest,
+  }, React.createElement("path", { d: MARK_PATH }));
+});
+Highlight.displayName = "HighlightGlyph";
+
 // ── Figma HIfi glyphs (Phosphor) — shell, Home, tasks, schedule ──────────────
 export const House = glyph("SquaresFour");          // Home/Dashboard
 export const SquarePen = glyph("CheckSquareOffset"); // Tasks

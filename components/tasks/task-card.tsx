@@ -8,7 +8,7 @@
 // fields were unset), a hand-rolled ••• menu, and a title you could not click: a task on the week could be dragged,
 // ticked and deleted, but not opened (2026-09-22, plans/PRODUCT_POLISH_2026-09-22.md sprint 3).
 import { useRef } from 'react';
-import { Ellipsis, Pencil, Star } from '@/components/ds/icons';
+import { Ellipsis, Pencil, Highlight } from '@/components/ds/icons';
 import {
   Checkbox, Icon, DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
   type PriorityLevel,
@@ -70,7 +70,7 @@ export function TaskCard({ task, sub, project, showWhen = true, onToggle, onOpen
             onCloseAutoFocus={(e) => { if (opening.current) { e.preventDefault(); opening.current = false; } }}>
             {onOpen && <DropdownMenuItem icon={<Icon icon={Pencil} size={16} />} onSelect={() => { opening.current = true; onOpen(); }}>Open</DropdownMenuItem>}
             {onHighlight && (
-              <DropdownMenuItem icon={<Icon icon={Star} size={16} weight={task.highlight ? 'fill' : 'regular'} />} onSelect={onHighlight}>
+              <DropdownMenuItem icon={<Icon icon={Highlight} size={16} weight={task.highlight ? 'fill' : 'regular'} />} onSelect={onHighlight}>
                 {task.highlight ? 'Remove highlight' : 'Highlight'}
               </DropdownMenuItem>
             )}

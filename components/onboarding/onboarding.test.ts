@@ -70,7 +70,8 @@ describe('the questions sit beside what they build', () => {
   it('shows what the answers will really produce', () => {
     // The first task is the highlight — which is exactly what `finish()` writes — and the project
     // rides along on every row, as it will on Home.
-    expect(preview).toMatch(/i === 0 && <Icon icon=\{Star\}/);
+    // The highlight wears Zenboard's own mark (identity move 2), not the borrowed star.
+    expect(preview).toMatch(/i === 0 && <Icon icon=\{Highlight\}/);
     expect(markup).toMatch(/highlight: i === 0/);
     expect(preview).toMatch(/projectName\.trim\(\) && \(/);
     // The shutdown card appears on the step that asks for it, not before.

@@ -7,7 +7,7 @@
 // 61 → 82 → 61 down the page depending on which rows had a chip. One row now, one height (`--row-task`), and the
 // facts through the one `TaskMeta` (components/tasks/task-meta.tsx). Tests: task-meta.test.ts, task-row-quiet.test.ts.
 import { useRef } from 'react';
-import { Star, Ellipsis, Check, Pencil } from "@/components/ds/icons";
+import { Ellipsis, Check, Pencil, Highlight } from "@/components/ds/icons";
 import {
   Icon, Checkbox, IconButton, type PriorityLevel,
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
@@ -181,7 +181,7 @@ export function TaskRow({
             // On, the FILLED glyph is the state — the toolbar-toggle wash behind it made a grey tile on the one
             // highlighted row of the list, heavier than anything else on it (2026-09-22). aria-pressed still says it.
             className={cn('[@media(pointer:coarse)]:after:w-6', task.highlight ? 'bg-transparent text-ink-700 hover:bg-surface-hover active:bg-surface-hover' : 'reveal-on-hover')}
-            icon={<Icon icon={Star} size={14} weight={task.highlight ? 'fill' : 'regular'} />}
+            icon={<Icon icon={Highlight} size={14} weight={task.highlight ? 'fill' : 'regular'} />}
           />
         )}
 
@@ -198,7 +198,7 @@ export function TaskRow({
               onCloseAutoFocus={(e) => { if (opening.current) { e.preventDefault(); opening.current = false; } }}>
               <DropdownMenuItem icon={<Icon icon={Pencil} size={16} />} onSelect={() => { opening.current = true; onOpen(); }}>Open</DropdownMenuItem>
               {onHighlight && (
-                <DropdownMenuItem icon={<Icon icon={Star} size={16} weight={task.highlight ? 'fill' : 'regular'} />} onSelect={onHighlight}>
+                <DropdownMenuItem icon={<Icon icon={Highlight} size={16} weight={task.highlight ? 'fill' : 'regular'} />} onSelect={onHighlight}>
                   {task.highlight ? 'Remove highlight' : 'Highlight'}
                 </DropdownMenuItem>
               )}

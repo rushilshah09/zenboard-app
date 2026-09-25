@@ -17,7 +17,7 @@
 //     screen readers whole; HOW urgent and HOW long keep their glyphs, and priority gives up its word. Measured at
 //     390px: with every fact's glyph kept, a filed task's title had 28% of its row. The caller's list must be an
 //     `@container` for this to apply.
-import { Folder, List as ListIcon, ListChecks, Repeat, Clock, CalendarDays, Star } from '@/components/ds/icons';
+import { Folder, List as ListIcon, ListChecks, Repeat, Clock, CalendarDays, Highlight } from '@/components/ds/icons';
 import { Icon, Tag, PriorityBadge, type PriorityLevel } from '@/components/ds/ui';
 import { cn } from '@/lib/cn';
 import { scopeFill } from '@/lib/entity-color';
@@ -109,7 +109,7 @@ export function TaskMeta({
         {timed ? `${formatMinutes(estimate ?? 0)} · ${formatMinutes(elapsed!)} done` : formatMinutes(estimate!)}
       </Fact>
     ),
-    highlight && <Icon key="highlight" icon={Star} size={12} weight="fill" className="shrink-0 text-ink-600" aria-label="Highlighted" />,
+    highlight && <Icon key="highlight" icon={Highlight} size={12} weight="fill" className="shrink-0 text-ink-600" aria-label="Highlighted" />,
   ].filter(Boolean);
 
   if (facts.length === 0) return null;
