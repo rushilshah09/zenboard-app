@@ -31,7 +31,7 @@ team at https://claude.ai/artifact/MvbDxDM8WPbd9aJFCpqcjt (private until shared)
 | # | Where | Type | Field | Status |
 |---|---|---|---|---|
 | ZB-01 | Morning planning, last step "Your day is planned" | Semi | Butter | Shipped. The hand's knuckles are due one refinement pass |
-| ZB-02 | Evening shutdown, after "Close the day" | Semi | Periwinkle | Next |
+| ZB-02 | Evening shutdown, after "Close the day"; beside ZB-01 on the website | Semi | Periwinkle | Prompt out (`zb-02-day-closed.json`) |
 | ZB-03 | Weekly review, last step | Semi | Sage | |
 | ZB-04 | Page not found (no 404 page exists yet) | Icon | Mist | |
 | ZB-05 | Something went wrong (no error page exists yet) | Icon | Mist | |
