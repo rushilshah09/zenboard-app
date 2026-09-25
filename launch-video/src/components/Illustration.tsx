@@ -1,83 +1,60 @@
 import React from "react";
 import { Img, staticFile } from "remotion";
-import { font, illo, radius } from "../theme";
-import { hasFile } from "./Sfx";
+import { FONT } from "../brand/fonts";
+import { Rect } from "../brand/layout";
+import { colour, radius, type } from "../brand/tokens";
+import { firstFile } from "./media";
 
 /**
- * Illustration slots. The registry is the single source for every
- * illustration in the film: its number, the card colour it sits on, and
- * where it appears. ILLUSTRATIONS.md is written against this table.
- *
- * Drop `public/illustrations/<name>.svg` (or `.png`) and the slot shows it;
- * until then a numbered placeholder marks the spot.
+ * Generated line art (§7). Reads public/img/<code>.svg or .png; until the
+ * file exists a quiet labelled placeholder holds its exact frame. The art
+ * reveals with a left-to-right wipe on the Breathe curve (`draw` 0 → 1).
  */
 export const ILLUSTRATIONS = {
-  "founder-idea": { n: 1, ground: illo.sand, scene: "01 · origin" },
-  juggling: { n: 2, ground: illo.blush, scene: "02 · work-arrives" },
-  "tangled-thread": { n: 3, ground: illo.sand, scene: "06 · friday" },
-  "connected-thread": { n: 4, ground: illo.blush, scene: "14 · flow" },
-  "calm-desk": { n: 5, ground: illo.sand, scene: "15 · calm" },
-  "habit-plant": { n: 6, ground: illo.blush, scene: "13 · life" },
-  "goal-path": { n: 7, ground: illo.sand, scene: "13 · life" },
-  "focus-bubble": { n: 8, ground: illo.cream, scene: "13 · life" },
-  "morning-ritual": { n: 9, ground: illo.sand, scene: "13 · life" },
-  "week-plan": { n: 10, ground: illo.blush, scene: "13 · life" },
-  "client-portal": { n: 11, ground: illo.cream, scene: "13 · life" },
+  "IMG-01": "Founder at a small desk, morning",
+  "IMG-02": "Blank note card on the desk",
+  "IMG-06a": "Deep work",
+  "IMG-06b": "A walk",
+  "IMG-06c": "Dinner",
+  "IMG-06d": "A day off",
+  "IMG-07": "Same founder, same desk, evening",
 } as const;
 
-export type IllustrationName = keyof typeof ILLUSTRATIONS;
+export type IllustrationCode = keyof typeof ILLUSTRATIONS;
 
-export const groundOf = (name: IllustrationName) => ILLUSTRATIONS[name].ground;
-
-const sourceOf = (name: IllustrationName) =>
-  [`illustrations/${name}.svg`, `illustrations/${name}.png`].find(hasFile);
-
-export const Illustration: React.FC<{
-  name: IllustrationName;
-  /** 0 → 1 reveal progress. */
-  draw: number;
-  size: number;
-  style?: React.CSSProperties;
-}> = ({ name, draw, size, style }) => {
-  const src = sourceOf(name);
+export const Illustration: React.FC<{ code: IllustrationCode; rect: Rect; draw: number; fit?: "contain" | "cover"; style?: React.CSSProperties }> = ({
+  code,
+  rect,
+  draw,
+  fit = "contain",
+  style,
+}) => {
+  const src = firstFile([`img/${code}.svg`, `img/${code}.png`]);
+  const box: React.CSSProperties = { position: "absolute", left: rect.x, top: rect.y, width: rect.w, height: rect.h, ...style };
   if (src) {
     return (
-      <div style={{ width: size, height: size, ...style }}>
-        <Img
-          src={staticFile(src)}
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "contain",
-            clipPath: `inset(${(1 - draw) * 100}% 0 0 0)`,
-            scale: String(1.04 - draw * 0.04),
-          }}
-        />
+      <div style={box}>
+        <Img src={staticFile(src)} style={{ width: "100%", height: "100%", objectFit: fit, clipPath: `inset(0 ${(1 - draw) * 100}% 0 0)` }} />
       </div>
     );
   }
-  const { n } = ILLUSTRATIONS[name];
   return (
     <div
       style={{
-        width: size * 0.82,
-        height: size * 0.82,
-        margin: size * 0.09,
-        borderRadius: radius.xl,
-        border: `2px dashed rgba(40, 4, 23, 0.28)`,
+        ...box,
+        borderRadius: radius.window,
+        border: `2px dashed ${colour.hairline}`,
         display: "flex",
-        flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        gap: size * 0.03,
-        fontFamily: font.mono,
-        color: illo.deep,
-        opacity: 0.3 + Math.min(1, draw * 3) * 0.7,
-        ...style,
+        fontFamily: FONT,
+        ...type.caption,
+        color: colour.stone,
+        opacity: Math.min(1, draw * 2),
+        textAlign: "center",
       }}
     >
-      <div style={{ fontSize: size * 0.2, lineHeight: 1, opacity: 0.8 }}>{String(n).padStart(2, "0")}</div>
-      <div style={{ fontSize: Math.max(12, size * 0.05), opacity: 0.55 }}>{name}</div>
+      {code} · {ILLUSTRATIONS[code]}
     </div>
   );
 };

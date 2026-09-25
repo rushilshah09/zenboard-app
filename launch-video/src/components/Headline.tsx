@@ -1,70 +1,95 @@
 import React from "react";
-import { useCurrentFrame } from "remotion";
-import { color, ease, font, tween } from "../theme";
+import { interpolateColors, useCurrentFrame } from "remotion";
+import { FONT } from "../brand/fonts";
+import { DUR, EASE, clamp, leave, rise } from "../brand/motion";
+import { colour, type, TypeStyle } from "../brand/tokens";
 
 /**
- * Word-by-word headline. Wrap words in *asterisks* to set them as the
- * accent: Source Serif italic, optionally tinted. Words rise out of a blur.
+ * The only way text enters the film (§4): words rise 24px and fade in with a
+ * 45ms stagger on the Settle curve; lines leave together as one block.
+ *
+ * Markup: `[word]` is emphasis (shifts colour 200ms after the line lands),
+ * `|` splits phrases that can land on their own beats via `phraseAt`.
  */
+type Tone = "ink" | "stone" | "pink";
+const TONE: Record<Tone, string> = { ink: colour.ink, stone: colour.stone, pink: colour.pink };
+
 export const Headline: React.FC<{
   text: string;
   at: number;
-  size: number;
-  tint: string;
-  accent?: string;
-  stagger?: number;
-  out?: number;
+  phraseAt?: number[];
+  style?: TypeStyle;
+  tone?: Tone;
+  emphasisFrom?: Tone;
+  emphasisTo?: Tone;
+  /** Frames between each emphasised word's colour shift ("one by one"). */
+  emphasisStagger?: number;
   align?: "left" | "center";
-  weight?: number;
-  style?: React.CSSProperties;
-}> = ({ text, at, size, tint, accent = color.berry500, stagger = 3, out, align = "center", weight = 600, style }) => {
+  /** Put each phrase on its own line. */
+  stack?: boolean;
+  exitAt?: number;
+  width?: number;
+}> = ({
+  text,
+  at,
+  phraseAt,
+  style = "headline",
+  tone = "ink",
+  emphasisFrom = "stone",
+  emphasisTo = "ink",
+  emphasisStagger = 0,
+  align = "left",
+  stack = false,
+  exitAt,
+  width,
+}) => {
   const frame = useCurrentFrame();
-  const words = text.split(" ");
-  let accentOn = false;
-  const exit = out === undefined ? 0 : tween(frame, [out, out + 10], [0, 1], ease.in);
+  const phrases = text.split("|").map((p) => p.trim().split(/\s+/));
+  const starts = phrases.map((_, i) => phraseAt?.[i] ?? at);
+  // A phrase without its own start flows on from the previous one.
+  if (!phraseAt) {
+    let t = at;
+    phrases.forEach((words, i) => {
+      starts[i] = t;
+      t += words.length * DUR.wordStagger;
+    });
+  }
+  const lastPhrase = phrases.length - 1;
+  const landed = starts[lastPhrase] + (phrases[lastPhrase].length - 1) * DUR.wordStagger + DUR.settle;
+  const block = exitAt !== undefined ? leave(frame, exitAt) : { opacity: 1, translate: "0 0px" };
+
+  let emphasisIndex = 0;
+  const renderWord = (raw: string, start: number, key: string) => {
+    const isEmphasis = raw.includes("[");
+    const word = raw.replace(/[[\]]/g, "");
+    let fill = TONE[tone];
+    if (isEmphasis) {
+      const shiftAt = landed + DUR.colourDelay + emphasisIndex * emphasisStagger;
+      emphasisIndex++;
+      const p = clamp(frame, [shiftAt, shiftAt + DUR.colourShift], [0, 1], EASE.settle);
+      fill = interpolateColors(p, [0, 1], [TONE[emphasisFrom], TONE[emphasisTo]]);
+    }
+    return (
+      <span key={key} style={{ display: "inline-block", color: fill, marginRight: "0.26em", ...rise(frame, start, { dist: 24 }) }}>
+        {word}
+      </span>
+    );
+  };
+
   return (
     <div
       style={{
-        display: "flex",
-        flexWrap: "wrap",
-        justifyContent: align === "center" ? "center" : "flex-start",
-        columnGap: size * 0.26,
-        fontFamily: font.sans,
-        fontSize: size,
-        fontWeight: weight,
-        letterSpacing: "-0.035em",
-        lineHeight: 1.08,
-        color: tint,
-        opacity: 1 - exit,
-        filter: `blur(${exit * 8}px)`,
-        translate: `0 ${-exit * 20}px`,
-        ...style,
+        fontFamily: FONT,
+        ...type[style],
+        textAlign: align,
+        width,
+        opacity: block.opacity,
+        translate: block.translate,
       }}
     >
-      {words.map((raw, i) => {
-        const starts = raw.startsWith("*");
-        const ends = raw.replace(/[.,?!…]+$/, "").endsWith("*");
-        if (starts) accentOn = true;
-        const isAccent = accentOn;
-        if (ends) accentOn = false;
-        const word = raw.replace(/\*/g, "");
-        const t = tween(frame, [at + i * stagger, at + i * stagger + 12], [0, 1]);
-        return (
-          <span
-            key={i}
-            style={{
-              display: "inline-block",
-              opacity: t,
-              translate: `0 ${(1 - t) * size * 0.35}px`,
-              filter: `blur(${(1 - t) * 10}px)`,
-              ...(isAccent
-                ? { fontFamily: font.serif, fontStyle: "italic", fontWeight: 400, color: accent, letterSpacing: "-0.02em" }
-                : null),
-            }}
-          >
-            {word}
-          </span>
-        );
+      {phrases.map((words, pi) => {
+        const nodes = words.map((w, wi) => renderWord(w, starts[pi] + wi * DUR.wordStagger, `${pi}-${wi}`));
+        return stack ? <div key={pi}>{nodes}</div> : <React.Fragment key={pi}>{nodes}</React.Fragment>;
       })}
     </div>
   );

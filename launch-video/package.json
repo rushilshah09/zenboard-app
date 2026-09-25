@@ -15,6 +15,7 @@
     "remotion": "4.0.529"
   },
   "devDependencies": {
+    "@phosphor-icons/core": "^2.1.1",
     "@remotion/eslint-config-flat": "4.0.529",
     "@types/react": "19.2.7",
     "@types/web": "0.0.166",
@@ -24,9 +25,12 @@
   },
   "scripts": {
     "dev": "remotion studio",
-    "build": "remotion bundle",
-    "upgrade": "remotion upgrade",
-    "lint": "eslint src && tsc"
+    "master": "scripts/master.sh",
+    "audio": "python3 scripts/make-audio.py",
+    "glyphs": "node scripts/extract-glyphs.mjs",
+    "scan": "python3 scripts/scan-collisions.py",
+    "lint": "eslint src && tsc",
+    "upgrade": "remotion upgrade"
   },
   "sideEffects": [
     "*.css"
