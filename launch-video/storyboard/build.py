@@ -353,50 +353,87 @@ def avatar(txt, bg):
     if txt in FACE: return f'<span class="avc face" style="background:{bg}"><img src="{PEOPLE[FACE[txt]]}" alt=""></span>'
     return f'<span class="avc" style="background:{bg}">{txt}</span>'
 def feat_ui(name, tone, light):
+    """Richer UI per feature (review: more details), still one tinted frosted card + one white floating card."""
     t = tone
+    face = lambda k: f'<span class="fface"><img src="{PEOPLE[k]}" alt=""></span>'
+    hd = lambda title, right="": f'<div class="fh2"><h4>{title}</h4>{right}</div>'
+    chip = lambda x, cls="": f'<span class="fchip {cls}">{x}</span>'
     if name == "Tasks":
-        card = (f'<h4>Today\'s plan</h4><div class="fl"><i></i>Send invoice for July to TechSpark<em>High</em></div>'
-                f'<div class="fl"><i></i>Prepare weekly report<em>Medium</em></div><div class="fl dn"><i class="on"></i>Review design feedback</div>'
-                f'<div class="bars"><span>3 planned</span><span>6h focus</span><span>2h45 meetings</span></div>'
-                f'<div class="track"><b style="width:62%"></b></div>')
+        card = (hd("Today's plan", chip("Fri, Sep 25")) +
+                '<div class="ftabs"><b>Today 3</b><span>Upcoming 8</span><span>Done 1</span></div>'
+                f'<div class="fl"><i></i>Send invoice for July to TechSpark{chip("TechSpark")}<em class="hi">High</em><code>5h</code></div>'
+                f'<div class="fl"><i></i>Prepare weekly report{chip("Ops")}<em>Medium</em><code>1h</code></div>'
+                f'<div class="fl"><i></i>Send the Q3 retainer proposal{chip("Meridian")}<em>Medium</em><code>45m</code></div>'
+                '<div class="fl dn"><i class="on"></i>Review design feedback<code>30m</code></div>'
+                '<div class="bars"><span>3 planned</span><span>6h focus</span><span>2h45 meetings</span></div><div class="track"><b style="width:62%"></b></div>')
         flt = ('<small>Today\'s highlight</small><b>Send invoice for July to TechSpark</b>'
                '<div class="fb"><span class="btn">' + ph("Play", "fill", size="1em") + ' Start focus</span><span class="btn g">' + ph("Check", "bold", size="1em") + ' Mark done</span></div>')
     elif name == "Projects":
-        card = ('<h4>Brand identity</h4><p>Acme Studio · 5 open · 12 done</p>'
-                '<div class="cols"><span>In progress</span><span>In review</span><span>Revisions</span><span>Done</span></div>'
-                f'<div class="segs"><b style="background:{light}"></b><b style="background:{t};opacity:.55"></b><b class="knob" style="background:{t}"></b><b style="background:#fff"></b></div>')
+        card = (hd("Brand identity", f'<span class="fstack">{face("p3")}{face("p4")}{face("p2")}</span>') +
+                f'<p>{chip("Acme Studio")} {chip("Due Oct 2")} 5 open · 12 done</p>'
+                '<div class="cols"><span>In progress 3</span><span>In review 2</span><span>Revisions 1</span><span>Done 12</span></div>'
+                f'<div class="segs"><b style="background:{light}"></b><b style="background:{t};opacity:.55"></b><b class="knob" style="background:{t}"></b><b style="background:#fff"></b></div>'
+                '<div class="fl dn"><i class="on"></i>Moodboard and references<code>Sep 12</code></div>'
+                f'<div class="fl"><i></i>Logo routes · three directions{chip("In review")}<code>Sep 29</code></div>'
+                '<div class="fl"><i></i>Brand guidelines v1<code>Oct 2</code></div>'
+                '<div class="bars"><span>Progress</span><span>71%</span></div><div class="track"><b style="width:71%"></b></div>')
         flt = ('<div class="avs">' + avatar("SC", "#C41C72") + avatar("MO", "#3C6A2E") + avatar("PR", "#A0542A") +
                '<span class="srch">' + ph("MagnifyingGlass", "regular", size="48%") + '</span></div>')
     elif name == "Docs":
-        card = ('<h4>Rebrand proposal · Acme</h4><p class="doc">Acme Studio wants a calmer, warmer identity that works from '
-                'shop window to invoice. We propose three routes, one workshop and a two-week sprint.</p>'
-                '<div class="chips"><span>Proposal</span><span>Client: Acme</span><span>Due Thu</span></div>')
-        flt = ('<div class="cm">' + avatar("MO", "#C41C72") + '<div><small>Mara Okafor</small><b>Love route two. Approved.</b></div></div>')
+        card = ('<div class="crumb">Acme Studio / Proposals</div>' + hd("Rebrand proposal · Acme") +
+                f'<div class="fmeta">{face("p4")} Mara Okafor · edited 2m ago · 6 min read</div>'
+                '<div class="sub">Scope</div>'
+                '<p class="dtext">Acme wants a calmer, warmer identity that works from shop window to invoice.</p>'
+                '<ul class="blt"><li>Route one · quiet serif-free wordmark</li><li>Route two · warm burgundy and cream system</li><li>Route three · playful mark with motion</li></ul>'
+                f'<div class="lnk">{ph("CheckSquare", "fill", size="1em")} Send the proposal <span>Task · Thu</span></div>'
+                f'<div class="chips">{chip("Proposal")}{chip("Client: Acme")}{chip("Due Thu")}<span class="cm2">{ph("ChatCircle", "fill", size="1em")} 3</span></div>')
+        flt = ('<div class="cm">' + avatar("MO", "#C41C72") + '<div><small>Mara Okafor · comment</small><b>Love route two. Approved.</b></div></div>')
     elif name == "Calendar":
-        card = ('<h4>Friday, Sep 25</h4>'
-                f'<div class="evr"><s style="background:{t}"></s>Standup<em>9:00–9:30</em></div>'
-                f'<div class="evr"><s style="background:{light}"></s>Coffee with Mira<em>15:00–15:45</em></div>'
-                f'<div class="evr"><s style="background:{t}"></s>Design review<em>16:00–18:00</em></div>'
-                f'<div class="evr"><s style="background:{light}"></s>Book club<em>19:00–20:00</em></div>')
+        wk = "".join(f'<span class="{"on" if d == "Fri" else ""}"><small>{d}</small>{n}{"<i></i>" if d in ("Tue", "Fri") else ""}</span>'
+                     for d, n in (("Mon", 21), ("Tue", 22), ("Wed", 23), ("Thu", 24), ("Fri", 25), ("Sat", 26), ("Sun", 27)))
+        card = (hd("Friday, Sep 25", chip("Week 39")) + f'<div class="wkstrip">{wk}</div>' +
+                f'<div class="evr"><s style="background:{t}"></s><div><b>Standup</b><small>Team · Zoom</small></div><em>9:00–9:30</em></div>'
+                f'<div class="evr"><s style="background:{light}"></s><div><b>Focus block · proposal</b><small>Zenboard Focus</small></div><em>10:00–12:00</em></div>'
+                f'<div class="evr"><s style="background:{light}"></s><div><b>Coffee with Mira</b><small>Fieldhouse café</small></div><em>15:00–15:45</em></div>'
+                f'<div class="evr"><s style="background:{t}"></s><div><b>Design review</b><small>{face("p3")}{face("p4")} Meridian Studio</small></div><em>16:00–18:00</em></div>')
         flt = '<small>Next · in 20 min</small><b>Design review</b><div class="fb"><span class="btn">Join</span><span class="btn g">16:00–18:00</span></div>'
     elif name == "Clients":
-        card = ('<h4>Meridian Studio</h4><div class="kvs"><span>Contact</span>Sarah Chen · Head of Brand</div>'
-                '<div class="kvs"><span>Billed</span>$7,000 · $2,800 outstanding</div><div class="kvs"><span>Next step</span>Send the Q3 retainer proposal</div>'
-                '<div class="kvs"><span>Health</span>Healthy</div>')
+        card = (f'<div class="fh2"><span class="clogo">MS</span><h4>Meridian Studio</h4>{chip("Active", "ok")}{chip("Healthy", "ok")}</div>'
+                f'<div class="fmeta">{face("p3")} Sarah Chen · Head of Brand · sarah@meridian.co</div>'
+                '<div class="st3"><div><span>Billed</span><b>$7,000</b></div><div><span>Outstanding</span><b>$2,800</b></div><div><span>Client since</span><b>Mar 2025</b></div></div>'
+                '<div class="sub">Projects</div>'
+                '<div class="prj"><i style="background:#C41C72"></i>Brand identity<span class="pbar"><b style="width:71%"></b></span><code>5 open</code></div>'
+                '<div class="prj"><i style="background:#3C6FD8"></i>Website rebuild<span class="pbar"><b style="width:38%"></b></span><code>3 open</code></div>'
+                f'<div class="nstep"><span>Next step · Send the Q3 retainer proposal</span><span class="btn g">Make it a task</span></div>')
         flt = ('<div class="cm">' + avatar("SC", "#A0542A") + '<div><small>Client portal · Sarah Chen</small><b>Proposal approved</b></div></div>')
     elif name == "Money":
-        card = ('<h4>Money</h4><div class="st2"><div><span>Outstanding</span><b>$4,300</b></div><div><span>Paid this month</span><b>$6,000</b></div></div>'
-                '<div class="ir"><span>INV-021</span>Meridian Studio<b>$3,200</b></div><div class="ir"><span>INV-019</span>Meridian Studio<b>$1,500</b></div>')
+        bars = "".join(f'<b style="height:{h}%"></b>' for h in (38, 52, 44, 61, 58, 73, 66, 84, 92))
+        card = (hd("Money", chip("Sep 2026")) +
+                '<div class="st3"><div><span>Unbilled</span><b>$650</b></div><div><span>Outstanding</span><b>$4,300</b></div><div><span>Paid</span><b>$6,000</b></div></div>'
+                f'<div class="mchart">{bars}</div>'
+                f'<div class="ir"><span>INV-021</span>Meridian Studio{chip("Draft")}<b>$3,200</b></div>'
+                f'<div class="ir"><span>INV-019</span>Fernwood Hotels{chip("Overdue", "bad")}<b>$1,500</b></div>'
+                f'<div class="ir"><span>INV-018</span>Atlas Coffee{chip("Paid", "ok")}<b>$4,200</b></div>')
         flt = '<small>INV-018 · Atlas Coffee</small><b class="bigp">$4,200</b><div class="fb"><span class="btn ok">' + ph("CheckCircle", "fill", size="1em") + ' Paid</span></div>'
     elif name == "Habits":
         dots = "".join(f'<i class="{"on" if k not in (3, 9) else ""}"></i>' for k in range(14))
-        card = (f'<h4>Morning</h4><div class="fl"><i class="on"></i>Morning walk<em>12 days</em></div><div class="fl"><i></i>Meditate<em>12 days</em></div>'
-                f'<div class="fl"><i></i>Read 20 minutes<em>0</em></div><div class="hgrid">{dots}</div>')
+        card = (hd("Habits", chip("1 of 3 today")) +
+                '<div class="sub">Morning</div>'
+                f'<div class="fl"><i class="on"></i>Morning walk<em>{ph("Fire", "fill", size="1em")} 12</em></div>'
+                f'<div class="fl"><i></i>Meditate<em>{ph("Fire", "fill", size="1em")} 12</em></div>'
+                '<div class="sub">Evening</div>'
+                f'<div class="fl"><i></i>Read 20 minutes<em>{ph("Fire", "fill", size="1em")} 0</em></div>'
+                f'<div class="fl"><i></i>No screens after 10pm{chip("Skipped")}</div>'
+                f'<div class="hgrid">{dots}</div><div class="bars"><span>Last 14 days</span><span>86% kept</span></div>')
         flt = '<small>Morning walk</small><b class="bigp">12-day streak</b>'
     else:  # Focus
-        card = ('<h4>Focus session</h4><div class="timer"><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="16" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="3"/>'
+        card = (hd("Focus session", chip("Session 2 of 4")) +
+                '<div class="fcols"><div class="timer"><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="16" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="3"/>'
                 f'<circle cx="20" cy="20" r="16" fill="none" stroke="{t}" stroke-width="3" stroke-linecap="round" stroke-dasharray="70 101" transform="rotate(-90 20 20)"/></svg><b>18:42</b></div>'
-                '<p>Send invoice for July to TechSpark</p>')
+                '<div class="fside"><small>Working on</small><b>Send invoice for July to TechSpark</b>'
+                f'<div class="chips">{chip("TechSpark")}{chip("High")}</div>'
+                f'<small>Sound</small><span class="snd">{ph("SpeakerHigh", "fill", size="1em")} Rain on glass</span></div></div>'
+                '<div class="sdots"><i class="on"></i><i class="on"></i><i></i><i></i><span>25 min focus · 5 min break</span></div>')
         flt = '<small>Blocking</small><b>Slack, Mail, X</b><div class="fb"><span class="btn">' + ph("Pause", "fill", size="1em") + ' Pause</span></div>'
     return card, flt
 
@@ -474,7 +511,7 @@ def f_auto_zoom():
     s = '<div class="stage paper"><div class="dots" style="background-size:4cqw 4cqw"></div></div>'
     s += '<div class="stage" style="background:radial-gradient(60% 70% at 40% 45%,rgba(234,185,203,.5),transparent 75%)"></div>'
     s += '<div class="zcard2"><p>due, send a friendly<br>reminder and move it to Today<span class="caret big"></span></p></div>'
-    s += at(52, 35, f'<div class="gbtn berry"><span class="gtxt">{ph("Sparkle", "fill", size="1em")} Create</span></div>')
+    s += at(62, 32, f'<div class="gbtn berry"><span class="gtxt">{ph("Sparkle", "fill", size="1em")} Create</span></div>')
     s += '<div class="cursor zc2"></div>'
     s += '<div class="stage zoomblur"></div>'
     return s
@@ -532,7 +569,7 @@ def carousel(order, label, step=1):
         g += f'<circle cx="{x:.2f}" cy="{y:.2f}" r="{r:.2f}" fill="rgba(255,220,235,{rnd.uniform(.05, .22):.2f})"/>'
     s += f'<svg class="stage" viewBox="0 0 100 56.25" preserveAspectRatio="none">{g}</svg>'
     s += '<div class="stage rays"></div>'
-    s += at(50, 5, lockup(11, "#F7F1E8", "#F7F1E8"))
+    s += at(50, 6.5, lockup(17, "#F7F1E8", "#F7F1E8"))
     xs, sz = [2, 24, 50, 76, 98], [11, 13, 18, 13, 11]
     names = {"Receipt": "Invoices", "CalendarBlank": "Calendar", "CheckSquare": "Tasks", "Kanban": "Projects",
              "Plant": "Habits", "Timer": "Focus", "FileText": "Docs"}
@@ -587,11 +624,11 @@ def f_8_1():
     ]
     for x, y, w, c in cards:
         s += at(x, y, c, "", f"width:{w}cqw")
-    s += at(50, 24.5, "Work, life and business.", "head", "font-size:3.4cqw")
-    s += at(50, 30.3, "One workspace.", "head", "font-size:3.4cqw;color:" + BERRY)
+    s += at(50, 25.6, "Work, life and business.", "head", "font-size:3.4cqw")
+    s += at(50, 29.6, "One workspace.", "head", "font-size:3.4cqw;color:" + BERRY)
     return s
 
-def blueprint(strength=1.0, tagline=False):
+def blueprint(strength=1.0, tagline=False, show_lockup=True):
     """Outro: berry field + grain, blueprint hairlines, construction of the mark, type + component specimens."""
     W = "rgba(255,255,255,{})"
     a = lambda o: W.format(round(o * strength, 3))
@@ -651,16 +688,44 @@ def blueprint(strength=1.0, tagline=False):
     s = ('<div class="stage bp-field"></div><div class="stage bp-cloud"></div><div class="stage bp-paper"></div>'
          '<div class="stage bp-fibre"></div><div class="stage grain bp-grain"></div>'
          f'<div class="bp-ink">{svg}</div><div class="stage bp-vignette"></div>')
-    s += at(50, 28.1, lockup(42, "#FBFAF6", "#FBFAF6"), "", "filter:drop-shadow(0 0 2.4cqw rgba(255,255,255,.18))")
+    if show_lockup:
+        s += at(50, 28.1, lockup(42, "#FBFAF6", "#FBFAF6"), "", "filter:drop-shadow(0 0 2.4cqw rgba(255,255,255,.18))")
     if tagline:
         s += at(50, 38, "The single platform to manage work, life, and business.", "cap", "font-size:1.7cqw;color:#FBFAF6;font-weight:500;letter-spacing:-.01em")
         s += at(50, 43.5, '<span class="avail light">Available today</span>')
+    return s
+
+
+def f_logo_anim():
+    """End logo animation shown as onion-skin keyframes on the dimmed blueprint:
+    four lobes gather from the corners, the star cut-out turns 90°, the wordmark rises letter by letter."""
+    s = blueprint(.4, show_lockup=False)
+    W = "#FBFAF6"
+    cx, cy = 29.5, 28.1           # mark centre in the final lockup (lockup 42 wide, mark = 32/152 of it)
+    g = ""
+    for sx, sy, ex, ey in ((8, 6, cx - 2.2, cy - 2.2), (51, 6, cx + 2.2, cy - 2.2), (8, 50, cx - 2.2, cy + 2.2), (51, 50, cx + 2.2, cy + 2.2)):
+        g += f'<path d="M{sx} {sy} Q{(sx + ex) / 2 + (4 if sx < cx else -4)} {(sy + ey) / 2} {ex} {ey}" fill="none" stroke="rgba(255,255,255,.35)" stroke-width=".08" stroke-dasharray=".4 .5"/>'
+        for k, t in enumerate((0, .35, .65)):
+            x, y = sx + (ex - sx) * t, sy + (ey - sy) * t
+            g += f'<circle cx="{x:.2f}" cy="{y:.2f}" r="{1.6 + t}" fill="{W}" opacity="{.12 + k * .12:.2f}"/>'
+    g += f'<path d="M {cx + 5.2} {cy - 6.5} A 7 7 0 0 1 {cx + 7} {cy - 1.5}" fill="none" stroke="rgba(255,255,255,.6)" stroke-width=".1" marker-end="url(#arr)"/>'
+    g = ('<defs><marker id="arr" viewBox="0 0 4 4" refX="2" refY="2" markerWidth="3" markerHeight="3" orient="auto">'
+         '<path d="M0 0 L4 2 L0 4 z" fill="rgba(255,255,255,.7)"/></marker></defs>') + g
+    s += f'<svg class="stage" viewBox="0 0 100 56.25">{g}</svg>'
+    s += at(cx, cy, mark(8.8, W, "transform:rotate(-12deg);filter:drop-shadow(0 0 1.2cqw rgba(255,255,255,.25))"))
+    letters = "".join(f'<path d="{d}" fill="{W}"/>' for d in LETTERS)
+    for k, (dy, o) in enumerate(((3.2, .12), (1.6, .3), (0, 1))):
+        s += at(58.5, cy + dy, f'<svg viewBox="38 0 114 32" style="width:31.5cqw;opacity:{o}">{letters}</svg>')
+    for x, y, t in ((12, 12.5, "1  lobes gather"), (40, 17.5, "2  star turns 90°"), (74, 38, "3  wordmark rises")):
+        s += at(x, y, f'<span class="anote">{t}</span>')
     return s
 
 def f_8_2(): return blueprint(1.0)
 def f_8_3(): return blueprint(.55, tagline=True)
 
 CAMERA = {
+ "9.3": "Locked off on the lockup; a 1% push-in across the build.",
+ "9.4": "Dead still. Nothing moves in the last 2 seconds.",
  "6.2": "Zoom-through from 6.1: a 12× push into the Create button, motion blur on the way in, then a locked macro with shallow depth of field. On the press the camera pulls back out into 6.3 (reverse zoom).",
  "6.3": "Rack focus from the prompt card to the steps card as it runs; slight push-in on each tick.",
  "2.4": "Locked off; the only motion is the mark's spin.",
@@ -682,7 +747,6 @@ CAMERA = {
  "8.1": "Low angle on the tiles, slight dolly left with each step.",
  "9.1": "Slow pull-back revealing the full ring; cards at three depths with DOF.",
  "9.2": "Slow 3% push-in while the lines draw; the lockup is locked centre.",
- "9.3": "Dead still. Nothing moves in the last 2 seconds.",
 }
 # ---------- storyboard ----------
 SCENES = [
@@ -748,7 +812,9 @@ SCENES = [
             "“Work, life and business. One workspace.”", "Music opens up"),
           ("9.2", "1:04", f_8_2, "Light flash into the outro. On the Berry field (dark to light, fine grain) a blueprint draws on in hairlines and dotted lines: the construction of the Zenboard mark (32-unit box, four lobe circles, diagonals, star angle), a Geist type specimen, outline component cards, grid blocks and mono notes. The lockup lands in the centre, crisp white, framed by rails with corner handles.",
             "Zenboard", "Pen-scratch ticks as lines draw, the chime on the lockup"),
-          ("9.3", "1:06", f_8_3, "The blueprint dims to about half so the lockup owns the frame. The tagline rises word by word, then Available today. Nothing moves in the last two seconds.",
+          ("9.3", "1:05", f_logo_anim, "End logo animation, shown as onion-skin keyframes. First the four lobes of the mark fly in from the corners on soft curves and fuse, with a spring overshoot. Then the star cut-out opens and turns 90°. Finally the wordmark rises letter by letter, staggered 2 frames apart, and the lockup settles with a soft white glow.",
+            "Zenboard", "Four soft taps as the lobes land, a glassy swirl on the turn, the chime on the settle"),
+          ("9.4", "1:07", f_8_3, "The blueprint dims to about half so the lockup owns the frame. The tagline rises word by word, then Available today. Nothing moves in the last two seconds.",
             "The single platform to manage work, life, and business. · Available today", "The chime resolves, held chord")],
   out=None),
 ]
