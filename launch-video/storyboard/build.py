@@ -479,7 +479,6 @@ def feat_frame(idx):
             pill = (f'<div class="fp" style="opacity:{op};transform:scale({sc});transform-origin:0 50%">'
                     f'<span class="pico" style="width:2.5cqw;height:2.5cqw;background:color-mix(in srgb,{l2} 30%,#fff);color:{m2}">{ph(KIND[ic2][0], "duotone", size="58%")}</span>{n2}</div>')
         s += at(x, H_/2 + y, pill, "", "transform:translate(0,-50%)")
-    s += at(3.2, 4.2, lockup(10, INK), "", "transform:translate(0,-50%)")
     field = f'radial-gradient(130% 120% at 100% 100%,{l} 0%,{m} 38%,{d} 100%)'
     lobes = at(84, 45, mark(46, "#ffffff", ""), "lobes") + at(58, 4, mark(30, "#ffffff", ""), "lobes")
     card, flt = feat_ui(name, tone, l)

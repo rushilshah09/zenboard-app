@@ -5,7 +5,7 @@
  */
 import React from "react";
 import { spring, useCurrentFrame } from "remotion";
-import { At, BERRY, CURVE, Face, Frame, Icon, Mark, Lockup, INK, PAPER, blurIn, ease, mix, pop, soft } from "./kit";
+import { At, BERRY, CURVE, Face, Frame, Icon, Mark, PAPER, ease, mix, pop, soft } from "./kit";
 import { IconName } from "./icons.generated";
 
 type Feat = { name: string; icon: IconName; bg: string; fg: string; d: string; m: string; l: string; tone: string };
@@ -148,7 +148,6 @@ export const S5Features: React.FC = () => {
       <div className="stage" style={{ background: PAPER }} />
       {/* left: feature list */}
       <div className="stage" style={{ opacity: 1 - out }}>
-        <At x={3.2} y={4.2} style={{ transform: "translate(0,-50%)", ...blurIn(f, 6, 10) }}><Lockup width={10} color={INK} /></At>
         {Array.from({ length: 12 }, (_, j) => {
           const k = j - 2; // feature index (can run past the ends for continuity)
           const rel = k - pos;
