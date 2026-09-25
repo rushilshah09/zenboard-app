@@ -84,7 +84,7 @@ html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; backgro
 #ink { background: #16060F; }
 #car { position: absolute; left: 960px; top: 450px; width: 0; height: 0; perspective: 1600px; transform-style: preserve-3d; }
 #carTilt, #carSpin, .cslot, .cbill2, .cbill3, .cface { position: absolute; left: 0; top: 0; width: 0; height: 0; transform-style: preserve-3d; }
-.cface .i3 { position: absolute; left: 0; top: 0; margin: -110px 0 0 -110px; }
+.cface .i3 { position: absolute; left: 0; top: 0; margin: -92px 0 0 -92px; }
 .dotc { position: absolute; left: 0; top: 0; width: 140px; height: 140px; margin: -70px 0 0 -70px; border-radius: 50%; background: #C41C72; }
 
 /* H · logo */

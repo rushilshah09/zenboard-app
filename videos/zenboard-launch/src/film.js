@@ -382,9 +382,9 @@ function buildFilm() {
   // billboard: every tile keeps facing the camera while the ring turns
   addSpin(tl, bills, "rotationY", carSpin, -1);
   tl.set("#car", { opacity: 0, y: 0 }, 0);
-  tl.set("#carTilt", { rotationX: -20 }, 0);
+  tl.set("#carTilt", { rotationX: -24 }, 0);
   tl.set("#car", { scale: 0.1 }, 0);
-  tl.set("#car .cbill3", { rotationX: 20 }, 0);
+  tl.set("#car .cbill3", { rotationX: 24 }, 0);
   tl.to("#car", { opacity: 1, duration: 0.4, ease: "power1.out" }, 47.3);
   tl.to("#car", { scale: 1, duration: 1.3, ease: "power3.out" }, 47.35);
   wordsIn("#capMade", 49.3); wordsOut("#capMade", 52.6);
@@ -393,7 +393,7 @@ function buildFilm() {
   // the ring tips over to face the camera — the same circular motion, now head-on — as ink blooms back to paper
   tl.to("#carTilt", { rotationX: -90, duration: 2.2, ease: "power2.inOut" }, 54.2);
   tl.to("#car .cbill3", { rotationX: 90, duration: 2.2, ease: "power2.inOut" }, 54.2);
-  tl.to("#car", { y: 90, duration: 2.2, ease: "power2.inOut" }, 54.2);
+  tl.to("#car", { y: 90, scale: 0.72, duration: 2.2, ease: "power2.inOut" }, 54.2);
   tl.to("#ink", { opacity: 0, duration: 1.8, ease: "power2.inOut" }, 54.8);
   wordsIn("#capOne", 54.6);
   tl.to("#capOne .cap", { color: "#191919", duration: 1.4, ease: "power2.inOut" }, 55.0);

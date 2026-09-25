@@ -6,7 +6,11 @@ import { readFileSync, writeFileSync } from "fs";
 const root = new URL("..", import.meta.url).pathname;
 const read = (p) => readFileSync(root + p, "utf8");
 const F = JSON.parse(read("build/fragments.json"));
-const clean = (h) => h.replace(/<link [^>]*>/g, "");
+// media is used straight from launch-video/public (relative to film.html)
+const PUB = "../../launch-video/public/";
+const VO_IDS = new Set(Object.keys(JSON.parse(read("../../launch-video/public/audio/vo4/lines.json"))));
+const audioSrc = (f) => PUB + (f === "score" ? "audio/score.wav" : VO_IDS.has(f) ? `audio/vo4/${f}.wav` : `audio/sfx/${f}.wav`);
+const clean = (h) => h.replace(/<link [^>]*>/g, "").replace(/assets\/v4\//g, "../../launch-video/public/v4/");
 const ic = (name, w = "fill") => {
   const s = F.icons[`${name}:${w}`];
   if (!s) throw new Error(`missing icon ${name}:${w}`);
@@ -104,11 +108,11 @@ const STRIP = [
   ["Habits", "#E07AAE", "#fff", "plant"], ["Focus", FIELD.peri, "#fff", "timer"], ["Docs", "#8FC3D6", "#fff", "file-text"],
   ["Invoices", FIELD.apricot, "#fff", "receipt"], ["Calendar", FIELD.sky, "#fff", "calendar-blank"],
 ];
-const R_CAR = 470;
+const R_CAR = 600;
 const car = `<div id="car"><div id="carTilt"><div id="carSpin">${STRIP.map(([n, c, g, icn], i) => `
   <div class="cslot" style="transform:rotateY(${i * 45}deg) translateZ(${R_CAR}px) rotateY(${-i * 45}deg)">
     <div class="cbill2" data-i="${i}"><div class="cbill3"><div class="cface">
-      <div class="i3" style="width:220px;height:220px;--c:${c};color:${g}"><span class="i3g">${ic(icn)}</span></div>
+      <div class="i3" style="width:184px;height:184px;--c:${c};color:${g}"><span class="i3g">${ic(icn)}</span></div>
       <div class="dotc${i % 2 ? " odd" : ""}"></div>
     </div></div></div></div>`).join("")}</div></div></div>`;
 
@@ -142,7 +146,7 @@ const stage = `
   <svg id="diag" viewBox="0 0 1920 1080"><line pathLength="1" id="diag1" x1="2040" y1="-120" x2="960" y2="540"/><line pathLength="1" id="diag2" x1="2160" y1="-240" x2="-240" y2="1320"/></svg>
   <div class="ripple" id="rip1"></div><div class="ripple" id="rip2"></div>
   ${orbitA}
-  <div id="bead"></div><div id="core"><div class="portrait" id="portrait"><img src="assets/v4/portrait.jpg" alt=""/></div><div id="berryDisc"></div></div>
+  <div id="bead"></div><div id="core"><div class="portrait" id="portrait"><img src="${PUB}v4/portrait.jpg" alt=""/></div><div id="berryDisc"></div></div>
   ${orbitB}
   <div id="winWrap"><div id="win">${clean(F.dashboard)}<div id="winBerry"></div></div></div>
   ${flyers}
@@ -189,19 +193,19 @@ const SFX = [
   ...r(59.95, 8, 0.05).map((t, i) => [`key-${i % 4}`, t, 0.14]), ["whoosh-soft", 65.1, 0.4], ["lift", 65.7, 0.45], ["click-0", 66.5, 0.35],
 ];
 const dur = (f) => {
-  const b = readFileSync(root + `assets/audio/${f}.wav`);
+  const b = readFileSync(root + audioSrc(f));
   const rate = b.readUInt32LE(24), bytes = b.readUInt32LE(28);
   let o = 12; while (o < b.length) { const id = b.toString("ascii", o, o + 4), sz = b.readUInt32LE(o + 4); if (id === "data") return sz / bytes; o += 8 + sz; }
   return b.length / bytes;
 };
 const TOTAL = 70;
 const cues = [
-  { file: "score", t: 0, vol: 0.2, fadeIn: 1.5, fadeOut: 5, dur: TOTAL },
-  ...VO.map(([id, t]) => ({ file: id, t, vol: 1 })),
-  ...SFX.map(([f, t, v]) => ({ file: f, t, vol: v })),
+  { file: "score", src: audioSrc("score"), t: 0, vol: 0.2, fadeIn: 1.5, fadeOut: 5, dur: TOTAL },
+  ...VO.map(([id, t]) => ({ file: id, src: audioSrc(id), t, vol: 1 })),
+  ...SFX.map(([f, t, v]) => ({ file: f, src: audioSrc(f), t, vol: v })),
 ];
 
-const font = (fam, w, file) => `@font-face{font-family:'${fam}';font-weight:${w};font-style:normal;font-display:block;src:url(assets/fonts/${file}) format('woff2')}`;
+const font = (fam, w, file) => `@font-face{font-family:'${fam}';font-weight:${w};font-style:normal;font-display:block;src:url(${PUB}fonts/${file}) format('woff2')}`;
 const fonts = [
   font("Geist", 400, "geist-latin-400-normal.woff2"), font("Geist", 500, "geist-latin-500-normal.woff2"),
   font("Geist", 600, "geist-latin-600-normal.woff2"), font("Geist", 700, "geist-latin-700-normal.woff2"),

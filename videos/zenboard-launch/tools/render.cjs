@@ -47,7 +47,7 @@ async function probe(t, pts) {
 function mixAudio(file) {
   const { total, cues } = JSON.parse(fs.readFileSync(path.join(ROOT, "build/audio-cues.json")));
   const args = ["-y", "-loglevel", "error"], parts = [];
-  cues.forEach((c) => args.push("-i", path.join(ROOT, "assets/audio", c.file + ".wav")));
+  cues.forEach((c) => args.push("-i", path.join(ROOT, c.src)));
   cues.forEach((c, i) => {
     let f = `[${i}:a]aresample=48000,aformat=channel_layouts=stereo`;
     if (c.dur) f += `,atrim=0:${c.dur}`;
