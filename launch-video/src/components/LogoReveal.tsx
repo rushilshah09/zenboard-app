@@ -174,6 +174,8 @@ export const LogoReveal: React.FC<{ frame: number; geometry: RevealGeometry; tim
           background: interpolateColors(ink, [0, 1], [colour.card, colour.ink]),
           boxShadow: ghost ? "none" : shadow,
           opacity: (1 - fuse) * t.enter * (ghost ? (ghost === 1 ? 0.22 : 0.1) * trail : 1),
+          // Speed blur while the ring is really turning.
+          filter: ghost ? undefined : `blur(${trail * 1.6}px)`,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",

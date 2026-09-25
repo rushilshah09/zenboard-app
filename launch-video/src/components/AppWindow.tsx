@@ -80,8 +80,10 @@ export const AppWindow: React.FC<{
   /** The Acme line, retyped in this app (S06): its highlight sweep 0 → 1. */
   acme?: number;
   counter?: string;
+  /** Content filling in once the blank card has landed (0 → 1): header first, then the body. */
+  fill?: number;
   style?: React.CSSProperties;
-}> = ({ category, label, width, height, acme, counter, style }) => (
+}> = ({ category, label, width, height, acme, counter, fill = 1, style }) => (
   <div
     style={{
       width,
@@ -96,7 +98,16 @@ export const AppWindow: React.FC<{
     }}
   >
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: space.s2, padding: `${space.s3}px ${space.s3}px ${space.s2}px` }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: space.s2,
+          padding: `${space.s3}px ${space.s3}px ${space.s2}px`,
+          opacity: Math.min(1, fill * 2),
+          translate: `0 ${(1 - Math.min(1, fill * 2)) * 8}px`,
+        }}
+      >
         <Glyph category={category} size={36} />
         <div style={{ ...type.uiStrong, color: colour.stone, whiteSpace: "nowrap" }}>{label}</div>
         <div style={{ flex: 1 }} />
@@ -105,7 +116,17 @@ export const AppWindow: React.FC<{
         ) : null}
       </div>
       <div style={{ height: 1, background: colour.hairline, margin: `0 ${space.s3}px` }} />
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: space.s2, padding: space.s3 }}>
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          gap: space.s2,
+          padding: space.s3,
+          opacity: Math.max(0, fill * 2 - 1),
+          translate: `0 ${(1 - Math.max(0, fill * 2 - 1)) * 12}px`,
+        }}
+      >
         {acme !== undefined ? (
           <div style={{ position: "relative", alignSelf: "flex-start", ...type.uiStrong, color: colour.ink, padding: "2px 8px", margin: "0 -8px" }}>
             <div

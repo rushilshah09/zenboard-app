@@ -9,8 +9,16 @@ import {
   CONTENT,
   ClientView,
   DocView,
+  CLIENT,
+  CLIENT_HERO,
   DOC,
-  FocusPull,
+  DOC_HERO,
+  HeroMode,
+  LIFE_HERO,
+  MONEY_HERO,
+  SWIPE,
+  SwipeCut,
+  TodaySkeleton,
   LifeView,
   MONEY,
   MONEY_SEND,
@@ -30,7 +38,7 @@ import { Thread } from "../components/Thread";
 import { RevealMark } from "../components/LogoReveal";
 import { Aura } from "../components/ZenMark";
 import { ZONES } from "../brand/layout";
-import { DUR, EASE, clamp, leave, rise } from "../brand/motion";
+import { DUR, EASE, clamp, leave } from "../brand/motion";
 import { syncWords, syncedSpan } from "../brand/sync";
 import { SceneId, VO_AT, actRange, frames, sceneStart } from "../brand/timeline";
 import { LOCKUP, LockupLeaving, lockupMark } from "./Act4";
@@ -65,6 +73,8 @@ const threadPath = (from: { x: number; y: number }, to: { x: number; y: number }
 const ROW_AT = (i: number) => 36 + i * 9;
 /** S09 ends pushed in; the lockup keeps that scale while it leaves so the cut is invisible. */
 const S09_END_SCALE = 1.09;
+/** S10 frame where the window starts assembling, while the mark is still in flight. */
+const BUILD_AT = 14;
 const toScreen = (p: { x: number; y: number }, s: number) => ({ x: 960 + (p.x - 960) * s, y: 540 + (p.y - 540) * s });
 export const S10: React.FC = () => {
   const frame = useCurrentFrame();
@@ -100,7 +110,8 @@ export const S10: React.FC = () => {
           selected={ROW.today}
           selectedOpacity={sel}
           headerMark={landed}
-          frame={rise(frame, 20, { scale: true })}
+          build={frame - BUILD_AT}
+          content={<TodaySkeleton b={frame - BUILD_AT} />}
           overlay={<Thread d={`M48 60 C 48 90, 52 110, ${rowEnd(0).x} ${rowEnd(0).y}`} progress={push} opacity={1 - clamp(frame, [146, 158], [0, 1], EASE.leave)} />}
         />
       </Camera>
@@ -113,6 +124,8 @@ export const S10: React.FC = () => {
             translate: `${(to.x - from.x) * travel}px ${(to.y - from.y) * travel}px`,
             scale: String(scale),
             opacity: 1 - landed,
+            // Speed blur: strongest at the start of the flight, gone as it lands.
+            filter: `blur(${Math.min(6, Math.hypot(to.x - from.x, to.y - from.y) * (travel - clamp(frame - 1, [8, 60], [0, 1], EASE.settle)) * 0.25)}px)`,
           }}
         >
           <RevealMark size={size0} />
@@ -129,46 +142,73 @@ export const S10: React.FC = () => {
 
 // ── S11–S15 · one job through every module ─────────────────────────────────
 type ModuleId = "S11" | "S12" | "S13" | "S14" | "S15";
+type ViewFC = React.FC<{ f: number; hero?: HeroMode; lift?: number; rowAt?: number[]; cardAt?: number[] }>;
+type Hero = { origin: { x: number; y: number } };
 type Module = {
   row: number;
   from: number;
   headline: string;
-  View: React.FC<{ f: number }>;
-  Prev?: React.FC<{ f: number }>;
+  View: ViewFC;
+  Prev?: ViewFC;
   /** Outgoing thread: window-local start, and the sidebar row it leads to. */
   thread?: { from: { x: number; y: number }; to: number; below?: boolean };
+  /**
+   * Lift-out: the hero component rises off the page toward camera (scale k,
+   * about its content-local origin) while the window behind softens and recedes.
+   */
+  lift?: { hero: Hero; k: number; up: [number, number]; down: [number, number] };
 };
 const VIEW_AT = 10;
+/** Scene frame where the swipe cut into a module starts. */
+const SWIPE_AT = 6;
 
 const MODULES: Record<ModuleId, Module> = {
   S11: { row: ROW.today, from: ROW.today, headline: "Plan your day in seconds.", View: TodayView, thread: { from: content(TODAY_THREAD_FROM), to: ROW.docs, below: true } },
-  S12: { row: ROW.docs, from: ROW.today, headline: "Write right next to the work.", View: DocView, Prev: TodayView, thread: { from: content({ x: 22, y: 218 }), to: ROW.clients } },
-  S13: { row: ROW.clients, from: ROW.docs, headline: "Every client in one view.", View: ClientView, Prev: DocView, thread: { from: content({ x: 36, y: 394 }), to: ROW.money } },
-  S14: { row: ROW.money, from: ROW.clients, headline: "Invoice in one click.", View: MoneyView, Prev: ClientView },
-  S15: { row: ROW.life, from: ROW.money, headline: "And room for the rest of your life.", View: LifeView, Prev: MoneyView },
+  S12: {
+    row: ROW.docs,
+    from: ROW.today,
+    headline: "Write right next to the work.",
+    View: DocView,
+    Prev: TodayView,
+    thread: { from: content({ x: 22, y: DOC_HERO.y + DOC_HERO.h }), to: ROW.clients },
+    lift: { hero: DOC_HERO, k: 1.5, up: [100, 126], down: [168, 194] },
+  },
+  S13: {
+    row: ROW.clients,
+    from: ROW.docs,
+    headline: "Every client in one view.",
+    View: ClientView,
+    Prev: DocView,
+    thread: { from: content({ x: 36, y: 440 }), to: ROW.money },
+    lift: { hero: CLIENT_HERO, k: 1.12, up: [34, 60], down: [148, 176] },
+  },
+  S14: { row: ROW.money, from: ROW.clients, headline: "Invoice in one click.", View: MoneyView, Prev: ClientView, lift: { hero: MONEY_HERO, k: 1.12, up: [92, 120], down: [204, 232] } },
+  S15: { row: ROW.life, from: ROW.money, headline: "And room for the rest of your life.", View: LifeView, Prev: MoneyView, lift: { hero: LIFE_HERO, k: 1.3, up: [116, 144], down: [194, 222] } },
 };
 const ORDER: ModuleId[] = ["S11", "S12", "S13", "S14", "S15"];
+const LIFT_RISE = 14;
+
+const liftAt = (m: Module, frame: number) =>
+  m.lift ? clamp(frame, m.lift.up, [0, 1], EASE.settle) - clamp(frame, m.lift.down, [0, 1], EASE.settle) : 0;
+
+/** Where a window-local point lands once the hero is lifted by `d`. */
+const lifted = (m: Module, d: number, p: { x: number; y: number }) => {
+  if (!m.lift || d <= 0) return p;
+  const o = content(m.lift.hero.origin);
+  const s = 1 + (m.lift.k - 1) * d;
+  return { x: o.x + (p.x - o.x) * s, y: o.y + (p.y - o.y) * s - LIFT_RISE * d };
+};
 
 /**
- * Punch-in camera: each module pushes in on its action and eases back out
- * before the thread leaves. Max ~1.15× keeps the window clear of the headline.
- * `focus` is content-local; frames are scene-local.
+ * S11's one camera move: a push into the drop, eased back out before the
+ * thread leaves. `focus` is content-local; frames are scene-local.
  */
-type Punch = { focus: { x: number; y: number }; k: number; in: [number, number]; out: [number, number] };
-const PUNCH: Record<ModuleId, Punch> = {
-  S11: { focus: { x: TODAY.slot.x + TODAY.slot.w / 2 - 200, y: TODAY.slot.y + 40 }, k: 1.12, in: [VIEW_AT + TODAY.grabAt - 6, VIEW_AT + TODAY.dropAt + 8], out: [150, 190] },
-  S12: { focus: { x: 440, y: 250 }, k: 1.1, in: [VIEW_AT + DOC.lineAt - 20, VIEW_AT + DOC.lineAt + 30], out: [168, 204] },
-  S13: { focus: { x: 592, y: 320 }, k: 1.08, in: [36, 110], out: [168, 204] },
-  S14: { focus: { x: MONEY_SEND.x - 200, y: MONEY_SEND.y }, k: 1.12, in: [VIEW_AT + MONEY.sendAt - 36, VIEW_AT + MONEY.sendAt], out: [VIEW_AT + MONEY.paidAt + 18, 236] },
-  S15: { focus: { x: 700, y: 320 }, k: 1.07, in: [16, 110], out: [180, 236] },
-};
+const PUNCH = { focus: { x: TODAY.slot.x + TODAY.slot.w / 2 - 200, y: TODAY.slot.y + 40 }, k: 1.14, in: [VIEW_AT + TODAY.grabAt - 6, VIEW_AT + TODAY.dropAt + 8] as [number, number], out: [150, 186] as [number, number] };
 const punchAt = (id: ModuleId, frame: number, drift: number) => {
-  const p = PUNCH[id];
-  // Between the push and the pull the camera keeps creeping in, so the hold never goes dead.
-  const creep = 0.03 * clamp(frame, [p.in[1], p.out[0]], [0, 1], EASE.breathe);
-  const k = 1 + (p.k - 1 + creep) * (clamp(frame, p.in, [0, 1], EASE.settle) - clamp(frame, p.out, [0, 1], EASE.settle));
-  const fx = WIN.x + CONTENT.x + p.focus.x - 960;
-  const fy = WIN.y + CONTENT.y + p.focus.y - 540;
+  if (id !== "S11") return { scale: drift, x: 0, y: 0 };
+  const k = 1 + (PUNCH.k - 1) * (clamp(frame, PUNCH.in, [0, 1], EASE.settle) - clamp(frame, PUNCH.out, [0, 1], EASE.settle));
+  const fx = WIN.x + CONTENT.x + PUNCH.focus.x - 960;
+  const fy = WIN.y + CONTENT.y + PUNCH.focus.y - 540;
   return { scale: drift * k, x: fx * drift * (1 - k), y: fy * drift * (1 - k) };
 };
 
@@ -211,6 +251,13 @@ const MONEY_CURSOR: [number, number, number][] = (() => {
   ];
 })();
 
+/** Per-module reveals keyed to the voice (view-local frames). */
+const revealProps = (id: ModuleId, words: number[]) => {
+  if (id === "S13") return { rowAt: [words[1], words[3], words[4]].map((w) => w - VIEW_AT) };
+  if (id === "S15") return { cardAt: [words[1], words[3], words[5], words[7]].map((w) => w - VIEW_AT) };
+  return {};
+};
+
 const ModuleScene: React.FC<{ id: ModuleId }> = ({ id }) => {
   const frame = useCurrentFrame();
   const m = MODULES[id];
@@ -218,23 +265,31 @@ const ModuleScene: React.FC<{ id: ModuleId }> = ({ id }) => {
   const prev = prevId ? MODULES[prevId] : undefined;
   const len = frames(id);
   const f = frame - VIEW_AT;
-  const selected = m.from + (m.row - m.from) * clamp(frame, [4, 40], [0, 1], EASE.settle);
+  // The selection glides down with the swipe, one motion.
+  const selected = m.from + (m.row - m.from) * clamp(frame, [SWIPE_AT, SWIPE_AT + SWIPE.exit + SWIPE.enter], [0, 1], EASE.settle);
   const outThread = m.thread ? clamp(frame, [len - 60, len - 14], [0, 1], EASE.settle) : 0;
   const inThread = prev?.thread;
   const cursor = id === "S11" ? TODAY_CURSOR : id === "S14" ? MONEY_CURSOR : null;
-  const cur = cursor ? along(frame, cursor) : null;
+  const d = liftAt(m, frame);
+  const cur = cursor ? lifted(m, d, along(frame, cursor)) : null;
   const cursorIn = cursor ? clamp(frame, [cursor[0][0], cursor[0][0] + 16], [0, 1], EASE.settle) * (1 - clamp(frame, [cursor[cursor.length - 1][0] - 10, cursor[cursor.length - 1][0] + 8], [0, 1], EASE.leave)) : 0;
   const pressAt = id === "S11" ? VIEW_AT + TODAY.grabAt : VIEW_AT + MONEY.sendAt;
   const press = clamp(frame, [pressAt - 3, pressAt], [0, 1], EASE.snap) * (1 - clamp(frame, [pressAt + 2, pressAt + 8], [0, 1], EASE.settle));
   const holding = id === "S11" && frame >= VIEW_AT + TODAY.grabAt && frame < VIEW_AT + TODAY.dropAt;
   const words = syncWords(m.headline, id, VO_AT[id]);
+  const extra = revealProps(id, words);
   const Current = m.View;
   const Prev = m.Prev;
   const cam = actCamera(id, frame);
   const punch = punchAt(id, frame, cam);
+  // Depth of field: while the hero is lifted, the page behind softens, dims and steps back.
+  const depth: React.CSSProperties = d > 0 ? { filter: `blur(${d * 6}px)`, scale: String(1 - d * 0.03), opacity: 1 - d * 0.3 } : {};
+  const heroMode: HeroMode = d > 0 ? "hide" : "show";
+  // S11: the blank blocks laid in S10 resolve into the real Today view.
+  const resolve = clamp(frame, [4, 30], [0, 1], EASE.settle);
   return (
     <Scene>
-      {/* The headline stays on the act's drift; only the product punches in. */}
+      {/* The headline stays on the act's drift; only the product moves. */}
       <Camera scale={cam}>
         <Place id="headline" rect={ZONES.headlineTop} moving={during(frame, syncedSpan(words), [len - 18, len])}>
           <Headline text={m.headline} at={words[0]} wordAt={words} align="center" width={ZONES.headlineTop.w} exitAt={len - 18} />
@@ -248,24 +303,51 @@ const ModuleScene: React.FC<{ id: ModuleId }> = ({ id }) => {
           rows={ALL_IN}
           colours={ALL_IN}
           selected={selected}
+          frame={depth}
           content={
             Prev ? (
-              <FocusPull frame={frame} at={6} out={<Prev f={999} />} in={<Current f={f} />} />
+              <SwipeCut frame={frame} at={SWIPE_AT} out={<Prev f={999} />} in={<Current f={f} hero={heroMode} {...extra} />} />
             ) : (
-              <div style={{ position: "absolute", inset: 0, ...rise(frame, 4, { dist: 24 }) }}>
-                <Current f={f} />
-              </div>
+              <>
+                <TodaySkeleton b={999} opacity={1 - resolve} />
+                <div style={{ position: "absolute", inset: 0, opacity: resolve, filter: `blur(${(1 - resolve) * 8}px)` }}>
+                  <Current f={f} />
+                </div>
+              </>
             )
           }
           overlay={
             <>
               {inThread ? <Thread d={threadPath(inThread.from, rowEnd(inThread.to), inThread.below)} progress={1} opacity={leave(frame, 0).opacity} /> : null}
               {m.thread ? <Thread d={threadPath(m.thread.from, rowEnd(m.thread.to), m.thread.below)} progress={outThread} /> : null}
-              {cur ? <Cursor x={cur.x} y={cur.y} pressed={holding ? 1 : press} opacity={cursorIn} /> : null}
             </>
           }
         />
+        {/* The lifted hero, above the softened page. */}
+        {m.lift && d > 0 ? (
+          <div
+            style={{
+              position: "absolute",
+              left: WIN.x + CONTENT.x,
+              top: WIN.y + CONTENT.y,
+              width: CONTENT.w,
+              height: CONTENT.h,
+              transformOrigin: `${m.lift.hero.origin.x}px ${m.lift.hero.origin.y}px`,
+              scale: String(1 + (m.lift.k - 1) * d),
+              translate: `0 ${-LIFT_RISE * d}px`,
+            }}
+          >
+            <Current f={f} hero="only" lift={d} {...extra} />
+          </div>
+        ) : null}
+        {cur ? (
+          <div style={{ position: "absolute", left: WIN.x, top: WIN.y }}>
+            <Cursor x={cur.x} y={cur.y} pressed={holding ? 1 : press} opacity={cursorIn} />
+          </div>
+        ) : null}
       </Camera>
+      {Prev ? <Sfx at={SWIPE_AT} sound="whoosh-soft" volume={0.12} /> : null}
+      {m.lift ? <Sfx at={m.lift.up[0]} sound="lift" volume={0.16} /> : null}
       {m.thread ? <Sfx at={len - 60} sound="thread" volume={0.14} /> : null}
       {id === "S11" ? (
         <>
@@ -276,7 +358,8 @@ const ModuleScene: React.FC<{ id: ModuleId }> = ({ id }) => {
       {id === "S12"
         ? [0, 5, 9, 15, 20, 26, 31, 37].map((k, i) => <Sfx key={k} at={VIEW_AT + DOC.lineAt + k} sound="key" variant={i % 4} volume={0.08} />)
         : null}
-      {id === "S13" ? <Sfx at={VIEW_AT + 30} sound="whoosh-soft" volume={0.14} /> : null}
+      {id === "S12" ? <Sfx at={VIEW_AT + DOC.updateAt} sound="tick-tuned" variant={4} volume={0.2} /> : null}
+      {id === "S13" ? <Sfx at={VIEW_AT + CLIENT.fillAt} sound="whoosh-soft" volume={0.12} /> : null}
       {id === "S14" ? (
         <>
           <Sfx at={VIEW_AT + MONEY.sendAt} sound="ui-click" volume={0.22} />

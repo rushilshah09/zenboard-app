@@ -52,7 +52,8 @@ export const S03: React.FC = () => {
           return (
             <Place key={a.label} id={a.short} rect={r} moving={frame >= ARRIVE(i) && frame < ARRIVE(i) + 20} style={style}>
               <div style={{ opacity: i === 0 ? clamp(frame, [0, 16], [0, 1], EASE.settle) : 1 }}>
-                <AppWindow category={a.category} label={a.label} width={r.w} height={r.h} />
+                {/* The blank card lands first, then its content fills in. */}
+                <AppWindow category={a.category} label={a.label} width={r.w} height={r.h} fill={clamp(frame, [ARRIVE(i) + (i === 0 ? 4 : 10), ARRIVE(i) + (i === 0 ? 34 : 40)], [0, 1], EASE.settle)} />
               </div>
             </Place>
           );
