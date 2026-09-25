@@ -1,0 +1,116 @@
+{
+  "how_to_use": [
+    "Generate IMG-01 first. Regenerate until it is right, then keep that chat open.",
+    "For every other image, stay in the same chat and attach the approved IMG-01 as a style reference (IMG-07 also uses it as the composition reference).",
+    "Paste each `prompt` exactly as written. ChatGPT has no negative-prompt field, so the avoid-list is already inside every prompt.",
+    "ChatGPT exports landscape images at 1536x1024 (3:2). For the 16:9 plates, crop to 16:9 by trimming equally from the top and bottom; every prompt keeps the subject clear of those edges.",
+    "Save each file with its exact `file` name in launch-video/public/img/. Vectorise the line art to SVG (vtracer or potrace) when you can; PNG also works."
+  ],
+  "palette": {
+    "deep_burgundy_linework": "#280417",
+    "zenboard_pink": "#C41C72",
+    "soft_rose": "#E8A8C5",
+    "blush": "#F3D9E5",
+    "warm_cream_background": "#F7F1E8",
+    "soft_sand": "#E8D8C5",
+    "muted_apricot": "#E8B88A",
+    "warm_yellow": "#E7C66B",
+    "muted_blue": "#6F91A8",
+    "soft_sky": "#C5DCE5",
+    "sage": "#9BAF88",
+    "pale_mint": "#C8D8C1",
+    "soft_coral": "#D97A72",
+    "muted_violet": "#8175AE",
+    "soft_lavender": "#AAA0D4"
+  },
+  "house_style": "Minimal editorial line illustration. One uniform line, about 2px weight at 1080p, in deep burgundy #280417, on a warm cream #F7F1E8 background. Flat colour fills use only the colours listed in this prompt: one or two dominant colours and one accent, nothing else. Generous negative space, calm and quiet mood, simple geometric forms, flat 2D, no shading, no gradients, no texture. People drawn as simple silhouettes with no facial features.",
+  "avoid": "3D, photorealistic, gradients, drop shadows, glossy, neon, pure black lines, grey, any colour not listed in the prompt, more than three colours, clutter, sketchy hatching, multiple line weights, watercolour, text, letters, numbers, logos, brand names, app screenshots, detailed faces, extra limbs, busy background.",
+  "illustrations": [
+    {
+      "order": 1,
+      "id": "IMG-01",
+      "file": "IMG-01.png",
+      "scene": "S01–S02 (0:00–0:05): 'Every business starts with one person. And one big idea.'",
+      "chatgpt_size": "landscape 1536x1024, crop to 16:9",
+      "final_use": "Full-frame plate, 1920x1080. The headline sits in the empty left 45%.",
+      "prompt": "Create a 16:9 widescreen image. Minimal editorial line illustration. One uniform line, about 2px weight at 1080p, in deep burgundy #280417, on a warm cream #F7F1E8 background. Generous negative space, calm and quiet mood, simple geometric forms, flat 2D, no shading, no gradients, no texture. People drawn as simple silhouettes with no facial features.\n\nSubject: a small-business owner sitting at a small wooden desk in the early morning, three-quarter side view, upright and focused. On the desk: a closed laptop, a coffee mug and a small potted plant. A simple window behind suggests morning light with two or three lines. The figure and desk sit in the right 55% of the frame; the left 45% is completely empty cream. Keep everything away from the top and bottom 10% of the frame.\n\nColours, use only these: linework deep burgundy #280417, dominant fill soft sand #E8D8C5, accent muted apricot #E8B88A used only for the morning light. Background warm cream #F7F1E8.\n\nAvoid: 3D, photorealistic, gradients, drop shadows, glossy, neon, pure black lines, grey, any colour not listed, more than three colours, clutter, sketchy hatching, multiple line weights, watercolour, text, letters, numbers, logos, brand names, app screenshots, detailed faces, extra limbs, busy background."
+    },
+    {
+      "order": 2,
+      "id": "IMG-02",
+      "file": "IMG-02.png",
+      "scene": "S02 (0:03–0:05): the note card that lifts into the first app window",
+      "chatgpt_size": "square 1024x1024",
+      "final_use": "Shown at 200x200 on the desk, then it grows into a white window.",
+      "prompt": "Use the attached IMG-01 as the style reference: same line weight, same burgundy line, same flat fills. Create a square 1:1 image. Minimal editorial line illustration. One uniform line, about 2px weight at 1080p, in deep burgundy #280417, on a warm cream #F7F1E8 background. Generous negative space, calm and quiet mood, simple geometric forms, flat 2D, no shading, no gradients, no texture.\n\nSubject: a single blank paper note card lying flat on a desk, seen from directly above, one corner gently lifted, a slim pen beside it. A small spark mark sits on the card. Isolated and centred with lots of empty space around it.\n\nColours, use only these: linework deep burgundy #280417, dominant fill soft sand #E8D8C5, accent warm yellow #E7C66B used only for the small spark on the card. Background warm cream #F7F1E8.\n\nAvoid: 3D, photorealistic, gradients, drop shadows, glossy, neon, pure black lines, grey, any colour not listed, more than three colours, clutter, sketchy hatching, multiple line weights, watercolour, text, letters, numbers, logos, brand names, app screenshots, extra limbs, busy background."
+    },
+    {
+      "order": 3,
+      "id": "IMG-06a",
+      "file": "IMG-06a.png",
+      "scene": "S15 (0:57–1:01): Life card 'Deep work'",
+      "chatgpt_size": "square 1024x1024",
+      "final_use": "Small card tile, about 170x170. Keep it bold and simple.",
+      "prompt": "Use the attached IMG-01 as the style reference: same line weight, same burgundy line, same flat fills. Create a square 1:1 image. Minimal editorial line illustration. One uniform line, about 2px weight at 1080p, in deep burgundy #280417, on a warm cream #F7F1E8 background. Flat 2D, simple geometric forms, no shading, no gradients, no texture. It will be shown very small, so use a few bold, simple shapes and no fine detail.\n\nSubject: deep work. A desk lamp, an open notebook and a pair of headphones. Objects only, no people. Centred, with 30% empty padding on every side.\n\nColours, use only these: linework deep burgundy #280417, dominant fill muted blue #6F91A8, accent soft sky #C5DCE5. Background warm cream #F7F1E8.\n\nAvoid: 3D, photorealistic, gradients, drop shadows, glossy, neon, pure black lines, grey, any colour not listed, more than three colours, clutter, sketchy hatching, multiple line weights, watercolour, text, letters, numbers, logos, brand names, busy background."
+    },
+    {
+      "order": 4,
+      "id": "IMG-06b",
+      "file": "IMG-06b.png",
+      "scene": "S15 (0:57–1:01): Life card 'A walk'",
+      "chatgpt_size": "square 1024x1024",
+      "final_use": "Small card tile, about 170x170. Keep it bold and simple.",
+      "prompt": "Use the attached IMG-01 as the style reference: same line weight, same burgundy line, same flat fills. Create a square 1:1 image. Minimal editorial line illustration. One uniform line, about 2px weight at 1080p, in deep burgundy #280417, on a warm cream #F7F1E8 background. Flat 2D, simple geometric forms, no shading, no gradients, no texture. It will be shown very small, so use a few bold, simple shapes and no fine detail.\n\nSubject: a walk. A pair of sneakers beside a gently curving path and one small tree. Objects only, no people. Centred, with 30% empty padding on every side.\n\nColours, use only these: linework deep burgundy #280417, dominant fill sage #9BAF88, accent pale mint #C8D8C1. Background warm cream #F7F1E8.\n\nAvoid: 3D, photorealistic, gradients, drop shadows, glossy, neon, pure black lines, grey, any colour not listed, more than three colours, clutter, sketchy hatching, multiple line weights, watercolour, text, letters, numbers, logos, brand names, busy background."
+    },
+    {
+      "order": 5,
+      "id": "IMG-06c",
+      "file": "IMG-06c.png",
+      "scene": "S15 (0:57–1:01): Life card 'Dinner'",
+      "chatgpt_size": "square 1024x1024",
+      "final_use": "Small card tile, about 170x170. Keep it bold and simple.",
+      "prompt": "Use the attached IMG-01 as the style reference: same line weight, same burgundy line, same flat fills. Create a square 1:1 image. Minimal editorial line illustration. One uniform line, about 2px weight at 1080p, in deep burgundy #280417, on a warm cream #F7F1E8 background. Flat 2D, simple geometric forms, no shading, no gradients, no texture. It will be shown very small, so use a few bold, simple shapes and no fine detail.\n\nSubject: dinner. A small table with two plates and a single lit candle. Objects only, no people. Centred, with 30% empty padding on every side.\n\nColours, use only these: linework deep burgundy #280417, dominant fill soft coral #D97A72, accent blush #F3D9E5. Background warm cream #F7F1E8.\n\nAvoid: 3D, photorealistic, gradients, drop shadows, glossy, neon, pure black lines, grey, any colour not listed, more than three colours, clutter, sketchy hatching, multiple line weights, watercolour, text, letters, numbers, logos, brand names, busy background."
+    },
+    {
+      "order": 6,
+      "id": "IMG-06d",
+      "file": "IMG-06d.png",
+      "scene": "S15 (0:57–1:01): Life card 'A day off'",
+      "chatgpt_size": "square 1024x1024",
+      "final_use": "Small card tile, about 170x170. Keep it bold and simple.",
+      "prompt": "Use the attached IMG-01 as the style reference: same line weight, same burgundy line, same flat fills. Create a square 1:1 image. Minimal editorial line illustration. One uniform line, about 2px weight at 1080p, in deep burgundy #280417, on a warm cream #F7F1E8 background. Flat 2D, simple geometric forms, no shading, no gradients, no texture. It will be shown very small, so use a few bold, simple shapes and no fine detail.\n\nSubject: a day off. A folding beach chair under a small sun. Objects only, no people. Centred, with 30% empty padding on every side.\n\nColours, use only these: linework deep burgundy #280417, dominant fill warm yellow #E7C66B, accent muted apricot #E8B88A. Background warm cream #F7F1E8.\n\nAvoid: 3D, photorealistic, gradients, drop shadows, glossy, neon, pure black lines, grey, any colour not listed, more than three colours, clutter, sketchy hatching, multiple line weights, watercolour, text, letters, numbers, logos, brand names, busy background."
+    },
+    {
+      "order": 7,
+      "id": "IMG-07",
+      "file": "IMG-07.png",
+      "scene": "S17 (1:04–1:09): 'One workspace. One subscription. One focus.' — mirrors S01",
+      "chatgpt_size": "landscape 1536x1024, crop to 16:9",
+      "final_use": "Full-frame plate, 1920x1080. Must line up with IMG-01 exactly.",
+      "prompt": "Use the attached IMG-01 as both the style and the composition reference. Create a 16:9 widescreen image with the exact same scene, desk and figure as the reference, identical framing and position: figure and desk in the right 55% of the frame, the left 45% completely empty cream, everything kept away from the top and bottom 10%. Minimal editorial line illustration. One uniform line, about 2px weight at 1080p, in deep burgundy #280417, on a warm cream #F7F1E8 background. Flat 2D, no shading, no gradients, no texture. People drawn as simple silhouettes with no facial features.\n\nWhat changes: it is now evening. The window shows a thin crescent moon and a dusk sky, a desk lamp is on, the laptop is half-closed, and the figure leans back relaxed with both hands behind the head. A thin line of pink light glows from the half-closed laptop.\n\nColours, use only these: linework deep burgundy #280417, dominant fills muted violet #8175AE and soft lavender #AAA0D4 for the dusk, accent Zenboard pink #C41C72 used only for the laptop glow. Background warm cream #F7F1E8.\n\nAvoid: 3D, photorealistic, gradients, drop shadows, glossy, neon, pure black lines, grey, any colour not listed, more than three colours, clutter, sketchy hatching, multiple line weights, watercolour, text, letters, numbers, logos, brand names, app screenshots, detailed faces, extra limbs, busy background."
+    },
+    {
+      "order": 8,
+      "id": "IMG-04",
+      "optional": true,
+      "file": "IMG-04.png",
+      "scene": "Whole film: subtle paper grain overlaid at 3.5%",
+      "chatgpt_size": "landscape 1536x1024, crop to 16:9",
+      "final_use": "Full-frame overlay. The film looks fine without it.",
+      "prompt": "Create a 16:9 widescreen image: a seamless, very subtle warm paper grain texture in warm cream #F7F1E8 only. Low contrast, even across the whole frame, no visible fibres, no stains, no creases, no vignette, no edges, no objects, no text. It should read as almost flat cream."
+    },
+    {
+      "order": 9,
+      "id": "IMG-05",
+      "optional": true,
+      "file": "IMG-05.png",
+      "scene": "S09 and S18: soft aura behind the Zenboard mark",
+      "chatgpt_size": "landscape 1536x1024, crop to 16:9",
+      "final_use": "Behind the mark. The film already draws a matching gradient, so this is only an upgrade.",
+      "prompt": "Create a 16:9 widescreen image: an abstract, extremely soft radial glow, centred, with no shapes, no line art, no hard edges and no texture. The centre is Zenboard pink #C41C72 at low intensity, fading smoothly through blush #F3D9E5 into warm cream #F7F1E8, which fills the outer half of the frame and all four edges. No other colours, no text, no objects."
+    }
+  ],
+  "not_needed": {
+    "IMG-03": "App glyphs. The film uses Zenboard's own Phosphor icons instead (CREATIVE_DIRECTION.md §7, tip 2)."
+  }
+}

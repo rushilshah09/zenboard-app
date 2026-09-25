@@ -1,0 +1,199 @@
+import React from "react";
+import { useCurrentFrame } from "remotion";
+import { AppWindow } from "../components/AppWindow";
+import { Sfx } from "../components/Audio";
+import { Camera } from "../components/Camera";
+import { Place, during } from "../components/DebugZones";
+import { Icon } from "../components/Glyph";
+import { Headline } from "../components/Headline";
+import { Tile } from "../components/Tile";
+import { Rect, col, span } from "../brand/layout";
+import { DUR, EASE, clamp, rise } from "../brand/motion";
+import { aurora, glass, radius, space } from "../brand/tokens";
+import { syncWords, syncedSpan } from "../brand/sync";
+import { VO_AT, beat, frames } from "../brand/timeline";
+import { lookIn } from "../brand/look";
+import { OPENING_SCALE } from "./Act1";
+import { APPS, Scene, TILE_SCALE, gridSlot, pillRect, tileRect, tileSlot } from "./shared";
+
+/** Act 2 — too many apps (S03–S04). Monochrome, gridded, nothing overlaps. */
+
+const bbox = (rects: Rect[]) => {
+  const x0 = Math.min(...rects.map((r) => r.x));
+  const y0 = Math.min(...rects.map((r) => r.y));
+  const x1 = Math.max(...rects.map((r) => r.x + r.w));
+  const y1 = Math.max(...rects.map((r) => r.y + r.h));
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+};
+
+/** Camera target once windows 0..k are on the table: fit their bounding box. */
+const target = (k: number) => {
+  const b = bbox(Array.from({ length: k + 1 }, (_, i) => gridSlot(i)));
+  const s = Math.min(OPENING_SCALE, span(12) / b.w, (gridSlot(4).y + gridSlot(4).h - gridSlot(0).y) / b.h);
+  return { s, cx: b.x + b.w / 2, cy: b.y + b.h / 2 };
+};
+
+const ARRIVE = (k: number) => beat(k);
+/** Relative nearness of each window (1 = nearest), so the grid reads as layered, not flat. */
+const DEPTH = [1, 0.4, 0.8, 0.2, 0.6, 1, 0.3, 0.7];
+
+export const S03: React.FC = () => {
+  const frame = useCurrentFrame();
+  const dark = lookIn("S03", frame).dark;
+  // Ease the camera from each target to the next as each window lands.
+  let cam = target(0);
+  for (let k = 1; k < APPS.length; k++) {
+    const p = clamp(frame, [ARRIVE(k), ARRIVE(k) + 36], [0, 1], EASE.settle);
+    const t = target(k);
+    cam = { s: cam.s + (t.s - cam.s) * p, cx: cam.cx + (t.cx - cam.cx) * p, cy: cam.cy + (t.cy - cam.cy) * p };
+  }
+  return (
+    <Scene>
+      <Camera scale={cam.s} x={-(cam.cx - 960) * cam.s} y={-(cam.cy - 540) * cam.s}>
+        {APPS.map((a, i) => {
+          const r = gridSlot(i);
+          // Windows fly in out of depth (Jurni): from small, far and blurred, fast, then settle.
+          const fly = clamp(frame, [ARRIVE(i), ARRIVE(i) + 30], [0, 1], EASE.settle);
+          const out = { x: (r.x + r.w / 2 - 960) * 0.6, y: (r.y + r.h / 2 - 540) * 0.6 };
+          const style: React.CSSProperties =
+            i === 0
+              ? { opacity: 1 }
+              : {
+                  opacity: clamp(frame, [ARRIVE(i), ARRIVE(i) + 10], [0, 1]),
+                  translate: `${(1 - fly) * out.x}px ${(1 - fly) * out.y}px`,
+                  scale: String(0.7 + 0.3 * fly),
+                  filter: `blur(${(1 - fly) * 18}px)`,
+                };
+          // Each window floats on its own slow, out-of-phase sine at its own depth; the float
+          // settles to rest before S04 compresses the grid.
+          const amp = 1 - clamp(frame, [frames("S03") - 44, frames("S03") - 4], [0, 1], EASE.settle);
+          const depth = DEPTH[i];
+          const fx = Math.cos(frame / (58 + i * 7) + i * 1.7) * 5 * amp * (0.6 + depth);
+          const fy = Math.sin(frame / (46 + i * 5) + i * 1.3) * 7 * amp * (0.6 + depth);
+          return (
+            <Place key={a.label} id={a.short} rect={r} moving={frame >= ARRIVE(i) && frame < ARRIVE(i) + 20} style={style}>
+              <div
+                style={{
+                  opacity: i === 0 ? clamp(frame, [0, 16], [0, 1], EASE.settle) : 1,
+                  translate: `${fx}px ${fy}px`,
+                  scale: String(1 - (1 - depth) * 0.03 * amp),
+                }}
+              >
+                {/* The blank card lands first, then its content fills in. */}
+                <AppWindow
+                  category={a.category}
+                  label={a.label}
+                  width={r.w}
+                  height={r.h}
+                  dark={dark}
+                  draw={i === 0 ? 1 : clamp(frame, [ARRIVE(i) + 4, ARRIVE(i) + 34], [0, 1])}
+                  fill={clamp(frame, [ARRIVE(i) + (i === 0 ? 4 : 10), ARRIVE(i) + (i === 0 ? 34 : 40)], [0, 1], EASE.settle)}
+                />
+              </div>
+            </Place>
+          );
+        })}
+      </Camera>
+      {APPS.slice(1).map((a, i) => (
+        <Sfx key={a.label} at={ARRIVE(i + 1)} sound="notify" variant={i + 1} volume={0.2} />
+      ))}
+      <Sfx at={0} sound="notify" variant={0} volume={0.2} />
+    </Scene>
+  );
+};
+
+/** Top row compresses first, the bottom row follows once it is clear. */
+const shrinkP = (frame: number, i: number) =>
+  i < 4 ? clamp(frame, [0, 28], [0, 1], EASE.settle) : clamp(frame, [20, 48], [0, 1], EASE.settle);
+
+/** Each word lands as it is spoken; the row reacts on the nouns (apps, logins, bills). */
+const S04_TEXT = "Eight apps.|Eight logins.|Eight bills.";
+const S04_WORDS = syncWords(S04_TEXT, "S04", VO_AT.S04);
+export const PHRASES_S04 = [S04_WORDS[1], S04_WORDS[3], S04_WORDS[5]];
+/** A soft dip that travels along the row each time a noun is spoken (no overshoot). */
+const wave = (frame: number, slot: number) =>
+  PHRASES_S04.reduce((s, at) => {
+    const t = at + slot * 3;
+    const down = clamp(frame, [t, t + 6], [0, 1], EASE.snap);
+    const up = clamp(frame, [t + 6, t + 22], [0, 1], EASE.settle);
+    return s - 0.05 * (down - up);
+  }, 1);
+const TILE_ROW: Rect = { x: col(1), y: tileRect(0).y, w: span(12), h: pillRect(0).y + pillRect(0).h - tileRect(0).y };
+const HEADLINE_S04: Rect = { x: col(1), y: pillRect(0).y + pillRect(0).h + 96, w: span(12), h: 80 };
+
+export const S04: React.FC = () => {
+  const frame = useCurrentFrame();
+  const dark = 1;
+  return (
+    <Scene>
+      <Camera scale={1 + 0.05 * clamp(frame, [48, beat(8)], [0, 1], EASE.breathe)}>
+        {APPS.map((a, i) => {
+          const g = gridSlot(i);
+          const t = tileRect(tileSlot(i));
+          const p = shrinkP(frame, i);
+          // Bottom-row windows finish their sideways move early so they clear the resting top-row tiles.
+          const px = i < 4 ? p : clamp(p, [0, 0.6], [0, 1]);
+          const s = 1 + (TILE_SCALE - 1) * p;
+          const dx = (t.x + t.w / 2 - (g.x + g.w / 2)) * px;
+          const dy = (t.y + t.h / 2 - (g.y + g.h / 2)) * p;
+          const swap = clamp(p, [0.7, 1], [0, 1], EASE.settle);
+          return (
+            <React.Fragment key={a.label}>
+              {swap < 1 ? (
+                <Place
+                  id={`${a.short}-window`}
+                  rect={g}
+                  bounds={{ x: g.x + dx + (g.w * (1 - s)) / 2, y: g.y + dy + (g.h * (1 - s)) / 2, w: g.w * s, h: g.h * s }}
+                  moving={p > 0 && p < 1}
+                  style={{ translate: `${dx}px ${dy}px`, scale: String(s), opacity: 1 - swap }}
+                >
+                  <AppWindow category={a.category} label={a.label} width={g.w} height={g.h} dark={dark} />
+                </Place>
+              ) : null}
+              <div style={{ position: "absolute", left: t.x, top: t.y, opacity: swap, scale: String(wave(frame, tileSlot(i))) }}>
+                <Tile category={a.category} label={a.short} width={t.w} height={t.h} dark={dark} />
+              </div>
+              <div style={{ position: "absolute", left: pillRect(tileSlot(i)).x, top: pillRect(tileSlot(i)).y, width: pillRect(0).w, height: pillRect(0).h, ...rise(frame, PHRASES_S04[1] + tileSlot(i) * 2, { dist: 24 }) }}>
+                <LoginBillPill frame={frame} i={tileSlot(i)} />
+              </div>
+            </React.Fragment>
+          );
+        })}
+        {/* The tile row (with its pills) is one compositional object for the budget. */}
+        <Place id="tile-row" rect={TILE_ROW} moving={during(frame, [PHRASES_S04[1], PHRASES_S04[1] + 56])} style={{ opacity: shrinkP(frame, 7) >= 1 ? 1 : 0 }}>
+          <div />
+        </Place>
+        <Place id="headline" rect={HEADLINE_S04} visible={frame >= S04_WORDS[0]} moving={during(frame, syncedSpan(S04_WORDS), [beat(8) - 18, beat(8)])}>
+          <Headline text={S04_TEXT} at={S04_WORDS[0]} wordAt={S04_WORDS} tone="white" exitAt={beat(8) - 18} />
+        </Place>
+      </Camera>
+      {PHRASES_S04.map((p, i) => (
+        <Sfx key={p} at={p} sound="click" variant={i} volume={0.3} />
+      ))}
+      <Sfx at={PHRASES_S04[2] + 4} sound="paper-tear" volume={0.15} />
+    </Scene>
+  );
+};
+
+/** The Stone pill under each tile: a key (login), then a receipt (bill). */
+const LoginBillPill: React.FC<{ frame: number; i: number }> = ({ frame, i }) => {
+  const bill = clamp(frame, [PHRASES_S04[2] + i * 2, PHRASES_S04[2] + i * 2 + DUR.snap], [0, 1], EASE.snap);
+  return (
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        borderRadius: radius.pill,
+        background: "rgba(255, 255, 255, 0.08)",
+        boxShadow: "inset 0 0 0 1px rgba(255, 255, 255, 0.12)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: space.s2,
+      }}
+    >
+      <Icon name="key" size={22} tint={glass.muted} />
+      <Icon name="receipt" size={22} tint={aurora.coral} style={{ opacity: bill, scale: String(0.25 + bill * 0.75), filter: `blur(${(1 - bill) * 4}px)` }} />
+    </div>
+  );
+};
