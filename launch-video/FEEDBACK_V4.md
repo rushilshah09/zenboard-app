@@ -11,6 +11,8 @@ work starts one direction at a time only after the go-ahead.
 | **Superhuman brand announcement** (`internal_brand_announcement_1080p.mp4`) | Transitions and storytelling: icons pop in one by one with spring overshoot, merge into one "?" tile, then text-only beats ("Introducing" → "our new identity"). Words blur-in / blur-out per word, a cursor selects a word and it scales/re-styles in place, one element morphs into the next scene (tile → full-frame colour wipe → next stage), shape-matched cuts. Sound design is tight: a soft click/pop on every appearance, whooshes on wipes. |
 | Flike stills (6–10) | Ring of apps + chat cards, colour ring resolve into logo, app cables merging into one node. |
 | Card refs (Flike UI, Valley ring collage, Fiverr berry banner) | Feature-card styling (D5). |
+| Card look refs (green Project Status card; Morphosis, Lovable, rust WELCOME UI) | UI card look & background (D6). |
+| `refs/app-ui/*.png` | Real Zenboard app screens — the source for every UI element in the film. |
 | Pill wall frame (`1.webp`) | The pill wall itself stays; the look behind it changes (see D2). |
 
 ## Directions
@@ -63,7 +65,23 @@ white type + outline button).
 - A "ring of cards around a headline" layout for the all-in-one statement.
 - Product shots = one large floating Zenboard window on the soft Paper stage, Flike-style.
 
-### D6+ — (more directions to come)
+### D6 — UI card look & feel (reference: green "Project Status" card)
+The product UI in the film should look like the green "Project Status" reference:
+- **Background:** one brand colour going **dark → light** (deep at one corner, lighter at the opposite),
+  with large soft overlapping circles in slightly lighter tones = our **Zenboard mark (four-lobed shape)
+  blended in, very subtle** (low-opacity / soft-light blend mode), cropped large behind the UI.
+- **Cards:** a frosted, slightly translucent card tinted to the background (headline in the dark brand tone,
+  status bars/progress in tints of the same hue), with a crisp white card floating **above** it,
+  overlapping its corner (avatars + search in the ref → a real Zenboard element in ours).
+- **Logo above:** the Zenboard logo sits above the composition.
+- Other refs in this batch (Morphosis, Lovable brand board, rust "WELCOME" UI with connector lines and
+  code chips) are mood only: grain texture, UI panels joined by thin lines with dot nodes, floating chips.
+- **Our aesthetic = the real Zenboard app.** It was screenshotted from the running app
+  (`dev-preview` routes) into `refs/app-ui/` (home, tasks, calendar, documents, clients, money, habits, inbox):
+  dark neutral UI, Geist, dense rows, small coloured tags, Berry accents. UI inside the film cards is
+  rebuilt from these screens, not invented.
+
+### D7+ — (more directions to come)
 
 ## Brand note
 The Zenboard brand guidelines (Paper / Ink / single Berry accent, eight flat field colours, no gradients)
