@@ -129,14 +129,28 @@ def f_2_1():
     return s
 
 def f_2_2():
+    """The ring breaks and sweeps off: hairline bundles (same language as the 3.1 fans), not thick strokes."""
     s = paper_stage(.4)
-    cols = [BERRY, FIELD["petal"], FIELD["apricot"]]
-    arcs = "".join(f'<path d="M -10 {95+i*5} C 30 {70+i*5}, 70 {40+i*4}, 115 {-5+i*6}" fill="none" stroke="{c}" '
-                   f'stroke-width="{7-i*1.5}" stroke-linecap="round"/>' for i, c in enumerate(cols))
-    s += f'<svg class="stage" viewBox="0 0 100 56.25" preserveAspectRatio="none">{arcs}</svg>'
-    small = "".join(f'<circle r="16" cx="50" cy="50" fill="none" stroke="{c}" stroke-width="5" stroke-linecap="round" '
-                    f'stroke-dasharray="17 84" stroke-dashoffset="{-i*25}"/>' for i, c in enumerate([BERRY, FIELD["sky"], FIELD["apricot"], FIELD["sage"]]))
-    s += at(42, 27, f'<svg viewBox="0 0 100 100" style="width:22cqw">{small}</svg>')
+    cols = [BERRY, "#E0703F", "#6E63D9"]
+    defs = "".join(f'<linearGradient id="sw{i}" gradientUnits="userSpaceOnUse" x1="10" y1="56" x2="100" y2="0">'
+                   f'<stop offset="0" stop-color="{c}" stop-opacity="0"/><stop offset=".35" stop-color="{c}" stop-opacity=".85"/>'
+                   f'<stop offset="1" stop-color="{c}" stop-opacity=".35"/></linearGradient>' for i, c in enumerate(cols))
+    arcs = ""
+    for i in range(len(cols)):
+        for j in range(18):
+            o = (j - 8.5) / 8.5
+            base = i * 3.2 + o * 1.4
+            arcs += (f'<path d="M 12 {60 + base} C 40 {44 + base * 1.1}, 70 {26 + base * .9}, 104 {-2 + base * .6}" fill="none" '
+                     f'stroke="url(#sw{i})" stroke-width=".07" opacity="{.35 + .65 * (1 - abs(o))}"/>')
+    s += f'<svg class="stage" viewBox="0 0 100 56.25" preserveAspectRatio="none"><defs>{defs}</defs>{arcs}</svg>'
+    ring = ""
+    for k, c in enumerate([BERRY, "#2F86A8", "#E0703F", "#3F8F55"]):
+        for j in range(7):
+            r = 13.5 + j * .8
+            ring += (f'<circle r="{r}" cx="50" cy="50" fill="none" stroke="{c}" stroke-width=".35" stroke-linecap="round" '
+                     f'stroke-dasharray="{r * 1.05} {r * 6.283 - r * 1.05}" stroke-dashoffset="{-k * r * 1.57 - j * .9}" opacity="{.4 + .6 * (1 - abs(j - 3) / 3)}"/>')
+    s += at(42, 27, f'<svg viewBox="0 0 100 100" style="width:22cqw">{ring}</svg>')
+    s += at(42, 27, '<span class="spark"></span>')
     return s
 
 def f_2_3():
