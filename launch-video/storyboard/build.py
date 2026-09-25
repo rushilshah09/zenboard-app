@@ -605,6 +605,8 @@ for sc in SCENES:
   <div class="grid">{frames}</div>{out}
 </section>'''
 
-page = (ROOT / "template.html").read_text().replace("{{BODY}}", body).replace("{{LOCKUP}}", lockup(100)).replace("{{LOBE}}", MARK.split("ZM")[0] + "Z")
+page = ((ROOT / "template.html").read_text() + (ROOT / "fonts.css.html").read_text()).replace("<title>Zenboard Launch Storyboard</title>\n", "")
+page = "<title>Zenboard Launch Storyboard</title>\n" + page
+page = page.replace("{{BODY}}", body).replace("{{LOCKUP}}", lockup(100)).replace("{{LOBE}}", MARK.split("ZM")[0] + "Z")
 (ROOT / "index.html").write_text(page)
 print("wrote", ROOT / "index.html", len(page) // 1024, "KB")
