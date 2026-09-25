@@ -100,7 +100,7 @@ KINDS = ["mail", "chat", "tasks", "docs", "crm", "cal", "money", "notes"]
 
 # ---------- frames ----------
 def f_1_1():
-    return paper_stage(.55) + rings([11, 17]) + portrait(14, "transform:translate(-50%,-50%) scale(.92)") + \
+    return paper_stage(.55) + halftone(50, 28.1, 44, "#C41C72", .07) + rings([11, 17]) + portrait(14, "transform:translate(-50%,-50%) scale(.92)") + \
         at(50, H_/2, "", "sparkle")
 
 def f_1_2():
@@ -280,10 +280,17 @@ def today_card(mini=False):
       <div class="ev"><s></s>Design review <em>16:00–18:00</em></div>
     </div>'''
 
+
+HALFTONE = (ROOT / "halftone.svgfrag").read_text()
+def halftone(x, y, size, color, opacity, rot=0):
+    """The Zenboard mark as a halftone dot field (dot size follows the mark, with a soft falloff halo)."""
+    return at(x, y, f'<svg viewBox="0 0 100 100" style="width:{size}cqw;height:{size}cqw;opacity:{opacity};transform:rotate({rot}deg)" fill="{color}">{HALFTONE}</svg>', "", "pointer-events:none")
+
 def berry_field():
     return (f'<div class="stage field"></div>'
             + at(18, 40, mark(62, "#ffffff", "opacity:.07"), "", "mix-blend-mode:soft-light")
-            + at(92, 6, mark(34, "#ffffff", "opacity:.06"), "", "mix-blend-mode:soft-light"))
+            + at(92, 6, mark(34, "#ffffff", "opacity:.06"), "", "mix-blend-mode:soft-light")
+            + halftone(86, 44, 46, "#ffffff", .09, -8))
 
 NAV = [("Sun", "Today", None), ("Tray", "Inbox", "3"), ("CheckSquare", "Tasks", "12"), ("Kanban", "Projects", None),
        ("FileText", "Docs", None), ("CalendarBlank", "Calendar", None), ("UsersThree", "Clients", None),
@@ -725,11 +732,14 @@ def f_end_icon():
     """Last screen: black, white/graphite only. The Zenboard mark as a chunky graphite app icon
     (ref: terminal icon), engraved in an inset pill like a keycap."""
     s = '<div class="stage" style="background:#000"></div>'
-    s += at(50, 28.1, f'<div class="bicon brand">{mark(13, "#FFF7FB")}</div>')
+    s += halftone(50, 28.1, 58, "#C41C72", .16)
+    s += at(50, 28.1, '<div class="bglow"></div>')
+    s += at(50, 28.1, f'<div class="bicon brand"><span class="bspec"></span><span class="bgrain"></span>{mark(13, "#FFF7FB")}<span class="bspark"></span></div>')
+    s += at(50, 47, '<div class="bfloor"></div>')
     return s
 
 def f_8_2(): return blueprint(1.0)
-def f_8_3(): return blueprint(.55, tagline=True)
+def f_8_3(): return blueprint(.55, tagline=True) + halftone(90, 48, 34, "#ffffff", .08, 12)
 
 CAMERA = {
  "9.3": "Locked off on the lockup; a 1% push-in across the build.",
@@ -825,7 +835,7 @@ SCENES = [
             "Zenboard", "Four soft taps as the lobes land, a glassy swirl on the turn, the chime on the settle"),
           ("9.4", "1:07", f_8_3, "The blueprint dims to about half so the lockup owns the frame. The tagline rises word by word, then Available today. Nothing moves in the last two seconds.",
             "The single platform to manage work, life, and business. · Available today", "The chime resolves, held chord")
-          ,("9.5", "1:09", f_end_icon, "Last screen. Hard cut to pure black. The Zenboard mark returns as a chunky 3D app icon in the brand colours, in the style of the terminal icon reference. It is a Berry squircle glowing from dark to light with a bevelled edge catching a thin highlight, lit from the top left, and a white mark embossed in the centre. It fades up from black with a slow 2% scale settle, holds, and fades out.",
+          ,("9.5", "1:09", f_end_icon, "Last screen. Hard cut to pure black. The Zenboard mark returns as a chunky 3D app icon in the brand colours, in the style of the terminal icon reference. It is a Berry squircle glowing from dark to light with a bevelled edge catching a thin highlight, lit from the top left, and a white mark embossed in the centre. Details: a curved specular sheen, fine grain on the surface, a tiny glint on the mark, a soft Berry bloom and floor glow, and a subtle halftone of the mark radiating behind it. It fades up from black with a slow 2% scale settle, holds, and fades out.",
             "—", "Silence, then one low soft tap as the icon settles")],
   out=None),
 ]
