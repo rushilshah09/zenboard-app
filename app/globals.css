@@ -70,10 +70,11 @@
      vars, so the names don't collide). Sizes verified against live DOM
      measurements in the 2026-07-03 audit. */
   /* THE WEBSITE'S two display steps, above the app's scale on purpose: CLAUDE.md's 11–28 scale is the
-     APP's, and a marketing page is read once, from further away. Set in the editorial serif; tracking
-     continues the one optical curve (type-scale.test.ts), tightest at the largest size. */
-  --text-hero-size: 60px;     --text-hero-lh: 1.04;      --text-hero-weight: 400;   --text-hero-tracking: -0.032em;
-  --text-headline-size: 40px; --text-headline-lh: 1.1;   --text-headline-weight: 400; --text-headline-tracking: -0.028em;
+     APP's, and a marketing page is read once, from further away. Set in the title face (Rubik,
+     2026-09-25) at the weight the product's titles use; tracking continues the one optical curve
+     (type-scale.test.ts: 40px is -0.025em), tightest at the largest size. */
+  --text-hero-size: 60px;     --text-hero-lh: 1.04;      --text-hero-weight: 500;   --text-hero-tracking: -0.032em;
+  --text-headline-size: 40px; --text-headline-lh: 1.1;   --text-headline-weight: 500; --text-headline-tracking: -0.025em;
   --text-display-size: 32px; --text-display-lh: 1.15; --text-display-weight: 600; --text-display-tracking: -0.025em;
   --text-h1-size: 28px;      --text-h1-lh: 1.2;         --text-h1-weight: 500;     --text-h1-tracking: -0.021em;
   --text-stat-size: 24px;    --text-stat-lh: 1.1;       --text-stat-weight: 500;   --text-stat-tracking: -0.019em;
@@ -479,12 +480,20 @@ html[data-density="compact"] {
      the palette page). NOT theme tokens: an illustration is a picture, and a picture is the same in
      light and dark — so these carry no dark values. All eight sit at one lightness, which is why black
      ink reads at 9.6:1 or better on every one and the berry mark at 3:1 or better. Use them ONLY
-     behind an illustration (<Illustration>), never as a surface. */
+     behind a picture, an illustration (<Illustration>), never as a surface. (The website stopped
+     standing its product on them: its grounds are the page itself, printed with the mark.) */
   --color-edge-image: var(--edge-image);
   --color-field-petal: #EAB9CB;
   --color-field-apricot: #ECBF9B;
   --color-field-butter: #E5D494;
   --color-field-sage: #B7CEAB;
+  /* THE WEBSITE'S INK BLOCK — the footer's dark ground, the same in both themes (it is the site's
+     closing statement, not a theme surface). The marketing palette's own dark section: Ink as the
+     ground, Paper for copy on it (17:1), the dark theme's muted (6.4:1) and line. */
+  --color-site-ink: #191919;
+  --color-site-ink-fg: #FBFAF6;
+  --color-site-ink-muted: #9B9B9B;
+  --color-site-ink-line: #2F2F2F;
   --color-field-sky: #A6D1E0;
   --color-field-periwinkle: #B8BDEE;
   --color-field-sand: #EEE7D9;
@@ -493,6 +502,10 @@ html[data-density="compact"] {
      "success / warning / danger / info", and `accent` above has always worked
      bare — but these four never existed as tokens, so `text-danger` generated no
      CSS at all and silently inherited the surrounding ink. Measured 2026-09-14:
+  /* The illustration's light: every light shape drawn on a field (the palette's "paper", #FBFAF6). Named
+     for what it does rather than "paper": it is an ink of the illustrations, the same in both themes,
+     not a surface of the app (theme-bridge.test.ts reads any "-paper" as a surface). */
+  --color-illustration-light: #FBFAF6;
      `.text-danger` had zero rules and computed to the body colour, while
      `.text-danger-600` was a real red. Seven error and late states rendered grey
      because of it, including the portal's `role="alert"` hints and the
@@ -942,6 +955,191 @@ html[data-vt] .zb-page-in { animation: none !important; }
 @keyframes blurin { from { opacity: 0; filter: blur(8px); transform: scale(0.98); } to { opacity: 1; filter: blur(0); transform: scale(1); } }
 @keyframes pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
 @keyframes popIn { 0% { transform: scale(0.96); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+/* SCROLL-LINKED, and progressive. Where the browser cannot tie an animation to scroll, or the reader
+   asked for less motion, every section is simply there: nothing on the page waits for JavaScript or an
+   observer to become visible (a reveal that needs a script is a page that can stay blank).
+   `site-reveal` lifts a section into place as it enters; `site-tilt` lays the hero's product sheet flat
+   as the reader scrolls toward it. Both are transform and opacity only. */
+@keyframes site-reveal { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes site-tilt { from { transform: perspective(1600px) rotateX(9deg) scale(0.95); } to { transform: none; } }
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .site-reveal { animation: site-reveal linear both; animation-timeline: view(); animation-range: entry 0% entry 55%; }
+    .site-tilt { transform-origin: 50% 0%; animation: site-tilt linear both; animation-timeline: view(); animation-range: entry 15% cover 45%; }
+  }
+}
+/* A state swapping inside a product preview: the new state arrives, the old one is simply gone. */
+.site-swap { animation: fade-rise var(--duration-base) var(--ease-out-quiet) both; }
+
+/* ── THE WEBSITE'S VISUAL LAYER (components/site/visual.tsx, halftone.tsx, loop.tsx) ─────────────
+   THE MARK IS THE GRID. The page is a lattice of rounded cells tiled edge to edge (`Grid` in
+   visual.tsx), with the line colour showing in the pixel between them. Where four cells meet, their
+   corners leave a concave four-point star: the heart of the Zenboard mark, turned a quarter. Nothing
+   draws the joints; they are what the grid leaves, so they are always exactly where the lines cross.
+
+   THE GRADIENTS ARE PRINTED (halftone.tsx): a screen of the mark's own glyphs, weighted by the mark
+   underneath, in these three inks. The soft ink is the page's own line; the strong one a step darker;
+   the accent is the brand's, for the rare glyph that catches it. */
+:root {
+  --site-glyph: var(--color-line-strong);
+  --site-glyph-strong: color-mix(in oklab, var(--color-line-strong), var(--color-ink-500) 22%);
+  --site-glyph-accent: var(--accent);
+  /* One pass of the halftone's wave. */
+  --site-shimmer: 8s;
+  /* How long a feature or a step holds before the next takes over. */
+  --site-dwell: 6s;
+  /* One hop of the explanatory loop: a thing travelling from one part of Zenboard to the next. */
+  --site-hop: 1.1s;
+  /* One turn of the orbit around the mark in the loop. */
+  --site-orbit: 14s;
+  /* The product lying on a printed cell: a long, soft shadow under it, and the dark theme's specular
+     edge on top, which a plain box-shadow would otherwise replace. */
+  --site-lift: var(--edge-light), 0 1px 2px rgb(25 25 25 / 0.05), 0 32px 56px -30px rgb(25 25 25 / 0.32);
+}
+html[data-theme='dark'] {
+  --site-lift: var(--edge-light), 0 1px 2px rgb(0 0 0 / 0.4), 0 32px 56px -26px rgb(0 0 0 / 0.75);
+}
+.site-lift { box-shadow: var(--site-lift); }
+/* A cell's inset. */
+.site-pad { --cell-px: 20px; padding-inline: var(--cell-px); }
+@media (min-width: 40rem) { .site-pad { --cell-px: 32px; } }
+@media (min-width: 64rem) { .site-pad { --cell-px: 48px; } }
+
+/* THE PICTURES ARE LAYERED (visual.tsx `Stage`): a gradient of the area's own colours at the bottom,
+   the mark printed over it in light, and the product's cards on top. The colours are the illustration
+   fields, so a picture on the site and an illustration in the app come from one palette. In the dark
+   each field keeps its hue and loses its light: its colour mixed into the page's own ground, so a
+   picture reads as tinted dark rather than as a pastel window cut into a black page. */
+.site-field {
+  --f-petal: var(--color-field-petal); --f-apricot: var(--color-field-apricot); --f-butter: var(--color-field-butter);
+  --f-sage: var(--color-field-sage); --f-sky: var(--color-field-sky); --f-periwinkle: var(--color-field-periwinkle);
+  --f-sand: var(--color-field-sand); --f-mist: var(--color-field-mist);
+  /* The print over a field is the illustration's light, not ink: the mark as light on the colour. */
+  --site-glyph: color-mix(in oklab, var(--color-illustration-light) 60%, transparent);
+  --site-glyph-strong: color-mix(in oklab, var(--color-illustration-light) 92%, transparent);
+}
+html[data-theme='dark'] .site-field {
+  --f-petal: color-mix(in oklch, var(--color-field-petal) 30%, var(--color-background));
+  --f-apricot: color-mix(in oklch, var(--color-field-apricot) 30%, var(--color-background));
+  --f-butter: color-mix(in oklch, var(--color-field-butter) 24%, var(--color-background));
+  --f-sage: color-mix(in oklch, var(--color-field-sage) 28%, var(--color-background));
+  --f-sky: color-mix(in oklch, var(--color-field-sky) 28%, var(--color-background));
+  --f-periwinkle: color-mix(in oklch, var(--color-field-periwinkle) 30%, var(--color-background));
+  --f-sand: color-mix(in oklch, var(--color-field-sand) 10%, var(--color-background));
+  --f-mist: color-mix(in oklch, var(--color-field-mist) 10%, var(--color-background));
+  --site-glyph: color-mix(in oklab, var(--color-illustration-light) 8%, transparent);
+  --site-glyph-strong: color-mix(in oklab, var(--color-illustration-light) 16%, transparent);
+}
+.site-field-hero {
+  /* Petal is the homepage hero's; butter is the day, and the picture is Home. */
+  background:
+    radial-gradient(70% 90% at 96% 4%, var(--f-petal) 0%, transparent 64%),
+    radial-gradient(60% 80% at 4% 100%, var(--f-butter) 0%, transparent 62%),
+    var(--f-sand);
+}
+.site-field-how {
+  /* Her portal on the left in apricot (people), your day on the right in butter (the day). */
+  background:
+    radial-gradient(60% 100% at 0% 50%, var(--f-apricot) 0%, transparent 64%),
+    radial-gradient(60% 100% at 100% 50%, var(--f-butter) 0%, transparent 64%),
+    var(--f-sand);
+}
+.site-field-day {
+  /* The day's own arc: butter where it starts, periwinkle (the evening shutdown) where it ends. */
+  background:
+    radial-gradient(80% 90% at 0% 0%, var(--f-butter) 0%, transparent 64%),
+    radial-gradient(70% 80% at 100% 100%, var(--f-periwinkle) 0%, transparent 60%),
+    var(--f-sand);
+}
+.site-field-projects {
+  /* Sky for time (the calendar), periwinkle for quiet work (the briefs). */
+  background:
+    radial-gradient(80% 90% at 100% 0%, var(--f-sky) 0%, transparent 62%),
+    radial-gradient(80% 90% at 0% 100%, var(--f-periwinkle) 0%, transparent 62%),
+    var(--f-mist);
+}
+.site-field-portal {
+  /* Apricot for people, the client; petal for the brand's own moment, the page she opens. */
+  background:
+    radial-gradient(80% 90% at 0% 0%, var(--f-apricot) 0%, transparent 64%),
+    radial-gradient(70% 90% at 100% 100%, var(--f-petal) 0%, transparent 60%),
+    var(--f-sand);
+}
+.site-field-money {
+  /* Sage for growth (finance); sky for the tracked time an invoice is made of. */
+  background:
+    radial-gradient(80% 90% at 100% 0%, var(--f-sage) 0%, transparent 62%),
+    radial-gradient(70% 80% at 0% 100%, var(--f-sky) 0%, transparent 60%),
+    var(--f-mist);
+}
+
+/* A feature's icon tile, in its area's colour: the field as the ground and the palette's ink as the
+   glyph (the palette's "ink on a field": 7:1 or better on every field). In the dark, the dimmed field,
+   and the field colour itself as the glyph. */
+.site-tile-petal { background: var(--color-field-petal); color: var(--color-ink-900); }
+.site-tile-apricot { background: var(--color-field-apricot); color: var(--color-ink-900); }
+.site-tile-butter { background: var(--color-field-butter); color: var(--color-ink-900); }
+.site-tile-sage { background: var(--color-field-sage); color: var(--color-ink-900); }
+.site-tile-sky { background: var(--color-field-sky); color: var(--color-ink-900); }
+.site-tile-periwinkle { background: var(--color-field-periwinkle); color: var(--color-ink-900); }
+html[data-theme='dark'] .site-tile-petal { background: color-mix(in oklch, var(--color-field-petal) 22%, var(--color-background)); color: var(--color-field-petal); }
+html[data-theme='dark'] .site-tile-apricot { background: color-mix(in oklch, var(--color-field-apricot) 22%, var(--color-background)); color: var(--color-field-apricot); }
+html[data-theme='dark'] .site-tile-butter { background: color-mix(in oklch, var(--color-field-butter) 20%, var(--color-background)); color: var(--color-field-butter); }
+html[data-theme='dark'] .site-tile-sage { background: color-mix(in oklch, var(--color-field-sage) 22%, var(--color-background)); color: var(--color-field-sage); }
+html[data-theme='dark'] .site-tile-sky { background: color-mix(in oklch, var(--color-field-sky) 22%, var(--color-background)); color: var(--color-field-sky); }
+html[data-theme='dark'] .site-tile-periwinkle { background: color-mix(in oklch, var(--color-field-periwinkle) 22%, var(--color-background)); color: var(--color-field-periwinkle); }
+/* The one dark cell: the glyphs change ink so the halftone reads on it. */
+.site-ink {
+  --site-glyph: color-mix(in oklch, var(--color-site-ink-fg) 10%, var(--color-site-ink));
+  --site-glyph-strong: color-mix(in oklch, var(--color-site-ink-fg) 20%, var(--color-site-ink));
+}
+/* The feature list's dwell: the active item's rule fills, and when it is full the next item takes over. */
+@keyframes site-dwell { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.site-dwell { transform-origin: left center; animation: site-dwell var(--site-dwell) linear both; }
+/* Something live: a dot that breathes. Colour only, never position. */
+@keyframes site-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.site-pulse { animation: site-pulse calc(var(--site-shimmer) / 4) var(--ease-standard) infinite; }
+
+/* THE LOOP'S MOTION (loop.tsx). A thing travels a track from one part of Zenboard to the next: the
+   track is a size container, so the hop is `100cq` of it, a transform, whatever the track's length.
+   Across on a wide screen, down on a narrow one, where the parts stack. What it arrives at appears
+   when it lands (`site-arrive`, delayed by the hops before it). The orbit turns around the mark. */
+@keyframes site-hop-x {
+  0% { opacity: 0; transform: translateX(var(--hop-x0)); }
+  12%, 88% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(var(--hop-x1)); }
+}
+@keyframes site-hop-y {
+  0% { opacity: 0; transform: translateY(var(--hop-y0)); }
+  12%, 88% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(var(--hop-y1)); }
+}
+.site-hop { opacity: 0; animation: site-hop-y var(--site-hop) var(--ease-standard) both; animation-delay: var(--hop-at, 0s); }
+@media (min-width: 64rem) { .site-hop { animation-name: site-hop-x; } }
+.site-arrive { animation: fade-rise var(--duration-slow) var(--ease-out-quiet) both; animation-delay: var(--arrive-at, 0s); }
+@keyframes site-orbit { from { transform: rotate(0turn); } to { transform: rotate(1turn); } }
+.site-orbit { animation: site-orbit var(--site-orbit) linear infinite; }
+/* A card lifted off a picture is never quite still, the way a sheet on a desk is not: it drifts a few
+   pixels, slowly, forever. Put it on the card, not on what positions it, and never on what enters. */
+@keyframes site-drift { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+.site-drift { animation: site-drift calc(var(--site-shimmer) * 0.75) var(--ease-standard) infinite; animation-delay: var(--drift-at, 0s); }
+/* Two switches, because they answer different questions. `data-running`: may the list turn its own
+   page? (No while the reader reads, once they have chosen, or off screen.) `data-playing`: may the
+   picture move? (Only on screen; a step the reader chose still plays out.) */
+[data-running='false'] .site-dwell { animation-play-state: paused; }
+[data-playing='false'] .site-hop, [data-playing='false'] .site-arrive, [data-playing='false'] .site-orbit { animation-play-state: paused; }
+
+@media (prefers-reduced-motion: reduce) {
+  /* No dwell means no automatic advance at all: the reader moves the list, nothing moves it for them. */
+  .site-dwell { animation: none; transform: scaleX(0); }
+  .site-pulse { animation: none; }
+  /* The still TWINS (design-system.test.ts): a hop becomes an appearance where it lands, and the
+     orbit stands still. */
+  @keyframes site-hop-x { from { opacity: 0; } to { opacity: 0; } }
+  @keyframes site-hop-y { from { opacity: 0; } to { opacity: 0; } }
+  @keyframes site-orbit { from { opacity: 1; } to { opacity: 1; } }
+  @keyframes site-drift { from { opacity: 1; } to { opacity: 1; } }
+}
 /* Popover/dropdown entrance: fade + 0.98 scale out of the edge that faces the trigger.
    No rise - a 4px lift moved every menu below its trigger UP, toward it. */
 @keyframes zb-pop-in { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: none; } }
@@ -986,6 +1184,9 @@ html[data-vt] .zb-page-in { animation: none !important; }
   @keyframes blurin { from { opacity: 0; } }
   @keyframes popIn { from { opacity: 0; } }
   @keyframes zb-pop-in { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes site-reveal { from { opacity: 0; } }
+  @keyframes site-tilt { from { opacity: 1; } }
+  @keyframes site-dwell { from { opacity: 1; } }
   @keyframes zb-modal-in { from { opacity: 0; } to { opacity: 1; } }
   /* A busy bar still says busy, without sweeping across the screen. */
   @keyframes indeterminate { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }

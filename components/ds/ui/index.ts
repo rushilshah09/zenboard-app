@@ -92,6 +92,7 @@ export { Skeleton, SkeletonText, SkeletonRow } from "./skeleton";
 export { EmptyState, EmptyLine, ErrorState, SuccessState, type EmptyStateProps, type ErrorStateProps } from "./states";
 export { Illustration, ILLUSTRATIONS, type IllustrationName, type IllustrationField } from "./illustration";
 export { NotificationsBell, type Notification, type NotificationsBellProps } from "./notifications";
+export { NavigationMenu, NavigationMenuList, NavigationMenuItem, NavigationMenuTrigger, NavigationMenuContent, NavigationMenuLink } from "./navigation-menu";
 export { ActivityFeed, type ActivityEntry } from "./activity-feed";
 
 // GROUP F — Data & display (§4.47–4.58)

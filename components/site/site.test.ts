@@ -1,12 +1,15 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 
-// The website's rules, held in source. Each one is a decision the site made on purpose; a later edit
-// that breaks it should have to say so here.
+// The website's rules, held in source. Each is a decision the site made on purpose; an edit that
+// breaks one should have to say so here.
 
-const home = readFileSync('components/site/site-home.tsx', 'utf8');
-const stills = readFileSync('components/site/stills.tsx', 'utf8');
-const root = readFileSync('app/page.tsx', 'utf8');
+const read = (f: string) => readFileSync(f, 'utf8');
+const SITE = readdirSync('components/site').filter((f) => /\.tsx?$/.test(f) && !f.endsWith('.test.ts')).map((f) => `components/site/${f}`);
+const all = SITE.map((f) => [f, read(f)] as const);
+const home = read('components/site/site-home.tsx');
+const root = read('app/page.tsx');
+const globals = read('app/globals.css');
 
 describe('the root', () => {
   it('is the website for visitors, and the app for anyone signed in', () => {
@@ -18,46 +21,186 @@ describe('the root', () => {
   });
 });
 
+describe('honesty', () => {
+  it('shows no testimonials, customer logos or invented numbers', () => {
+    // In what the page RENDERS — a comment explaining the rule is allowed to name it.
+    for (const [f, raw] of all) {
+      const src = raw.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l)).join('\n');
+      expect(src, f).not.toMatch(/trusted by|testimonial|customers love|\b\d+(k|,000)\+?\s+(teams|users|customers|studios)\b/i);
+    }
+  });
+
+  it('writes copy a person would say aloud: no em dashes, and no real client as sample data', () => {
+    // The user, 2026-09-25: "remove em dash", and "dont use my client name we focus usa clients" —
+    // the same two rules the sign-up screen holds (app/login/auth-screen.test.ts).
+    for (const [f, raw] of all) {
+      const src = raw.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l)).join('\n');
+      const strings = [...src.matchAll(/'([^'\n]*)'|>([^<>{}\n]+)</g)].map((m) => m[1] ?? m[2]);
+      for (const line of strings) expect(line, `${f}: em dash in "${line}"`).not.toMatch(/—/);
+      for (const name of ['Balluji', 'TechSpark', 'Acme']) expect(src, `${f}: ${name} is a real client`).not.toContain(name);
+    }
+  });
+
+  it('keeps photographs as pictures of who it is for, never as quotes', () => {
+    const people = read('components/site/people.tsx');
+    expect(people).not.toMatch(/<blockquote|“[^”]{20,}”\s*—/);
+    expect(people).toMatch(/alt=""/);
+  });
+
+  it('ships every photograph it references, pre-sized', () => {
+    for (const [f, src] of all) {
+      for (const m of src.matchAll(/['"](\/site\/[a-z0-9-]+\.webp)['"]/g)) expect(existsSync(`public${m[1]}`), `${f}: ${m[1]}`).toBe(true);
+    }
+  });
+});
+
 describe('the product pictures', () => {
-  it('are drawn with the product’s own components, never an image of them', () => {
-    expect(stills).not.toMatch(/<img|\.png|\.jpe?g|\.webp/);
-    for (const part of ['Panel', 'Checkbox', 'DataTable', 'Badge', 'Progress']) expect(stills).toMatch(new RegExp(`<${part}\\b`));
+  it('are made of the product’s own parts, not images of them', () => {
+    const parts = all.map(([, s]) => s).join('\n');
+    for (const part of ['Panel', 'Checkbox', 'Badge', 'Progress', 'SegmentedControl', 'Avatar', 'Stat']) expect(parts).toMatch(new RegExp(`<${part}\\b`));
+    for (const [f, src] of all) if (f !== 'components/site/people.tsx') expect(src, f).not.toMatch(/<img\b/);
   });
 
-  it('are inert: part of the page’s picture, none of its controls', () => {
-    expect(stills).toMatch(/aria-hidden inert className=\{cn\('pointer-events-none select-none'/);
-    const bodies = stills.split(/export function /).slice(1);
-    expect(bodies.length).toBe(5);
-    for (const b of bodies) expect(b, b.slice(0, 20)).toMatch(/<Inert /);
+  it('draws no pill: a chip is square-cornered like every control in Zenboard', () => {
+    // "why is the login button rounded?" (2026-09-25). A dot or a disc is a circle (a square box, fully
+    // rounded); a chip or a label is not.
+    for (const [f, src] of all) {
+      for (const m of src.matchAll(/className=["'`{][^"'`]*\brounded-full\b[^"'`]*/g)) {
+        expect(m[0], `${f}: a pill`).toMatch(/\bsize-[\d.]+\b|\bh-3\b/);
+      }
+    }
   });
 
-  it('show the sample studio, never a real client', () => {
-    expect(stills).toMatch(/Ridgeline/);
-    expect(stills).toMatch(/Alex/);
+  it('keep decoration out of the way: every lifted piece is inert and hidden from assistive tech', () => {
+    expect(home).toMatch(/function Resting[\s\S]*?<div aria-hidden inert className=\{cn\('site-reveal pointer-events-none absolute/);
+    // The explanatory drawing is a picture of the step list beside it: each panel says its step in words.
+    const loop = read('components/site/loop.tsx');
+    expect(loop).toMatch(/<div aria-hidden inert className="mx-auto grid/);
+    expect(loop).toMatch(/<p className="sr-only">Step \{i \+ 1\} of \{STEPS\.length\}/);
   });
 });
 
 describe('the page', () => {
-  it('has one filled button per screen: the hero’s and the closing’s, never the nav’s', () => {
-    expect(home.match(/variant: 'primary'/g)).toHaveLength(2);
-    const nav = home.slice(home.indexOf('function Nav'), home.indexOf('function Hero'));
-    expect(nav).not.toMatch(/variant: 'primary'/);
+  it('has one filled button per screen: the hero’s, never the navigation’s', () => {
+    expect(home.match(/variant: 'primary'/g)).toHaveLength(1);
+    const nav = read('components/site/site-chrome.tsx');
+    expect(nav.slice(nav.indexOf('export function SiteNav'), nav.indexOf('const FAQ'))).not.toMatch(/variant: 'primary'/);
   });
 
-  it('speaks in the editorial serif for headlines, and in the app’s face for the rest', () => {
+  it('sets headlines in the product’s title face, and everything else in the app’s face', () => {
+    // `font-editorial` is the ROLE; since 2026-09-25 it points at Rubik (app/layout.tsx), the face every
+    // title in the product speaks in. The site asks for the role, so it follows the product.
     expect(home).toMatch(/<h1 id="hero-title" className="[^"]*font-editorial[^"]*text-hero/);
-    expect(home.match(/<h2[^>]*font-editorial/g)?.length).toBeGreaterThanOrEqual(3);
+    const spot = read('components/site/spotlight.tsx');
+    expect(spot).toMatch(/<h2 id=\{`\$\{id\}-title`\} className="[^"]*font-editorial/);
   });
 
   it('uses tokens only — no raw colour and no palette class', () => {
-    for (const src of [home, stills]) {
-      expect(src).not.toMatch(/#[0-9a-fA-F]{3,8}\b(?![\w-])/);
-      expect(src).not.toMatch(/\b(bg|text|border)-(gray|slate|zinc|neutral|red|pink|blue|green)-\d{2,3}\b/);
+    for (const [f, src] of all) {
+      expect(src, f).not.toMatch(/#[0-9a-fA-F]{3,8}\b(?![\w-])/);
+      expect(src, f).not.toMatch(/\b(bg|text|border)-(gray|slate|zinc|neutral|red|pink|blue|green)-\d{2,3}\b/);
     }
   });
 
-  it('arrives in order once, and not at all for a keyboard arrival', () => {
-    expect(home.match(/site-rise zb-enter/g)?.length).toBe(5);
-    expect(readFileSync('app/globals.css', 'utf8')).toMatch(/\.site-rise \{ animation: fade-rise var\(--duration-slow\) var\(--ease-out-quiet\) both; animation-delay: calc\(var\(--rise-step, 0\) \* var\(--duration-fast\)\); \}/);
+  it('keeps colour inside the pictures: fields come from the illustration palette, in both themes', () => {
+    for (const tone of ['hero', 'how', 'day', 'projects', 'portal', 'money']) {
+      const rule = globals.match(new RegExp(`\\.site-field-${tone} \\{([^}]*)\\}`))?.[1] ?? '';
+      expect(rule, tone).toMatch(/var\(--f-/);
+      expect(rule, `${tone}: a colour of its own`).not.toMatch(/#[0-9a-f]{3}|rgb\(|oklch\(|var\(--color-/i);
+    }
+    // Light: the palette itself. Dark: the same hue mixed into the page's ground, never a new colour.
+    const light = globals.match(/\n\.site-field \{([^}]*)\}/)?.[1] ?? '';
+    const dark = globals.match(/html\[data-theme='dark'\] \.site-field \{([^}]*)\}/)?.[1] ?? '';
+    for (const f of ['petal', 'apricot', 'butter', 'sage', 'sky', 'periwinkle', 'sand', 'mist']) {
+      expect(light).toMatch(new RegExp(`--f-${f}: var\\(--color-field-${f}\\);`));
+      expect(dark).toMatch(new RegExp(`--f-${f}: color-mix\\(in oklch, var\\(--color-field-${f}\\) \\d+%, var\\(--color-background\\)\\);`));
+    }
+  });
+});
+
+describe('motion', () => {
+  it('reveals and tilts only where the browser ties it to scroll, and only when motion is welcome', () => {
+    expect(globals).toMatch(/@supports \(animation-timeline: view\(\)\) \{\s*@media \(prefers-reduced-motion: no-preference\) \{\s*\.site-reveal/);
+  });
+
+  it('never advances a list on its own when less motion is asked for', () => {
+    expect(globals).toMatch(/@media \(prefers-reduced-motion: reduce\) \{[^}]*\.site-dwell \{ animation: none;/);
+    // …and the dwell is what advances it: no timer anywhere that turns pages.
+    const hook = read('components/site/use-auto-advance.tsx');
+    expect(hook).toMatch(/<span className="site-dwell block h-full bg-accent" onAnimationEnd=\{onEnd\} \/>/);
+    expect(hook).toMatch(/const next = \(\) => setActive\(\(a\) => \(a \+ 1\) % count\);/);
+    for (const f of ['use-auto-advance.tsx', 'spotlight.tsx', 'loop.tsx', 'halftone.tsx']) {
+      expect(read(`components/site/${f}`), f).not.toMatch(/setInterval|setTimeout/);
+    }
+  });
+
+  it('stops for good once the reader takes over, and pauses while they read', () => {
+    const hook = read('components/site/use-auto-advance.tsx');
+    expect(hook).toMatch(/const choose = \(i: number\) => \{ setActive\(i\); setAuto\(false\); \};/);
+    expect(hook).toMatch(/const running = auto && !held && seen;/);
+    expect(read('components/site/spotlight.tsx')).toMatch(/onPointerDown=\{stop\}/);
+    // Two switches: the list may turn (`data-running`), the picture may move (`data-playing`). A step the
+    // reader chose still plays out, so the loop's choreography answers only to being on screen.
+    expect(globals).toMatch(/\[data-running='false'\] \.site-dwell \{ animation-play-state: paused; \}/);
+    expect(read('components/site/loop.tsx')).toMatch(/data-playing=\{seen\}/);
+  });
+
+  it('prints the halftone only where it is seen, and prints it once when less motion is asked for', () => {
+    const ht = read('components/site/halftone.tsx');
+    expect(ht).toMatch(/const moving = \(\) => onScreen && !document\.hidden && !still\.matches;/);
+    expect(ht).toMatch(/if \(still\.matches\) draw\(null\);/);
+    // Its pace is a token, not a number in the component.
+    expect(ht).toMatch(/getPropertyValue\('--site-shimmer'\)/);
+    expect(globals).toMatch(/--site-shimmer: \d+s;/);
+    // A picture, not content.
+    expect(ht).toMatch(/<canvas ref=\{ref\} aria-hidden className=\{cn\('pointer-events-none absolute inset-0/);
+  });
+});
+
+describe('the identity', () => {
+  it('lays the page on one grid: the line between cells, whose corners leave the heart of the mark', () => {
+    const visual = read('components/site/visual.tsx');
+    expect(visual).toMatch(/className=\{cn\('grid grid-cols-12 gap-px bg-line p-px', className\)\}/);
+    // Rows take the grid's own columns, so a line in one section runs on through the next.
+    expect(visual).toMatch(/col-span-full grid scroll-mt-20 grid-cols-subgrid gap-px/);
+    expect(visual).toMatch(/relative col-span-full min-w-0 rounded-lg bg-background/);
+  });
+
+  it('prints its gradients in its own glyphs: the stars are the mark\'s own heart', () => {
+    const ht = read('components/site/halftone.tsx');
+    expect(ht).toMatch(/import \{ MARK_PATH \} from '@\/components\/ds\/icons';/);
+    expect(ht).toMatch(/const HEART = `M\$\{MARK_PATH\.split\('M'\)\.pop\(\)\}`;/);
+  });
+
+  it('tints each icon tile with a field and draws its glyph in the palette\'s ink', () => {
+    for (const f of ['petal', 'apricot', 'butter', 'sage', 'sky', 'periwinkle']) {
+      expect(globals).toMatch(new RegExp(`\\.site-tile-${f} \\{ background: var\\(--color-field-${f}\\); color: var\\(--color-ink-900\\); \\}`));
+    }
+  });
+
+  it('uses the marketing palette and nothing else (claude.ai/artifact/MvbDxDM8WPbd9aJFCpqcjt)', () => {
+    // The user, 2026-09-26: "this is marketing colors we have to use". Core, berry, the eight fields, the
+    // illustration paper, and the palette page's own dark section.
+    const PALETTE = new Set([
+      '#191919', '#37352F', '#6A6966', '#FFFFFF', '#F7F7F5', '#E9E9E7',
+      '#C41C72', '#C82175', '#FAEDF4',
+      '#EAB9CB', '#ECBF9B', '#E5D494', '#B7CEAB', '#A6D1E0', '#B8BDEE', '#EEE7D9', '#E7EAEC',
+      '#FBFAF6', '#202020', '#EDEDEC', '#D4D4D4', '#9B9B9B', '#2F2F2F',
+    ]);
+    const own = [...globals.matchAll(/--color-(field-[a-z]+|illustration-light|site-ink[a-z-]*): (#[0-9A-Fa-f]{6});/g)];
+    expect(own.length).toBeGreaterThanOrEqual(13);
+    for (const [, name, hex] of own) expect(PALETTE.has(hex.toUpperCase()), `--color-${name}: ${hex}`).toBe(true);
+    // At most two fields in any one picture (the palette's rule), on a neutral ground of sand or mist.
+    for (const tone of ['hero', 'how', 'day', 'projects', 'portal', 'money']) {
+      const rule = globals.match(new RegExp(`\\.site-field-${tone} \\{([^}]*)\\}`))?.[1] ?? '';
+      const fields = new Set([...rule.matchAll(/var\(--f-([a-z]+)\)/g)].map((m) => m[1]).filter((f) => f !== 'sand' && f !== 'mist'));
+      expect(fields.size, `${tone}: ${[...fields]}`).toBeLessThanOrEqual(2);
+    }
+  });
+
+  it('names no section by a number: a section is its name beside its colour', () => {
+    // The user, 2026-09-26, of "07 / 07 · The details": "remove this, this looks so identical".
+    for (const [f, src] of all) expect(src, f).not.toMatch(/site-tick|function Index\b|<Index\b/);
+    expect(globals).not.toMatch(/\.site-tick/);
   });
 });
