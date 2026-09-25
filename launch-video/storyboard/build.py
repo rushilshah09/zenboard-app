@@ -184,6 +184,33 @@ def fan(sources, focus, n=16, spread=2.6):
                     f'stroke="url(#g{k})" stroke-width=".07" opacity="{.35 + .65 * (1 - abs(o))}"/>')
     return out
 
+# ---------- scene 2 reveal (ref: Google Workspace with Gemini logo sequence) ----------
+def gmark(size, extra=""):
+    return f'<svg viewBox="-1 -1 34 34" style="width:{size}cqw;height:{size}cqw;{extra}"><path d="{MARK}" fill="url(#zgrad)"/></svg>'
+
+RING = [("CheckSquare", "#2F9E6B"), ("EnvelopeSimple", "#E0523F"), ("CalendarBlank", "#3C6FD8"), ("FileText", "#1C5A70"),
+        ("Kanban", "#C41C72"), ("UsersThree", "#E08A2E"), ("CurrencyCircleDollar", "#2F9E6B"), ("Plant", "#C9A21F"),
+        ("Timer", "#6E63D9"), ("Lightning", "#C41C72")]
+def icon_ring(spread=15):
+    # square ring like the reference: 3 across top/bottom, 2 down each side
+    pos = [(-1, -1), (0, -1), (1, -1), (1, -.35), (1, .35), (1, 1), (0, 1), (-1, 1), (-1, .35), (-1, -.35)]
+    s = ""
+    for (ic, c), (u, v) in zip(RING, pos):
+        s += at(50 + u * spread, 28.1 + v * spread * .92, f'<span class="ricon" style="color:{c}">{ph(ic, "fill", size="100%")}</span>',
+                "", f"transform:translate(-50%,-50%) scale({min(1, spread / 13):.2f})")
+    return s
+
+def f_2_3r():
+    return paper_stage(.25) + icon_ring(15) + at(50, 28.1, gmark(7))
+
+def f_2_4r():
+    return paper_stage(.2) + at(50, 28.1, gmark(3.2, "transform:rotate(18deg)"))
+
+def f_2_5r():
+    s = paper_stage(.25) + at(50, 24.5, lockup(40))
+    s += at(50, 33.5, f'<span class="withask">with {gmark(2.6)} <b>Ask</b></span>')
+    return s
+
 def f_3_1():
     s = paper_stage(.55)
     ys = [9, 16.5, 24, 31.5, 39, 46.5]
@@ -378,13 +405,13 @@ FEAT_NOTES = {
 
 # ---------- scene 6: automation (ref: "Effortless automation") ----------
 def auto_stage():
+    """One cohesive brand light: a single soft Berry/petal wash behind the centre, on Paper with the dot grid."""
     return ('<div class="stage paper"><div class="dots"></div></div>'
-            '<div class="stage" style="background:radial-gradient(22% 30% at 18% 22%,rgba(184,189,238,.45),transparent 70%),'
-            'radial-gradient(25% 32% at 22% 80%,rgba(234,185,203,.45),transparent 70%),radial-gradient(22% 30% at 82% 78%,rgba(236,191,155,.35),transparent 70%),'
-            'radial-gradient(20% 28% at 80% 20%,rgba(166,209,224,.35),transparent 70%)"></div>')
+            '<div class="stage" style="background:radial-gradient(46% 58% at 50% 50%,rgba(234,185,203,.55),rgba(250,237,244,.35) 45%,transparent 75%)"></div>')
 
-def feat_logo(size=8, icon="Lightning"):
-    return (f'<div class="flogo" style="width:{size}cqw;height:{size}cqw">{ph(icon, "fill", size="46%")}</div>')
+def feat_logo(size=8):
+    """The Zenboard logo as the centre badge: white mark on a Berry circle with a glass ring."""
+    return f'<div class="flogo" style="width:{size}cqw;height:{size}cqw">{mark(size * .5, "#fff")}</div>'
 
 STEPS = [("Lightning", "Trigger", "Invoice is 7 days overdue"), ("EnvelopeSimple", "Step 2", "Draft a friendly reminder"),
          ("Sun", "Step 3", "Move the task to Today"), ("UsersThree", "Step 4", "Post to the client portal")]
@@ -403,16 +430,17 @@ def prompt_card(typed, pressed=False):
 
 def f_auto_1():
     s = auto_stage()
-    s += at(22, 11.5, steps_card(), "", "filter:blur(.05cqw)")
-    s += at(83, 13, '<div class="acard doc"><div class="dl"></div><div class="dl"></div><div class="dl s"></div><div class="dl"></div><div class="dl s"></div></div>'
-                    f'<div class="chipx">{ph("FileText", "fill", size="1.1cqw")} Add to a doc</div>', "", "filter:blur(.08cqw)")
-    s += at(6, 22, mark(9, BERRY, "filter:blur(.45cqw);opacity:.9"))
-    s += at(22, 45, prompt_card("When an invoice is 7 days overdue, send a friendly reminder and move it to Today"))
-    s += at(74, 44, '<div class="acard chart"><small>Q3 revenue</small><div class="semi"></div><div class="pct"><b>$18.4k</b><span>paid</span><b>$4.3k</b><span>open</span></div></div>', "", "filter:blur(.04cqw)")
-    s += at(92, 33, tile("money", 5.2))
-    s += at(50, 15.5, feat_logo(8.5))
-    s += at(50, 28, "Effortless automation", "head", "font-size:5cqw;letter-spacing:-.045em")
-    s += at(50, 34.5, "Describe it once. Zenboard does the work.", "cap", "font-size:1.6cqw;color:#77736A;font-weight:400")
+    # symmetric composition: four cards in the corners at matched sizes, two small accents mid-left / mid-right
+    s += at(21, 12.5, steps_card(), "", "transform:translate(-50%,-50%) scale(.82)")
+    s += at(79, 12.5, '<div class="acard doc"><div class="dl"></div><div class="dl"></div><div class="dl s"></div><div class="dl"></div><div class="dl s"></div></div>'
+                      f'<div class="chipx">{ph("FileText", "fill", size="1.1cqw")} Add to a doc</div>', "", "transform:translate(-50%,-50%) scale(.82)")
+    s += at(21, 44, prompt_card("When an invoice is 7 days overdue, send a friendly reminder and move it to Today"), "", "transform:translate(-50%,-50%) scale(.82)")
+    s += at(79, 44, '<div class="acard chart"><small>Q3 revenue</small><div class="semi"></div><div class="pct"><b>$18.4k</b><span>paid</span><b>$4.3k</b><span>open</span></div></div>', "", "transform:translate(-50%,-50%) scale(.82)")
+    s += at(7, 28.1, gmark(5, "filter:blur(.25cqw);opacity:.85"))
+    s += at(93, 28.1, gmark(5, "filter:blur(.25cqw);opacity:.85;transform:rotate(45deg)"))
+    s += at(50, 15, feat_logo(8.5))
+    s += at(50, 27.5, "Effortless automation", "head", "font-size:5cqw;letter-spacing:-.045em")
+    s += at(50, 34, "Describe it once. Zenboard does the work.", "cap", "font-size:1.6cqw;color:#77736A;font-weight:400")
     return s
 
 def f_auto_2():
@@ -599,6 +627,8 @@ def f_8_2(): return blueprint(1.0)
 def f_8_3(): return blueprint(.55, tagline=True)
 
 CAMERA = {
+ "2.4": "Locked off; the only motion is the mark's spin.",
+ "2.5": "Locked off, dead still for the lockup.",
  "6.1": "Slow push-in on the headline; the floating cards drift outward at three depths with DOF (far cards soft).",
  "6.2": "Rack focus from the prompt card to the steps card as it runs; slight push-in on each tick.",
  "1.1": "Locked off, slow 2% push-in from 0:00.",
@@ -606,7 +636,7 @@ CAMERA = {
  "1.3": "Push-in 108%, rack focus: portrait sharp, outer tiles fall into bokeh.",
  "2.1": "Hard hold (freeze), then the camera alone keeps drifting 1%.",
  "2.2": "Whip pan right along the arc, heavy motion blur for 8 frames.",
- "2.3": "Settle: ease out from the whip, dead still for the wordmark.",
+ "2.3": "Settle out of the whip; a slow 2% push-in while the icons pop.",
  "3.1": "Truck left to right following the hairlines to the bright point.",
  "3.2": "Keep trucking along the line; at the panel, light flash whip (overexposed white bloom, 10 frames) into scene 4.",
  "4.1": "Out of the flash: the window floats in 3D, tilted 14° back and 8° yaw, slow dolly-in and rise; shallow depth of field, far edge soft.",
@@ -633,8 +663,12 @@ SCENES = [
             "—", "Silence, then a reversed swell"),
           ("2.2", "0:12", f_2_2, "The portrait shrinks away. The segments sweep off in one big arc across the frame and the stage clears to Paper. A small ring of segments keeps spinning.",
             "—", "Big whoosh"),
-          ("2.3", "0:14", f_2_3, "The small ring snaps into the Zenboard mark in Berry. The wordmark types in letter by letter to the right.",
-            "“Meet Zenboard.”", "The Zenboard chime")],
+          ("2.3", "0:12.5", f_2_3r, "Zenboard's module icons (Tasks, Mail, Calendar, Docs, Projects, Clients, Money, Habits, Focus, Automations) pop in one by one in a square ring around the Zenboard mark, which is filled with the brand gradient (Berry, petal, apricot, lavender edge).",
+            "—", "A soft pop per icon, on the beat"),
+          ("2.4", "0:13.5", f_2_4r, "The ring pulls tight and every icon is absorbed into the mark. The mark alone shrinks and spins once, small in the centre of a clean Paper frame.",
+            "—", "An inward swoosh, then silence"),
+          ("2.5", "0:14.5", f_2_5r, "The mark springs to full size and settles into the lockup; the wordmark types in beside it. A second line rises: with, the gradient mark, Ask.",
+            "Zenboard with ✦ Ask", "The Zenboard chime")],
   out="The mark slides to the right and becomes the hub node of the next scene (shape match)."),
  dict(n=3, name="All in one", t="0:15–0:22", purpose="Every app you juggle flows into one place.",
   frames=[("3.1", "0:16", f_3_1, "The app tiles line up on the left. From each one a fan of fine hairlines in that app's colour sweeps right; all the fans converge on one bright point, which pulses out as three dots into the Zenboard node.",
@@ -656,7 +690,7 @@ SCENES = [
           for i in range(len(FEATS))],
   out="The Berry panel folds away to Paper; the Automations logo pops into the centre."),
  dict(n=6, name="Zenboard does the work", t="0:40–0:46", purpose="Automation: describe a job once and watch Zenboard do it (ref: Effortless automation).",
-  frames=[("6.1", "0:40", f_auto_1, "Paper stage with soft coloured light. The Automations feature logo (Berry circle, lightning) pops in at the centre, the headline rises word by word, and real Zenboard pieces float around it at different depths: the automation steps card, a doc with Add to a doc, the prompt card, a Q3 revenue chart, the Zenboard mark as a soft glowing sparkle and a Money tile.",
+  frames=[("6.1", "0:40", f_auto_1, "Paper stage with soft coloured light. The Zenboard logo (white mark on a Berry circle) pops in at the centre, the headline rises word by word, and real Zenboard pieces float around it at different depths: the automation steps card, a doc with Add to a doc, the prompt card, a Q3 revenue chart, the Zenboard mark as a soft glowing sparkle and a Money tile.",
             "Effortless automation · Describe it once. Zenboard does the work.", "Soft whoosh as the cards drift in, a chime on the logo"),
           ("6.2", "0:43", f_auto_2, "Zenboard opens the work: the prompt card comes forward, the cursor presses Create, and the steps card runs by itself. Trigger and draft tick green, Move to Today spins, the client portal step waits. A drafted reminder to Fernwood Hotels slides in and a toast confirms it was sent.",
             "Zenboard does the work.", "Click on Create, a tick per step, a soft send whoosh")],

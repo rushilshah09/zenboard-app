@@ -135,7 +135,13 @@ The product UI in the film should look like the green "Project Status" reference
 - 6.2: Zenboard opens the work: cursor presses Create, the steps run by themselves (ticks, spinner),
   a drafted reminder to Fernwood Hotels slides in, toast "Reminder sent".
 
-### D14+ — (more directions to come)
+### D14 — Logo reveal (ref: Google Workspace with Gemini sequence)
+- Scene 2 ends with: Zenboard module icons in a square ring around the gradient Zenboard mark (2.3),
+  the ring absorbed into the mark, mark alone small and spinning (2.4), lockup + "with ✦ Ask" (2.5).
+- The Automations scene centre badge is the Zenboard logo (white mark on a Berry circle); one cohesive
+  Berry/petal light and a symmetric card layout.
+
+### D15+ — (more directions to come)
 
 ## Brand note
 The Zenboard brand guidelines (Paper / Ink / single Berry accent, eight flat field colours, no gradients)
