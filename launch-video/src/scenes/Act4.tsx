@@ -10,6 +10,8 @@ import { Rect, col, span } from "../brand/layout";
 import { EASE, clamp, leave } from "../brand/motion";
 import { syncWords, syncedSpan } from "../brand/sync";
 import { VO_AT, frames } from "../brand/timeline";
+import { lookIn } from "../brand/look";
+import { colour } from "../brand/tokens";
 import { Scene } from "./shared";
 
 /**
@@ -51,13 +53,13 @@ export const S08: React.FC = () => {
   return (
     <Scene>
       <Camera scale={1 + 0.02 * clamp(frame, [0, frames("S08")], [0, 1], EASE.breathe)}>
-        <LogoReveal frame={f} geometry={GEOMETRY} timing={FILM} />
+        <LogoReveal frame={f} geometry={GEOMETRY} timing={FILM} dark={1} />
         {/* The tile row counts as one object; it breathes in place under the question. */}
         <Place id="tile-row" rect={ROW_RECT} visible={frame >= 16} moving={frame < 16 + 7 * 4 + 36}>
           <div />
         </Place>
         <Place id="headline" rect={QUESTION} visible={frame >= Q_WORDS[0]} moving={during(frame, syncedSpan(Q_WORDS))}>
-          <Headline text={QUESTION_TEXT} at={Q_WORDS[0]} wordAt={Q_WORDS} align="center" width={QUESTION.w} />
+          <Headline text={QUESTION_TEXT} at={Q_WORDS[0]} wordAt={Q_WORDS} tone="white" align="center" width={QUESTION.w} />
         </Place>
       </Camera>
       <Sfx at={16} sound="breath" volume={0.08} />
@@ -75,15 +77,17 @@ export const S09: React.FC = () => {
       <Camera scale={1.02 + 0.07 * push}>
         {/* S08's question leaves as the tiles lift (exit before enter). */}
         <Place id="question" rect={QUESTION} moving={frame < 18} visible={frame < 18}>
-          <Headline text={QUESTION_TEXT} at={-400} align="center" width={QUESTION.w} exitAt={0} />
+          <Headline text={QUESTION_TEXT} at={-400} tone="white" align="center" width={QUESTION.w} exitAt={0} />
         </Place>
         <LogoReveal
           frame={frame}
           geometry={GEOMETRY}
           timing={FILM}
+          dark={1}
+          brand={lookIn("S09", frame).brand}
           tagline={
             <Place id="tagline" rect={TAGLINE} visible={frame >= TAG_WORDS[0]} moving={during(frame, syncedSpan(TAG_WORDS))}>
-              <Headline text={TAGLINE_TEXT} at={TAG_WORDS[0]} wordAt={TAG_WORDS} style="subhead" tone="stone" emphasisFrom="stone" emphasisTo="ink" align="center" width={TAGLINE.w} />
+              <Headline text={TAGLINE_TEXT} at={TAG_WORDS[0]} wordAt={TAG_WORDS} style="subhead" tone="whiteMuted" emphasisFrom="whiteMuted" emphasisTo="white" align="center" width={TAGLINE.w} />
             </Place>
           }
         />
@@ -109,10 +113,10 @@ export const S09: React.FC = () => {
 export const LockupLeaving: React.FC<{ frame: number }> = ({ frame }) => (
   <>
     <Place id="wordmark" rect={LOCKUP_RECT} moving={frame < 18} visible={frame < 18}>
-      <LockupLetters geometry={GEOMETRY} style={{ left: 0, top: 0, ...leave(frame, 0), clipPath: `inset(-20% -10% -20% ${(34 / LOCKUP_VIEWBOX.w) * 100}%)` }} />
+      <LockupLetters geometry={GEOMETRY} fill={colour.white} style={{ left: 0, top: 0, ...leave(frame, 0), clipPath: `inset(-20% -10% -20% ${(34 / LOCKUP_VIEWBOX.w) * 100}%)` }} />
     </Place>
     <Place id="tagline" rect={TAGLINE} moving={frame < 18} visible={frame < 18}>
-      <Headline text={TAGLINE_TEXT} at={-400} style="subhead" tone="stone" emphasisTo="ink" align="center" width={TAGLINE.w} exitAt={0} />
+      <Headline text={TAGLINE_TEXT} at={-400} style="subhead" tone="whiteMuted" emphasisTo="white" align="center" width={TAGLINE.w} exitAt={0} />
     </Place>
   </>
 );

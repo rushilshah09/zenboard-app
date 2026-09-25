@@ -4,12 +4,12 @@ import { DebugScope } from "../components/DebugZones";
 import { FONT } from "../brand/fonts";
 import { FRAME, Rect, ZONES, col, span } from "../brand/layout";
 import { EASE, clamp } from "../brand/motion";
-import { Category, colour } from "../brand/tokens";
+import { Category } from "../brand/tokens";
 import { SceneId, beat, frames, sceneStart } from "../brand/timeline";
 
-/** Every scene sits on the same Paper (§2 rule 1). */
+/** Scenes are transparent: the film's living background (Aurora, in Film.tsx) shows through. */
 export const Scene: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <AbsoluteFill style={{ background: colour.paper, fontFamily: FONT, overflow: "hidden" }}>
+  <AbsoluteFill style={{ fontFamily: FONT, overflow: "hidden" }}>
     <DebugScope>{children}</DebugScope>
   </AbsoluteFill>
 );

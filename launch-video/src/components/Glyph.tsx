@@ -21,16 +21,17 @@ export const GLYPH_OF: Record<Category, GlyphName> = {
  * `colourProgress` turns the tile to the category accent and the icon to the
  * category's dominant colour.
  */
-export const Glyph: React.FC<{ category: Category; size: number; colourProgress?: number; style?: React.CSSProperties }> = ({
+export const Glyph: React.FC<{ category: Category; size: number; colourProgress?: number; dark?: number; style?: React.CSSProperties }> = ({
   category,
   size,
   colourProgress = 0,
+  dark = 0,
   style,
 }) => {
   const g = GLYPHS[GLYPH_OF[category]];
   const pair = CATEGORY[category];
-  const tile = interpolateColors(colourProgress, [0, 1], [colour.hairline, pair.accent]);
-  const icon = interpolateColors(colourProgress, [0, 1], [colour.ink, pair.dominant]);
+  const tile = interpolateColors(dark, [0, 1], [interpolateColors(colourProgress, [0, 1], [colour.hairline, pair.accent]), "rgba(255, 255, 255, 0.09)"]);
+  const icon = interpolateColors(dark, [0, 1], [interpolateColors(colourProgress, [0, 1], [colour.ink, pair.dominant]), "rgba(255, 255, 255, 0.9)"]);
   return (
     <div
       style={{

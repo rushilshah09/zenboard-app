@@ -18,11 +18,11 @@ export const EASE = {
 
 /** Durations in frames at 60fps. */
 export const DUR = {
-  settle: 42, // 700ms
+  settle: 30, // 500ms
   snap: 16, // ~270ms
-  leave: 18, // 300ms
+  leave: 14, // ~230ms
   breathe: 150, // 2.5s
-  wordStagger: 2.7, // 45ms
+  wordStagger: 2.4, // 40ms
   colourDelay: 12, // 200ms after a line lands
   colourShift: 24, // 400ms
 } as const;
@@ -65,3 +65,17 @@ export const riseAndLeave = (frame: number, at: number, exitAt: number | undefin
   const l = leave(frame, exitAt);
   return { ...r, opacity: (r.opacity as number) * l.opacity, translate: l.translate };
 };
+
+/**
+ * Spring kick (brand-approved overshoot, STYLE.md): starts at 1 at `at` and
+ * rings down through zero with a couple of damped overshoots over `dur` frames.
+ * Deterministic — a pure function of the frame.
+ */
+export const kick = (frame: number, at: number, dur = 24) => {
+  if (frame < at) return 0;
+  const t = Math.min(1, (frame - at) / dur);
+  return Math.exp(-4.2 * t) * Math.cos(2.6 * Math.PI * t) * (1 - t);
+};
+
+/** Overshooting settle for pops (logo dots, badges): passes 1 by ~8% then lands. */
+export const POP = Easing.bezier(0.34, 1.56, 0.64, 1);

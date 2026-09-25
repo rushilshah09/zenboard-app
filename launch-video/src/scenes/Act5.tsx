@@ -1,5 +1,5 @@
 import React from "react";
-import { useCurrentFrame } from "remotion";
+import { interpolateColors, useCurrentFrame } from "remotion";
 import { Sfx } from "../components/Audio";
 import { Camera } from "../components/Camera";
 import { Cursor } from "../components/Cursor";
@@ -16,7 +16,10 @@ import {
   HeroMode,
   LIFE_HERO,
   MONEY_HERO,
-  SWIPE,
+  Seam,
+  SEAM,
+  SIDEBAR_W,
+  SeamCut,
   SwipeCut,
   TodaySkeleton,
   LifeView,
@@ -32,11 +35,10 @@ import {
   TODAY_THREAD_FROM,
   TodayView,
   WIN,
-  rowGlyph,
 } from "../components/Product";
 import { Thread } from "../components/Thread";
 import { RevealMark } from "../components/LogoReveal";
-import { Aura } from "../components/ZenMark";
+import { CATEGORY, colour, radius } from "../brand/tokens";
 import { ZONES } from "../brand/layout";
 import { DUR, EASE, clamp, leave } from "../brand/motion";
 import { syncWords, syncedSpan } from "../brand/sync";
@@ -92,14 +94,8 @@ export const S10: React.FC = () => {
   const colours = NAV.map((_, i) => clamp(frame, [ROW_AT(i) + 18, ROW_AT(i) + 18 + DUR.colourShift], [0, 1], EASE.settle));
   const push = clamp(frame, [112, 140], [0, 1], EASE.settle);
   const sel = clamp(frame, [134, 150], [0, 1], EASE.settle);
-  const auraOut = clamp(frame, [0, 40], [0, 1], EASE.leave);
-  const m = toScreen(lockupMark(), S09_END_SCALE);
   return (
     <Scene>
-      {/* The aura from the reveal fades as the mark flies home. */}
-      <div style={{ position: "absolute", left: m.x - 460 * S09_END_SCALE, top: m.y - 460 * S09_END_SCALE, width: 920, height: 920, transformOrigin: "0 0", scale: String(S09_END_SCALE * (1 + Math.sin((frames("S09") + frame) / 24) * 0.015)), opacity: 1 - auraOut }}>
-        <Aura size={920} />
-      </div>
       <Camera scale={S09_END_SCALE}>
         <LockupLeaving frame={frame} />
       </Camera>
@@ -128,7 +124,7 @@ export const S10: React.FC = () => {
             filter: `blur(${Math.min(6, Math.hypot(to.x - from.x, to.y - from.y) * (travel - clamp(frame - 1, [8, 60], [0, 1], EASE.settle)) * 0.25)}px)`,
           }}
         >
-          <RevealMark size={size0} />
+          <RevealMark size={size0} fill={interpolateColors(travel, [0.2, 0.9], [colour.white, colour.pink])} />
         </div>
       ) : null}
       {NAV.map((_, i) => (
@@ -142,7 +138,7 @@ export const S10: React.FC = () => {
 
 // ── S11–S15 · one job through every module ─────────────────────────────────
 type ModuleId = "S11" | "S12" | "S13" | "S14" | "S15";
-type ViewFC = React.FC<{ f: number; hero?: HeroMode; lift?: number; rowAt?: number[]; cardAt?: number[]; magnet?: { x: number; y: number } }>;
+type ViewFC = React.FC<{ f: number; hero?: HeroMode; lift?: number; rowAt?: number[]; cardAt?: number[]; magnet?: { x: number; y: number }; morphed?: boolean }>;
 type Hero = { origin: { x: number; y: number } };
 type Module = {
   row: number;
@@ -157,7 +153,10 @@ type Module = {
    * about its content-local origin) while the window behind softens and recedes.
    */
   lift?: { hero: Hero; k: number; up: [number, number]; down: [number, number] };
+  /** The object that carries the viewer in from the previous module. */
+  seam?: Seam;
 };
+const ROW_TINT = "#F4F1F4";
 const VIEW_AT = 10;
 /** Scene frame where the swipe cut into a module starts. */
 const SWIPE_AT = 6;
@@ -172,6 +171,8 @@ const MODULES: Record<ModuleId, Module> = {
     Prev: TodayView,
     thread: { from: content({ x: 22, y: DOC_HERO.y + DOC_HERO.h }), to: ROW.clients },
     lift: { hero: DOC_HERO, k: 1.5, up: [100, 126], down: [168, 194] },
+    // The 10:00 event opens into the document it belongs to.
+    seam: { from: TODAY.slot, to: { x: -24, y: -16, w: CONTENT.w + 48, h: CONTENT.h + 32 }, fromBg: CATEGORY.tasks.accent, toBg: colour.card, fromR: radius.card, toR: radius.window, label: "Draft Acme proposal" },
   },
   S13: {
     row: ROW.clients,
@@ -180,10 +181,30 @@ const MODULES: Record<ModuleId, Module> = {
     View: ClientView,
     Prev: DocView,
     thread: { from: content({ x: 36, y: 440 }), to: ROW.money },
-    lift: { hero: CLIENT_HERO, k: 1.12, up: [34, 60], down: [148, 176] },
+    lift: { hero: CLIENT_HERO, k: 1.12, up: [54, 80], down: [150, 176] },
+    // The task chip, now ready for review, flies to its client and becomes the proposal row.
+    seam: { from: { x: DOC_HERO.x, y: DOC_HERO.y, w: DOC_HERO.w, h: DOC_HERO.h }, to: { x: 0, y: 216, w: 1184, h: 64 }, fromBg: colour.card, toBg: ROW_TINT, fromR: radius.pill, toR: radius.card, label: "Proposal — rebrand, phase two" },
   },
-  S14: { row: ROW.money, from: ROW.clients, headline: "Invoice in one click.", View: MoneyView, Prev: ClientView, lift: { hero: MONEY_HERO, k: 1.12, up: [92, 120], down: [204, 232] } },
-  S15: { row: ROW.life, from: ROW.money, headline: "And room for the rest of your life.", View: LifeView, Prev: MoneyView, lift: { hero: LIFE_HERO, k: 1.3, up: [116, 144], down: [194, 222] } },
+  S14: {
+    row: ROW.money,
+    from: ROW.clients,
+    headline: "Invoice in one click.",
+    View: MoneyView,
+    Prev: ClientView,
+    lift: { hero: MONEY_HERO, k: 1.12, up: [92, 120], down: [204, 232] },
+    // The client's tracked hours expand into the invoice.
+    seam: { from: { x: 0, y: 376, w: 1184, h: 64 }, to: { x: MONEY_HERO.x, y: MONEY_HERO.y, w: MONEY_HERO.w, h: MONEY_HERO.h }, fromBg: ROW_TINT, toBg: colour.paper, fromR: radius.card, toR: radius.card, label: "12.5h tracked this week" },
+  },
+  S15: {
+    row: ROW.life,
+    from: ROW.money,
+    headline: "And room for the rest of your life.",
+    View: LifeView,
+    Prev: MoneyView,
+    lift: { hero: LIFE_HERO, k: 1.3, up: [116, 144], down: [194, 222] },
+    // Paid, the invoice folds back into Money, and the week opens.
+    seam: { from: { x: MONEY_HERO.x, y: MONEY_HERO.y, w: MONEY_HERO.w, h: MONEY_HERO.h }, to: { x: 16 - CONTENT.x, y: ROW_Y0 + ROW.money * ROW_H + 4 - CONTENT.y, w: SIDEBAR_W - 32, h: ROW_H - 8 }, fromBg: colour.paper, toBg: colour.blush, fromR: radius.card, toR: radius.card, label: "Paid · INV-1042" },
+  },
 };
 const ORDER: ModuleId[] = ["S11", "S12", "S13", "S14", "S15"];
 const LIFT_RISE = 14;
@@ -267,9 +288,10 @@ const revealProps = (id: ModuleId, words: number[], cursor: { x: number; y: numb
     const dy = cursor.y - b.y;
     const pull = 1 - clamp(Math.hypot(dx, dy), [24, 180], [0, 1], EASE.settle);
     const len = Math.max(1, Math.hypot(dx, dy));
-    return { magnet: { x: (dx / len) * 8 * pull, y: (dy / len) * 8 * pull } };
+    return { morphed: true, magnet: { x: (dx / len) * 8 * pull, y: (dy / len) * 8 * pull } };
   }
-  if (id === "S13") return { rowAt: [words[1], words[3], words[4]].map((w) => w - VIEW_AT) };
+  // S13: the first row is where the chip lands; the rest cascade after it.
+  if (id === "S13") return { rowAt: [SEAM.at + SEAM.dur - VIEW_AT, 0, 0] };
   if (id === "S15") return { cardAt: [words[1], words[3], words[5], words[7]].map((w) => w - VIEW_AT) };
   return {};
 };
@@ -282,7 +304,7 @@ const ModuleScene: React.FC<{ id: ModuleId }> = ({ id }) => {
   const len = frames(id);
   const f = frame - VIEW_AT;
   // The selection glides down with the swipe, one motion.
-  const selected = m.from + (m.row - m.from) * clamp(frame, [SWIPE_AT, SWIPE_AT + SWIPE.exit + SWIPE.enter], [0, 1], EASE.settle);
+  const selected = m.from + (m.row - m.from) * clamp(frame, [SEAM.at + 8, SEAM.at + SEAM.dur + 12], [0, 1], EASE.settle);
   const outThread = m.thread ? clamp(frame, [len - 60, len - 14], [0, 1], EASE.settle) : 0;
   const inThread = prev?.thread;
   const cursor = id === "S11" ? TODAY_CURSOR : id === "S14" ? MONEY_CURSOR : null;
@@ -322,7 +344,11 @@ const ModuleScene: React.FC<{ id: ModuleId }> = ({ id }) => {
           frame={depth}
           content={
             Prev ? (
-              <SwipeCut frame={frame} at={SWIPE_AT} out={<Prev f={999} />} in={<Current f={f} hero={heroMode} {...extra} />} />
+              m.seam ? (
+                <SeamCut frame={frame} seam={m.seam} out={<Prev f={999} {...(prevId === "S14" ? { morphed: true } : {})} />} in={<Current f={f} hero={heroMode} {...extra} />} />
+              ) : (
+                <SwipeCut frame={frame} at={SWIPE_AT} out={<Prev f={999} />} in={<Current f={f} hero={heroMode} {...extra} />} />
+              )
             ) : (
               <>
                 <TodaySkeleton b={999} opacity={1 - resolve} />
@@ -391,44 +417,3 @@ export const S12: React.FC = () => <ModuleScene id="S12" />;
 export const S13: React.FC = () => <ModuleScene id="S13" />;
 export const S14: React.FC = () => <ModuleScene id="S14" />;
 export const S15: React.FC = () => <ModuleScene id="S15" />;
-
-// ── S16 · all connected ─────────────────────────────────────────────────────
-export const S16_HEADLINE = "All connected. Nothing to switch.";
-const S16_WORDS = syncWords(S16_HEADLINE, "S16", VO_AT.S16);
-const TRACE: [number, number] = [16, 112];
-export const S16: React.FC = () => {
-  const frame = useCurrentFrame();
-  const len = frames("S16");
-  const pull = clamp(frame, [0, 96], [0, 1], EASE.settle);
-  const cam = actCamera("S16", frame) * (1 - pull) + 0.92 * pull;
-  const trace = clamp(frame, TRACE, [0, 1], EASE.breathe);
-  const first = rowGlyph(0).y - ROW_H / 2 + 8;
-  const last = rowGlyph(NAV.length - 1).y + ROW_H / 2 - 8;
-  const lit = NAV.map((_, i) => {
-    const t = TRACE[0] + ((rowGlyph(i).y - first) / (last - first)) * (TRACE[1] - TRACE[0]);
-    return clamp(frame, [t - 4, t + 6], [0, 1], EASE.settle) * (1 - clamp(frame, [t + 18, t + 42], [0, 1], EASE.settle));
-  });
-  const recede = clamp(frame, [len - 30, len], [0, 1], EASE.leave);
-  return (
-    <Scene>
-      <Camera scale={cam}>
-        <Place id="headline" rect={ZONES.headlineTop} moving={during(frame, syncedSpan(S16_WORDS))}>
-          <Headline text={S16_HEADLINE} at={S16_WORDS[0]} wordAt={S16_WORDS} align="center" width={ZONES.headlineTop.w} />
-        </Place>
-        <ProductWindow
-          rows={ALL_IN}
-          colours={ALL_IN}
-          lit={lit}
-          selected={ROW.life}
-          selectedOpacity={1 - clamp(frame, [4, 20], [0, 1], EASE.settle)}
-          frame={{ opacity: 1 - recede, scale: String(1 - recede * 0.04) }}
-          content={<LifeView f={999} />}
-          overlay={<Thread d={`M8 ${first} L8 ${last}`} progress={trace} />}
-        />
-      </Camera>
-      {NAV.map((_, i) => (
-        <Sfx key={i} at={TRACE[0] + (i / (NAV.length - 1)) * (TRACE[1] - TRACE[0])} sound="tick-tuned" variant={i} volume={0.18} />
-      ))}
-    </Scene>
-  );
-};

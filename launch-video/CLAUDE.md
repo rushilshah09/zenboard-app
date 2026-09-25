@@ -1,39 +1,42 @@
-# Zenboard launch film — rules for every session
+# Zenboard launch film v2 — rules for every session
 
-These rules come from CREATIVE_DIRECTION.md §9. They apply to everything under `launch-video/`
-(the app's own CLAUDE.md at the repo root still governs the product code).
+**Governing direction: DIRECTION_V2.md** (the "Direction v2 — Cinematic" doc). It replaces
+CREATIVE_DIRECTION.md §9, MOTION_DIRECTION.md, UI_MOTION.md and TREATMENT.md wherever they differ.
+These rules apply to everything under `launch-video/` (the repo-root CLAUDE.md still governs the
+product code).
 
-## Story
-Chaos → too many apps → constant switching → one calm workspace → Zenboard.
-The scene list and copy live in CREATIVE_DIRECTION.md, section 5. Never add scenes or copy that isn't there.
+> **Build status.** The current code is the "v3" build: the pre-v2 story and voice-over on the
+> Aurora look. v2 is being built on top of it, following DIRECTION_V2.md §9's session plan. Reusable
+> parts: word sync (`src/brand/sync.ts`), WebGL layers (`src/gl/`), SeamCut continuity, the S16 3D
+> constellation, the evening ending. Until v2 replaces a scene, keep it working.
 
-## Brand (never hard-code; import from src/brand)
-- Font: Geist only. No serif, no italics, no second typeface.
-- Background: Warm Cream #F7F1E8 on every frame. No black backgrounds, no dark mode scenes.
-- Ink and linework: Deep Burgundy #280417. No pure black, no neutral grey.
-- Zenboard Pink #C41C72 appears only from scene S09 onward, only on Zenboard things.
-- Category colours come from CATEGORY in tokens.ts and only appear from S10 onward.
-- One shadow, tinted burgundy. Radii: 20 windows, 12 cards, 999 pills.
-- Icons: the product's own Phosphor family (src/brand/glyphs.generated.ts, from scripts/extract-glyphs.mjs).
+## Idea
+Zenboard turns everything you do into one connected flow. The Thread (a filament of Zenboard Pink
+light) connects every object. We follow one job, "Acme Studio: rebrand proposal", through the
+product. Script, shots and timings: DIRECTION_V2.md §5. Don't invent scenes or copy.
+
+## Brand
+- Geist and Geist Mono only. No serif, no italics.
+- Deep Burgundy #280417 instead of black everywhere. Never pure black, never neutral grey.
+- Warm Cream #F7F1E8 is the Day world. The Night world is lit burgundy with haze, never flat.
+- Zenboard Pink #C41C72 is light: the Thread, the mark, key states. Not before shot 2.1.
+- Category pairings from tokens.ts only.
+
+## UI
+- Real data from src/data/acme.ts. No skeleton bars, no lorem, no placeholders.
+- Product fills 70–90% of frame width in product shots. Macro shots at 2–3×.
+- Panels: 20px radius, 1px inner highlight, burgundy hairline, three-layer burgundy shadow.
 
 ## Motion
-- Easing only via EASE.settle / snap / leave / breathe. No spring(), no bounce, no overshoot.
-- Text only through <Headline>: words rise 24px, 45ms stagger. No typewriter, no letter scramble.
-- No 3D tilt, no glow effects, no camera shake. Rotation only for the mark and its orbiting tiles (LogoReveal).
-- Motion floor: something purposeful moves every second (the camera counts). Only holds: the silence
-  at the start of S08 and the end of the end card. See MOTION_DIRECTION.md.
-- The camera may punch in on the action (max 1.15× in the product act) and ease back out.
-- Effects (ripple, spark burst, trails, aura, the pink sheen) only on Zenboard moments, S09 onward.
-- Voiced text is word-synced: pass `wordAt={syncWords(text, clip, VO_AT[id])}` to <Headline>.
-- Animate transform and opacity only. Always clamp interpolate.
+- Only the presets in brand/physics.ts. Overshoot ≤2%, UI objects only.
+- Hierarchy: lead at 0, response +4f, consequence +8f, environment +16f. Max three tiers moving.
+- UI never fades in from nothing in the Day world; it arrives from a source.
+- The camera moves only with a reason. At least 20% of product shots are locked.
+- L3 effects (shaders, particles, 3D) only in shots 1.5, 2.1–2.2 and 5.1–5.3.
 
-## Layout
-- Positions only via layout.ts helpers. 160px margins, 32px gutters, 8px spacing scale.
-- One headline and one visual per frame, in separate zones. Max 8 elements on screen.
-- Exit before enter. Nothing overlaps while moving. Place top-level elements with <Place> and check with
-  the DebugZones overlay (on in Studio) — or run `python3 scripts/scan-collisions.py` — before finishing.
-
-## Workflow
-- Build one act per session. After each scene, open Remotion Studio and check it against these rules.
-- Timeline is in beats (1 beat = 40 frames at 60fps): src/brand/timeline.ts.
-- After re-timing, run `python3 scripts/make-audio.py` so the score follows.
+## Tech
+- All animation from useCurrentFrame(). No useFrame, no Math.random, seeded noise only.
+- VO-synced actions use at('word') from timeline/.
+- DOM ↔ WebGL handoffs happen flat to camera at identical position and scale.
+- Render with `--gl=angle` (`scripts/master.sh <chromium>`); check layout with
+  `python3 scripts/scan-collisions.py <chromium>`.

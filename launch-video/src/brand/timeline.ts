@@ -28,7 +28,7 @@ export const SCENES = [
   { id: "S13", act: 5, beats: 6, vo: "Every client in one view." },
   { id: "S14", act: 5, beats: 6, vo: "Invoice in one click." },
   { id: "S15", act: 5, beats: 6, vo: "And room for the rest of your life." },
-  { id: "S16", act: 5, beats: 4, vo: "All connected. Nothing to switch." },
+  { id: "S16", act: 5, beats: 8, vo: "All connected. Nothing to switch." },
   { id: "S17", act: 6, beats: 7, vo: "One workspace. One subscription. One focus." },
   { id: "S18", act: 6, beats: 7, vo: "Zenboard. Available today." },
 ] as const;

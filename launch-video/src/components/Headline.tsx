@@ -2,7 +2,7 @@ import React from "react";
 import { interpolateColors, useCurrentFrame } from "remotion";
 import { FONT } from "../brand/fonts";
 import { DUR, EASE, clamp, leave, rise } from "../brand/motion";
-import { colour, type, TypeStyle } from "../brand/tokens";
+import { aurora, colour, type, TypeStyle } from "../brand/tokens";
 
 /**
  * The only way text enters the film (§4): words rise 24px and fade in with a
@@ -11,8 +11,13 @@ import { colour, type, TypeStyle } from "../brand/tokens";
  * Markup: `[word]` is emphasis (shifts colour 200ms after the line lands),
  * `|` splits phrases that can land on their own beats via `phraseAt`.
  */
-type Tone = "ink" | "stone" | "pink";
-const TONE: Record<Tone, string> = { ink: colour.ink, stone: colour.stone, pink: colour.pink };
+type Tone = "ink" | "stone" | "pink" | "white" | "whiteMuted";
+const TONE: Record<Tone, string> = { ink: colour.ink, stone: colour.stone, pink: colour.pink, white: colour.white, whiteMuted: "rgba(255, 255, 255, 0.62)" };
+/** Words arrive warm (Jurni's shimmer): coral → pink → their final colour. */
+const shimmer = (frame: number, start: number, to: string) => {
+  const p = clamp(frame, [start, start + 26], [0, 1], EASE.settle);
+  return p < 0.5 ? interpolateColors(p, [0, 0.5], [aurora.coral, aurora.pink]) : interpolateColors(p, [0.5, 1], [aurora.pink, to]);
+};
 
 export const Headline: React.FC<{
   text: string;
@@ -70,7 +75,7 @@ export const Headline: React.FC<{
     wordIndex++;
     const isEmphasis = raw.includes("[");
     const word = raw.replace(/[[\]]/g, "");
-    let fill = TONE[tone];
+    let fill = style === "ui" || style === "caption" ? TONE[tone] : shimmer(frame, start, TONE[tone]);
     if (isEmphasis) {
       // Synced lines shift each emphasised word as it is spoken; others after the line lands.
       const shiftAt = wordAt ? start + 8 : landed + DUR.colourDelay + emphasisIndex * emphasisStagger;
@@ -79,7 +84,16 @@ export const Headline: React.FC<{
       fill = interpolateColors(p, [0, 1], [TONE[emphasisFrom], TONE[emphasisTo]]);
     }
     return (
-      <span key={key} style={{ display: "inline-block", color: fill, marginRight: "0.26em", ...rise(frame, start, { dist: 24, dur: riseDur }) }}>
+      <span
+        key={key}
+        style={{
+          display: "inline-block",
+          color: fill,
+          marginRight: "0.26em",
+          ...rise(frame, start, { dist: 28, dur: riseDur }),
+          filter: `blur(${(1 - clamp(frame, [start, start + riseDur * 0.7], [0, 1], EASE.settle)) * 10}px)`,
+        }}
+      >
         {word}
       </span>
     );

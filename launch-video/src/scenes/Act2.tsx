@@ -9,9 +9,10 @@ import { Headline } from "../components/Headline";
 import { Tile } from "../components/Tile";
 import { Rect, col, span } from "../brand/layout";
 import { DUR, EASE, clamp, rise } from "../brand/motion";
-import { colour, radius, space, tint } from "../brand/tokens";
+import { aurora, glass, radius, space } from "../brand/tokens";
 import { syncWords, syncedSpan } from "../brand/sync";
 import { VO_AT, beat, frames } from "../brand/timeline";
+import { lookIn } from "../brand/look";
 import { OPENING_SCALE } from "./Act1";
 import { APPS, Scene, TILE_SCALE, gridSlot, pillRect, tileRect, tileSlot } from "./shared";
 
@@ -38,6 +39,7 @@ const DEPTH = [1, 0.4, 0.8, 0.2, 0.6, 1, 0.3, 0.7];
 
 export const S03: React.FC = () => {
   const frame = useCurrentFrame();
+  const dark = lookIn("S03", frame).dark;
   // Ease the camera from each target to the next as each window lands.
   let cam = target(0);
   for (let k = 1; k < APPS.length; k++) {
@@ -50,7 +52,18 @@ export const S03: React.FC = () => {
       <Camera scale={cam.s} x={-(cam.cx - 960) * cam.s} y={-(cam.cy - 540) * cam.s}>
         {APPS.map((a, i) => {
           const r = gridSlot(i);
-          const style = i === 0 ? { opacity: 1 } : rise(frame, ARRIVE(i), { dur: 20, easing: EASE.snap, scale: true });
+          // Windows fly in out of depth (Jurni): from small, far and blurred, fast, then settle.
+          const fly = clamp(frame, [ARRIVE(i), ARRIVE(i) + 30], [0, 1], EASE.settle);
+          const out = { x: (r.x + r.w / 2 - 960) * 0.6, y: (r.y + r.h / 2 - 540) * 0.6 };
+          const style: React.CSSProperties =
+            i === 0
+              ? { opacity: 1 }
+              : {
+                  opacity: clamp(frame, [ARRIVE(i), ARRIVE(i) + 10], [0, 1]),
+                  translate: `${(1 - fly) * out.x}px ${(1 - fly) * out.y}px`,
+                  scale: String(0.7 + 0.3 * fly),
+                  filter: `blur(${(1 - fly) * 18}px)`,
+                };
           // Each window floats on its own slow, out-of-phase sine at its own depth; the float
           // settles to rest before S04 compresses the grid.
           const amp = 1 - clamp(frame, [frames("S03") - 44, frames("S03") - 4], [0, 1], EASE.settle);
@@ -67,7 +80,15 @@ export const S03: React.FC = () => {
                 }}
               >
                 {/* The blank card lands first, then its content fills in. */}
-                <AppWindow category={a.category} label={a.label} width={r.w} height={r.h} fill={clamp(frame, [ARRIVE(i) + (i === 0 ? 4 : 10), ARRIVE(i) + (i === 0 ? 34 : 40)], [0, 1], EASE.settle)} />
+                <AppWindow
+                  category={a.category}
+                  label={a.label}
+                  width={r.w}
+                  height={r.h}
+                  dark={dark}
+                  draw={i === 0 ? 1 : clamp(frame, [ARRIVE(i) + 4, ARRIVE(i) + 34], [0, 1])}
+                  fill={clamp(frame, [ARRIVE(i) + (i === 0 ? 4 : 10), ARRIVE(i) + (i === 0 ? 34 : 40)], [0, 1], EASE.settle)}
+                />
               </div>
             </Place>
           );
@@ -102,6 +123,7 @@ const HEADLINE_S04: Rect = { x: col(1), y: pillRect(0).y + pillRect(0).h + 96, w
 
 export const S04: React.FC = () => {
   const frame = useCurrentFrame();
+  const dark = 1;
   return (
     <Scene>
       <Camera scale={1 + 0.05 * clamp(frame, [48, beat(8)], [0, 1], EASE.breathe)}>
@@ -125,11 +147,11 @@ export const S04: React.FC = () => {
                   moving={p > 0 && p < 1}
                   style={{ translate: `${dx}px ${dy}px`, scale: String(s), opacity: 1 - swap }}
                 >
-                  <AppWindow category={a.category} label={a.label} width={g.w} height={g.h} />
+                  <AppWindow category={a.category} label={a.label} width={g.w} height={g.h} dark={dark} />
                 </Place>
               ) : null}
               <div style={{ position: "absolute", left: t.x, top: t.y, opacity: swap, scale: String(wave(frame, tileSlot(i))) }}>
-                <Tile category={a.category} label={a.short} width={t.w} height={t.h} />
+                <Tile category={a.category} label={a.short} width={t.w} height={t.h} dark={dark} />
               </div>
               <div style={{ position: "absolute", left: pillRect(tileSlot(i)).x, top: pillRect(tileSlot(i)).y, width: pillRect(0).w, height: pillRect(0).h, ...rise(frame, PHRASES_S04[1] + tileSlot(i) * 2, { dist: 24 }) }}>
                 <LoginBillPill frame={frame} i={tileSlot(i)} />
@@ -142,7 +164,7 @@ export const S04: React.FC = () => {
           <div />
         </Place>
         <Place id="headline" rect={HEADLINE_S04} visible={frame >= S04_WORDS[0]} moving={during(frame, syncedSpan(S04_WORDS), [beat(8) - 18, beat(8)])}>
-          <Headline text={S04_TEXT} at={S04_WORDS[0]} wordAt={S04_WORDS} exitAt={beat(8) - 18} />
+          <Headline text={S04_TEXT} at={S04_WORDS[0]} wordAt={S04_WORDS} tone="white" exitAt={beat(8) - 18} />
         </Place>
       </Camera>
       {PHRASES_S04.map((p, i) => (
@@ -162,15 +184,16 @@ const LoginBillPill: React.FC<{ frame: number; i: number }> = ({ frame, i }) => 
         width: "100%",
         height: "100%",
         borderRadius: radius.pill,
-        background: tint.ink06,
+        background: "rgba(255, 255, 255, 0.08)",
+        boxShadow: "inset 0 0 0 1px rgba(255, 255, 255, 0.12)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         gap: space.s2,
       }}
     >
-      <Icon name="key" size={22} tint={colour.stone} />
-      <Icon name="receipt" size={22} tint={colour.stone} style={{ opacity: bill, scale: String(0.25 + bill * 0.75), filter: `blur(${(1 - bill) * 4}px)` }} />
+      <Icon name="key" size={22} tint={glass.muted} />
+      <Icon name="receipt" size={22} tint={aurora.coral} style={{ opacity: bill, scale: String(0.25 + bill * 0.75), filter: `blur(${(1 - bill) * 4}px)` }} />
     </div>
   );
 };

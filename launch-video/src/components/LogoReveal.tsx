@@ -1,10 +1,10 @@
 import React from "react";
 import { interpolateColors } from "remotion";
 import { LOCKUP_LETTERS, LOCKUP_MARK, LOCKUP_VIEWBOX } from "../brand/logo.generated";
-import { EASE, clamp } from "../brand/motion";
-import { Category, colour, radius, shadow } from "../brand/tokens";
+import { EASE, POP, clamp, kick } from "../brand/motion";
+import { surface } from "../brand/surface";
+import { Category, aurora, colour, radius } from "../brand/tokens";
 import { Glyph } from "./Glyph";
-import { Aura } from "./ZenMark";
 
 /**
  * The logo reveal. Eight app tiles lift off their row onto a turning ring,
@@ -88,7 +88,7 @@ export const REVEAL_FILM: RevealTiming = {
 
 const REVEAL_DEFAULT = REVEAL;
 
-const APPS: Category[] = ["tasks", "calendar", "projects", "money", "docs", "clients", "notes", "life"];
+export const APPS: Category[] = ["tasks", "calendar", "projects", "money", "docs", "clients", "notes", "life"];
 const TILE = 120;
 const RING = 330;
 
@@ -101,6 +101,10 @@ export type RevealGeometry = {
   markSize: number;
   /** Top-left of the full lockup (mark + wordmark) once settled. */
   lockup: { x: number; y: number };
+  /** Tile size at rest in the row (e.g. small sidebar icons); defaults to the full tile. */
+  startSize?: number;
+  /** Category colour on the tiles' glyphs (1 = the product's coloured sidebar icons). */
+  colour?: number;
 };
 
 const turnAt = (f: number, T: RevealTiming) => T.turn * clamp(f, T.spin, [0, 1], EASE.breathe);
@@ -130,24 +134,33 @@ const tileAt = (f: number, i: number, g: RevealGeometry, REVEAL: RevealTiming) =
   const x = row.x + (ringX - row.x) * lift;
   const y = row.y + (ringY - row.y) * lift;
   const shrink = clamp(f, [REVEAL.spiral[0] + 24, REVEAL.pair[1]], [0, 1], EASE.settle);
-  const size = TILE + (lobeR * 2 - TILE) * shrink;
+  const s0 = g.startSize ?? TILE;
+  const grown = s0 + (TILE - s0) * lift;
+  const size = grown + (lobeR * 2 - grown) * shrink;
   const enter = REVEAL.enter === undefined ? 1 : clamp(f, [REVEAL.enter + i * 4, REVEAL.enter + i * 4 + 36], [0, 1], EASE.settle);
-  return { x, y: y + (1 - enter) * 48, size, corner: radius.window + (lobeR - radius.window) * shrink, enter };
+  const corner0 = g.startSize ? Math.round(s0 * 0.28) + (radius.window - Math.round(s0 * 0.28)) * lift : radius.window;
+  return { x, y: y + (1 - enter) * 48, size, corner: corner0 + (lobeR - corner0) * shrink, enter, lift };
 };
 
-export const LogoReveal: React.FC<{ frame: number; geometry: RevealGeometry; timing?: RevealTiming; tagline?: React.ReactNode }> = ({
-  frame,
-  geometry: g,
-  timing: REVEAL = REVEAL_DEFAULT,
-  tagline,
-}) => {
+export const LogoReveal: React.FC<{
+  frame: number;
+  geometry: RevealGeometry;
+  timing?: RevealTiming;
+  tagline?: React.ReactNode;
+  /** Tile material: 0 white cards on the aurora, 1 glass on the void. */
+  dark?: number;
+  /** How far the full-bleed gradient has flooded in (0..1): the lockup turns white on it. */
+  brand?: number;
+}> = ({ frame, geometry: g, timing: REVEAL = REVEAL_DEFAULT, tagline, dark = 0, brand = 0 }) => {
   const f = frame;
   const unit = g.markSize / 32;
   const ink = clamp(f, REVEAL.ink, [0, 1], EASE.settle);
   const fuse = clamp(f, REVEAL.fuse, [0, 1], EASE.settle);
   const pink = clamp(f, REVEAL.pink, [0, 1], EASE.settle);
   const slide = clamp(f, REVEAL.slide, [0, 1], EASE.settle);
-  const land = 0.94 + 0.06 * clamp(f, [REVEAL.fuse[0], REVEAL.pink[1]], [0, 1], EASE.settle);
+  // The four dots snap together and the mark pops through full size with an elastic overshoot.
+  const land = 0.6 + 0.4 * clamp(f, [REVEAL.fuse[0], REVEAL.fuse[0] + 26], [0, 1], POP) - 0.05 * kick(f, REVEAL.fuse[0] + 26, 30);
+  const lockColour = interpolateColors(clamp(brand, [0.35, 0.9], [0, 1]), [0, 1], [dark > 0.5 ? colour.white : colour.ink, colour.white]);
   const markSpin = turnAt(f, REVEAL) - REVEAL.turn; // the last of the turn, carried by the fused mark
 
   const markCentreFinal = { x: g.lockup.x + g.markSize / 2, y: g.lockup.y + g.markSize / 2 };
@@ -159,6 +172,7 @@ export const LogoReveal: React.FC<{ frame: number; geometry: RevealGeometry; tim
   const speed = Math.abs(turnAt(f, REVEAL) - turnAt(f - 2, REVEAL));
   const trail = clamp(speed, [2, 8], [0, 1]);
 
+  const s = surface(dark);
   const tile = (fr: number, i: number, ghost = 0) => {
     const t = tileAt(fr, i, g, REVEAL);
     return (
@@ -171,9 +185,16 @@ export const LogoReveal: React.FC<{ frame: number; geometry: RevealGeometry; tim
           width: t.size,
           height: t.size,
           borderRadius: t.corner,
-          background: interpolateColors(ink, [0, 1], [colour.card, colour.ink]),
-          boxShadow: ghost ? "none" : shadow,
-          opacity: (1 - fuse) * t.enter * (ghost ? (ghost === 1 ? 0.22 : 0.1) * trail : 1),
+          // Ghosts are the chromatic-aberration trail: a violet and a pink echo, screened.
+          background: ghost
+            ? ghost === 1
+              ? aurora.periwinkle
+              : aurora.pink
+            : interpolateColors(ink, [0, 1], [g.startSize ? interpolateColors(t.lift, [0, 1], ["rgba(255, 255, 255, 0)", s.bg]) : s.bg, dark > 0.5 ? colour.white : colour.ink]),
+          boxShadow: ghost || (g.startSize && t.lift < 0.3) ? "none" : `${s.shadow}, inset 0 0 0 1px ${s.line}`,
+          backdropFilter: ghost ? undefined : s.backdrop,
+          mixBlendMode: ghost && dark > 0.5 ? "screen" : undefined,
+          opacity: (1 - fuse) * t.enter * (ghost ? (ghost === 1 ? 0.5 : 0.35) * trail : 1),
           // Speed blur while the ring is really turning.
           filter: ghost ? undefined : `blur(${trail * 1.6}px)`,
           display: "flex",
@@ -182,8 +203,8 @@ export const LogoReveal: React.FC<{ frame: number; geometry: RevealGeometry; tim
         }}
       >
         {!ghost ? (
-          <div style={{ opacity: 1 - clamp(f, [REVEAL.ink[0], REVEAL.ink[0] + 30], [0, 1], EASE.settle), scale: String(t.size / TILE) }}>
-            <Glyph category={APPS[i]} size={64} />
+          <div style={{ opacity: 1 - clamp(f, [REVEAL.ink[0], REVEAL.ink[0] + 30], [0, 1], EASE.settle), scale: String(t.size / (g.startSize ? 64 + (TILE - 64) * t.lift : TILE)) }}>
+            <Glyph category={APPS[i]} size={64} dark={dark} colourProgress={g.colour ?? 0} />
           </div>
         ) : null}
       </div>
@@ -196,7 +217,7 @@ export const LogoReveal: React.FC<{ frame: number; geometry: RevealGeometry; tim
 
   return (
     <>
-      {/* Aura blooms as the pink arrives, then breathes. */}
+      {/* A soft light blooms behind the mark as it forms. */}
       <div
         style={{
           position: "absolute",
@@ -204,20 +225,20 @@ export const LogoReveal: React.FC<{ frame: number; geometry: RevealGeometry; tim
           top: my - 460,
           width: 920,
           height: 920,
-          opacity: clamp(f, [REVEAL.pink[0], REVEAL.pink[0] + 50], [0, 1], EASE.breathe),
-          scale: String(0.9 + 0.1 * clamp(f, [REVEAL.pink[0], REVEAL.burst[1]], [0, 1], EASE.settle) + Math.sin(f / 24) * 0.015),
+          borderRadius: "50%",
+          background: `radial-gradient(closest-side, rgba(255, 255, 255, ${0.55 + 0.25 * dark}), rgba(255, 180, 220, 0.18) 45%, transparent)`,
+          opacity: clamp(f, [REVEAL.fuse[0], REVEAL.pink[0] + 30], [0, 1], EASE.settle) * (1 - 0.5 * brand),
+          scale: String(0.7 + 0.3 * clamp(f, [REVEAL.fuse[0], REVEAL.burst[1]], [0, 1], EASE.settle)),
         }}
-      >
-        <Aura size={920} />
-      </div>
+      />
 
       {/* The ring of tiles: trails first, then the tiles on top. */}
       {fuse < 1 ? APPS.map((_, i) => [tile(f - 4, i, 2), tile(f - 2, i, 1)]) : null}
       {fuse < 1 ? APPS.map((_, i) => tile(f, i)) : null}
 
       {/* Ripple rings from the moment the mark forms. */}
-      {[0, 10].map((d) => {
-        const p = clamp(f, [REVEAL.pink[0] + d, REVEAL.pink[0] + d + 54], [0, 1], EASE.settle);
+      {[0, 8, 16].map((d) => {
+        const p = clamp(f, [REVEAL.fuse[0] + d, REVEAL.fuse[0] + d + 50], [0, 1], EASE.settle);
         return (
           <div
             key={d}
@@ -228,9 +249,10 @@ export const LogoReveal: React.FC<{ frame: number; geometry: RevealGeometry; tim
               width: g.markSize,
               height: g.markSize,
               borderRadius: radius.pill,
-              border: `2px solid ${colour.pink}`,
-              opacity: p > 0 ? (1 - p) * 0.55 : 0,
-              scale: String(1 + p * 2.4),
+              border: `${d === 0 ? 3 : 2}px solid ${dark > 0.5 || brand > 0.3 ? colour.white : colour.pink}`,
+              boxShadow: `0 0 24px rgba(255, 255, 255, 0.6), inset 0 0 24px rgba(255, 255, 255, 0.4)`,
+              opacity: p > 0 ? (1 - p) * 0.8 : 0,
+              scale: String(1 + p * (4 + d * 0.15)),
             }}
           />
         );
@@ -250,7 +272,8 @@ export const LogoReveal: React.FC<{ frame: number; geometry: RevealGeometry; tim
               width: i % 3 === 0 ? 10 : 6,
               height: i % 3 === 0 ? 10 : 6,
               borderRadius: radius.pill,
-              background: i % 4 === 0 ? colour.ink : colour.pink,
+              background: i % 4 === 0 ? colour.white : i % 2 ? aurora.pink : aurora.coral,
+              boxShadow: `0 0 10px ${aurora.pink}`,
               opacity: burst > 0 ? burstFade * 0.8 : 0,
             }}
           />
@@ -272,8 +295,10 @@ export const LogoReveal: React.FC<{ frame: number; geometry: RevealGeometry; tim
           overflow: "visible",
         }}
       >
-        <path d={LOCKUP_MARK} fill={colour.ink} />
+        <path d={LOCKUP_MARK} fill={dark > 0.5 ? colour.white : colour.ink} />
         <path d={LOCKUP_MARK} fill={colour.pink} style={{ clipPath: `circle(${pink * 75}% at 50% 50%)` }} />
+        {/* On the full-bleed gradient the mark turns white, like the wordmark. */}
+        <path d={LOCKUP_MARK} fill={colour.white} style={{ opacity: clamp(brand, [0.35, 0.9], [0, 1]), filter: "drop-shadow(0 6px 24px rgba(80, 20, 90, 0.35))" }} />
       </svg>
 
       {/* The real wordmark, revealed letter by letter from behind the mark. */}
@@ -295,7 +320,7 @@ export const LogoReveal: React.FC<{ frame: number; geometry: RevealGeometry; tim
             <path
               key={i}
               d={d}
-              fill={colour.ink}
+              fill={lockColour}
               style={{
                 opacity: clamp(t, [0, 0.5], [0, 1]),
                 // Kinetic tracking: letters start tightly packed behind the mark and open out to their set spacing.
@@ -313,7 +338,7 @@ export const LogoReveal: React.FC<{ frame: number; geometry: RevealGeometry; tim
           }}
         >
           {LOCKUP_LETTERS.map((d, i) => (
-            <path key={i} d={d} fill={colour.pink} />
+            <path key={i} d={d} fill={brand > 0.5 ? aurora.peach : colour.pink} />
           ))}
         </g>
       </svg>
@@ -323,14 +348,14 @@ export const LogoReveal: React.FC<{ frame: number; geometry: RevealGeometry; tim
 };
 
 /** The settled mark alone (pink), drawn on the lockup's own 32-unit grid. */
-export const RevealMark: React.FC<{ size: number; style?: React.CSSProperties }> = ({ size, style }) => (
+export const RevealMark: React.FC<{ size: number; fill?: string; style?: React.CSSProperties }> = ({ size, fill = colour.pink, style }) => (
   <svg width={size} height={size} viewBox="0 0 32 32" style={{ overflow: "visible", ...style }}>
-    <path d={LOCKUP_MARK} fill={colour.pink} />
+    <path d={LOCKUP_MARK} fill={fill} />
   </svg>
 );
 
 /** The settled wordmark letters of the lockup, positioned by the geometry. */
-export const LockupLetters: React.FC<{ geometry: RevealGeometry; style?: React.CSSProperties }> = ({ geometry: g, style }) => {
+export const LockupLetters: React.FC<{ geometry: RevealGeometry; fill?: string; style?: React.CSSProperties }> = ({ geometry: g, fill = colour.ink, style }) => {
   const unit = g.markSize / 32;
   return (
     <svg
@@ -340,7 +365,7 @@ export const LockupLetters: React.FC<{ geometry: RevealGeometry; style?: React.C
       style={{ position: "absolute", left: g.lockup.x, top: g.lockup.y, overflow: "visible", ...style }}
     >
       {LOCKUP_LETTERS.map((d, i) => (
-        <path key={i} d={d} fill={colour.ink} />
+        <path key={i} d={d} fill={fill} />
       ))}
     </svg>
   );

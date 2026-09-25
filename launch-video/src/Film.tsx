@@ -1,14 +1,17 @@
 import React from "react";
 import { Audio } from "@remotion/media";
-import { AbsoluteFill, Img, Sequence, Series, getStaticFiles, interpolate, staticFile } from "remotion";
+import { AbsoluteFill, Img, Sequence, Series, getStaticFiles, interpolate, staticFile, useCurrentFrame } from "remotion";
+import { AuroraShader } from "./gl/AuroraShader";
+import { lookAt } from "./brand/look";
 import { hasFile } from "./components/media";
 import { colour } from "./brand/tokens";
-import { SCENES, SceneId, TOTAL_FRAMES, VO_CUES, beat } from "./brand/timeline";
+import { SCENES, SceneId, TOTAL_FRAMES, VO_CUES, beat, sceneStart } from "./brand/timeline";
 import { S01, S02 } from "./scenes/Act1";
 import { S03, S04 } from "./scenes/Act2";
 import { S05, S06, S07 } from "./scenes/Act3";
 import { S08, S09 } from "./scenes/Act4";
-import { S10, S11, S12, S13, S14, S15, S16 } from "./scenes/Act5";
+import { S10, S11, S12, S13, S14, S15 } from "./scenes/Act5";
+import { S16 } from "./scenes/Hero";
 import { S17, S18 } from "./scenes/Act6";
 
 export const SCENE: Record<SceneId, React.FC> = { S01, S02, S03, S04, S05, S06, S07, S08, S09, S10, S11, S12, S13, S14, S15, S16, S17, S18 };
@@ -19,8 +22,12 @@ const hasVoiceover = () => getStaticFiles().some((f) => f.name.startsWith("vo/")
 /** The whole film: a <Series> of scenes on one Paper surface, driven by timeline.ts. */
 export const Film: React.FC = () => {
   const bed = hasVoiceover() ? 0.71 : 1;
+  const g = useCurrentFrame();
+  const inS10 = g >= sceneStart("S10") && g < sceneStart("S11");
   return (
     <AbsoluteFill style={{ background: colour.paper }}>
+      {/* One living background under every scene, so light, void and gradient flow across cuts. */}
+      <AuroraShader g={g} look={lookAt(g)} rising={!inS10} />
       <Series>
         {SCENES.map((s) => {
           const Scene = SCENE[s.id];
@@ -34,7 +41,7 @@ export const Film: React.FC = () => {
       {/* IMG-04: optional paper grain over everything at 3.5%. */}
       {hasFile("img/IMG-04.png") ? (
         <AbsoluteFill style={{ pointerEvents: "none" }}>
-          <Img src={staticFile("img/IMG-04.png")} style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.035 }} />
+          <Img src={staticFile("img/IMG-04.png")} style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.05, mixBlendMode: "multiply" }} />
         </AbsoluteFill>
       ) : null}
       {/* Voice-over track: each cue plays public/vo/<id>.mp3 if it exists. */}

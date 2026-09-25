@@ -9,7 +9,7 @@ import sys
 
 import numpy as np
 
-args = ["npx", "remotion", "render", "Film16x9", "out/debug.mp4", "--scale=0.25", '--props={"debug":true}', "--muted"]
+args = ["npx", "remotion", "render", "Film16x9", "out/debug.mp4", "--scale=0.25", "--gl=angle", '--props={"debug":true}', "--muted"]
 if len(sys.argv) > 1:
     args.append(f"--browser-executable={sys.argv[1]}")
 subprocess.run(args, check=True, capture_output=True)

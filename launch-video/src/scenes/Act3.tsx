@@ -8,8 +8,8 @@ import { Icon } from "../components/Glyph";
 import { Headline } from "../components/Headline";
 import { Tile } from "../components/Tile";
 import { FONT } from "../brand/fonts";
-import { EASE, clamp, leave, rise } from "../brand/motion";
-import { colour, radius, shadow, space, tint, type } from "../brand/tokens";
+import { EASE, clamp, kick, leave, rise } from "../brand/motion";
+import { aurora, colour, glass, radius, space, type } from "../brand/tokens";
 import { frames } from "../brand/timeline";
 import { APPS, BIG, HEADLINE_LEFT, KEYCAP, Scene, pillRect, switchCount, switchesIn, tabRect, tileRect, tileSlot } from "./shared";
 
@@ -57,9 +57,9 @@ const Switcher: React.FC<{ id: Id }> = ({ id }) => {
           ? APPS.map((a, i) => (
               <div key={a.label} style={{ position: "absolute", left: 0, top: 0, ...tileOut }}>
                 <div style={{ position: "absolute", left: tileRect(tileSlot(i)).x, top: tileRect(0).y }}>
-                  <Tile category={a.category} label={a.short} width={tileRect(0).w} height={tileRect(0).h} />
+                  <Tile category={a.category} label={a.short} width={tileRect(0).w} height={tileRect(0).h} dark={1} />
                 </div>
-                <div style={{ position: "absolute", left: pillRect(tileSlot(i)).x, top: pillRect(0).y, width: pillRect(i).w, height: pillRect(i).h, borderRadius: radius.pill, background: tint.ink06 }} />
+                <div style={{ position: "absolute", left: pillRect(tileSlot(i)).x, top: pillRect(0).y, width: pillRect(i).w, height: pillRect(i).h, borderRadius: radius.pill, background: "rgba(255, 255, 255, 0.08)" }} />
               </div>
             ))
           : null}
@@ -74,7 +74,7 @@ const Switcher: React.FC<{ id: Id }> = ({ id }) => {
         </Place>
         {APPS.map((a, i) => (
           <div key={a.label} style={{ position: "absolute", left: tabRect(tileSlot(i)).x, top: tabRect(0).y, ...(intro ? rise(frame, 18 + tileSlot(i) * 2, { dist: 24, dur: 20, easing: EASE.snap }) : null) }}>
-            <Tile category={a.category} label={a.short} width={tabRect(0).w} height={tabRect(0).h} tab />
+            <Tile category={a.category} label={a.short} width={tabRect(0).w} height={tabRect(0).h} tab dark={1} style={{ boxShadow: tileSlot(app) === tileSlot(APPS.indexOf(a)) ? `${glass.glow}, inset 0 0 0 1px rgba(190, 170, 255, 0.7)` : undefined }} />
           </div>
         ))}
         {/* The active-tab indicator: an Ink dot that jumps along the strip. */}
@@ -86,7 +86,8 @@ const Switcher: React.FC<{ id: Id }> = ({ id }) => {
             width: 10,
             height: 10,
             borderRadius: radius.pill,
-            background: colour.ink,
+            background: colour.white,
+            boxShadow: `0 0 12px ${aurora.pink}, 0 0 24px ${aurora.violet}`,
             opacity: intro ? clamp(frame, [30, 40], [0, 1], EASE.settle) : 1,
           }}
         />
@@ -101,11 +102,14 @@ const Switcher: React.FC<{ id: Id }> = ({ id }) => {
           style={{
             ...(intro ? rise(frame, 28, { dur: 20, easing: EASE.snap, scale: true }) : null),
             translate: `${whip * 140}px 0px`,
+            scale: String(1 - kick(frame, last, 18) * 0.02),
             filter: whip > 0.01 ? `url(#whip-${id})` : undefined,
           }}
         >
           <AppWindow
-            counterKick={n > 0 ? 1 - clamp(frame, [last, last + 10], [0, 1], EASE.settle) : 0}
+            dark={1}
+            draw={intro ? clamp(frame, [28, 58], [0, 1]) : 1}
+            counterKick={n > 0 ? kick(frame, last, 22) : 0}
             category={APPS[app].category}
             label={APPS[app].label}
             width={BIG.w}
@@ -120,27 +124,28 @@ const Switcher: React.FC<{ id: Id }> = ({ id }) => {
               width: "100%",
               height: "100%",
               borderRadius: radius.pill,
-              background: colour.card,
-              boxShadow: shadow,
+              background: glass.fill,
+              boxShadow: `${glass.glow}, inset 0 0 0 1px ${glass.line}`,
+              backdropFilter: "blur(20px)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               gap: space.s1,
               fontFamily: FONT,
               ...type.uiStrong,
-              color: colour.ink,
+              color: glass.text,
               position: "relative",
               overflow: "hidden",
               scale: String(1 - pulse * 0.04),
             }}
           >
-            <div style={{ position: "absolute", inset: 0, background: tint.ink10, opacity: pulse }} />
-            <Icon name="command" size={22} style={{ position: "relative" }} />
+            <div style={{ position: "absolute", inset: 0, background: `linear-gradient(90deg, ${aurora.violet}, ${aurora.pink})`, opacity: pulse * 0.8 }} />
+            <Icon name="command" size={22} tint={glass.text} style={{ position: "relative" }} />
             <span style={{ position: "relative" }}>+ Tab</span>
           </div>
         </Place>
         <Place id="headline" rect={HEADLINE_LEFT} visible={frame >= h.at} moving={during(frame, [h.at, h.at + 60], [h.exitAt ?? 1e9, (h.exitAt ?? 1e9) + 18])}>
-          <Headline text={h.text} at={h.at} exitAt={h.exitAt} width={HEADLINE_LEFT.w} />
+          <Headline text={h.text} at={h.at} exitAt={h.exitAt} tone="white" width={HEADLINE_LEFT.w} />
         </Place>
       </Camera>
       {switches.map((s, i) => (
