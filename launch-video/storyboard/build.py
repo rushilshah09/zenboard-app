@@ -22,24 +22,44 @@ def lockup(width, color=INK, mark_color=BERRY, letters=8):
 def at(x, y, inner, cls="", style=""):
     return f'<div class="a {cls}" style="left:{x}cqw;top:{y}cqw;{style}">{inner}</div>'
 
-# generic app glyphs (competitor stand-ins; real logos are an open decision)
-GLY = {
- "mail":  ('#E0523F', '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 8l9 6 9-6"/>'),
- "chat":  ('#7B5CD6', '<path d="M4 5h16v10H10l-5 4v-4H4z"/>'),
- "tasks": ('#2F9E6B', '<rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8 12l3 3 5-6"/>'),
- "docs":  ('#3C6FD8', '<path d="M6 3h8l4 4v14H6z"/><path d="M9 12h6M9 16h6"/>'),
- "crm":   ('#E08A2E', '<circle cx="9" cy="9" r="3"/><circle cx="16" cy="10" r="2.5"/><path d="M3 20c1-4 4-6 6-6s5 2 6 6M14 15c3 0 5 2 6 5"/>'),
- "cal":   ('#D8425B', '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>'),
- "money": ('#1E8C8C', '<circle cx="12" cy="12" r="8"/><path d="M14.5 9c-.5-1-1.5-1.5-2.5-1.5-1.5 0-2.5 1-2.5 2s1 1.6 2.5 2 2.5 1 2.5 2.2-1 2-2.5 2-2.3-.6-2.7-1.6M12 6v12"/>'),
- "notes": ('#C9A21F', '<path d="M5 4h14v16H5z"/><path d="M8 9h8M8 13h8M8 17h5"/>'),
+PH_DIR = ROOT.parents[1] / "node_modules/@phosphor-icons/react/dist/defs"
+_ph_cache = {}
+def ph(name, weight="duotone", color="currentColor", size="55%"):
+    key = (name, weight)
+    if key not in _ph_cache:
+        src = (PH_DIR / f"{name}.es.js").read_text()
+        block = re.search(r'\[\s*"' + weight + r'",(.*?)\n  \]', src, re.S).group(1)
+        els = ""
+        for tag, attrs in re.findall(r'createElement\("(\w+)", \{([^}]*)\}', block):
+            a = " ".join(f'{re.sub("([A-Z])", lambda m: "-" + m.group(1).lower(), k)}="{v}"' for k, v in re.findall(r'(\w+): "([^"]*)"', attrs))
+            els += f"<{tag} {a}/>"
+        _ph_cache[key] = els
+    return f'<svg viewBox="0 0 256 256" fill="{color}" style="width:{size};height:{size}">{_ph_cache[key]}</svg>'
+
+# app stand-ins: Phosphor duotone glyph on a soft tinted squircle (competitor logos stay an open decision)
+KIND = {
+ "mail":   ("Envelope",             "#F6E4D6", "#8A4A1E", "Mail"),
+ "chat":   ("ChatCircleDots",       "#E6E7FA", "#3A3F8F", "Chat"),
+ "tasks":  ("CheckSquare",          "#E3EEDD", "#2F5A27", "Tasks"),
+ "docs":   ("FileText",             "#DDEFF5", "#1C5A70", "Docs"),
+ "crm":    ("UsersThree",           "#F6E1EA", "#8A2E57", "CRM"),
+ "cal":    ("CalendarBlank",        "#F5EFD2", "#6B5A12", "Calendar"),
+ "money":  ("CurrencyCircleDollar", "#E3EEDD", "#2F5A27", "Invoices"),
+ "notes":  ("NotePencil",           "#F1ECE1", "#6B5B3E", "Notes"),
+ "kanban": ("Kanban",               "#E3EEDD", "#2F5A27", "Projects"),
+ "plant":  ("Plant",                "#F6E1EA", "#8A2E57", "Habits"),
+ "timer":  ("Timer",                "#E7EAEC", "#46505A", "Focus"),
 }
-def tile(kind, size=6.2, blur=0, badge=None):
-    c, g = GLY[kind]
+def tile(kind, size=6.2, blur=0, badge=None, label=None):
+    icon, bg, fg, _ = KIND[kind]
     b = f'<span class="badge">{badge}</span>' if badge else ""
-    f = f"filter:blur({blur}cqw);opacity:.75;" if blur else ""
-    return (f'<div class="tile" style="width:{size}cqw;height:{size}cqw;{f}">'
-            f'<svg viewBox="0 0 24 24" style="width:55%;height:55%" fill="none" stroke="{c}" stroke-width="1.8" '
-            f'stroke-linecap="round" stroke-linejoin="round">{g}</svg>{b}</div>')
+    lb = f'<span class="tlabel">{label}</span>' if label else ""
+    f = f"filter:blur({blur}cqw);opacity:.7;" if blur else ""
+    return (f'<div class="tile" style="width:{size}cqw;height:{size}cqw;--bg:{bg};color:{fg};{f}">'
+            f'{ph(icon, "duotone", size="46%")}{b}{lb}</div>')
+def pico(kind, size=2.8):
+    icon, bg, fg, _ = KIND[kind]
+    return f'<span class="pico" style="width:{size}cqw;height:{size}cqw;background:{bg};color:{fg}">{ph(icon, "duotone", size="58%")}</span>'
 
 def ring_positions(n, r, cx=50, cy=H_/2, start=-90, squash=1.0):
     return [(cx + r*math.cos(math.radians(start+i*360/n)), cy + r*squash*math.sin(math.radians(start+i*360/n))) for i in range(n)]
@@ -52,13 +72,19 @@ def rings(rs, dashed_inner=True):
     return out
 
 def portrait(size=15, extra=""):
-    return at(50, H_/2, f'<img src="{PORTRAIT}" alt="">', "portrait", f"width:{size}cqw;height:{size}cqw;{extra}")
+    return at(50, H_/2, f'<div class="lobe-halo"></div><div class="lobe"><img src="{PORTRAIT}" alt=""></div>', "portrait", f"width:{size}cqw;height:{size}cqw;{extra}")
 
 def paper_stage(glow=1.0):
-    return f'<div class="stage paper"><div class="glow" style="opacity:{glow}"></div></div>'
+    return f'<div class="stage paper"><div class="dots"></div><div class="glow" style="opacity:{glow}"></div></div>'
 
-def chip(t): return f'<span class="chip">{H.escape(t)}</span>'
-def msg(name, t, w=17): return f'<div class="msg" style="width:{w}cqw"><b>{H.escape(name)}</b><span>{H.escape(t)}</span></div>'
+def chip(t, n=None, dot="#C41C72"):
+    c = f'<em>{n}</em>' if n else ""
+    return f'<span class="chip"><i style="background:{dot}"></i>{H.escape(t)}{c}</span>'
+AV = {"M": "#EAB9CB", "S": "#B7CEAB", "D": "#B8BDEE", "J": "#A6D1E0", "F": "#ECBF9B"}
+def msg(name, t, w=17, when="2m"):
+    ini = "".join(x[0] for x in name.replace("To: ", "").split()[:2]).upper()
+    return (f'<div class="msg" style="width:{w}cqw"><span class="mav" style="background:{AV.get(ini[0], "#E5D494")}">{ini}</span>'
+            f'<div><b>{H.escape(name)}<small>{when}</small></b><span>{H.escape(t)}</span></div></div>')
 def caption(t, y=48.5, size=2.6, color=INK, dim=None):
     words = t.split(" ")
     if dim is not None:
@@ -75,7 +101,7 @@ def f_1_1():
 def f_1_2():
     s = paper_stage(.8) + rings([11, 17, 24])
     for i, (x, y) in enumerate(ring_positions(8, 19.5, squash=.95)):
-        if i < 6: s += at(x, y, tile(KINDS[i], badge=[None, 3, None, 1, None, 2][i]))
+        if i < 6: s += at(x, y, tile(KINDS[i], badge=[None, 3, None, 1, None, 2][i], label=KIND[KINDS[i]][3]))
     s += portrait(14) + caption("Your work lives in eight apps.", y=53.2, dim=5)
     return s
 
@@ -84,10 +110,10 @@ def f_1_3():
     badges = [15, 7, None, 19, 4, 20, None, 9]
     for i, (x, y) in enumerate(ring_positions(8, 22, start=-70, squash=.86)):
         s += at(x, y, tile(KINDS[i], 5.8 if i % 3 else 6.6, blur=.25 if i in (1, 6) else 0, badge=badges[i]))
-    s += at(27, 10, chip("Email") + msg("To: Mara · Acme", "Following up on the proposal…", 15), "stack")
-    s += at(74, 13, chip("Pending follow-ups") + msg("Sarah", "Any update on the invoice?", 15) + msg("David", "Where's the latest file?", 15), "stack")
-    s += at(71, 43, chip("Client chats") + msg("James", "Quick check-in, any news?", 15), "stack")
-    s += at(21, 41, chip("Invoice overdue") + msg("Fernwood Hotels", "INV-019 · $1,500 · 6 days late", 16), "stack")
+    s += at(24, 11, chip("Email", "12", "#ECBF9B") + msg("To: Mara · Acme", "Following up on the proposal…", 16, "now"), "stack")
+    s += at(77, 14, chip("Pending follow-ups", "3", "#B8BDEE") + msg("Sarah", "Any update on the invoice?", 16, "4m") + msg("David", "Where's the latest file?", 16, "9m"), "stack")
+    s += at(76, 44, chip("Client chats", "19", "#A6D1E0") + msg("James", "Quick check-in, any news?", 16, "1m"), "stack")
+    s += at(21, 42, chip("Invoice overdue", "6d", "#C41C72") + msg("Fernwood Hotels", "INV-019 · $1,500 · 6 days late", 17, "6d"), "stack")
     s += portrait(13.5) + caption("And you live in all of them.", y=53.2, size=2.4)
     return s
 
@@ -116,26 +142,52 @@ def f_2_2():
 def f_2_3():
     return paper_stage(.35) + at(50, 25, lockup(36)) + caption("Meet Zenboard.", y=36, size=2.4, color="#37352F", dim=1)
 
+STRAND = {"mail": "#E0703F", "chat": "#6E63D9", "tasks": "#3F8F55", "docs": "#2F86A8", "crm": "#C41C72", "cal": "#C9A21F"}
+def fan(sources, focus, n=16, spread=2.6):
+    """Hairline fans: each source sends n fine curves that converge on one point (Google 'Bringing together' ref)."""
+    fx, fy = focus
+    out = '<defs>' + "".join(
+        f'<linearGradient id="g{k}" gradientUnits="userSpaceOnUse" x1="{x}" y1="{y}" x2="{fx}" y2="{fy}">'
+        f'<stop offset="0" stop-color="{c}" stop-opacity=".0"/><stop offset=".25" stop-color="{c}" stop-opacity=".75"/>'
+        f'<stop offset="1" stop-color="#C41C72" stop-opacity=".95"/></linearGradient>' for k, (x, y, c) in enumerate(sources)) + '</defs>'
+    for k, (x, y, c) in enumerate(sources):
+        for j in range(n):
+            o = (j - (n - 1) / 2) / ((n - 1) / 2)  # -1..1
+            c1x, c1y = x + 16 + o * 3, y + o * spread
+            c2x, c2y = fx - 16 - abs(o) * 4, fy + (y - fy) * .12 + o * spread * .6
+            out += (f'<path d="M{x + 3.6} {y + o * spread * .35} C{c1x} {c1y},{c2x} {c2y},{fx} {fy}" fill="none" '
+                    f'stroke="url(#g{k})" stroke-width=".07" opacity="{.35 + .65 * (1 - abs(o))}"/>')
+    return out
+
 def f_3_1():
-    s = paper_stage(.8)
-    ys = [10, 17, 24, 31, 38, 45]
-    paths = ""
-    for i, y in enumerate(ys):
-        paths += f'<path d="M 22 {y} C 45 {y}, 48 28.1, 66 28.1" fill="none" stroke="#fff" stroke-width="1.3" stroke-linecap="round" opacity=".95"/>'
-    paths += '<path d="M 66 28.1 L 100 28.1" stroke="#fff" stroke-width="2" />'
-    s += f'<svg class="stage" viewBox="0 0 100 56.25" preserveAspectRatio="none" style="filter:drop-shadow(0 .3cqw .8cqw rgba(196,28,114,.18))">{paths}</svg>'
-    for i, y in enumerate(ys):
-        s += at(18 + (3 if i % 2 else 0), y, tile(KINDS[i], 5.4))
-    s += at(75, 28.1, f'<div class="node">{mark(7)}<span>Zenboard</span></div>')
-    s += caption("Everything you juggle.", y=51, size=2.4)
+    s = paper_stage(.55)
+    ys = [9, 16.5, 24, 31.5, 39, 46.5]
+    src = [(12 + (2.5 if i % 2 else 0), y, STRAND[KINDS[i]]) for i, y in enumerate(ys)]
+    fx, fy = 58, 28.1
+    s += f'<svg class="stage" viewBox="0 0 100 56.25" preserveAspectRatio="none">{fan(src, (fx, fy))}</svg>'
+    for i, (x, y, _) in enumerate(src):
+        s += at(x, y, tile(KINDS[i], 5.2))
+    s += at(fx, fy, '<span class="spark"></span>') + at(fx + 4.5, fy, '<span class="dot2"></span>') + at(fx + 8.5, fy, '<span class="dot2 lit"></span>') + at(fx + 12, fy, '<span class="dot2"></span>')
+    s += at(82, 28.1, f'<div class="node">{mark(6.5)}<span>Zenboard</span></div>')
+    s += caption("Everything you juggle.", y=52, size=2.4)
     return s
 
+def waves():
+    cols = ["#EAB9CB", "#ECBF9B", "#B8BDEE", "#A6D1E0"]
+    out = ""
+    for k, c in enumerate(cols):
+        amp = [5.5, -3.5, 4.2, -2.6][k]; cx = [20, 28, 34, 24][k]
+        d = f"M-2 28.1 C{cx - 12} 28.1,{cx - 8} {28.1 - amp},{cx} {28.1 - amp} S{cx + 10} 28.1,{cx + 18} 28.1 L 46 28.1"
+        out += f'<path d="{d}" fill="none" stroke="{c}" stroke-width=".55" stroke-linecap="round"/>'
+    out += '<path d="M 40 28.1 L 60 28.1" stroke="#C41C72" stroke-width=".55" stroke-linecap="round"/>'
+    return out
+
 def f_3_2():
-    s = paper_stage(.8)
-    s += '<svg class="stage" viewBox="0 0 100 56.25" preserveAspectRatio="none"><path d="M 0 28.1 L 60 28.1" stroke="#fff" stroke-width="2"/><path d="M 0 28.1 L 38 28.1" stroke="'+BERRY+'" stroke-width=".5" stroke-dasharray="1 1.2" opacity=".5"/></svg>'
-    s += at(36, 28.1, f'<div class="node sm">{mark(5)}</div>')
+    s = paper_stage(.55)
+    s += f'<svg class="stage" viewBox="0 0 100 56.25" preserveAspectRatio="none">{waves()}</svg>'
+    s += at(46, 28.1, f'<div class="node sm">{mark(4.2)}</div>')
     s += at(79, 28.1, '<div class="wipe"><div class="wipe-in">' + today_card(mini=True) + '</div></div>')
-    s += caption("In one place.", y=51, size=2.4)
+    s += caption("In one place.", y=52, size=2.4)
     return s
 
 def today_card(mini=False):
@@ -160,7 +212,7 @@ def f_4_1():
     s = berry_field() + at(50, 5, lockup(12, "#fff", "#fff"))
     s += at(45, 31, f'<div class="frost">{today_card()}</div>')
     s += at(66, 17, '<div class="float"><div class="hl-l">Today\'s highlight</div><div class="hl-t">Send invoice for July to TechSpark</div>'
-                    '<div class="hl-b"><span class="btn">▶ Start focus</span><span class="btn g">✓ Mark done</span></div></div>')
+                    '<div class="hl-b"><span class="btn">' + ph("Play", "fill", size="1em") + ' Start focus</span><span class="btn g">' + ph("Check", "bold", size="1em") + ' Mark done</span></div></div>')
     s += caption("Your whole day. One view.", y=52, size=2.2, color="#fff")
     return s
 
@@ -168,54 +220,21 @@ def f_4_2():
     s = berry_field() + at(50, 5, lockup(12, "#fff", "#fff"))
     s += at(50, 30, f'<div class="frost" style="transform:scale(1.35)">{today_card()}</div>', "", "filter:blur(.12cqw)")
     s += at(64, 30, '<div class="float"><div class="hl-l">Today\'s highlight</div><div class="hl-t"><s>Send invoice for July to TechSpark</s></div>'
-                    '<div class="hl-b"><span class="btn g on">✓ Done</span></div></div><div class="cursor"></div>')
+                    '<div class="hl-b"><span class="btn g on">' + ph("Check", "bold", size="1em") + ' Done</span></div></div><div class="cursor"></div>')
     return s
 
-MODULES = ["Tasks", "Projects", "Docs", "Calendar", "Clients", "Money", "Habits", "Focus"]
-ICON = {"Tasks": "tasks", "Projects": "crm", "Docs": "docs", "Calendar": "cal", "Clients": "crm", "Money": "money", "Habits": "notes", "Focus": "tasks"}
-def split(active, card):
-    i = MODULES.index(active)
-    pills = ""
-    for k in range(-3, 4):
-        m = MODULES[(i + k) % len(MODULES)]
-        pills += at(21, H_/2 + k*8.2, f'<div class="pill{" on" if k == 0 else ""}">{tile(ICON[m], 3, 0).replace("tile", "pico")}{m.upper()}</div>')
-    return (f'<div class="stage" style="background:{PAPER}"></div><div class="half"></div>' + pills
-            + at(74, H_/2, card) + at(93, 52, mark(2.4)) + at(56, 52.5, lockup(9, INK), "", "transform:translate(0,-50%)"))
-
-def stack(front, back1, back2):
-    return (f'<div class="stk"><div class="bk b2" style="background:{back2}"></div><div class="bk b1" style="background:{back1}"></div>'
-            f'<div class="fr-card">{front}</div></div>')
-
-def f_5_1():
-    front = ('<div class="mc-h">Inbox <em>3</em></div><div class="row"><i></i>Review the launch checklist<em class="tag r">High</em></div>'
-             '<div class="row"><i></i>Draft the weekly update</div><div class="row"><i></i>Chase the contract signature<em class="tag y">Waiting</em></div>'
-             '<div class="row done"><i class="on"></i>Book the Q3 tax call</div>')
-    return split("Tasks", stack(front, FIELD["petal"], FIELD["sky"]))
-
-def f_5_2():
-    front = ('<div class="mc-h"><span class="av">MS</span>Meridian Studio</div>'
-             '<div class="kv"><span>Status</span><em class="tag g">Active</em></div><div class="kv"><span>Contact</span>Sarah Chen · Head of Brand</div>'
-             '<div class="kv"><span>Billed</span>$7,000 · $2,800 outstanding</div><div class="kv"><span>Next step</span>Send the Q3 retainer proposal</div>')
-    return split("Clients", stack(front, FIELD["sage"], FIELD["petal"]))
-
-def f_5_3():
-    front = ('<div class="mc-h">Money</div><div class="stats"><div><span>Outstanding</span><b>$4,300</b></div><div><span>Paid this month</span><b>$6,000</b></div></div>'
-             '<div class="inv"><span>INV-021</span>Meridian Studio<em class="tag">Draft</em><b>$3,200</b></div>'
-             '<div class="inv"><span>INV-019</span>Meridian Studio<em class="tag r">Overdue</em><b>$1,500</b></div>'
-             '<div class="inv"><span>INV-018</span>Atlas Coffee<em class="tag g">Paid</em><b>$4,200</b></div>')
-    return split("Money", stack(front, FIELD["apricot"], FIELD["sage"]))
 
 
 # ---------- scene 5: feature split (left list, right UI in the tinted-field card style) ----------
 FEATS = [  # name, icon, (dark, mid, light), card text tone
  ("Tasks",    "tasks", ("#3E0825", "#9E1458", "#E48AB7"), "#4A0A2C"),
- ("Projects", "crm",   ("#16300F", "#3C6A2E", "#9DC08A"), "#1C3A14"),
+ ("Projects", "kanban",   ("#16300F", "#3C6A2E", "#9DC08A"), "#1C3A14"),
  ("Docs",     "docs",  ("#171A4A", "#3F48A0", "#AEB3EE"), "#1E2257"),
  ("Calendar", "cal",   ("#0B3140", "#23708A", "#9BD0E1"), "#0F3A4A"),
  ("Clients",  "crm",   ("#40190A", "#A0542A", "#EDBB93"), "#4A220C"),
  ("Money",    "money", ("#2E2806", "#7E6F1A", "#E0CF84"), "#3A3208"),
- ("Habits",   "notes", ("#3F1128", "#96406B", "#E6ADC6"), "#4A1530"),
- ("Focus",    "tasks", ("#15181C", "#46505A", "#BCC3CA"), "#1B1E22"),
+ ("Habits",   "plant", ("#3F1128", "#96406B", "#E6ADC6"), "#4A1530"),
+ ("Focus",    "timer", ("#15181C", "#46505A", "#BCC3CA"), "#1B1E22"),
 ]
 def avatar(txt, bg): return f'<span class="avc" style="background:{bg}">{txt}</span>'
 def feat_ui(name, tone, light):
@@ -226,18 +245,18 @@ def feat_ui(name, tone, light):
                 f'<div class="bars"><span>3 planned</span><span>6h focus</span><span>2h45 meetings</span></div>'
                 f'<div class="track"><b style="width:62%"></b></div>')
         flt = ('<small>Today\'s highlight</small><b>Send invoice for July to TechSpark</b>'
-               '<div class="fb"><span class="btn">▶ Start focus</span><span class="btn g">✓ Mark done</span></div>')
+               '<div class="fb"><span class="btn">' + ph("Play", "fill", size="1em") + ' Start focus</span><span class="btn g">' + ph("Check", "bold", size="1em") + ' Mark done</span></div>')
     elif name == "Projects":
         card = ('<h4>Brand identity</h4><p>Acme Studio · 5 open · 12 done</p>'
                 '<div class="cols"><span>In progress</span><span>In review</span><span>Revisions</span><span>Done</span></div>'
                 f'<div class="segs"><b style="background:{light}"></b><b style="background:{t};opacity:.55"></b><b class="knob" style="background:{t}"></b><b style="background:#fff"></b></div>')
         flt = ('<div class="avs">' + avatar("SC", "#C41C72") + avatar("MO", "#3C6A2E") + avatar("PR", "#A0542A") +
-               '<span class="srch">⌕</span></div>')
+               '<span class="srch">' + ph("MagnifyingGlass", "regular", size="48%") + '</span></div>')
     elif name == "Docs":
         card = ('<h4>Rebrand proposal · Acme</h4><p class="doc">Acme Studio wants a calmer, warmer identity that works from '
                 'shop window to invoice. We propose three routes, one workshop and a two-week sprint.</p>'
                 '<div class="chips"><span>Proposal</span><span>Client: Acme</span><span>Due Thu</span></div>')
-        flt = ('<div class="cm">' + avatar("MO", "#C41C72") + '<div><small>Mara Okafor</small><b>Love route two. Approved ✓</b></div></div>')
+        flt = ('<div class="cm">' + avatar("MO", "#C41C72") + '<div><small>Mara Okafor</small><b>Love route two. Approved.</b></div></div>')
     elif name == "Calendar":
         card = ('<h4>Friday, Sep 25</h4>'
                 f'<div class="evr"><s style="background:{t}"></s>Standup<em>9:00–9:30</em></div>'
@@ -253,7 +272,7 @@ def feat_ui(name, tone, light):
     elif name == "Money":
         card = ('<h4>Money</h4><div class="st2"><div><span>Outstanding</span><b>$4,300</b></div><div><span>Paid this month</span><b>$6,000</b></div></div>'
                 '<div class="ir"><span>INV-021</span>Meridian Studio<b>$3,200</b></div><div class="ir"><span>INV-019</span>Meridian Studio<b>$1,500</b></div>')
-        flt = '<small>INV-018 · Atlas Coffee</small><b class="bigp">$4,200</b><div class="fb"><span class="btn ok">✓ Paid</span></div>'
+        flt = '<small>INV-018 · Atlas Coffee</small><b class="bigp">$4,200</b><div class="fb"><span class="btn ok">' + ph("CheckCircle", "fill", size="1em") + ' Paid</span></div>'
     elif name == "Habits":
         dots = "".join(f'<i class="{"on" if k not in (3, 9) else ""}"></i>' for k in range(14))
         card = (f'<h4>Morning</h4><div class="fl"><i class="on"></i>Morning walk<em>12 days</em></div><div class="fl"><i></i>Meditate<em>12 days</em></div>'
@@ -263,7 +282,7 @@ def feat_ui(name, tone, light):
         card = ('<h4>Focus session</h4><div class="timer"><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="16" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="3"/>'
                 f'<circle cx="20" cy="20" r="16" fill="none" stroke="{t}" stroke-width="3" stroke-linecap="round" stroke-dasharray="70 101" transform="rotate(-90 20 20)"/></svg><b>18:42</b></div>'
                 '<p>Send invoice for July to TechSpark</p>')
-        flt = '<small>Blocking</small><b>Slack, Mail, X</b><div class="fb"><span class="btn">❚❚ Pause</span></div>'
+        flt = '<small>Blocking</small><b>Slack, Mail, X</b><div class="fb"><span class="btn">' + ph("Pause", "fill", size="1em") + ' Pause</span></div>'
     return card, flt
 
 def feat_frame(idx):
@@ -273,7 +292,7 @@ def feat_frame(idx):
         n2, ic2, _, _ = FEATS[(idx + k) % len(FEATS)]
         cls = "fp on" if k == 0 else "fp"
         op = 1 if k == 0 else max(.28, 1 - abs(k) * .22)
-        s += at(19, H_/2 - 1.2 + k*6.9, f'<div class="{cls}" style="opacity:{op}">{tile(ic2, 2.8).replace("tile", "pico")}{n2.upper()}</div>')
+        s += at(19, H_/2 - 1.2 + k*6.9, f'<div class="{cls}" style="opacity:{op}">{pico(ic2)}{n2.upper()}</div>')
     s += at(19, 53.3, lockup(8, INK), "", "transform:translate(-50%,-50%)")
     field = f'radial-gradient(130% 120% at 100% 100%,{l} 0%,{m} 38%,{d} 100%)'
     lobes = at(84, 45, mark(46, "#ffffff", ""), "lobes") + at(58, 4, mark(30, "#ffffff", ""), "lobes")
@@ -373,9 +392,9 @@ SCENES = [
             "“Meet Zenboard.”", "The Zenboard chime")],
   out="The mark slides to the right and becomes the hub node of the next scene (shape match)."),
  dict(n=3, name="All in one", t="0:15–0:22", purpose="Every app you juggle flows into one place.",
-  frames=[("3.1", "0:16", f_3_1, "The app tiles line up on the left. Soft white cables grow from each tile and merge into a single line that flows into the Zenboard node.",
+  frames=[("3.1", "0:16", f_3_1, "The app tiles line up on the left. From each one a fan of fine hairlines in that app's colour sweeps right; all the fans converge on one bright point, which pulses out as three dots into the Zenboard node.",
             "“Everything you juggle.”", "Cable hum, soft tick as each line lands"),
-          ("3.2", "0:19", f_3_2, "The camera tracks along the merged line through a small Zenboard node. The line hits a panel on the right that wipes open to reveal the real Today screen.",
+          ("3.2", "0:19", f_3_2, "Four soft colour waves ripple along the line, then settle into one flat Berry line as they pass through the Zenboard node. The line hits a panel that wipes open to the real Today screen.",
             "“In one place.”", "Swish on the wipe")],
   out="The Today panel grows to fill the frame while the background floods to the Berry field (colour wipe)."),
  dict(n=4, name="Product hero", t="0:22–0:28", purpose="The first real look at the product, in the D6 card style.",
@@ -429,6 +448,6 @@ for sc in SCENES:
   <div class="grid">{frames}</div>{out}
 </section>'''
 
-page = (ROOT / "template.html").read_text().replace("{{BODY}}", body).replace("{{LOCKUP}}", lockup(100))
+page = (ROOT / "template.html").read_text().replace("{{BODY}}", body).replace("{{LOCKUP}}", lockup(100)).replace("{{LOBE}}", MARK.split("ZM")[0] + "Z")
 (ROOT / "index.html").write_text(page)
 print("wrote", ROOT / "index.html", len(page) // 1024, "KB")

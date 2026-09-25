@@ -166,3 +166,26 @@ dd{margin:0;color:var(--ink)}
 .srch{margin-left:2.6cqw;width:5.4cqw;height:5.4cqw;border-radius:50%;background:#EEECEA;display:grid;place-items:center;font-size:2.6cqw;color:#77736A}
 .cm{display:flex;gap:1cqw;align-items:center}.cm .avc{width:3.6cqw;height:3.6cqw;font-size:1.1cqw;margin:0}.cm b{display:block}
 </style>
+<style>
+/* v2 card language: warm cream surfaces, tinted icon squares, Phosphor icons, lobe-masked portrait */
+.fr .dots{position:absolute;inset:0;background-image:radial-gradient(rgba(25,25,25,.07) .09cqw,transparent .11cqw);background-size:1.6cqw 1.6cqw}
+.portrait{border-radius:0;overflow:visible;box-shadow:none;background:none}
+.lobe{position:absolute;inset:0;clip-path:url(#lobeClip);background:#EAB9CB}
+.lobe img{width:100%;height:100%;object-fit:cover;display:block;max-width:none}
+.lobe-halo{position:absolute;inset:-7%;clip-path:url(#lobeClip);background:rgba(255,255,255,.9);filter:drop-shadow(0 1cqw 2cqw rgba(90,15,54,.2))}
+.tile{background:linear-gradient(180deg,#FFFFFF,var(--bg));border:.1cqw solid rgba(255,255,255,.9);border-radius:28%;box-shadow:inset 0 .15cqw 0 #fff,0 .6cqw 1.6cqw rgba(90,15,54,.10),0 .1cqw .25cqw rgba(0,0,0,.05)}
+.badge{top:-.8cqw;right:-1.1cqw;background:#191919;font-family:var(--mono);font-weight:500;font-size:.95cqw;height:1.9cqw;min-width:2.3cqw;padding:0 .55cqw;box-shadow:0 .3cqw .8cqw rgba(0,0,0,.2)}
+.tlabel{position:absolute;top:calc(100% + .6cqw);left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:.85cqw;letter-spacing:.06em;text-transform:uppercase;color:#77736A;white-space:nowrap}
+.chip{display:inline-flex;align-items:center;gap:.6cqw;background:rgba(251,248,240,.92);color:#191919;border:.1cqw solid rgba(25,25,25,.06);border-radius:99px;padding:.4cqw .9cqw;font-size:1cqw;font-weight:500;box-shadow:0 .4cqw 1.2cqw rgba(90,15,54,.08)}
+.chip i{width:.8cqw;height:.8cqw;border-radius:50%}.chip em{font-style:normal;font-family:var(--mono);font-size:.85cqw;color:#77736A}
+.msg{flex-direction:row;gap:.8cqw;align-items:center;background:rgba(251,248,240,.94);border:.1cqw solid rgba(25,25,25,.05);border-radius:1cqw;padding:.8cqw 1cqw;backdrop-filter:blur(.8cqw)}
+.msg > div{display:flex;flex-direction:column;min-width:0}.msg b{display:flex;justify-content:space-between;gap:.6cqw}.msg small{font-family:var(--mono);font-weight:400;font-size:.75cqw;color:#9A948A}
+.mav{flex:none;width:2.4cqw;height:2.4cqw;clip-path:url(#lobeClip);display:grid;place-items:center;font-size:.8cqw;font-weight:600;color:#191919}
+.pico{border-radius:30%;display:grid;place-items:center}
+.btn svg{vertical-align:-.12em}
+.spark{display:block;width:1.2cqw;height:1.2cqw;border-radius:50%;background:#fff;box-shadow:0 0 .8cqw .4cqw rgba(196,28,114,.55),0 0 2.4cqw 1cqw rgba(234,185,203,.6)}
+.dot2{display:block;width:.5cqw;height:.5cqw;border-radius:50%;background:#C41C72;opacity:.6}.dot2.lit{opacity:1;box-shadow:0 0 1cqw .4cqw rgba(196,28,114,.45)}
+.node small{font-family:var(--mono);font-size:.8cqw;color:#77736A}
+.mono-note{font-family:var(--mono);font-size:.85cqw;letter-spacing:.08em;color:#9A948A;white-space:nowrap}
+</style>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><clipPath id="lobeClip" clipPathUnits="objectBoundingBox"><path transform="scale(0.03125)" d="{{LOBE}}"/></clipPath></svg>
