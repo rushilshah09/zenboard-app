@@ -367,22 +367,49 @@ def icon3d(color, glyph_color, size, icon="CheckSquare"):
     return (f'<div class="i3" style="width:{size}cqw;height:{size}cqw;--c:{color};color:{glyph_color}">'
             f'<span class="i3g">{ph(icon, "fill", size="100%")}</span></div>')
 
-def carousel(order, label):
+def carousel(order, label, step=1):
+    """Dark stage with detailing: glossy reflective floor, perspective floor grid, horizon light,
+    dust bokeh, grain, mono labels under every tile and a step indicator."""
     s = '<div class="stage" style="background:#16060F"></div><div class="stage floorglow"></div>'
+    # perspective floor grid + horizon line
+    g = '<line x1="0" y1="36" x2="100" y2="36" stroke="rgba(255,210,230,.22)" stroke-width=".06"/>'
+    for i in range(-12, 13):
+        g += f'<line x1="{50 + i * 1.6}" y1="36" x2="{50 + i * 9}" y2="56.25" stroke="rgba(255,190,220,.07)" stroke-width=".05"/>'
+    for j, y in enumerate([37.2, 38.8, 41, 44, 48, 53.5]):
+        g += f'<line x1="0" y1="{y}" x2="100" y2="{y}" stroke="rgba(255,190,220,{.05 + j * .012})" stroke-width=".05"/>'
+    # dust bokeh (seeded, deterministic)
+    import random
+    rnd = random.Random(7)
+    for _ in range(26):
+        x, y, r = rnd.uniform(2, 98), rnd.uniform(4, 34), rnd.uniform(.08, .45)
+        g += f'<circle cx="{x:.2f}" cy="{y:.2f}" r="{r:.2f}" fill="rgba(255,220,235,{rnd.uniform(.05, .22):.2f})"/>'
+    s += f'<svg class="stage" viewBox="0 0 100 56.25" preserveAspectRatio="none">{g}</svg>'
+    s += '<div class="stage rays"></div>'
     s += at(50, 5, lockup(11, "#F7F1E8", "#F7F1E8"))
     xs, sz = [2, 24, 50, 76, 98], [11, 13, 18, 13, 11]
-    for x, (c, g, ic), z in zip(xs, order, sz):
-        s += at(x, 25, icon3d(c, g, z, ic))
+    names = {"Receipt": "INVOICES", "CalendarBlank": "CALENDAR", "CheckSquare": "TASKS", "Kanban": "PROJECTS",
+             "Plant": "HABITS", "Timer": "FOCUS", "FileText": "DOCS"}
+    for i, (x, (c, gc, ic), z) in enumerate(zip(xs, order, sz)):
+        s += at(x, 25, icon3d(c, gc, z, ic))
+        # glossy floor reflection
+        s += at(x, 25 + z * .98, f'<div class="refl">{icon3d(c, gc, z, ic)}</div>')
+        # contact shadow
+        s += at(x, 25 + z / 2 + .6, f'<div class="contact" style="width:{z * .9}cqw"></div>')
+        if i != 2:
+            s += at(x, 25 + z / 2 + 2.4, f'<span class="i3lab">{names[ic]}</span>')
     s += at(50, 40.5, f'<span class="lbl">{label}</span>')
+    dots = "".join(f'<i class="{"on" if k == step else ""}"></i>' for k in range(8))
+    s += at(50, 51.5, f'<span class="steps">{dots}<em>0{step + 1} / 08</em></span>')
+    s += '<div class="stage grain" style="opacity:.12"></div>'
     return s
 
 def f_7_1():
     return carousel([(FIELD["apricot"], "#fff", "Receipt"), (FIELD["sky"], "#fff", "CalendarBlank"), ("#F5F1EA", BERRY, "CheckSquare"),
-                     (BERRY, "#fff", "Kanban"), (FIELD["sage"], "#fff", "Plant")], "Tasks")
+                     (BERRY, "#fff", "Kanban"), (FIELD["sage"], "#fff", "Plant")], "Tasks", 0)
 
 def f_7_2():
     return carousel([(FIELD["sky"], "#fff", "CalendarBlank"), ("#F5F1EA", BERRY, "CheckSquare"), (BERRY, "#fff", "Plant"),
-                     (FIELD["sage"], "#fff", "Timer"), (FIELD["peri"], "#fff", "FileText")], "Habits")
+                     (FIELD["sage"], "#fff", "Timer"), (FIELD["peri"], "#fff", "FileText")], "Habits", 6)
 
 SNIP = {n: "data:image/jpeg;base64," + base64.b64encode((ROOT / "snips" / f"{n}.jpg").read_bytes()).decode()
         for n in ("highlight", "stats", "invoices", "client", "habits", "calendar", "inbox", "docs")}
