@@ -60,7 +60,7 @@ export const S7Pills: React.FC = () => {
           <span className="wp" style={{
             background: focus > 0.5 ? "#F5F1EA" : FIELD.sky, color: "#191919", borderRadius: `${99 - 70 * focus}px`,
             width: focus > 0 ? `${14 + (18 - 14) * focus}cqw` : undefined, height: focus > 0 ? `${5 + 13 * focus}cqw` : undefined,
-            justifyContent: "center", transition: "none", gap: `${0.8 * (1 - focus)}cqw`,
+            justifyContent: "center", gap: `${0.8 * (1 - focus)}cqw`,
           }}>
             <i className="wpi" style={{ width: `${2.6 + 5 * focus}cqw`, height: `${2.6 + 5 * focus}cqw`, background: focus > 0.5 ? BERRY : undefined, color: focus > 0.5 ? "#fff" : undefined, borderRadius: `${50 - 30 * focus}%` }}>
               <Icon name="check-square" size="58%" />
