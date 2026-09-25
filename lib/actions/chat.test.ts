@@ -31,7 +31,7 @@ describe('the client door', () => {
   it('re-resolves the token on EVERY client call', () => {
     // A token checked once and then trusted is a token that keeps working after the owner turns
     // the portal off.
-    for (const name of ['portalLoadChat', 'portalSendMessage', 'portalMarkRead']) {
+    for (const name of ['portalLoadChat', 'portalSendMessage', 'portalMarkRead', 'portalLoadOlder', 'portalEditMessage', 'portalDeleteMessage']) {
       expect(fn(name), name).toMatch(/await resolvePortal\(token\)/);
     }
   });
@@ -44,7 +44,7 @@ describe('the client door', () => {
   });
 
   it('scopes every client query to the token’s own project', () => {
-    for (const name of ['portalLoadChat', 'portalSendMessage', 'portalMarkRead']) {
+    for (const name of ['portalLoadChat', 'portalSendMessage', 'portalMarkRead', 'portalLoadOlder', 'portalEditMessage', 'portalDeleteMessage']) {
       expect(fn(name), name).toMatch(/portal\.projectId/);
       // …and never to an id the caller supplied.
       expect(fn(name), name).not.toMatch(/projectId: string/);
@@ -71,9 +71,59 @@ describe('the client door', () => {
   });
 });
 
+describe('editing and deleting (C2)', () => {
+  it('lets a link touch only ITS OWN side’s messages, in ITS OWN project, that still exist', () => {
+    // Three scopes, every one load-bearing. Without the project scope a link could rewrite another
+    // project's history; without the author scope it could put words in the studio's mouth; without
+    // the deleted scope it could resurrect a message someone removed.
+    for (const name of ['portalEditMessage', 'portalDeleteMessage']) {
+      const body = fn(name);
+      expect(body, `${name}: its own project`).toMatch(/\.eq\('project_id', portal\.projectId\)/);
+      expect(body, `${name}: its own side`).toMatch(/\.eq\('author', 'client'\)/);
+      expect(body, `${name}: still exists`).toMatch(/\.is\('deleted_at', null\)/);
+      expect(body, `${name}: never the team's`).not.toMatch(/'team'/);
+    }
+  });
+
+  it('holds the owner to the team’s own messages', () => {
+    for (const name of ['editMessage', 'deleteMessage']) {
+      expect(fn(name), name).toMatch(/\.eq\('author', 'team'\)/);
+      expect(fn(name), name).toMatch(/\.is\('deleted_at', null\)/);
+    }
+  });
+
+  it('OVERWRITES a deleted message’s words rather than hiding them', () => {
+    // A hidden body would still ride every backup, every realtime payload and the client's next poll.
+    for (const name of ['deleteMessage', 'portalDeleteMessage']) {
+      expect(fn(name), name).toMatch(/body: DELETED_BODY, deleted_at:/);
+    }
+  });
+
+  it('checks an edit’s words before any database call, on both doors', () => {
+    for (const name of ['editMessage', 'portalEditMessage']) {
+      const body = fn(name);
+      expect(body.indexOf('normalizeBody(raw)'), name).toBeGreaterThan(-1);
+      expect(body.indexOf('normalizeBody(raw)'), `${name} checks first`).toBeLessThan(body.indexOf('.update('));
+    }
+  });
+
+  it('never passes a browser timestamp to a query unchecked', () => {
+    for (const name of ['loadOlder', 'portalLoadOlder']) {
+      const body = fn(name);
+      expect(body.indexOf('validInstant(before)'), name).toBeGreaterThan(-1);
+      expect(body.indexOf('validInstant(before)'), `${name} checks first`).toBeLessThan(body.indexOf('.lt('));
+    }
+  });
+
+  it('answers a refused edit or delete out loud, never as a silent no-op', () => {
+    expect(code.match(/You can only edit your own messages\./g)?.length).toBe(2);
+    expect(code.match(/You can only delete your own messages\./g)?.length).toBe(2);
+  });
+});
+
 describe('the owner door', () => {
   it('goes through the session, and authors only as the team', () => {
-    for (const name of ['loadChannel', 'sendMessage', 'markChannelRead']) {
+    for (const name of ['loadChannel', 'sendMessage', 'markChannelRead', 'loadOlder', 'editMessage', 'deleteMessage']) {
       expect(fn(name), name).toMatch(/await requireSession\(\)/);
     }
     expect(fn('sendMessage')).toMatch(/author: 'team'/);

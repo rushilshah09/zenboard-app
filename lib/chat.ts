@@ -155,3 +155,23 @@ export function layoutMessages(
 export function unreadCount(messages: ChatMessage[], me: ChatAuthor, lastReadAt: string | null): number {
   return messages.filter((m) => isUnread(m, me, lastReadAt)).length;
 }
+
+// ── EDITING AND DELETING (C2) ──────────────────────────────────────────────
+
+/**
+ * What a deleted message's body is OVERWRITTEN with. Deleting is not hiding: the words are replaced
+ * in the database, so the client's copy, a backup and a realtime payload all lose them too. The
+ * constraint on the column (1..8000 characters) is why it is a placeholder and not an empty string.
+ */
+export const DELETED_BODY = '(deleted)';
+
+/** You may edit or delete your own messages — once they exist, and while they still have words. */
+export function canEdit(m: ChatMessage, me: ChatAuthor): boolean {
+  return m.author === me && !m.deleted && !m.pending && !m.failed;
+}
+
+/** Slack's ↑: the newest message you could still edit, or null. */
+export function lastEditable(messages: ChatMessage[], me: ChatAuthor): ChatMessage | null {
+  for (let i = messages.length - 1; i >= 0; i--) if (canEdit(messages[i], me)) return messages[i];
+  return null;
+}

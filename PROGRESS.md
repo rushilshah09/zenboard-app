@@ -17279,3 +17279,39 @@ holds through confirmation (a harness flicker was caught and fixed), the unread 
   C4 files and Bell notifications.
 - Two PRE-EXISTING `set-state-in-effect` lint errors in `components/shell/app-shell.tsx` (line 669) and
   `command-palette.tsx`, present at HEAD before this sprint; left for their own change.
+
+## Chat, C2 — editing, deleting, history, and one conversation for both sides — 2026-09-25
+
+**What shipped** — edit and delete your own messages from a hover toolbar (Copy for anyone's; Edit and Delete
+for yours), Slack's ↑ in an empty composer to edit your last message (Enter saves, Escape cancels), a delete
+behind the house confirm that OVERWRITES the words rather than hiding them, a "New messages" pill when
+something arrives while you are reading above, older history that loads at the top, and edits/deletes that
+reach the owner live (the stream now carries UPDATEs). Both doors gained `loadOlder`/`edit`/`delete` actions.
+
+**The decisions that mattered**
+- **One `<Conversation>`.** Both sides carried their own send-and-reconcile; C2 would have doubled it. Now one
+  component owns every behaviour and each side supplies only a transport (session actions, token actions, or
+  the harness's fakes).
+- **A conversation grows UP from the composer.** Short channels sat at the TOP with a gap above the composer —
+  a document's convention. Bottom-anchored, the newest line stays nearest where you type.
+- **Deleting overwrites.** `DELETED_BODY` replaces the words in the database, so a backup, a realtime payload
+  and the client's next poll all lose them too.
+
+**Bugs found by building it, each now guarded**
+- The client's poll returned only the latest page, so history the client scrolled up to load vanished every
+  four seconds (`mergePoll` keeps it; four tests).
+- Loading older history jumped the reader 233px — scroll-height arithmetic drifted when the "Loading…" line
+  changed the height between readings. Anchored to the visible MESSAGE instead, with the browser's own
+  `overflow-anchor` turned off so only one hand adjusts: measured 0px drift at ten samples through the load.
+- Closing the inline editor dropped focus on `<body>` (the house focus guard caught it); focus now returns to
+  the composer, as in Slack, and the editor uses `useFocusReturn`.
+
+**Proved** — 20 security guards (5 new, mutation-tested: another project's messages, the studio's words, a
+deleted message, a hidden-not-overwritten delete, an unchecked timestamp — all caught); 20 layout tests; 10
+render/merge tests. In the browser: toolbar per side, ↑→edit→Enter→"(edited)" with focus back in the composer,
+Escape discards, delete via confirm, history loads with 0px drift, the pill appears without moving the view
+and clears on click. A harness quirk worth knowing: this preview pane is `document.hidden`, so PROGRAMMATIC
+scrolls fire no scroll events there — the handler is invoked directly in tests of scroll behaviour.
+**2747 tests / 181 files** · tsc clean · eslint clean on every chat file.
+
+**Owed** — migration 0043 still to be applied by the user. C3: threads and reactions (needs migration 0044).

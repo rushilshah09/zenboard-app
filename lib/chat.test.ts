@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  CHAT_BODY_MAX, RUN_WINDOW_MS, dayLabel, layoutMessages, normalizeBody, toMessage, unreadCount,
+  CHAT_BODY_MAX, DELETED_BODY, RUN_WINDOW_MS, canEdit, dayLabel, lastEditable, layoutMessages, normalizeBody, toMessage, unreadCount,
   type ChatMessage,
 } from './chat';
 
@@ -151,5 +151,32 @@ describe('optimistic sends', () => {
     ], { me: 'team', lastReadAt: '2026-09-24T09:10:00Z', tz: TZ, today: TODAY });
     const order = items.filter((i) => i.kind === 'message').map((i) => i.key);
     expect(order).toEqual(['theirs', 'mine']);
+  });
+});
+
+describe('editing your own messages', () => {
+  const mine = msg({ at: '2026-09-24T09:00:00Z', author: 'team', authorName: 'Rushil' });
+  it('lets you edit what you wrote, and nothing else', () => {
+    expect(canEdit(mine, 'team')).toBe(true);
+    expect(canEdit(mine, 'client'), 'the other side’s message').toBe(false);
+  });
+  it('refuses a message that is deleted, unsent or failed', () => {
+    expect(canEdit({ ...mine, deleted: true }, 'team')).toBe(false);
+    expect(canEdit({ ...mine, pending: true }, 'team')).toBe(false);
+    expect(canEdit({ ...mine, failed: true }, 'team')).toBe(false);
+  });
+  it('finds the newest editable message for ↑, skipping what cannot be edited', () => {
+    const list = [
+      mine,
+      msg({ at: '2026-09-24T09:01:00Z' }),                                         // theirs
+      msg({ at: '2026-09-24T09:02:00Z', author: 'team', authorName: 'Rushil', deleted: true }),
+      msg({ at: '2026-09-24T09:03:00Z', author: 'team', authorName: 'Rushil', pending: true }),
+    ];
+    expect(lastEditable(list, 'team')?.id).toBe(mine.id);
+    expect(lastEditable([msg({ at: '2026-09-24T09:01:00Z' })], 'team')).toBeNull();
+  });
+  it('overwrites a deleted body with a placeholder the column accepts', () => {
+    expect(DELETED_BODY.length).toBeGreaterThanOrEqual(1);
+    expect(normalizeBody(DELETED_BODY).ok).toBe(true);
   });
 });

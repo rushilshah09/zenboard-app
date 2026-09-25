@@ -26,12 +26,13 @@ import { cn } from '@/lib/cn';
 import { createClient } from '@/lib/supabase/client';
 import { tempId } from '@/lib/temp-id';
 import { toMessage, type ChatMessage } from '@/lib/chat';
-import { loadChannel, markChannelRead, sendMessage, type ChannelView } from '@/lib/actions/chat';
+import {
+  deleteMessage, editMessage, loadChannel, loadOlder, markChannelRead, sendMessage, type ChannelView,
+} from '@/lib/actions/chat';
 import type { Channel } from '@/lib/chat-channels';
-import { MessageList } from './message-list';
-import { Composer } from './composer';
+import { Conversation, type ConversationApi } from './conversation';
 
-export type MessagesDemo = { views: Record<string, ChannelView> };
+export type MessagesDemo = { views: Record<string, ChannelView>; older?: Record<string, ChatMessage[]> };
 
 export function MessagesView({
   initialChannels,
@@ -88,12 +89,36 @@ export function MessagesView({
     return () => { live = false; };
   }, [activeId, demo]);
 
+  // ── The harness's stand-in for the live stream ───────────────────────────
+  // With no realtime in the preview, `zb:chat-demo-incoming` delivers a message exactly as the
+  // stream would, so arrival behaviour (the "New messages" pill, unread counts) can be driven.
+  React.useEffect(() => {
+    if (!demo) return;
+    const onIncoming = (e: Event) => {
+      const m = (e as CustomEvent<ChatMessage>).detail;
+      if (m.projectId === activeRef.current) {
+        setView((v) => (v && !v.messages.some((x) => x.id === m.id) ? { ...v, messages: [...v.messages, m] } : v));
+      } else {
+        setChannels((cs) => cs.map((c) => (c.projectId === m.projectId ? { ...c, unread: c.unread + 1 } : c)));
+      }
+    };
+    window.addEventListener('zb:chat-demo-incoming', onIncoming);
+    return () => window.removeEventListener('zb:chat-demo-incoming', onIncoming);
+  }, [demo]);
+
   // ── Live arrivals ──────────────────────────────────────────────────────
   React.useEffect(() => {
     if (demo) return;
     const supabase = createClient();
     const channel = supabase
       .channel('zb-chat')
+      // An EDIT or a DELETE — from the client, or from this owner on another device — replaces the
+      // message in place. Same stream, same RLS: only this owner's projects ever arrive.
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'project_messages' }, (payload) => {
+        const row = payload.new as Parameters<typeof toMessage>[0];
+        if (row.project_id !== activeRef.current) return;
+        setView((v) => (v ? { ...v, messages: v.messages.map((m) => (m.id === row.id ? toMessage(row, v.names) : m)) } : v));
+      })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'project_messages' }, (payload) => {
         const row = payload.new as Parameters<typeof toMessage>[0];
         const open = row.project_id === activeRef.current;
@@ -120,42 +145,18 @@ export function MessagesView({
     return () => { void supabase.removeChannel(channel); };
   }, [demo]);
 
-  // ── Send ───────────────────────────────────────────────────────────────
-  const deliver = React.useCallback(async (projectId: string, pendingId: string, body: string, authorName: string) => {
-    const res = demo
-      ? await new Promise<{ message: ChatMessage }>((r) => setTimeout(() => r({ message: {
-          // The same name the pending row carried: a name that changes under a message you just sent
-          // is a flicker, and the real action returns the profile name for exactly this reason.
-          id: tempId(), projectId, author: 'team', authorName, body, createdAt: new Date().toISOString(), editedAt: null, deleted: false,
-        } }), 250))
-      : await sendMessage(projectId, body);
-    setView((v) => {
-      if (!v || activeRef.current !== projectId) return v;
-      if ('error' in res) {
-        return { ...v, messages: v.messages.map((m) => (m.id === pendingId ? { ...m, failed: true } : m)) };
-      }
-      // Realtime may already have delivered the confirmed row; never add it twice.
-      const already = v.messages.some((m) => m.id === res.message.id);
-      const rest = v.messages.filter((m) => m.id !== pendingId);
-      return { ...v, messages: already ? rest : [...rest, res.message] };
-    });
-  }, [demo]);
-
-  const onSend = (body: string) => {
-    if (!activeId || !view) return;
-    const id = tempId();
-    const pending: ChatMessage = {
-      id, projectId: activeId, author: 'team', authorName: view.names.team, body,
-      createdAt: new Date().toISOString(), editedAt: null, deleted: false, pending: true,
+  // ── The transport: how THIS side talks to the server. Everything a conversation DOES — send,
+  // retry, edit, delete, copy, history — lives once in <Conversation>. ─────────────────────
+  const api = React.useMemo<ConversationApi | null>(() => {
+    if (!activeId) return null;
+    if (demo) return demoApi(activeId, demo);
+    return {
+      send: (body) => sendMessage(activeId, body),
+      edit: editMessage,
+      remove: deleteMessage,
+      older: (before) => loadOlder(activeId, before),
     };
-    setView({ ...view, messages: [...view.messages, pending] });
-    void deliver(activeId, id, body, view.names.team);
-  };
-
-  const onRetry = (m: ChatMessage) => {
-    setView((v) => (v ? { ...v, messages: v.messages.map((x) => (x.id === m.id ? { ...x, failed: false } : x)) } : v));
-    void deliver(m.projectId, m.id, m.body, m.authorName);
-  };
+  }, [activeId, demo]);
 
   // ── The rail: channels grouped by client, like Slack's sections ───────
   const groups = React.useMemo(() => {
@@ -227,26 +228,61 @@ export function MessagesView({
           // reads as slower than a beat of nothing.
           <div className="flex-1" aria-busy="true" />
         ) : (
-          <>
-            <MessageList
-              key={active.projectId}
-              messages={view.messages}
-              me="team"
-              lastReadAt={view.lastReadAt}
-              tz={tz}
-              onRetry={onRetry}
-              empty={
-                <EmptyState
-                  illustration={<Icon icon={MessageCircle} size={20} />}
-                  title={`This is the start of #${active.projectName}`}
-                  description={`Shared with ${active.clientName} in their portal.`}
-                />
-              }
-            />
-            <Composer key={`c-${active.projectId}`} placeholder={`Message #${active.projectName}`} onSend={onSend} autoFocus />
-          </>
+          <Conversation
+            key={active.projectId}
+            view={view}
+            setView={setView}
+            me="team"
+            api={api!}
+            tz={tz}
+            autoFocus
+            placeholder={`Message #${active.projectName}`}
+            empty={
+              <EmptyState
+                illustration={<Icon icon={MessageCircle} size={20} />}
+                title={`This is the start of #${active.projectName}`}
+                description={`Shared with ${active.clientName} in their portal.`}
+              />
+            }
+          />
         )}
       </div>
     </HubLayout>
   );
+}
+
+/**
+ * The preview harness's transport: the same contract as the real one, answered locally after a
+ * beat, so every path — send, edit, delete, history — can be driven without a session.
+ */
+function demoApi(projectId: string, demo: MessagesDemo): ConversationApi {
+  const beat = <T,>(v: T) => new Promise<T>((r) => setTimeout(() => r(v), 250));
+  const names = demo.views[projectId]?.names ?? { team: 'You', client: 'Client' };
+  // What this "server" holds: the fixture, plus everything sent in this session — so a message you
+  // just sent can be edited, exactly as it can against the real database.
+  const known = new Map((demo.views[projectId]?.messages ?? []).map((m) => [m.id, m]));
+  let older = demo.older?.[projectId] ?? [];
+  return {
+    send: (body) => {
+      const message: ChatMessage = {
+        id: tempId(), projectId, author: 'team', authorName: names.team, body,
+        createdAt: new Date().toISOString(), editedAt: null, deleted: false,
+      };
+      known.set(message.id, message);
+      return beat({ message });
+    },
+    edit: (id, body) => {
+      const m = known.get(id);
+      if (!m || m.author !== 'team') return beat({ error: 'You can only edit your own messages.' });
+      const message = { ...m, body, editedAt: new Date().toISOString() };
+      known.set(id, message);
+      return beat({ message });
+    },
+    remove: () => beat({ ok: true as const }),
+    older: () => {
+      const page = older;
+      older = [];
+      return beat({ messages: page, hasMore: false });
+    },
+  };
 }

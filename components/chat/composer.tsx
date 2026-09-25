@@ -23,16 +23,26 @@ export function Composer({
   onSend,
   disabled,
   autoFocus,
+  onEditLast,
+  inputRef,
 }: {
   placeholder: string;
   /** Hand the checked body up. Returns nothing: the parent owns the optimistic row. */
   onSend: (body: string) => void;
   disabled?: boolean;
   autoFocus?: boolean;
+  /**
+   * Slack's ↑: in an EMPTY box, Up edits your last message. Only when empty — in a draft, Up has to
+   * keep moving the caret between lines, or the shortcut would steal the key it is named after.
+   */
+  onEditLast?: () => boolean;
+  /** Lets the conversation put the caret back here — after an edit or a delete closes. */
+  inputRef?: React.RefObject<HTMLTextAreaElement | null>;
 }) {
   const [text, setText] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
-  const box = React.useRef<HTMLTextAreaElement>(null);
+  const ownRef = React.useRef<HTMLTextAreaElement>(null);
+  const box = inputRef ?? ownRef;
   const canSend = !disabled && text.trim().length > 0;
 
   const send = () => {
@@ -65,6 +75,11 @@ export function Composer({
             if (error) setError(null);
           }}
           onKeyDown={(e) => {
+            if (e.key === 'ArrowUp' && !text && !e.shiftKey && !e.altKey && !e.metaKey && !e.ctrlKey && onEditLast) {
+              // Only swallow the key when there WAS something to edit.
+              if (onEditLast()) e.preventDefault();
+              return;
+            }
             if (e.key !== 'Enter' || e.shiftKey) return;
             if (e.nativeEvent.isComposing || e.keyCode === 229) return; // an IME is confirming a character
             e.preventDefault();

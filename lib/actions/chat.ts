@@ -15,7 +15,7 @@
 
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { requireSession } from '@/lib/auth';
-import { normalizeBody, toMessage, type ChatMessage } from '@/lib/chat';
+import { DELETED_BODY, normalizeBody, toMessage, type ChatMessage } from '@/lib/chat';
 
 type DB = Awaited<ReturnType<typeof createClient>>;
 
@@ -45,7 +45,23 @@ export type ChannelView = {
   messages: ChatMessage[];
   lastReadAt: string | null;
   names: { team: string; client: string };
+  /** There is history older than `messages[0]` — scrolling to the top loads it. */
+  hasMore: boolean;
 };
+
+/**
+ * One page, oldest first. Asking for ONE row more than a page is how we know older history exists
+ * without a second (count) query: round trips are this app's main cost.
+ */
+function page(rows: Row[], names: { team: string; client: string }): { messages: ChatMessage[]; hasMore: boolean } {
+  const hasMore = rows.length > PAGE;
+  return { messages: rows.slice(0, PAGE).reverse().map((r) => toMessage(r, names)), hasMore };
+}
+
+/** A timestamp from the browser, checked before it reaches a query. */
+function validInstant(v: unknown): v is string {
+  return typeof v === 'string' && v.length <= 40 && !Number.isNaN(Date.parse(v));
+}
 
 type Row = {
   id: string; project_id: string; author: string; author_name: string | null; body: string;
@@ -69,7 +85,7 @@ export async function loadChannel(projectId: string): Promise<{ error: string } 
   const p = project as { id: string; client_id: string | null };
 
   const [msgs, read, client, team] = await Promise.all([
-    supabase.from('project_messages').select(COLS).eq('project_id', projectId).order('created_at', { ascending: false }).limit(PAGE),
+    supabase.from('project_messages').select(COLS).eq('project_id', projectId).order('created_at', { ascending: false }).limit(PAGE + 1),
     supabase.from('project_message_reads').select('last_read_at').eq('project_id', projectId).eq('reader', 'team').maybeSingle(),
     p.client_id ? supabase.from('clients').select('name').eq('id', p.client_id).maybeSingle() : Promise.resolve({ data: null }),
     ownerName(supabase, user.id),
@@ -78,10 +94,58 @@ export async function loadChannel(projectId: string): Promise<{ error: string } 
 
   const names = { team, client: ((client.data as { name: string } | null)?.name ?? '').trim() || 'Client' };
   return {
-    messages: (msgs.data as Row[]).reverse().map((r) => toMessage(r, names)),
+    ...page(msgs.data as Row[], names),
     lastReadAt: (read.data as { last_read_at: string } | null)?.last_read_at ?? null,
     names,
   };
+}
+
+/** The page of history before `before`, for scrolling up. */
+export async function loadOlder(projectId: string, before: string): Promise<{ error: string } | { messages: ChatMessage[]; hasMore: boolean }> {
+  if (!validInstant(before)) return { error: 'Could not load earlier messages.' };
+  const { supabase, user } = await requireSession();
+  if (!(await chatSupported(supabase))) return NOT_READY;
+  const [{ data, error }, team] = await Promise.all([
+    supabase.from('project_messages').select(COLS).eq('project_id', projectId).lt('created_at', before)
+      .order('created_at', { ascending: false }).limit(PAGE + 1),
+    ownerName(supabase, user.id),
+  ]);
+  if (error) return { error: 'Could not load earlier messages.' };
+  return page(data as Row[], { team, client: 'Client' });
+}
+
+/**
+ * Change the words of one of the TEAM's messages. RLS (`owner_upd`) already confines this to the
+ * owner's projects and to team-authored rows; the filters here say the same thing out loud so a
+ * refused edit reads as "not yours" instead of silently updating nothing.
+ */
+export async function editMessage(id: string, raw: string): Promise<{ error: string } | { message: ChatMessage }> {
+  const checked = normalizeBody(raw);
+  if (!checked.ok) return { error: checked.error };
+  const { supabase, user } = await requireSession();
+  if (!(await chatSupported(supabase))) return NOT_READY;
+  const { data, error } = await supabase
+    .from('project_messages')
+    .update({ body: checked.body, edited_at: new Date().toISOString() })
+    .eq('id', id).eq('author', 'team').is('deleted_at', null)
+    .select(COLS).maybeSingle();
+  if (error) return { error: 'Could not save the edit. Your words are still here.' };
+  if (!data) return { error: 'You can only edit your own messages.' };
+  return { message: toMessage(data as Row, { team: await ownerName(supabase, user.id), client: 'Client' }) };
+}
+
+/** Delete one of the TEAM's messages — the words are overwritten, not hidden. */
+export async function deleteMessage(id: string): Promise<{ error: string } | { ok: true }> {
+  const { supabase } = await requireSession();
+  if (!(await chatSupported(supabase))) return NOT_READY;
+  const { data, error } = await supabase
+    .from('project_messages')
+    .update({ body: DELETED_BODY, deleted_at: new Date().toISOString() })
+    .eq('id', id).eq('author', 'team').is('deleted_at', null)
+    .select('id').maybeSingle();
+  if (error) return { error: 'Could not delete the message.' };
+  if (!data) return { error: 'You can only delete your own messages.' };
+  return { ok: true };
 }
 
 /** Post as the team. RLS refuses anything else; the body is checked here first so the error is kind. */
@@ -143,15 +207,62 @@ export async function portalLoadChat(token: string): Promise<{ error: string } |
   const portal = await resolvePortal(token);
   if (!portal) return GONE;
   const [msgs, read] = await Promise.all([
-    portal.svc.from('project_messages').select(COLS).eq('project_id', portal.projectId).order('created_at', { ascending: false }).limit(PAGE),
+    portal.svc.from('project_messages').select(COLS).eq('project_id', portal.projectId).order('created_at', { ascending: false }).limit(PAGE + 1),
     portal.svc.from('project_message_reads').select('last_read_at').eq('project_id', portal.projectId).eq('reader', 'client').maybeSingle(),
   ]);
   if (msgs.error) return { error: 'Could not load the conversation.' };
   return {
-    messages: (msgs.data as Row[]).reverse().map((r) => toMessage(r, portal.names)),
+    ...page(msgs.data as Row[], portal.names),
     lastReadAt: (read.data as { last_read_at: string } | null)?.last_read_at ?? null,
     names: portal.names,
   };
+}
+
+/** Earlier history, for the client scrolling up — the token's project only. */
+export async function portalLoadOlder(token: string, before: string): Promise<{ error: string } | { messages: ChatMessage[]; hasMore: boolean }> {
+  if (!validInstant(before)) return { error: 'Could not load earlier messages.' };
+  const portal = await resolvePortal(token);
+  if (!portal) return GONE;
+  const { data, error } = await portal.svc
+    .from('project_messages').select(COLS).eq('project_id', portal.projectId).lt('created_at', before)
+    .order('created_at', { ascending: false }).limit(PAGE + 1);
+  if (error) return { error: 'Could not load earlier messages.' };
+  return page(data as Row[], portal.names);
+}
+
+/**
+ * Edit one of the CLIENT's messages. Three scopes, every one of them load-bearing: the token's own
+ * project, the client's own side, and a message that still exists. Without the project scope a link
+ * could rewrite another project's history; without the author scope it could put words in the
+ * studio's mouth.
+ */
+export async function portalEditMessage(token: string, id: string, raw: string): Promise<{ error: string } | { message: ChatMessage }> {
+  const checked = normalizeBody(raw);
+  if (!checked.ok) return { error: checked.error };
+  const portal = await resolvePortal(token);
+  if (!portal) return GONE;
+  const { data, error } = await portal.svc
+    .from('project_messages')
+    .update({ body: checked.body, edited_at: new Date().toISOString() })
+    .eq('id', id).eq('project_id', portal.projectId).eq('author', 'client').is('deleted_at', null)
+    .select(COLS).maybeSingle();
+  if (error) return { error: 'Could not save the edit. Your words are still here.' };
+  if (!data) return { error: 'You can only edit your own messages.' };
+  return { message: toMessage(data as Row, portal.names) };
+}
+
+/** Delete one of the CLIENT's messages, under the same three scopes. The words are overwritten. */
+export async function portalDeleteMessage(token: string, id: string): Promise<{ error: string } | { ok: true }> {
+  const portal = await resolvePortal(token);
+  if (!portal) return GONE;
+  const { data, error } = await portal.svc
+    .from('project_messages')
+    .update({ body: DELETED_BODY, deleted_at: new Date().toISOString() })
+    .eq('id', id).eq('project_id', portal.projectId).eq('author', 'client').is('deleted_at', null)
+    .select('id').maybeSingle();
+  if (error) return { error: 'Could not delete the message.' };
+  if (!data) return { error: 'You can only delete your own messages.' };
+  return { ok: true };
 }
 
 /** Post as the client — and only ever as the client, whatever the caller sends. */

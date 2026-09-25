@@ -15,6 +15,7 @@ const ago = (min: number) => new Date(Date.now() - min * 60_000).toISOString();
 const DEMO_CHAT: ChannelView = {
   names: { team: 'Meridian Studio', client: 'Priya Nair' },
   lastReadAt: ago(120),
+  hasMore: false,
   messages: [
     { id: 'x1', projectId: 'p', author: 'client', authorName: 'Priya Nair', body: 'Quick one — is the launch still on for the 30th?', createdAt: ago(180), editedAt: null, deleted: false },
     { id: 'x2', projectId: 'p', author: 'team', authorName: 'Meridian Studio', body: 'Yes, still the 30th. Final files land on the 27th so you have a buffer.', createdAt: ago(90), editedAt: null, deleted: false },

@@ -1,6 +1,6 @@
 # Chat — the plan
 
-**Status:** ✅ C1 built and verified 2026-09-25 (session e71978cb) — **live once migration 0043 is applied**; C2 next.
+**Status:** ✅ C1 + C2 built and verified 2026-09-25 (session e71978cb) — **live once migration 0043 is applied**; C3 next.
 **Source:** user, 2026-09-24, sent mid-turn, verbatim: *"now i want introducing the featcher from client to me
 and other of the uders of the applicaiton chat featcher"* — then *"same to same like slack"*.
 Subordinate to `DESIGN_CONSTITUTION.md` and `SPRINT_RULES.md`.
@@ -62,8 +62,9 @@ owner's side it still reads like Slack — channels in a sidebar, grouped by cli
   before and after it is applied); `lib/chat.ts`; owner Messages page (Slack layout: channel sidebar grouped by
   client, message list with author runs and day dividers, composer); portal chat for the client; owner realtime;
   client poll; optimistic send; unread line and counts.
-- **C2 — conversation craft**: edit and delete own messages (↑ edits your last), hover actions, copy link,
-  "New messages" pill.
+- **C2 — conversation craft** ✅ 2026-09-25: edit and delete own messages (↑ edits your last), a hover toolbar
+  (copy · edit · delete), "New messages" pill, older history that loads above without moving the reader, and a
+  conversation that grows UP from the composer. One `<Conversation>` now owns every behaviour for both sides.
 - **C3 — threads and reactions.**
 - **C4 — files** (reuse attachments, 0033) and notifications (the Bell).
 - **Team chat** — needs multi-user workspaces first. Awaiting the user's decision.

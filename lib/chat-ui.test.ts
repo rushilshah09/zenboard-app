@@ -54,3 +54,35 @@ describe('what a message is drawn as', () => {
     expect(out).toMatch(/aria-live="polite"/);
   });
 });
+
+import { mergePoll } from '@/components/chat/portal-chat';
+
+describe('the client poll keeps what the client is holding', () => {
+  const at = (min: number) => new Date(Date.parse('2026-09-24T12:00:00Z') + min * 60_000).toISOString();
+  const m = (id: string, min: number, over: Partial<ChatMessage> = {}): ChatMessage => ({ ...base, id, createdAt: at(min), ...over });
+
+  it('keeps history the client scrolled up to load — the poll only returns the latest page', () => {
+    // Found while building C2: without this, loaded history vanished every four seconds and the view
+    // jumped out from under the reader.
+    const local = [m('old1', -500), m('old2', -400), m('p1', 0), m('p2', 1)];
+    const server = [m('p1', 0), m('p2', 1)];
+    expect(mergePoll(server, local).map((x) => x.id)).toEqual(['old1', 'old2', 'p1', 'p2']);
+  });
+
+  it('keeps an unconfirmed send and a failed one, after everything the server has', () => {
+    const local = [m('p1', 0), m('tmp', 2, { pending: true, body: 'on its way' }), m('bad', 3, { failed: true, body: 'no' })];
+    expect(mergePoll([m('p1', 0)], local).map((x) => x.id)).toEqual(['p1', 'tmp', 'bad']);
+  });
+
+  it('drops the optimistic copy once the server holds the real one', () => {
+    const local = [m('p1', 0), m('tmp', 2, { pending: true, author: 'client', body: 'hello' })];
+    const server = [m('p1', 0), m('real', 2, { author: 'client', body: 'hello' })];
+    expect(mergePoll(server, local).map((x) => x.id)).toEqual(['p1', 'real']);
+  });
+
+  it('takes the server’s word for a message it knows — an edit or a delete lands', () => {
+    const local = [m('p1', 0, { body: 'before' })];
+    const server = [m('p1', 0, { body: 'after', editedAt: at(5) })];
+    expect(mergePoll(server, local)[0].body).toBe('after');
+  });
+});

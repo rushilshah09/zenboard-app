@@ -1,36 +1,50 @@
 'use client';
 // ── MESSAGES — THE CLIENT'S SIDE ───────────────────────────────────────────
 //
-// The same conversation the owner sees, drawn by the same list and composer, reached through the
-// portal link instead of an account (CHAT_PLAN.md).
+// The same conversation the owner sees, drawn and driven by the same <Conversation>, reached
+// through the portal link instead of an account (CHAT_PLAN.md). This file owns only the client's
+// TRANSPORT: how messages arrive (a poll) and how actions reach the server (the token actions).
 //
 // ── WHY A POLL, NOT A SOCKET ───────────────────────────────────────────────
 // The owner's side streams over realtime because RLS scopes the stream to their own projects. A
 // client has no account and so no RLS identity; streaming to them would need an anonymous read
 // policy, which would hand every project's messages to anyone holding the public anon key. So the
 // client asks, through the token action, every few seconds while the page is VISIBLE — and at once
-// after sending and on returning to the tab. Every ask re-checks the token, so turning the portal
-// off ends the conversation for them on the next beat.
+// on returning to the tab. Every ask re-checks the token, so turning the portal off ends the
+// conversation for them on the next beat.
 
 import * as React from 'react';
 import { MessageCircle } from '@/components/ds/icons';
 import { EmptyState, Icon, cardClass } from '@/components/ds/ui';
 import { tempId } from '@/lib/temp-id';
 import type { ChatMessage } from '@/lib/chat';
-import { portalLoadChat, portalMarkRead, portalSendMessage, type ChannelView } from '@/lib/actions/chat';
-import { MessageList } from './message-list';
-import { Composer } from './composer';
+import {
+  portalDeleteMessage, portalEditMessage, portalLoadChat, portalLoadOlder, portalMarkRead, portalSendMessage,
+  type ChannelView,
+} from '@/lib/actions/chat';
+import { Conversation, type ConversationApi } from './conversation';
 
 /** Often enough that a reply feels prompt; rare enough that an open tab costs next to nothing. */
 const POLL_MS = 4000;
 
-/** Server truth, plus this browser's own messages that the server has not confirmed yet. */
-function merge(server: ChatMessage[], local: ChatMessage[]): ChatMessage[] {
+/**
+ * A poll's answer, folded into what this browser already holds. The poll returns only the LATEST
+ * page, so three kinds of local message must survive it:
+ *   · history the client scrolled up to load (older than anything in the page) — dropping it would
+ *     yank the view out from under them every four seconds;
+ *   · their own sends the server has not confirmed yet;
+ *   · failed sends, which wait for Retry.
+ */
+export function mergePoll(server: ChatMessage[], local: ChatMessage[]): ChatMessage[] {
   const ids = new Set(server.map((m) => m.id));
+  const oldestServer = server[0]?.createdAt;
+  const history = oldestServer
+    ? local.filter((m) => !m.pending && !m.failed && !ids.has(m.id) && m.createdAt < oldestServer)
+    : [];
   const unconfirmed = local.filter((m) => (m.pending || m.failed) && !ids.has(m.id)
     // An echo: the send landed and the server row is already here under its real id.
     && !(m.pending && server.some((s) => s.author === 'client' && s.body === m.body && !local.some((l) => l.id === s.id))));
-  return [...server, ...unconfirmed];
+  return [...history, ...server, ...unconfirmed];
 }
 
 export function PortalChat({
@@ -70,7 +84,13 @@ export function PortalChat({
         return;
       }
       setError(null);
-      setView((v) => ({ ...res, messages: merge(res.messages, v?.messages ?? []) }));
+      setView((v) => {
+        // Once older history is loaded, whether MORE exists is known from that history, not from
+        // the latest page (which always says "there is more" once a conversation outgrows it).
+        const oldest = res.messages[0]?.createdAt;
+        const holdsHistory = !!v && !!oldest && v.messages.some((m) => !m.pending && !m.failed && m.createdAt < oldest);
+        return { ...res, messages: mergePoll(res.messages, v?.messages ?? []), hasMore: holdsHistory ? v!.hasMore : res.hasMore };
+      });
       // Reading is seeing: mark read only when something new from the team has arrived.
       const newest = [...res.messages].reverse().find((m) => m.author === 'team')?.createdAt ?? null;
       if (newest && newest !== seen.current) {
@@ -90,39 +110,13 @@ export function PortalChat({
     };
   }, [token, demo]);
 
-  // ── Send ───────────────────────────────────────────────────────────────
-  const deliver = async (pendingId: string, body: string) => {
-    const res = demo
-      ? await new Promise<{ message: ChatMessage }>((r) => setTimeout(() => r({ message: {
-          id: tempId(), projectId: 'demo', author: 'client', authorName: demo.names.client, body,
-          createdAt: new Date().toISOString(), editedAt: null, deleted: false,
-        } }), 250))
-      : await portalSendMessage(token, body);
-    setView((v) => {
-      if (!v) return v;
-      if ('error' in res) return { ...v, messages: v.messages.map((m) => (m.id === pendingId ? { ...m, failed: true } : m)) };
-      const rest = v.messages.filter((m) => m.id !== pendingId);
-      return { ...v, messages: rest.some((m) => m.id === res.message.id) ? rest : [...rest, res.message] };
-    });
-  };
-
-  const onSend = (body: string) => {
-    if (!view) return;
-    const id = tempId();
-    setView({
-      ...view,
-      messages: [...view.messages, {
-        id, projectId: 'portal', author: 'client', authorName: view.names.client, body,
-        createdAt: new Date().toISOString(), editedAt: null, deleted: false, pending: true,
-      }],
-    });
-    void deliver(id, body);
-  };
-
-  const onRetry = (m: ChatMessage) => {
-    setView((v) => (v ? { ...v, messages: v.messages.map((x) => (x.id === m.id ? { ...x, failed: false } : x)) } : v));
-    void deliver(m.id, m.body);
-  };
+  // ── The transport. Everything a conversation DOES lives once in <Conversation>. ──
+  const api = React.useMemo<ConversationApi>(() => (demo ? portalDemoApi(demo) : {
+    send: (body) => portalSendMessage(token, body),
+    edit: (id, body) => portalEditMessage(token, id, body),
+    remove: (id) => portalDeleteMessage(token, id),
+    older: (before) => portalLoadOlder(token, before),
+  }), [token, demo]);
 
   if (error && !view) {
     return <p className="py-10 text-center text-ui text-ink-700" role="alert">{error}</p>;
@@ -135,23 +129,46 @@ export function PortalChat({
       {!view ? (
         <div className="flex-1" aria-busy="true" />
       ) : (
-        <>
-          <MessageList
-            messages={view.messages}
-            me="client"
-            lastReadAt={view.lastReadAt}
-            onRetry={onRetry}
-            empty={
-              <EmptyState
-                illustration={<Icon icon={MessageCircle} size={20} />}
-                title={`Message ${studio}`}
-                description="Ask anything — they’ll see it straight away."
-              />
-            }
-          />
-          <Composer placeholder={`Message ${studio}`} onSend={onSend} />
-        </>
+        <Conversation
+          view={view}
+          setView={setView}
+          me="client"
+          api={api}
+          placeholder={`Message ${studio}`}
+          empty={
+            <EmptyState
+              illustration={<Icon icon={MessageCircle} size={20} />}
+              title={`Message ${studio}`}
+              description="Ask anything — they’ll see it straight away."
+            />
+          }
+        />
       )}
     </div>
   );
+}
+
+/** The harness's client-side transport: the same contract, answered locally after a beat. */
+function portalDemoApi(demo: ChannelView): ConversationApi {
+  const beat = <T,>(v: T) => new Promise<T>((r) => setTimeout(() => r(v), 250));
+  const known = new Map(demo.messages.map((m) => [m.id, m]));
+  return {
+    send: (body) => {
+      const message: ChatMessage = {
+        id: tempId(), projectId: 'demo', author: 'client', authorName: demo.names.client, body,
+        createdAt: new Date().toISOString(), editedAt: null, deleted: false,
+      };
+      known.set(message.id, message);
+      return beat({ message });
+    },
+    edit: (id, body) => {
+      const m = known.get(id);
+      if (!m || m.author !== 'client') return beat({ error: 'You can only edit your own messages.' });
+      const message = { ...m, body, editedAt: new Date().toISOString() };
+      known.set(id, message);
+      return beat({ message });
+    },
+    remove: () => beat({ ok: true as const }),
+    older: () => beat({ messages: [], hasMore: false }),
+  };
 }

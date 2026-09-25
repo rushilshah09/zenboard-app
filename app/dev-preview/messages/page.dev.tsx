@@ -36,18 +36,26 @@ const CHANNELS: Channel[] = [
   { projectId: 'p3', projectName: 'Packaging refresh', clientId: 'c2', clientName: 'Atlas Coffee', last: null, unread: 0 },
 ];
 
+// A page of OLDER history for #Brand identity, returned when the reader scrolls to the top.
+const olderBrand: ChatMessage[] = [
+  m(9 * 24 * 60, 'team', 'Kickoff notes are in the project doc — shout if anything reads wrong.'),
+  m(9 * 24 * 60 - 12, 'client', 'Read them — all good. Excited to see the first routes!'),
+  m(8 * 24 * 60, 'team', 'Moodboards are up. Three directions, one page each.'),
+].map((x) => ({ ...x, projectId: 'p1' }));
+
 const names = { team: 'Rushil Shah', client: 'Meridian Studio' };
 const VIEWS: Record<string, ChannelView> = {
   // Read up to just before the client's last two messages, so the "New" line sits above them.
-  p1: { messages: brand, lastReadAt: ago(60), names },
-  p2: { messages: site, lastReadAt: ago(0), names },
-  p3: { messages: [], lastReadAt: null, names: { team: 'Rushil Shah', client: 'Atlas Coffee' } },
+  // hasMore on the busiest channel, so scrolling to the top exercises loading older history.
+  p1: { messages: brand, lastReadAt: ago(60), names, hasMore: true },
+  p2: { messages: site, lastReadAt: ago(0), names, hasMore: false },
+  p3: { messages: [], lastReadAt: null, names: { team: 'Rushil Shah', client: 'Atlas Coffee' }, hasMore: false },
 };
 
 export default function MessagesHarness() {
   return (
     <>
-      <MessagesView initialChannels={CHANNELS} initialChannelId="p2" demo={{ views: VIEWS }} />
+      <MessagesView initialChannels={CHANNELS} initialChannelId="p2" demo={{ views: VIEWS, older: { p1: olderBrand } }} />
       <Toaster />
     </>
   );
