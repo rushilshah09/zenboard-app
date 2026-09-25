@@ -264,6 +264,7 @@ export const OutroArt: React.FC<{ f: number }> = ({ f }) => {
   const lock = at(f, 200, 250);
   const snap = respond(f, 240);
   const tagline = at(f, 255, 300);
+  const today = at(f, 500, 540);
 
   return (
     <div style={{ position: "absolute", inset: 0, overflow: "hidden", background: stage.ink, fontFamily: FONT }}>
@@ -342,6 +343,9 @@ export const OutroArt: React.FC<{ f: number }> = ({ f }) => {
           ))}
         </div>
         <div style={{ textAlign: "center", marginTop: 28, fontFamily: FONT, fontSize: 34, color: CREAM(0.82), letterSpacing: "-0.01em", opacity: tagline, translate: `0 ${(1 - tagline) * 14}px` }}>The single platform to manage work, life, and business.</div>
+        <div style={{ display: "flex", justifyContent: "center", marginTop: 34, opacity: today, translate: `0 ${(1 - today) * 12}px` }}>
+          <span style={{ fontFamily: FONT, fontSize: 24, fontWeight: 500, letterSpacing: "0.02em", color: stage.inkText, padding: "12px 26px", borderRadius: 999, background: CREAM(0.08), boxShadow: `inset 0 0 0 1px ${CREAM(0.3)}, 0 0 40px rgba(196,28,114,.35)` }}>Available today</span>
+        </div>
       </div>
       <Finish grain={0} />
     </div>
