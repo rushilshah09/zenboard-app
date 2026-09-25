@@ -444,14 +444,14 @@ def f_auto_1():
     return s
 
 def f_auto_zoom():
-    """Macro zoom on Create (ref: glass toggle close-up): card corner on a Berry field, a glossy glass button,
-    the Zenboard mark in a glass knob, grain; the cursor tip presses it."""
-    s = '<div class="stage" style="background:radial-gradient(120% 120% at 100% 0%,#D94C92 0%,#A3155E 45%,#4A0A2C 100%)"></div>'
-    s += '<div class="zcard"></div>'
-    s += at(46, 31, f'<div class="gbtn"><span class="gtxt">{ph("Sparkle", "fill", size="1em")} Create</span>'
-                    f'<span class="gknob">{mark(5.6, "rgba(255,255,255,.75)")}</span></div>')
-    s += '<div class="cursor zc"></div>'
-    s += '<div class="stage grain" style="opacity:.22"></div>'
+    """Macro zoom on Create that continues 6.1 exactly: the same Paper stage and white prompt card,
+    the same Berry Create button, only 12x closer, with glassy macro detail and a zoom-blur on the way in."""
+    s = '<div class="stage paper"><div class="dots" style="background-size:4cqw 4cqw"></div></div>'
+    s += '<div class="stage" style="background:radial-gradient(60% 70% at 40% 45%,rgba(234,185,203,.5),transparent 75%)"></div>'
+    s += '<div class="zcard2"><p>due, send a friendly<br>reminder and move it to Today<span class="caret big"></span></p></div>'
+    s += at(52, 35, f'<div class="gbtn berry"><span class="gtxt">{ph("Sparkle", "fill", size="1em")} Create</span></div>')
+    s += '<div class="cursor zc2"></div>'
+    s += '<div class="stage zoomblur"></div><div class="stage grain" style="opacity:.1"></div>'
     return s
 
 def f_auto_2():
@@ -495,7 +495,7 @@ def icon3d(color, glyph_color, size, icon="CheckSquare"):
             f'<span class="i3g">{ph(icon, "fill", size="100%")}</span></div>')
 
 def carousel(order, label, step=1):
-    """Dark stage with detailing: glossy reflective floor,
+    """Dark stage with detailing:
     dust bokeh, grain, mono labels under every tile and a step indicator."""
     s = '<div class="stage" style="background:#16060F"></div><div class="stage floorglow"></div>'
     g = ''
@@ -513,8 +513,6 @@ def carousel(order, label, step=1):
              "Plant": "Habits", "Timer": "Focus", "FileText": "Docs"}
     for i, (x, (c, gc, ic), z) in enumerate(zip(xs, order, sz)):
         s += at(x, 25, icon3d(c, gc, z, ic))
-        # glossy floor reflection
-        s += at(x, 25 + z * .98, f'<div class="refl">{icon3d(c, gc, z, ic)}</div>')
         if i != 2:
             s += at(x, 25 + z / 2 + 2.4, f'<span class="i3lab">{names[ic]}</span>')
     s += at(50, 40.5, f'<span class="lbl">{label}</span>')
@@ -705,7 +703,7 @@ SCENES = [
  dict(n=6, name="Zenboard does the work", t="0:40–0:46", purpose="Automation: describe a job once and watch Zenboard do it (ref: Effortless automation).",
   frames=[("6.1", "0:40", f_auto_1, "Paper stage with soft coloured light. The Zenboard logo (white mark on a Berry circle) pops in at the centre, the headline rises word by word, and real Zenboard pieces float around it at different depths: the automation steps card, a doc with Add to a doc, the prompt card, a Q3 revenue chart, the Zenboard mark as a soft glowing sparkle and a Money tile.",
             "Effortless automation · Describe it once. Zenboard does the work.", "Soft whoosh as the cards drift in, a chime on the logo"),
-          ("6.2", "0:42", f_auto_zoom, "Zoom transition: the camera dives into the Create button until it fills the frame. Macro close-up: the corner of the prompt card on the Berry field, and the button as a glossy glass pill with an iridescent petal-to-apricot edge. The Zenboard mark sits in a frosted knob. The cursor tip presses it: the pill squashes 4%, a glow ring pulses out, and the knob slides across like a toggle.",
+          ("6.2", "0:42", f_auto_zoom, "Zoom transition: the camera dives into the Create button until it fills the frame. It continues 6.1 exactly: the same Paper stage and dot grid, the white prompt card with its text cropped huge at the edge, and the same Berry Create button, only 12× closer, with glassy macro detail (top highlight, soft inner glow, iridescent rim). A radial zoom blur streaks the edges on the way in. The cursor tip presses it: the pill squashes 4% and a Berry glow ring pulses out.",
             "Create", "Deep glassy click, a short rising shimmer"),
           ("6.3", "0:43.5", f_auto_2, "Zenboard opens the work: the prompt card comes forward, the cursor presses Create, and the steps card runs by itself. Trigger and draft tick green, Move to Today spins, the client portal step waits. A drafted reminder to Fernwood Hotels slides in and a toast confirms it was sent.",
             "Zenboard does the work.", "Click on Create, a tick per step, a soft send whoosh")],
