@@ -220,7 +220,7 @@ def f_3_1():
     for i, (x, y, _) in enumerate(src):
         s += at(x, y, tile(KINDS[i], 5.2))
     s += at(fx, fy, '<span class="spark"></span>') + at(fx + 4.5, fy, '<span class="dot2"></span>') + at(fx + 8.5, fy, '<span class="dot2 lit"></span>') + at(fx + 12, fy, '<span class="dot2"></span>')
-    s += at(82, 28.1, f'<div class="node">{mark(6.5)}<span>Zenboard</span></div>')
+    s += at(82, 28.1, f'<div class="node">{mark(7.5)}</div>')
     s += caption("Everything you juggle.", y=52, size=2.4)
     return s
 
@@ -238,7 +238,7 @@ def f_3_2():
     s = paper_stage(.55)
     s += f'<svg class="stage" viewBox="0 0 100 56.25" preserveAspectRatio="none">{waves()}</svg>'
     s += at(46, 28.1, f'<div class="node sm">{mark(4.2)}</div>')
-    s += at(79, 28.1, '<div class="wipe"><div class="wipe-in">' + today_card(mini=True) + '</div></div>')
+    s += at(76, 28.1, '<div class="wipe desk"><div class="wipe-in"><div class="deskfit">' + dashboard() + '</div></div></div>')
     s += caption("In one place.", y=52, size=2.4)
     return s
 
@@ -686,7 +686,7 @@ SCENES = [
  dict(n=3, name="All in one", t="0:15–0:22", purpose="Every app you juggle flows into one place.",
   frames=[("3.1", "0:16", f_3_1, "The app tiles line up on the left. From each one a fan of fine hairlines in that app's colour sweeps right; all the fans converge on one bright point, which pulses out as three dots into the Zenboard node.",
             "“Everything you juggle.”", "Cable hum, soft tick as each line lands"),
-          ("3.2", "0:19", f_3_2, "Four soft colour waves ripple along the line, then settle into one flat Berry line as they pass through the Zenboard node. The line hits a panel that wipes open to the real Today screen.",
+          ("3.2", "0:19", f_3_2, "Four soft colour waves ripple along the line, then settle into one flat Berry line as they pass through the Zenboard node. The line hits a panel that wipes open to the full Zenboard desktop dashboard.",
             "“In one place.”", "Swish on the wipe")],
   out="Light flash whip: the panel overexposes to a white bloom for 10 frames and we come out on the tilted window over the Berry field."),
  dict(n=4, name="Product hero", t="0:22–0:28", purpose="The first real look at the product, in the D6 card style.",
