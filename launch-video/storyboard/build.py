@@ -331,13 +331,22 @@ PILLS = [("Tasks", "sky"), ("Projects", "sand"), ("Invoices", "apricot"), ("Cale
          ("Habits", "petal"), ("Focus", "sky"), ("Clients", "peri"), ("Docs", "peri"), ("Goals", "sand"),
          ("Payments", "berry"), ("Time tracking", "sage"), ("Proposals", "sand"), ("Life", "sage"), ("Files", "petal"),
          ("Automations", "petal"), ("Insights", "sand"), ("Messages", "sky"), ("Reminders", "peri")]
+PILL_ICON = {"Tasks": "CheckSquare", "Projects": "Kanban", "Invoices": "Receipt", "Calendar": "CalendarBlank", "Notes": "NotePencil",
+             "Habits": "Plant", "Focus": "Timer", "Clients": "UsersThree", "Docs": "FileText", "Goals": "Target",
+             "Payments": "CreditCard", "Time tracking": "Clock", "Proposals": "PaperPlaneTilt", "Life": "Sun", "Files": "Folder",
+             "Automations": "Lightning", "Insights": "ChartLine", "Messages": "ChatCircle", "Reminders": "Bell"}
 def f_6_1():
-    s = '<div class="stage" style="background:#8E1253"></div>'
+    """Pill wall: plain brand field, glass-bordered pills, a Phosphor icon in every pill."""
+    s = '<div class="stage" style="background:radial-gradient(130% 120% at 100% 100%,#B5226C 0%,#8E1253 40%,#4A0A2C 100%)"></div><div class="stage grain"></div>'
     for r in range(6):
-        row = "".join(f'<span class="wp" style="background:{BERRY if c == "berry" else FIELD[c]};color:{"#fff" if c == "berry" else INK};'
-                      f'{"box-shadow:0 0 0 .25cqw #fff" if c == "berry" else ""}">{t}</span>'
-                      for t, c in (PILLS[(r*5 + k) % len(PILLS)] for k in range(8)))
-        s += at(50 + (-6 if r % 2 else 4), 6 + r*9, f'<div class="wrow">{row}</div>')
+        row = ""
+        for t, c in (PILLS[(r * 5 + k) % len(PILLS)] for k in range(8)):
+            glass = c == "berry"
+            bg = "rgba(255,255,255,.14)" if glass else FIELD[c]
+            fg = "#FBFAF6" if glass else INK
+            row += (f'<span class="wp{" glass" if glass else ""}" style="background:{bg};color:{fg}">'
+                    f'<i class="wpi">{ph(PILL_ICON[t], "fill", size="58%")}</i>{t}</span>')
+        s += at(50 + (-6 if r % 2 else 4), 6 + r * 9, f'<div class="wrow">{row}</div>')
     return s
 
 def icon3d(color, glyph_color, size, label=None):
@@ -504,7 +513,7 @@ SCENES = [
           for i in range(len(FEATS))],
   out="The field of the last feature expands to fill the frame and the pills multiply into the wall."),
  dict(n=6, name="Pill wall", t="0:40–0:45", purpose="The breadth of Zenboard at a glance.",
-  frames=[("6.1", "0:40", f_6_1, "Rows of module pills in the field colours scroll in alternating directions on a plain, flat deep-berry background. No UI cards behind the pills.",
+  frames=[("6.1", "0:40", f_6_1, "Rows of module pills scroll in alternating directions on a plain Berry field with fine grain. Every pill has a glass border and a Phosphor icon in a round chip; the Berry pills are frosted glass. No UI cards behind the pills.",
             "—", "Rhythmic ticks on the beat")],
   out="One pill (Tasks) zooms to camera and turns into a 3D tile; the background drops to ink."),
  dict(n=7, name="Icon carousel", t="0:45–0:52", purpose="Each module as a physical, premium object. Semantical-style carousel.",
