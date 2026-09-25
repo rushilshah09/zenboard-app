@@ -196,7 +196,8 @@ def icon_ring(spread=15):
     pos = [(-1, -1), (0, -1), (1, -1), (1, -.35), (1, .35), (1, 1), (0, 1), (-1, 1), (-1, .35), (-1, -.35)]
     s = ""
     for (ic, c), (u, v) in zip(RING, pos):
-        s += at(50 + u * spread, 28.1 + v * spread * .92, f'<span class="ricon" style="color:{c}">{ph(ic, "fill", size="100%")}</span>',
+        shape = "sheet" if ic in ("FileText", "CheckSquare", "Plant") else "circ" if ic in ("Timer", "UsersThree") else "sq"
+        s += at(50 + u * spread, 28.1 + v * spread * .92, f'<span class="ricon {shape}" style="--c:{c}">{ph(ic, "fill", size="54%")}</span>',
                 "", f"transform:translate(-50%,-50%) scale({min(1, spread / 13):.2f})")
     return s
 
@@ -674,7 +675,7 @@ SCENES = [
             "—", "Silence, then a reversed swell"),
           ("2.2", "0:12", f_2_2, "The portrait shrinks away. The segments sweep off in one big arc across the frame and the stage clears to Paper. A small ring of segments keeps spinning.",
             "—", "Big whoosh"),
-          ("2.3", "0:12.5", f_2_3r, "Zenboard's module icons (Tasks, Mail, Calendar, Docs, Projects, Clients, Money, Habits, Focus, Automations) pop in one by one in a square ring around the Zenboard mark, which is filled with the brand gradient (Berry, petal, apricot, lavender edge).",
+          ("2.3", "0:12.5", f_2_3r, "Zenboard's module icons (Tasks, Mail, Calendar, Docs, Projects, Clients, Money, Habits, Focus, Automations) pop in one by one in a square ring around the Zenboard mark, each as a product icon on its own coloured shape (squircle, folded sheet or circle) with a second-tone corner, like the reference, which is filled with the brand gradient (Berry, petal, apricot, lavender edge).",
             "—", "A soft pop per icon, on the beat"),
           ("2.4", "0:13.5", f_2_4r, "The ring pulls tight and every icon is absorbed into the mark. The mark alone shrinks and spins once, small in the centre of a clean Paper frame.",
             "—", "An inward swoosh, then silence"),
