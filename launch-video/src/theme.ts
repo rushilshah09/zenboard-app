@@ -86,6 +86,24 @@ export const ground = {
   sticky: "#F4DD8A",
 } as const;
 
+/**
+ * Zenboard illustration system palette (brand brief). Illustrations are
+ * mostly deep burgundy line, with pink as the one deliberate accent; the
+ * light tones are the cards they sit on.
+ */
+export const illo = {
+  deep: "#280417",
+  pink: "#C41C72",
+  softPink: "#E8A8C5",
+  blush: "#F3D9E5",
+  dustyRose: "#A94A72",
+  plum: "#5B1839",
+  cream: "#F7F1E8",
+  sand: "#E8D8C5",
+  mauve: "#B98B9E",
+  white: "#FFFFFF",
+} as const;
+
 /** Light "paper" scenes invert the product palette: ink becomes the ground. */
 export const light = {
   bg: color.ink900,

@@ -1,7 +1,7 @@
 import React from "react";
 import { AbsoluteFill, useCurrentFrame } from "remotion";
 import { Headline } from "../components/Headline";
-import { Illustration } from "../components/Illustration";
+import { Illustration, groundOf } from "../components/Illustration";
 import { Sfx } from "../components/Sfx";
 import { color, ease, font, ground, light, radius, shadow, tween } from "../theme";
 
@@ -72,7 +72,7 @@ export const Flow: React.FC = () => {
             width: 520,
             height: 520,
             borderRadius: radius.xl * 2,
-            background: ground.blush,
+            background: groundOf("connected-thread"),
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -81,7 +81,7 @@ export const Flow: React.FC = () => {
             translate: "0 -90px",
           }}
         >
-          <Illustration name="connected-puzzle" draw={tween(frame, [4, 70], [0, 1], (x) => x)} size={440} />
+          <Illustration name="connected-thread" draw={tween(frame, [4, 70], [0, 1], (x) => x)} size={440} />
         </div>
         <div style={{ position: "absolute", top: 820, width: 1600 }}>
           <Headline text="Because everything is *connected.*" at={8} size={92} tint={light.text} />

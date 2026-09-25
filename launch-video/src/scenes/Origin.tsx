@@ -2,9 +2,9 @@ import React from "react";
 import { AbsoluteFill, useCurrentFrame } from "remotion";
 import { GlyphField } from "../components/GlyphField";
 import { Headline } from "../components/Headline";
-import { Illustration } from "../components/Illustration";
+import { Illustration, groundOf } from "../components/Illustration";
 import { Sfx } from "../components/Sfx";
-import { ease, font, ground, light, radius, tween } from "../theme";
+import { ease, font, light, radius, tween } from "../theme";
 
 /** 01 · "Every business starts with one person… and a big idea." */
 export const Origin: React.FC = () => {
@@ -53,7 +53,7 @@ export const Origin: React.FC = () => {
           width: 680,
           height: 680,
           borderRadius: radius.xl * 2,
-          background: ground.sand,
+          background: groundOf("founder-idea"),
           display: "flex",
           alignItems: "center",
           justifyContent: "center",

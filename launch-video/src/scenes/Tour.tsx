@@ -88,6 +88,19 @@ const SEGMENTS: Segment[] = [
 
 const SCALE = 1.55;
 
+/**
+ * The camera: one continuous move through all four segments. Each segment
+ * eases from the previous pose to its own [rotateX, rotateY, rotateZ], so
+ * the product window drifts in 3D and settles flat on the last one.
+ */
+const INTRO_POSE: [number, number, number] = [34, -30, 6];
+const POSES: [number, number, number][] = [
+  [12, -14, 3],
+  [10, 14, -2],
+  [16, -6, 1],
+  [0, 0, 0],
+];
+
 const along = (frame: number, pts: [number, number, number][]) => {
   if (frame <= pts[0][0]) return { x: pts[0][1], y: pts[0][2] };
   for (let i = 0; i < pts.length - 1; i++) {
@@ -113,6 +126,10 @@ export const Tour: React.FC<{ index: 0 | 1 | 2 | 3 }> = ({ index }) => {
   const outT = tween(frame, [SWAP - 4, SWAP + 8], [0, 1], ease.in);
   const inT = first ? tween(frame, [10, 30], [0, 1]) : tween(frame, [SWAP + 2, SWAP + 16], [0, 1]);
   const drift = tween(frame, [0, 150], [0, 1], (x) => x);
+  const from = index > 0 ? POSES[index - 1] : INTRO_POSE;
+  const to = POSES[index];
+  const cam = tween(frame, [0, 150], [0, 1], ease.inOut);
+  const [rx, ry, rz] = from.map((a, i) => a + (to[i] - a) * cam);
 
   // Cursor: from the previous segment's resting point, to the nav item, then along this segment's path.
   const navPt = { x: 110, y: navY(seg.nav) + 15 };
@@ -138,11 +155,13 @@ export const Tour: React.FC<{ index: 0 | 1 | 2 | 3 }> = ({ index }) => {
       <div style={{ position: "absolute", left: 110, top: 70, width: 1700 }}>
         <Headline key={index} text={seg.headline} at={first ? 8 : SWAP} size={88} tint={color.ink900} accent={color.berry300} align="left" out={138} />
       </div>
+      <AbsoluteFill style={{ perspective: 2400, perspectiveOrigin: "50% 30%" }}>
       <div
         style={{
           position: "absolute",
           left: (1920 - SHELL_W) / 2,
           top: 250,
+          transform: `rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg)`,
           width: SHELL_W,
           height: SHELL_H,
           scale: String(SCALE * (0.92 + enter * 0.08) * (1 + drift * 0.015)),
@@ -151,8 +170,8 @@ export const Tour: React.FC<{ index: 0 | 1 | 2 | 3 }> = ({ index }) => {
           translate: `0 ${(1 - enter) * 120}px`,
           borderRadius: radius.xl,
           background: color.paper,
-          border: `1px solid ${color.line}`,
-          boxShadow: shadow.lift3,
+          border: `1px solid rgba(196, 28, 114, 0.55)`,
+          boxShadow: `0 0 0 1px rgba(196, 28, 114, 0.25), 0 0 90px -10px rgba(196, 28, 114, 0.5), ${shadow.lift3}`,
           overflow: "hidden",
           fontFamily: font.sans,
         }}
@@ -170,6 +189,7 @@ export const Tour: React.FC<{ index: 0 | 1 | 2 | 3 }> = ({ index }) => {
         </div>
         <Cursor x={cur.x - 3} y={cur.y - 3} pressed={press} size={22} />
       </div>
+      </AbsoluteFill>
 
       {first ? <Sfx at={0} sound="whoosh" volume={0.3} /> : <Sfx at={CLICK} sound="tick" volume={0.45} />}
       {!first ? <Sfx at={SWAP} sound="swipe" volume={0.2} /> : null}

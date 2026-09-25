@@ -1,9 +1,10 @@
 import React from "react";
 import { AbsoluteFill, useCurrentFrame } from "remotion";
+import { Dissolve } from "../components/Dissolve";
 import { Headline } from "../components/Headline";
-import { Illustration } from "../components/Illustration";
+import { Illustration, groundOf } from "../components/Illustration";
 import { Sfx } from "../components/Sfx";
-import { ease, font, ground, light, radius, tween } from "../theme";
+import { ease, font, light, radius, tween } from "../theme";
 
 /** 06 · The week races to Friday; all that's left is a knot. */
 
@@ -42,14 +43,11 @@ export const Friday: React.FC = () => {
       </div>
       <div style={{ position: "absolute", left: 160, top: 300, width: 820 }}>
         <Headline text="By Friday, you've spent more time *managing* your work…" at={8} size={84} tint={light.text} align="left" stagger={3} />
-        <Headline
-          text="…than *doing* it."
-          at={104}
-          size={84}
-          tint={light.text}
-          align="left"
-          style={{ marginTop: 36 }}
-        />
+        {frame < 140 ? (
+          <Headline text="…than *doing* it." at={104} size={84} tint={light.text} align="left" style={{ marginTop: 36 }} />
+        ) : (
+          <Dissolve text="…than *doing* it." at={146} size={84} tint={light.text} style={{ marginTop: 36, lineHeight: 1.08 }} />
+        )}
       </div>
       <div
         style={{
@@ -59,7 +57,7 @@ export const Friday: React.FC = () => {
           width: 660,
           height: 660,
           borderRadius: radius.xl * 2,
-          background: ground.sand,
+          background: groundOf("tangled-thread"),
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -74,6 +72,7 @@ export const Friday: React.FC = () => {
         <Sfx key={d} at={d} sound="tick" volume={0.35} />
       ))}
       <Sfx at={34} sound="pop" volume={0.25} />
+      <Sfx at={144} sound="whoosh" volume={0.35} />
     </AbsoluteFill>
   );
 };

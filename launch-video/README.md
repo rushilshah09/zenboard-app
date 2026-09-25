@@ -4,11 +4,11 @@ A 1:48, 1920×1080 story-driven launch video built in [Remotion](https://www.rem
 using Zenboard's own design tokens (colors, Geist / Geist Mono / Source Serif 4,
 radii, easing) mirrored in `src/theme.ts`.
 
-**[STORY.md](STORY.md)** has the storyboard, the ElevenLabs voice-over script and the
-illustration prompts. `src/timeline.ts` is the single source of timing.
+**[STORY.md](STORY.md)** has the storyboard and the ElevenLabs voice-over script; the
+illustration brief lives in **[ILLUSTRATIONS.md](ILLUSTRATIONS.md)**. `src/timeline.ts` is the single source of timing.
 
 - Drop voice-over clips in `public/vo/<scene-id>.mp3`: each scene plays its own, and the music ducks.
-- Drop illustrations in `public/illustrations/<name>.png`: they replace the line-drawn stand-ins.
+- Drop illustrations in `public/illustrations/<name>.svg` (or `.png`): they replace the numbered placeholders.
 
 ## Commands
 

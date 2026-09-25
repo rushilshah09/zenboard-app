@@ -1,8 +1,8 @@
 import React from "react";
 import { AbsoluteFill, useCurrentFrame } from "remotion";
 import { Headline } from "../components/Headline";
-import { Illustration } from "../components/Illustration";
-import { ease, ground, light, radius, tween } from "../theme";
+import { Illustration, groundOf } from "../components/Illustration";
+import { ease, light, radius, tween } from "../theme";
 
 /** 15 · The resolution: one desk, one tool, some quiet. */
 export const Calm: React.FC = () => {
@@ -19,7 +19,7 @@ export const Calm: React.FC = () => {
           width: 740,
           height: 740,
           borderRadius: radius.xl * 2,
-          background: ground.sand,
+          background: groundOf("calm-desk"),
           display: "flex",
           alignItems: "center",
           justifyContent: "center",

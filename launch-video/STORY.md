@@ -15,11 +15,11 @@ Timing lives in `src/timeline.ts`. Change a scene's `frames` there and the scene
 | 02 | work-arrives | 0:05 | The founder illustration; work items pop into orbit around them one by one, then the orbit speeds up and blurs | Pops, one per item |
 | 03 | tool-pile | 0:11 | One window per app lands on the table, each on its VO line (tasks, notes, invoice from off-screen…), camera creeps in, a sticky note slaps on top | Pops, a thud, a ticking pulse starts |
 | 04 | disconnected | 0:20 | On black: Calendar, Projects and Clients get wired together, then each wire **snaps** and a red **?** appears | Two snaps |
-| 05 | switching | 0:28 | Key caps slam **⌘C** → **⌘V** → **⌘⇥**; an app switcher cycles faster and faster while "again" floods the frame, then everything collapses to a point | Thuds, accelerating ticks, a glitch |
-| 06 | friday | 0:36 | Mon→Fri tick past; **"…more time managing your work… than doing it."** A tangled knot is drawn | Clock ticks, riser |
+| 05 | switching | 0:28 | Key caps slam **⌘C** → **⌘V** → **⌘⇥**; an app switcher cycles faster and faster while "again" rushes out of the screen at the camera, then everything collapses to a point | Thuds, accelerating ticks, a glitch |
+| 06 | friday | 0:36 | Mon→Fri tick past; **"…more time managing your work… than doing it."** A tangled knot is drawn; the last line blows apart letter by letter | Clock ticks, riser |
 | 07 | pause | 0:42 | Silence. Black. A caret types **"What if it all lived in one place?"**; a single pink dot remains | Music drops out, only keystrokes |
 | 08 | reveal | 0:47 | Every window from act one flies into the dot → flash, shockwave rings → the mark spins open into **Zenboard** | Impact, shimmer; the warm theme enters |
-| 09–12 | tour | 0:57 | One Zenboard app shell stays on screen; the cursor clicks down the sidebar: **Today** (tasks ticked) → **Docs** (`/task` inserts a task inside a proposal) → **Money** (12.5h → invoice, $1,875 counts up) → **Clients** (portal request accepted) | Clicks, typing, shimmer, chime |
+| 09–12 | tour | 0:57 | One Zenboard app shell, tilted in 3D with a pink edge glow, stays on screen while the camera drifts and settles flat; the cursor clicks down the sidebar: **Today** (tasks ticked) → **Docs** (`/task` inserts a task inside a proposal) → **Money** (12.5h → invoice, $1,875 counts up) → **Clients** (portal request accepted) | Clicks, typing, shimmer, chime |
 | 13 | life | 1:17 | An editorial wall of illustrated cards (habits, goals, focus, rituals); **Habits. Goals. Focus.** pop in centre | Pops |
 | 14 | flow | 1:24 | Puzzle hands: **"Because everything is connected."** The camera rides one request down a chain: Request → Task → Time → Invoice → **Paid**, then pulls back | Pop per node, chime on Paid |
 | 15 | calm | 1:35 | A tidy desk on a sand card: **"No more switching." → "Just your work, in flow."** | Pad resolves |
@@ -98,31 +98,7 @@ Once any clip is in `public/vo/`, the music automatically ducks under the voice.
 
 ## 3 · Illustrations
 
-The film already runs on line-drawn stand-ins. Each one is replaced automatically when a PNG with the matching name lands in `public/illustrations/`. It is multiplied onto its coloured card, so **generate on a pure white background**; the white disappears and only the ink remains.
-
-**Output:** PNG, square, 2048×2048 (1:1), pure white `#FFFFFF` background, subject centred with about 20% empty margin on every side.
-
-### Shared style — paste this at the end of every prompt
-
-> Hand-drawn black ink illustration, loose expressive brush-pen line work with slightly uneven stroke weight, like a modern editorial illustration for a calm tech brand. Minimal detail, confident single lines, occasional small flat off-white or light-grey paper-texture fills. Pure white background, no colour, no gradients, no shadows, no text, no letters, no logos, no frame. Centred subject with generous empty space around it. Square composition.
-
-**Negative prompt (if your tool supports one):** colour, colourful, gradient, 3D, photo, realistic shading, text, watermark, signature, border, frame, busy background, cartoon mascot, clip art.
-
-### The nine images
-
-| # | File name | Used in | Prompt (then add the shared style) |
-|---|---|---|---|
-| 1 | `founder-idea.png` | 01 origin | A single open hand seen from the side, gently releasing a small folded paper plane into the air; a short dotted trail curves up behind the plane. Hopeful, the start of something. |
-| 2 | `juggling.png` | 02 work-arrives | A person shown from the chest up, both arms raised, juggling an arc of work objects above their head: a laptop, a calendar page, a speech bubble, a receipt, a coffee cup and a sticky note. Calm face, but clearly stretched thin. |
-| 3 | `tangled-thread.png` | 06 friday | A large ball of thread tangled into dense, chaotic scribbled loops, with one loose end trailing out to the right. Overwhelm, a week that got knotted. |
-| 4 | `connected-puzzle.png` | 14 flow, 13 life | Two hands entering from opposite corners, fitting two jigsaw puzzle pieces together in the centre; one piece has a light-grey paper-texture fill. |
-| 5 | `calm-desk.png` | 15 calm, 13 life | A tidy desk seen from the front: one open laptop, a small potted plant, a steaming cup of tea, and a person leaning back in a chair with hands behind their head, relaxed and content. |
-| 6 | `habit-plant.png` | 13 life | A hand holding a small watering can, pouring water onto a young sprout in a simple clay pot, with a few droplets in mid-air. |
-| 7 | `goal-path.png` | 13 life | Two hands framing a straight road that narrows to a vanishing point on the horizon, with a half sun rising behind it. |
-| 8 | `focus-hourglass.png` | 13 life | A single upright hourglass with sand falling, and a hand resting lightly beside it. Stillness, lots of empty space. |
-| 9 | `rituals-sun.png` | 13 life | An open notebook and a cup of coffee on a table in the foreground, with a sun rising over a flat horizon line behind them and simple radiating rays. |
-
-**Consistency tip:** generate #1 first, then feed it back as a style reference (or reuse its seed) for the other eight, so all nine share one hand.
+See **[ILLUSTRATIONS.md](ILLUSTRATIONS.md)**: eleven illustrations in the Zenboard Illustration System (burgundy `#280417` line, one pink `#C41C72` accent), each with a ready-to-paste prompt, its card colour and where it appears. Drop `public/illustrations/<name>.svg` (or `.png`) and it replaces the numbered placeholder in the film.
 
 ---
 

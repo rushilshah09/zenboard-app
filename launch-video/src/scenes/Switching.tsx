@@ -61,6 +61,22 @@ const SWITCHES: number[] = (() => {
   return out;
 })();
 
+// "again" words for the z-depth tunnel, spawning faster and faster.
+const TUNNEL_LIFE = 34;
+const TUNNEL: { at: number; angle: number; pink: boolean }[] = (() => {
+  const out: { at: number; angle: number; pink: boolean }[] = [];
+  let t = 148;
+  let gap = 7;
+  let i = 0;
+  while (t < 222) {
+    out.push({ at: Math.round(t), angle: rand(i * 13 + 5) * Math.PI * 2, pink: i % 5 === 2 });
+    t += gap;
+    gap = Math.max(1.2, gap * 0.9);
+    i++;
+  }
+  return out;
+})();
+
 export const Switching: React.FC = () => {
   const frame = useCurrentFrame();
   const phase = frame < 48 ? "copy" : frame < 92 ? "paste" : "switch";
@@ -122,26 +138,33 @@ export const Switching: React.FC = () => {
                 <ToolWindow kind={APPS[switchIndex % APPS.length]} width={480} />
               </div>
             </AbsoluteFill>
-            {Array.from({ length: Math.max(0, Math.floor((frame - 150) / 4)) }, (_, i) => (
-              <div
-                key={i}
-                style={{
-                  position: "absolute",
-                  left: rand(i * 3 + 1) * 1700 + 60,
-                  top: rand(i * 5 + 2) * 720 + 300,
-                  fontFamily: font.sans,
-                  fontWeight: 600,
-                  fontSize: 40 + rand(i + 7) * 90,
-                  letterSpacing: "-0.03em",
-                  color: i % 5 === 0 ? color.berry500 : light.text,
-                  opacity: 0.25 + rand(i + 11) * 0.6,
-                  translate: "-50% -50%",
-                  zIndex: 30,
-                }}
-              >
-                again
-              </div>
-            ))}
+            {TUNNEL.filter((w) => frame >= w.at && frame < w.at + TUNNEL_LIFE).map((w) => {
+              // Words rush out of the screen centre towards the camera.
+              const p = (frame - w.at) / TUNNEL_LIFE;
+              const depth = p * p;
+              return (
+                <div
+                  key={w.at}
+                  style={{
+                    position: "absolute",
+                    left: 960 + Math.cos(w.angle) * (40 + depth * 1150),
+                    top: 540 + Math.sin(w.angle) * (30 + depth * 700),
+                    translate: "-50% -50%",
+                    scale: String(0.15 + depth * 3.2),
+                    fontFamily: font.sans,
+                    fontWeight: 600,
+                    fontSize: 72,
+                    letterSpacing: "-0.03em",
+                    color: w.pink ? color.berry500 : light.text,
+                    opacity: Math.min(1, p * 4) * (1 - Math.max(0, (p - 0.75) * 4)),
+                    filter: `blur(${Math.max(0, (p - 0.55) * 18)}px)`,
+                    zIndex: 30,
+                  }}
+                >
+                  again
+                </div>
+              );
+            })}
             <AbsoluteFill style={{ alignItems: "center", justifyContent: "center", zIndex: 20 }}>
               <div
                 style={{

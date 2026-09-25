@@ -1,9 +1,9 @@
 import React from "react";
 import { AbsoluteFill, useCurrentFrame } from "remotion";
 import { Headline } from "../components/Headline";
-import { Illustration } from "../components/Illustration";
+import { Illustration, groundOf } from "../components/Illustration";
 import { Sfx } from "../components/Sfx";
-import { color, ease, font, ground, light, radius, shadow, tween } from "../theme";
+import { color, ease, font, light, radius, shadow, tween } from "../theme";
 
 /** 02 · "Then… the work shows up." Work items pop into orbit and speed up. */
 
@@ -36,7 +36,7 @@ export const WorkArrives: React.FC = () => {
           width: 520,
           height: 520,
           borderRadius: radius.pill,
-          background: ground.clay,
+          background: groundOf("juggling"),
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
