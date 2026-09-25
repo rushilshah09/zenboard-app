@@ -1,4 +1,12 @@
-# Voice-over v2 — record this first
+# Voice-over v2
+
+**Generated in-house, with no external service:** `python3 scripts/make-voiceover.py [voice] [speed]`
+uses Kokoro, an open-source neural TTS model (Apache-2.0), running locally. The current take is
+`audio-src/voiceover-v2.mp3` (voice `af_heart`, female, speed 0.95), with each line's start time in
+`audio-src/voiceover-v2-lines.json`. Five female voices to compare are in
+`audio-src/voice-samples-female.mp3`, in this order: af_heart, af_bella, af_nicole, bf_emma (British),
+af_sarah. To switch voice, re-run the script with another name. The text below is the recording
+script the generator follows.
 
 DIRECTION_V2.md §7: "Record it first, then lock the edit to it." The whole v2 timeline hangs off
 this recording, so it's the first thing needed.
