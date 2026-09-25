@@ -433,3 +433,13 @@ dd{margin:0;color:var(--ink)}
 .portrait .lobe{clip-path:circle(50% at 50% 50%)}
 .portrait .lobe-halo{clip-path:circle(50% at 50% 50%);inset:-5%}
 </style>
+<style>
+/* 3.2 reveal panel: brand field inside a glass frame (review note) */
+.fr .wipe{position:relative;padding:1.1cqw;border-radius:1.8cqw;justify-content:center;align-items:center;
+  background:radial-gradient(130% 120% at 100% 100%,#E48AB7 0%,#9E1458 45%,#3E0825 100%);
+  border:.14cqw solid rgba(255,255,255,.55);
+  box-shadow:inset 0 .2cqw .1cqw rgba(255,255,255,.55),inset 0 -.3cqw .8cqw rgba(62,8,37,.35),0 0 0 .7cqw rgba(255,255,255,.35),0 2cqw 5cqw rgba(90,15,54,.25)}
+.fr .wipe::before{content:"";position:absolute;inset:0;border-radius:inherit;background:linear-gradient(160deg,rgba(255,255,255,.28),rgba(255,255,255,0) 40%);pointer-events:none}
+.fr .wipe-in{width:100%;height:100%;border-radius:1.1cqw;background:rgba(28,27,28,.92);border:.1cqw solid rgba(255,255,255,.18);backdrop-filter:blur(1cqw);padding:.9cqw;overflow:hidden}
+.fr .wipe-in .today.mini{background:transparent}
+</style>
