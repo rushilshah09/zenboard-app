@@ -725,7 +725,7 @@ def f_end_icon():
     """Last screen: black, white/graphite only. The Zenboard mark as a chunky graphite app icon
     (ref: terminal icon), engraved in an inset pill like a keycap."""
     s = '<div class="stage" style="background:#000"></div>'
-    s += at(50, 28.1, f'<div class="bicon"><div class="bwell">{mark(6.8, "url(#greyg)")}</div></div>')
+    s += at(50, 28.1, f'<div class="bicon brand">{mark(13, "#FFF7FB")}</div>')
     return s
 
 def f_8_2(): return blueprint(1.0)
@@ -825,7 +825,7 @@ SCENES = [
             "Zenboard", "Four soft taps as the lobes land, a glassy swirl on the turn, the chime on the settle"),
           ("9.4", "1:07", f_8_3, "The blueprint dims to about half so the lockup owns the frame. The tagline rises word by word, then Available today. Nothing moves in the last two seconds.",
             "The single platform to manage work, life, and business. · Available today", "The chime resolves, held chord")
-          ,("9.5", "1:09", f_end_icon, "Last screen. Hard cut to pure black, black and white only. The Zenboard mark returns as a chunky graphite app icon, in the style of the terminal icon reference. It is a soft squircle with a bevelled edge catching a thin highlight, lit from the top left, with the mark engraved in a recessed pill like a keycap. It fades up from black with a slow 2% scale settle, holds, and fades out.",
+          ,("9.5", "1:09", f_end_icon, "Last screen. Hard cut to pure black. The Zenboard mark returns as a chunky 3D app icon in the brand colours, in the style of the terminal icon reference. It is a Berry squircle glowing from dark to light with a bevelled edge catching a thin highlight, lit from the top left, and a white mark embossed in the centre. It fades up from black with a slow 2% scale settle, holds, and fades out.",
             "—", "Silence, then one low soft tap as the icon settles")],
   out=None),
 ]
