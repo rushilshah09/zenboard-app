@@ -69,6 +69,11 @@
      these are size/lh/weight/tracking quads — @theme inline emits no :root
      vars, so the names don't collide). Sizes verified against live DOM
      measurements in the 2026-07-03 audit. */
+  /* THE WEBSITE'S two display steps, above the app's scale on purpose: CLAUDE.md's 11–28 scale is the
+     APP's, and a marketing page is read once, from further away. Set in the editorial serif; tracking
+     continues the one optical curve (type-scale.test.ts), tightest at the largest size. */
+  --text-hero-size: 60px;     --text-hero-lh: 1.04;      --text-hero-weight: 400;   --text-hero-tracking: -0.032em;
+  --text-headline-size: 40px; --text-headline-lh: 1.1;   --text-headline-weight: 400; --text-headline-tracking: -0.028em;
   --text-display-size: 32px; --text-display-lh: 1.15; --text-display-weight: 600; --text-display-tracking: -0.025em;
   --text-h1-size: 28px;      --text-h1-lh: 1.2;         --text-h1-weight: 500;     --text-h1-tracking: -0.021em;
   --text-stat-size: 24px;    --text-stat-lh: 1.1;       --text-stat-weight: 500;   --text-stat-tracking: -0.019em;
@@ -592,6 +597,14 @@ html[data-density="compact"] {
   --text-display--line-height: var(--text-display-lh);
   --text-display--font-weight: var(--text-display-weight);
   --text-display--letter-spacing: var(--text-display-tracking);
+  --text-hero: var(--text-hero-size);
+  --text-hero--line-height: var(--text-hero-lh);
+  --text-hero--font-weight: var(--text-hero-weight);
+  --text-hero--letter-spacing: var(--text-hero-tracking);
+  --text-headline: var(--text-headline-size);
+  --text-headline--line-height: var(--text-headline-lh);
+  --text-headline--font-weight: var(--text-headline-weight);
+  --text-headline--letter-spacing: var(--text-headline-tracking);
   --text-h1: var(--text-h1-size);
   --text-h1--line-height: var(--text-h1-lh);
   --text-h1--font-weight: var(--text-h1-weight);
@@ -920,6 +933,11 @@ html[data-vt] .zb-page-in { animation: none !important; }
   @keyframes zb-vt-sidebar-in { from { opacity: 0; } }
 }
 .zb-page-in { animation: zb-page-in var(--duration-base, 150ms) var(--ease-out-quiet, ease-out); }
+/* THE WEBSITE'S ENTRANCE (components/site). A first visit may arrive in order — Emil: a rare surface
+   can carry a staged entrance, one seen every day never does. Each step waits one --duration-fast
+   longer than the last, so the product lands just after the words that introduce it. `zb-enter`
+   beside it skips all of it for a keyboard arrival. */
+.site-rise { animation: fade-rise var(--duration-slow) var(--ease-out-quiet) both; animation-delay: calc(var(--rise-step, 0) * var(--duration-fast)); }
 @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes blurin { from { opacity: 0; filter: blur(8px); transform: scale(0.98); } to { opacity: 1; filter: blur(0); transform: scale(1); } }
 @keyframes pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }

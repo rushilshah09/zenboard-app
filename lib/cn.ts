@@ -15,6 +15,8 @@ const FONT_SIZES = [
   "caption", "overline", "meta", "mono-sm", "ui", "mono-md", "lead", "editor",
   "title-1", "title-2", "title-3", "title-4",
   // globals.css (the role scale)
+  // The website's two display steps (components/site), above the app's scale.
+  "hero", "headline",
   "display", "h1", "h2", "h3", "h4", "stat", "body-lg", "body", "body-sm", "small", "label", "micro", "nano", "code",
 ];
 
