@@ -1,0 +1,90 @@
+{
+  "task": "Create ONE illustration for Zenboard. Follow `style` exactly and draw only what `illustration` describes. If anything in `illustration` is unclear, ask me before drawing.",
+  "style": {
+    "name": "Zenboard ink and paper",
+    "brand": "Zenboard is a calm workspace for people who run a creative business: their day, their clients, their documents and their money in one place.",
+    "mood": [
+      "calm",
+      "warm",
+      "confident",
+      "human",
+      "unhurried"
+    ],
+    "one_idea": "One subject, one idea. If an element does not help say the idea, leave it out.",
+    "line": {
+      "look": "hand-drawn black brush-pen ink, like a real pen on paper",
+      "colour": "#191919",
+      "weight": "one weight for the whole image, set by the illustration type",
+      "quality": "confident single strokes, slightly irregular, rounded ends; a few outlines left open where they would meet; never sketchy, doubled or hairy"
+    },
+    "colour": {
+      "field": "one flat background colour from `palette.fields`, filling the whole canvas edge to edge",
+      "paper": "#FBFAF6 for light shapes such as sheets, cards and light",
+      "ink_fill": "solid #191919 on at most two small areas (hair, a shoe, a phone screen) to anchor the image",
+      "berry": "#C41C72 on exactly one small element: the Zenboard mark",
+      "nothing_else": "no other colours, tints or gradients. Faces and hands are outline only; the background shows through them."
+    },
+    "palette": {
+      "ink": "#191919",
+      "paper": "#FBFAF6",
+      "berry": "#C41C72",
+      "fields": {
+        "Petal": "#EAB9CB",
+        "Apricot": "#ECBF9B",
+        "Butter": "#E5D494",
+        "Sage": "#B7CEAB",
+        "Sky": "#A6D1E0",
+        "Periwinkle": "#B8BDEE",
+        "Sand": "#EEE7D9",
+        "Mist": "#E7EAEC"
+      }
+    },
+    "mark": {
+      "what": "the Zenboard mark, copied exactly from the attached image: a soft four-lobed shape with a four-pointed star cut out of its centre",
+      "means": "the one thing that matters",
+      "rules": "exactly once per illustration; solid berry #C41C72 with no outline; small, about 6 to 10% of the canvas width; placed on or right beside the thing that matters"
+    },
+    "texture": "a fine, even paper grain over the whole image, like a risograph print on matte paper; subtle, visible only up close",
+    "people": "simple and friendly; slightly long limbs and small heads; a dot for an eye, a single line for the nose, no mouth or one short line; hair as one solid ink shape. Hands are anatomically correct: five digits, clearly separated, relaxed, with a plain sleeve cuff.",
+    "composition": "the subject sits in the centre with generous empty field around it and never touches the edges; the visual weight sits slightly below the centre; at most one ground line, drawn as a single ink stroke",
+    "types": {
+      "icon": {
+        "is": "one object on its own, no people",
+        "canvas": "1024x1024",
+        "subject_size": "about 55% of the canvas",
+        "line_weight": "bold, about 1.3% of the canvas width (13 px)",
+        "shading": "at most five short parallel hatch strokes for a shadow under the object"
+      },
+      "semi": {
+        "is": "one object with a hand or a partial figure, or two or three objects that make one idea",
+        "canvas": "1536x1024",
+        "subject_size": "about 60% of the width",
+        "line_weight": "about 0.9% of the canvas width (14 px)",
+        "shading": "none, or ink halftone dots on one object"
+      },
+      "scene": {
+        "is": "one person doing one thing in a minimal setting, with five props at most",
+        "canvas": "1536x1024",
+        "subject_size": "about 70% of the width",
+        "line_weight": "about 0.6% of the canvas width (9 px)",
+        "shading": "ink halftone dots on up to two objects"
+      }
+    },
+    "never": [
+      "text, letters, numbers or interface screenshots",
+      "any logo other than the Zenboard mark",
+      "a frame, border, rounded corners or white margin",
+      "circles, blobs or shapes behind the subject unless `illustration` asks for them",
+      "gradients, glows, drop shadows, 3D or photorealism",
+      "sparkles, stars, confetti, plants, clouds or motion lines unless `illustration` asks for them",
+      "more than one berry element",
+      "any colour outside `palette`",
+      "a signature or watermark"
+    ],
+    "references": {
+      "mark": "Attach zenboard-mark-berry.png every time. Use it only for the shape of the mark.",
+      "style_anchor": "From the second illustration on, also attach the approved ZB-01 and match its line weight, grain and proportions exactly. Never copy its subject."
+    },
+    "output": "PNG at the type's canvas size. The field colour reaches every edge; the app rounds the corners itself. Keep the subject inside the central 80% so the image can be cropped."
+  }
+}

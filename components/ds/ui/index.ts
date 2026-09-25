@@ -90,6 +90,7 @@ export { Toaster, toast, toastReverted, dismissToast, type ToastData } from "./t
 export { Progress, SegmentedProgress, CircularProgress, type ProgressProps, type SegmentedProgressProps, type SegmentColor } from "./progress";
 export { Skeleton, SkeletonText, SkeletonRow } from "./skeleton";
 export { EmptyState, EmptyLine, ErrorState, SuccessState, type EmptyStateProps, type ErrorStateProps } from "./states";
+export { Illustration, ILLUSTRATIONS, type IllustrationName, type IllustrationField } from "./illustration";
 export { NotificationsBell, type Notification, type NotificationsBellProps } from "./notifications";
 export { ActivityFeed, type ActivityEntry } from "./activity-feed";
 

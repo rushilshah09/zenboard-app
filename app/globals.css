@@ -470,6 +470,20 @@ html[data-density="compact"] {
   --color-accent-text: var(--accent-text);
   --color-accent-wash: var(--accent-wash);
   --color-on-accent: var(--on-accent);
+  /* ILLUSTRATION FIELDS — the flat grounds Zenboard's illustrations are drawn on (brand/illustrations,
+     the palette page). NOT theme tokens: an illustration is a picture, and a picture is the same in
+     light and dark — so these carry no dark values. All eight sit at one lightness, which is why black
+     ink reads at 9.6:1 or better on every one and the berry mark at 3:1 or better. Use them ONLY
+     behind an illustration (<Illustration>), never as a surface. */
+  --color-edge-image: var(--edge-image);
+  --color-field-petal: #EAB9CB;
+  --color-field-apricot: #ECBF9B;
+  --color-field-butter: #E5D494;
+  --color-field-sage: #B7CEAB;
+  --color-field-sky: #A6D1E0;
+  --color-field-periwinkle: #B8BDEE;
+  --color-field-sand: #EEE7D9;
+  --color-field-mist: #E7EAEC;
   /* THE SEMANTIC NAMES, made real. CLAUDE.md documents the vocabulary as
      "success / warning / danger / info", and `accent` above has always worked
      bare — but these four never existed as tokens, so `text-danger` generated no

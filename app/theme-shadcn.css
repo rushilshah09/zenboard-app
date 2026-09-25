@@ -115,6 +115,10 @@
      grounds. Measured by the two-theme overlay sweep, 2026-09-11. */
   --destructive: oklch(0.53 0.22 27.3);
   --border: oklch(0.933 0.0027 106.5);               /* Notion #E9E9E7 */
+  /* A PICTURE'S edge (an illustration, a cover, a photo): pure black at 10% on light, pure white at
+     10% on dark. Never a tinted neutral — a tinted edge picks up the surface behind it and reads as
+     dirt on the image. */
+  --edge-image: oklch(0 0 0 / 0.1);
   /* THE BOUNDARY THAT *IS* THE CONTROL — a checkbox, radio, switch track or
      slider thumb, where there is no text and no label inside the shape, so an
      invisible edge means an invisible control. Solved against all five light
@@ -208,6 +212,7 @@ html[data-theme='dark'] {
      workstream" was below AA the moment you pointed at it. 4.80 at its worst. */
   --destructive: oklch(0.76 0.15 22.2);
   --border: oklch(0.360 0 0);                         /* #3D3D3D — above the popover */
+  --edge-image: oklch(1 0 0 / 0.1);
   /* Worst ground in dark is the popover (the lightest surface), at 3.29:1. */
   --border-control: #828282;
 

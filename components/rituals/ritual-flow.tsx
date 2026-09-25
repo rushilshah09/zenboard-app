@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sun, Moon, Repeat, X, ArrowRight, ChevronLeft, Check, Circle, Flame, Flag, Inbox, Kanban } from "@/components/ds/icons";
-import { Icon, FullScreenLayer, EmptyLine } from "@/components/ds/ui";
+import { Icon, FullScreenLayer, EmptyLine, Illustration } from "@/components/ds/ui";
 import { saveRitual } from '@/lib/actions/rituals';
 import { setHighlight, toggleTask, rescheduleTask } from '@/lib/actions/tasks';
 import { toggleHabit, setHabitCount } from '@/lib/actions/habits';
@@ -419,6 +419,9 @@ export function RitualFlow({ type, todayTasks, goals, habits = [], todayISO, tom
         )}
         {at === 'ready' && (
           <Step n={total} total={total} title="Your day is planned" onNext={finish} onPrev={prev} nextLabel={busy ? 'Saving…' : 'Start the day'} canNext={!busy}>
+            {/* ZB-01, the style anchor for every illustration after it: the one card that matters, placed
+                on top of the rest — which is exactly what this ritual just did. */}
+            <Illustration name="day-planned" className="mb-5 max-w-[320px]" />
             {/* The same numbers as the capacity step, not a second sum of its
                 own — this line used to total every open task's estimate and
                 call the result "committed", which disagreed with the capacity
