@@ -319,7 +319,7 @@ def feat_frame(idx):
         n2, ic2, _, _ = FEATS[(idx + k) % len(FEATS)]
         cls = "fp on" if k == 0 else "fp"
         op = 1 if k == 0 else max(.22, 1 - abs(k) * .2)
-        s += at(4.5, H_/2 - 1.5 + k*5.3, f'<div class="{cls}" style="opacity:{op}">{pico(ic2, 2.5)}{n2.upper()}</div>', "", "transform:translate(0,-50%)")
+        s += at(4.5, H_/2 - 1.5 + k*5.3, f'<div class="{cls}" style="opacity:{op}">{pico(ic2, 2.5)}{n2}</div>', "", "transform:translate(0,-50%)")
     s += at(4.5, 3.6, lockup(8, INK), "", "transform:translate(0,-50%)")
     field = f'radial-gradient(130% 120% at 100% 100%,{l} 0%,{m} 38%,{d} 100%)'
     lobes = at(84, 45, mark(46, "#ffffff", ""), "lobes") + at(58, 4, mark(30, "#ffffff", ""), "lobes")
@@ -387,8 +387,8 @@ def carousel(order, label, step=1):
     s += '<div class="stage rays"></div>'
     s += at(50, 5, lockup(11, "#F7F1E8", "#F7F1E8"))
     xs, sz = [2, 24, 50, 76, 98], [11, 13, 18, 13, 11]
-    names = {"Receipt": "INVOICES", "CalendarBlank": "CALENDAR", "CheckSquare": "TASKS", "Kanban": "PROJECTS",
-             "Plant": "HABITS", "Timer": "FOCUS", "FileText": "DOCS"}
+    names = {"Receipt": "Invoices", "CalendarBlank": "Calendar", "CheckSquare": "Tasks", "Kanban": "Projects",
+             "Plant": "Habits", "Timer": "Focus", "FileText": "Docs"}
     for i, (x, (c, gc, ic), z) in enumerate(zip(xs, order, sz)):
         s += at(x, 25, icon3d(c, gc, z, ic))
         # glossy floor reflection
@@ -440,7 +440,7 @@ def f_8_1():
         '<div class="chk"><i></i>Renew the domain before it lapses</div><div class="chk"><i></i>Book the Q3 tax call</div><div class="chk"><i class="on"></i>Sketch the pricing page hero</div></div>'),
      (13, 40, 18, f'<div class="dc" style="background:#F4EDCF"><div class="dh"><span class="dico" style="background:#fff;color:#6B5A12">{ph("FileText", "fill", size="60%")}</span>Rebrand proposal</div>'
         f'<p>Acme wants a calmer, warmer identity that works from shop window to invoice.</p><div class="drow">{face("p4")}<small>Mara commented · Approved</small></div></div>'),
-     (23, 27.5, 8.5, '<div class="dc" style="background:#DDEFF5;align-items:center"><small>FOCUS</small><b class="dbig" style="font-size:1.7cqw">18:42</b></div>'),
+     (23, 27.5, 8.5, '<div class="dc" style="background:#DDEFF5;align-items:center"><small>Focus</small><b class="dbig" style="font-size:1.7cqw">18:42</b></div>'),
     ]
     for x, y, w, c in cards:
         s += at(x, y, c, "", f"width:{w}cqw")
@@ -482,25 +482,25 @@ def blueprint(strength=1.0, tagline=False):
     g += f'<g transform="translate({ox} {oy}) scale({S})"><path d="{MARK}" fill="none" stroke="{a(.5)}" stroke-width="{.08 / S}"/></g>'
     # dimension line + labels on the mark
     g += f'<line x1="{x0}" y1="{y0 - 1.6}" x2="{x1}" y2="{y0 - 1.6}" {hl}/><line x1="{x0}" y1="{y0 - 2.2}" x2="{x0}" y2="{y0 - 1}" {hl}/><line x1="{x1}" y1="{y0 - 2.2}" x2="{x1}" y2="{y0 - 1}" {hl}/>'
-    g += t(50, y0 - 2.1, "32 U", "middle")
-    px, py = P(7.4, 7.4); g += t(px, py - 7.4 * S - .6, "LOBE  R 7.4", "middle", .4, .65)
-    px, py = P(16, 16); g += t(px + 3.2, py - 5.2, "STAR 90°", "start", .4, .65)
+    g += t(50, y0 - 2.1, "32 u", "middle")
+    px, py = P(7.4, 7.4); g += t(px, py - 7.4 * S - .6, "Lobe  r 7.4", "middle", .4, .65)
+    px, py = P(16, 16); g += t(px + 3.2, py - 5.2, "Star 90°", "start", .4, .65)
     g += f'<path d="M {px + 2.2} {py - 3.2} A 3.2 3.2 0 0 1 {px + 3.2} {py - 1.8}" {hl}/>'
     # left: vertical fig label + type specimen
     g += t(24.6, 10, "fig. 01", "start", .5, 1.1, 90) + t(24.6, 46, "2026", "start", .45, 1.1, 90)
     g += f'<text x="4" y="30" fill="{a(.18)}" font-family="Geist, sans-serif" font-weight="600" font-size="7" letter-spacing="-.3">Aa</text>'
-    g += t(4, 33, "GEIST SEMIBOLD", "start", .45, .7) + t(4, 34.3, "TRACKING -3%", "start", .35, .7)
-    g += t(4, 37.5, "GEIST MONO / LABELS", "start", .35, .7)
+    g += t(4, 33, "Geist Semibold", "start", .45, .7) + t(4, 34.3, "Tracking -3%", "start", .35, .7)
+    g += t(4, 37.5, "Geist Mono / labels", "start", .35, .7)
     g += f'<line x1="4" y1="24.6" x2="17" y2="24.6" {dl}/>'
     # right: component specimens (card, pill, checkbox) in outline
-    g += f'<rect x="81" y="6" width="15" height="11" rx="1.1" {hl}/>' + t(81, 5.2, "CARD / RADIUS 12", "start", .4, .6)
+    g += f'<rect x="81" y="6" width="15" height="11" rx="1.1" {hl}/>' + t(81, 5.2, "Card / radius 12", "start", .4, .6)
     g += f'<rect x="82.2" y="8.2" width="1.1" height="1.1" rx=".25" {hl}/><line x1="84.2" y1="8.75" x2="93" y2="8.75" {dl}/>'
     g += f'<rect x="82.2" y="10.7" width="1.1" height="1.1" rx=".25" fill="{a(.4)}"/><line x1="84.2" y1="11.25" x2="91" y2="11.25" {dl}/>'
-    g += f'<rect x="82.2" y="13.6" width="7" height="2" rx="1" {hl}/>' + t(85.7, 14.95, "START FOCUS", "middle", .45, .5)
-    g += f'<rect x="81" y="20" width="9" height="2.6" rx="1.3" {dl}/>' + t(81, 24.3, "PILL / FULL", "start", .35, .6)
+    g += f'<rect x="82.2" y="13.6" width="7" height="2" rx="1" {hl}/>' + t(85.7, 14.95, "Start focus", "middle", .45, .5)
+    g += f'<rect x="81" y="20" width="9" height="2.6" rx="1.3" {dl}/>' + t(81, 24.3, "Pill / full", "start", .35, .6)
     # reformr-style mono paragraphs
-    g += t(4, 46, "ONE WORKSPACE FOR", "start", .35, .6) + t(4, 47.1, "WORK, LIFE AND", "start", .35, .6) + t(4, 48.2, "BUSINESS.", "start", .35, .6)
-    g += t(96, 30, "ZENBOARD®", "end", .35, .6) + t(96, 31.1, "EST. 2026", "end", .35, .6)
+    g += t(4, 46, "One workspace for", "start", .35, .6) + t(4, 47.1, "work, life and", "start", .35, .6) + t(4, 48.2, "business.", "start", .35, .6)
+    g += t(96, 30, "Zenboard®", "end", .35, .6) + t(96, 31.1, "Est. 2026", "end", .35, .6)
     # handles on the wordmark box
     for hx, hy in ((29, 24.4), (71, 24.4), (29, 31.8), (71, 31.8)):
         g += f'<rect x="{hx - .3}" y="{hy - .3}" width=".6" height=".6" fill="{a(.8)}"/>'
@@ -569,7 +569,7 @@ SCENES = [
   frames=[(f"5.{i+1}", f"0:{28 + round(i*1.5):02d}", (lambda i=i: feat_frame(i)),
            ("Left: Paper panel with the feature list scrolling up; the active feature snaps into a solid ink pill. Right: its own dark-to-light field with the Zenboard mark's lobes blended in, a frosted tinted card and a white card floating over its corner. " if i == 0 else "The list springs up one step; the field recolours and the cards swap (tinted card slides up, white card pops in 4 frames later). ")
            + FEAT_NOTES[FEATS[i][0]],
-           FEATS[i][0].upper(), "Tick on the step, soft pop on the white card" if i else "Music enters the groove; tick, pop")
+           FEATS[i][0], "Tick on the step, soft pop on the white card" if i else "Music enters the groove; tick, pop")
           for i in range(len(FEATS))],
   out="The field of the last feature expands to fill the frame and the pills multiply into the wall."),
  dict(n=6, name="Pill wall", t="0:40–0:45", purpose="The breadth of Zenboard at a glance.",

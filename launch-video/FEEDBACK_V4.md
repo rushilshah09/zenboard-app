@@ -124,7 +124,10 @@ The product UI in the film should look like the green "Project Status" reference
   (card, checkbox rows, Start focus button, pill), grid blocks, mono notes. Never harsh; Zenboard stays the hero.
 - 8.2 draws the blueprint on; 8.3 dims it to ~50% for the tagline and Available today.
 
-### D12+ — (more directions to come)
+### D12 — Type rule
+- Never full caps, anywhere: labels, pills, mono notes and chips use sentence or title case.
+
+### D13+ — (more directions to come)
 
 ## Brand note
 The Zenboard brand guidelines (Paper / Ink / single Berry accent, eight flat field colours, no gradients)
