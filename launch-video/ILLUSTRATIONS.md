@@ -1,6 +1,6 @@
 # Illustration delivery
 
-Prompts, house style and negative prompt: **CREATIVE_DIRECTION.md §7**. This page is only where
+Prompts, house style and negative prompt: **CREATIVE_DIRECTION.md §7**; ready-to-paste ChatGPT prompts in **illustration-prompts.json**. This page is only where
 each file goes. Drop a file in `public/img/` with the exact name and the film picks it up; until
 then a labelled placeholder holds its frame.
 
