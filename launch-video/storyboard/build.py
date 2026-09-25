@@ -376,6 +376,58 @@ FEAT_NOTES = {
  "Focus": "A running focus timer; the blocked apps float above.",
 }
 
+# ---------- scene 6: automation (ref: "Effortless automation") ----------
+def auto_stage():
+    return ('<div class="stage paper"><div class="dots"></div></div>'
+            '<div class="stage" style="background:radial-gradient(22% 30% at 18% 22%,rgba(184,189,238,.45),transparent 70%),'
+            'radial-gradient(25% 32% at 22% 80%,rgba(234,185,203,.45),transparent 70%),radial-gradient(22% 30% at 82% 78%,rgba(236,191,155,.35),transparent 70%),'
+            'radial-gradient(20% 28% at 80% 20%,rgba(166,209,224,.35),transparent 70%)"></div>')
+
+def feat_logo(size=8, icon="Lightning"):
+    return (f'<div class="flogo" style="width:{size}cqw;height:{size}cqw">{ph(icon, "fill", size="46%")}</div>')
+
+STEPS = [("Lightning", "Trigger", "Invoice is 7 days overdue"), ("EnvelopeSimple", "Step 2", "Draft a friendly reminder"),
+         ("Sun", "Step 3", "Move the task to Today"), ("UsersThree", "Step 4", "Post to the client portal")]
+def steps_card(state=None):
+    rows = ""
+    for i, (ic, k, t) in enumerate(STEPS):
+        st = "" if state is None else (' <b class="ok">' + ph("CheckCircle", "fill", size="1.1cqw") + '</b>' if i < state
+                                      else ' <b class="run"></b>' if i == state else ' <b class="wait"></b>')
+        rows += f'<div class="stp{" done" if state is not None and i < state else ""}"><span class="sico">{ph(ic, "fill", size="60%")}</span><span class="stx"><span class="sk">{k}</span>{t}</span>{st}</div>'
+        if i == 0: rows += '<div class="sdiv">Actions</div>'
+    return f'<div class="acard steps"><div class="ah">{ph("Lightning", "fill", size="1cqw")} Overdue invoice follow-up</div>{rows}<div class="addstep">+ Add step</div></div>'
+
+def prompt_card(typed, pressed=False):
+    return (f'<div class="acard prompt"><small>Describe a task for Zenboard</small><p>{typed}<span class="caret"></span></p>'
+            f'<span class="cbtn{" pressed" if pressed else ""}">{ph("Sparkle", "fill", size="1em")} Create</span></div>')
+
+def f_auto_1():
+    s = auto_stage()
+    s += at(22, 11.5, steps_card(), "", "filter:blur(.05cqw)")
+    s += at(83, 13, '<div class="acard doc"><div class="dl"></div><div class="dl"></div><div class="dl s"></div><div class="dl"></div><div class="dl s"></div></div>'
+                    f'<div class="chipx">{ph("FileText", "fill", size="1.1cqw")} Add to a doc</div>', "", "filter:blur(.08cqw)")
+    s += at(6, 22, mark(9, BERRY, "filter:blur(.45cqw);opacity:.9"))
+    s += at(22, 45, prompt_card("When an invoice is 7 days overdue, send a friendly reminder and move it to Today"))
+    s += at(74, 44, '<div class="acard chart"><small>Q3 revenue</small><div class="semi"></div><div class="pct"><b>$18.4k</b><span>paid</span><b>$4.3k</b><span>open</span></div></div>', "", "filter:blur(.04cqw)")
+    s += at(92, 33, tile("money", 5.2))
+    s += at(50, 15.5, feat_logo(8.5))
+    s += at(50, 28, "Effortless automation", "head", "font-size:5cqw;letter-spacing:-.045em")
+    s += at(50, 34.5, "Describe it once. Zenboard does the work.", "cap", "font-size:1.6cqw;color:#77736A;font-weight:400")
+    return s
+
+def f_auto_2():
+    s = auto_stage()
+    s += at(25, 22, prompt_card("When an invoice is 7 days overdue, send a friendly reminder and move it to Today", pressed=True), "", "transform:translate(-50%,-50%) scale(1.15)")
+    s += '<div class="cursor" style="left:38.6%;top:45%"></div>'
+    s += at(66, 25, steps_card(state=2), "", "transform:translate(-50%,-50%) scale(1.25)")
+    s += at(40, 45, '<div class="acard mail"><small>Draft · to Fernwood Hotels</small><b>INV-019 is a week overdue</b>'
+                    '<p>Hi Marco, a friendly nudge on INV-019 ($1,500). Happy to resend it if that helps.</p></div>', "", "filter:blur(.05cqw)")
+    s += at(84, 49, f'<div class="toast">{ph("CheckCircle", "fill", size="1.2cqw")} Reminder sent to Fernwood Hotels</div>')
+    s += at(8, 50, feat_logo(4.2), "", "opacity:.95")
+    s += caption("Zenboard does the work.", y=52.5, size=2.3)
+    return s
+
+
 PILLS = [("Tasks", "sky"), ("Projects", "sand"), ("Invoices", "apricot"), ("Calendar", "berry"), ("Notes", "butter"),
          ("Habits", "petal"), ("Focus", "sky"), ("Clients", "peri"), ("Docs", "peri"), ("Goals", "sand"),
          ("Payments", "berry"), ("Time tracking", "sage"), ("Proposals", "sand"), ("Life", "sage"), ("Files", "petal"),
@@ -523,7 +575,7 @@ def blueprint(strength=1.0, tagline=False):
     g += f'<line x1="4" y1="24.6" x2="17" y2="24.6" {dl}/>'
     # right: component specimens (card, pill, checkbox) in outline
     g += f'<rect x="81" y="6" width="15" height="11" rx="1.1" {hl}/>' + t(81, 5.2, "Card / radius 12", "start", .4, .6)
-    g += f'<rect x="82.2" y="8.2" width="1.1" height="1.1" rx=".25" {hl}/><line x1="84.2" y1="8.75" x2="93" y2="8.75" {dl}/>'
+    g += f'<rect x="82.2" y="9.2" width="1.1" height="1.1" rx=".25" {hl}/><line x1="84.2" y1="8.75" x2="93" y2="8.75" {dl}/>'
     g += f'<rect x="82.2" y="10.7" width="1.1" height="1.1" rx=".25" fill="{a(.4)}"/><line x1="84.2" y1="11.25" x2="91" y2="11.25" {dl}/>'
     g += f'<rect x="82.2" y="13.6" width="7" height="2" rx="1" {hl}/>' + t(85.7, 14.95, "Start focus", "middle", .45, .5)
     g += f'<rect x="81" y="20" width="9" height="2.6" rx="1.3" {dl}/>' + t(81, 24.3, "Pill / full", "start", .35, .6)
@@ -547,6 +599,8 @@ def f_8_2(): return blueprint(1.0)
 def f_8_3(): return blueprint(.55, tagline=True)
 
 CAMERA = {
+ "6.1": "Slow push-in on the headline; the floating cards drift outward at three depths with DOF (far cards soft).",
+ "6.2": "Rack focus from the prompt card to the steps card as it runs; slight push-in on each tick.",
  "1.1": "Locked off, slow 2% push-in from 0:00.",
  "1.2": "Slow orbit drift, 3° of roll across the beat; tiles parallax at different depths.",
  "1.3": "Push-in 108%, rack focus: portrait sharp, outer tiles fall into bokeh.",
@@ -558,11 +612,11 @@ CAMERA = {
  "4.1": "Out of the flash: the window floats in 3D, tilted 14° back and 8° yaw, slow dolly-in and rise; shallow depth of field, far edge soft.",
  "4.2": "Close-up push on the tilted window along the plan rows (ref: macro dolly over the sidebar), then rotate flat to camera for the click.",
  "5.1": "Flat to camera (readable). Left list moves, right panel steps with a 2% scale pulse per feature.",
- "6.1": "Slow 4° tilt up across the wall, rows at two depths.",
- "7.1": "Low angle on the tiles, slight dolly left with each step.",
- "8.1": "Slow pull-back revealing the full ring; cards at three depths with DOF.",
- "8.2": "Slow 3% push-in while the lines draw; the lockup is locked centre.",
- "8.3": "Dead still. Nothing moves in the last 2 seconds.",
+ "7.1": "Slow 4° tilt up across the wall, rows at two depths.",
+ "8.1": "Low angle on the tiles, slight dolly left with each step.",
+ "9.1": "Slow pull-back revealing the full ring; cards at three depths with DOF.",
+ "9.2": "Slow 3% push-in while the lines draw; the lockup is locked centre.",
+ "9.3": "Dead still. Nothing moves in the last 2 seconds.",
 }
 # ---------- storyboard ----------
 SCENES = [
@@ -600,23 +654,29 @@ SCENES = [
            + FEAT_NOTES[FEATS[i][0]],
            FEATS[i][0], "Tick on the step, soft pop on the white card" if i else "Music enters the groove; tick, pop")
           for i in range(len(FEATS))],
-  out="The field of the last feature expands to fill the frame and the pills multiply into the wall."),
- dict(n=6, name="Pill wall", t="0:40–0:45", purpose="The breadth of Zenboard at a glance.",
-  frames=[("6.1", "0:40", f_6_1, "Rows of module pills scroll in alternating directions on a plain Berry field with fine grain. Every pill has a glass border and a Phosphor icon in a round chip; the Berry pills are frosted glass. No UI cards behind the pills.",
+  out="The Berry panel folds away to Paper; the Automations logo pops into the centre."),
+ dict(n=6, name="Zenboard does the work", t="0:40–0:46", purpose="Automation: describe a job once and watch Zenboard do it (ref: Effortless automation).",
+  frames=[("6.1", "0:40", f_auto_1, "Paper stage with soft coloured light. The Automations feature logo (Berry circle, lightning) pops in at the centre, the headline rises word by word, and real Zenboard pieces float around it at different depths: the automation steps card, a doc with Add to a doc, the prompt card, a Q3 revenue chart, the Zenboard mark as a soft glowing sparkle and a Money tile.",
+            "Effortless automation · Describe it once. Zenboard does the work.", "Soft whoosh as the cards drift in, a chime on the logo"),
+          ("6.2", "0:43", f_auto_2, "Zenboard opens the work: the prompt card comes forward, the cursor presses Create, and the steps card runs by itself. Trigger and draft tick green, Move to Today spins, the client portal step waits. A drafted reminder to Fernwood Hotels slides in and a toast confirms it was sent.",
+            "Zenboard does the work.", "Click on Create, a tick per step, a soft send whoosh")],
+  out="The toast pill multiplies into rows of pills: the pill wall."),
+ dict(n=7, name="Pill wall", t="0:46–0:51", purpose="The breadth of Zenboard at a glance.",
+  frames=[("7.1", "0:46", f_6_1, "Rows of module pills scroll in alternating directions on a plain Berry field with fine grain. Every pill has a glass border and a Phosphor icon in a round chip; the Berry pills are frosted glass. No UI cards behind the pills.",
             "—", "Rhythmic ticks on the beat")],
   out="One pill (Tasks) zooms to camera and turns into a 3D tile; the background drops to ink."),
- dict(n=7, name="Icon carousel", t="0:45–0:52", purpose="Each module as a physical, premium object. Semantical-style carousel.",
-  frames=[("7.1", "0:45", f_7_1, "Dark stage with a warm berry glow rising from the floor. Chunky 3D module tiles in a row; the centre tile is large and forward, and the sides crop off the frame. A label chip sits under the centre tile.",
+ dict(n=8, name="Icon carousel", t="0:51–0:58", purpose="Each module as a physical, premium object. Semantical-style carousel.",
+  frames=[("8.1", "0:51", f_7_1, "Dark stage with a warm berry glow rising from the floor. Chunky 3D module tiles in a row; the centre tile is large and forward, and the sides crop off the frame. A label chip sits under the centre tile.",
             "Tasks", "Low hum, soft clack"),
-          ("7.2", "0:48", f_7_2, "The row steps sideways with a spring snap, holds, and steps again: Tasks → Projects → Money → Habits.",
+          ("8.2", "0:54", f_7_2, "The row steps sideways with a spring snap, holds, and steps again: Tasks → Projects → Money → Habits.",
             "Habits", "Clack per step, on the beat")],
   out="The glow blooms to Paper and the tiles scatter outward into a ring of cards."),
- dict(n=8, name="The one", t="0:52–1:04", purpose="A calm resolution: everything around one workspace, then the logo.",
-  frames=[("8.1", "0:52", f_8_1, "A ring of designed UI cards built from the real app's content in the premium card language: calendar day, today's highlight, outstanding $4,300 with client bars, Meridian Studio with Sarah's face, paid and unbilled stat pills, a 12-day habit streak, inbox, the Acme proposal with Mara's approval and a focus timer. They sit around a centred headline and drift slowly at three depths.",
+ dict(n=9, name="The one", t="0:58–1:10", purpose="A calm resolution: everything around one workspace, then the logo.",
+  frames=[("9.1", "0:58", f_8_1, "A ring of designed UI cards built from the real app's content in the premium card language: calendar day, today's highlight, outstanding $4,300 with client bars, Meridian Studio with Sarah's face, paid and unbilled stat pills, a 12-day habit streak, inbox, the Acme proposal with Mara's approval and a focus timer. They sit around a centred headline and drift slowly at three depths.",
             "“Work, life and business. One workspace.”", "Music opens up"),
-          ("8.2", "0:58", f_8_2, "Light flash into the outro. On the Berry field (dark to light, fine grain) a blueprint draws on in hairlines and dotted lines: the construction of the Zenboard mark (32-unit box, four lobe circles, diagonals, star angle), a Geist type specimen, outline component cards, grid blocks and mono notes. The lockup lands in the centre, crisp white, framed by rails with corner handles.",
+          ("9.2", "1:04", f_8_2, "Light flash into the outro. On the Berry field (dark to light, fine grain) a blueprint draws on in hairlines and dotted lines: the construction of the Zenboard mark (32-unit box, four lobe circles, diagonals, star angle), a Geist type specimen, outline component cards, grid blocks and mono notes. The lockup lands in the centre, crisp white, framed by rails with corner handles.",
             "Zenboard", "Pen-scratch ticks as lines draw, the chime on the lockup"),
-          ("8.3", "1:00", f_8_3, "The blueprint dims to about half so the lockup owns the frame. The tagline rises word by word, then Available today. Nothing moves in the last two seconds.",
+          ("9.3", "1:06", f_8_3, "The blueprint dims to about half so the lockup owns the frame. The tagline rises word by word, then Available today. Nothing moves in the last two seconds.",
             "The single platform to manage work, life, and business. · Available today", "The chime resolves, held chord")],
   out=None),
 ]

@@ -127,7 +127,15 @@ The product UI in the film should look like the green "Project Status" reference
 ### D12 — Type rule
 - Never full caps, anywhere: labels, pills, mono notes and chips use sentence or title case.
 
-### D13+ — (more directions to come)
+### D13 — Automation scene (ref: Google Workspace "Effortless automation")
+- New scene 6 "Zenboard does the work" (0:40–0:46); later scenes shift, film now 1:10.
+- 6.1: Automations feature logo (Berry circle, lightning) centred, big headline "Effortless automation",
+  real Zenboard pieces floating around at three depths (steps card, doc + Add to a doc, prompt card,
+  Q3 revenue chart, soft glowing mark, Money tile).
+- 6.2: Zenboard opens the work: cursor presses Create, the steps run by themselves (ticks, spinner),
+  a drafted reminder to Fernwood Hotels slides in, toast "Reminder sent".
+
+### D14+ — (more directions to come)
 
 ## Brand note
 The Zenboard brand guidelines (Paper / Ink / single Berry accent, eight flat field colours, no gradients)

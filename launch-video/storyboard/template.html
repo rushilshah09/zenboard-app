@@ -122,9 +122,9 @@ dd{margin:0;color:var(--ink)}
     <div>
       <div class="lk">{{LOCKUP}}</div>
       <h1>Launch film storyboard, v4</h1>
-      <p>Eight scenes, 24 keyframes. It follows the review directions D1–D7: the juggling opener, the Flike-style resolve and funnel, the Berry product field, the split-screen modules, the plain pill wall, the 3D icon carousel and a calm ending.</p>
+      <p>Nine scenes, 26 keyframes. It follows the review directions D1–D7: the juggling opener, the Flike-style resolve and funnel, the Berry product field, the split-screen modules, the plain pill wall, the 3D icon carousel and a calm ending.</p>
     </div>
-    <div class="meta"><span>1:04</span><span>120 BPM</span><span>16:9 · 1080p60</span><span>Geist</span></div>
+    <div class="meta"><span>1:10</span><span>120 BPM</span><span>16:9 · 1080p60</span><span>Geist</span></div>
   </div>
   <div class="how"><b>How to review:</b> reply with frame numbers, e.g. <code>approve 1.1–2.3</code>, <code>change 4.1: darker field</code>. These are layout keyframes. Final frames get real rendering, 3D lighting, depth of field and grain.</div>
   <ul class="assume">
@@ -341,3 +341,28 @@ dd{margin:0;color:var(--ink)}
 .dh2{display:flex;align-items:center;gap:.45cqw}.dh2 i{width:.8cqw;height:.8cqw;border-radius:.2cqw;border:.1cqw solid #5B5752}.dh2 i.on{background:#C41C72;border-color:#C41C72}.dh2 em{margin-left:auto;font-style:normal;font-family:'Geist Mono',monospace;font-size:.65cqw;color:#8A857C}
 .dcl{display:flex;align-items:center;gap:.45cqw}.dcl em{margin-left:auto}.dface2{width:1.3cqw;height:1.3cqw;border-radius:50%;overflow:hidden;flex:none}.dface2 img{width:100%;height:100%;object-fit:cover;display:block;max-width:none}
 </style>
+<style>
+/* scene 6 automation */
+.flogo{border-radius:50%;display:grid;place-items:center;color:#fff;background:radial-gradient(circle at 35% 30%,#E0468F,#C41C72 55%,#9E1458);box-shadow:0 0 0 .6cqw rgba(255,255,255,.7),0 0 0 .7cqw rgba(196,28,114,.12),0 1.4cqw 3.4cqw rgba(196,28,114,.35)}
+.acard{background:#fff;border-radius:1.1cqw;padding:1cqw 1.2cqw;box-shadow:0 1.2cqw 3cqw rgba(90,15,54,.12),0 .1cqw .3cqw rgba(0,0,0,.04);border:.1cqw solid rgba(25,25,25,.05);text-align:left;color:#191919;font-size:.85cqw}
+.acard small{display:block;font-size:.75cqw;color:#77736A}
+.steps{width:26cqw;display:flex;flex-direction:column;gap:.45cqw}.ah{display:flex;align-items:center;gap:.4cqw;font-weight:600;font-size:.95cqw;color:#191919}.ah svg{color:#C41C72}
+.stp{display:flex;align-items:center;gap:.55cqw;background:#FAF8F3;border:.08cqw solid rgba(25,25,25,.06);border-radius:.55cqw;padding:.45cqw .6cqw}
+.stp em{font-style:normal;font-weight:600;margin-right:.2cqw}.stp b{margin-left:auto;display:grid;place-items:center}
+.sico{width:1.5cqw;height:1.5cqw;border-radius:.4cqw;background:#FAEDF4;color:#C41C72;display:grid;place-items:center;flex:none}
+.stp .ok{color:#2F9E6B}.stp .run{width:1cqw;height:1cqw;border-radius:50%;border:.15cqw solid #F1D2E1;border-top-color:#C41C72}.stp .wait{width:1cqw;height:1cqw;border-radius:50%;border:.12cqw dashed #CFCAC0}
+.stp.done{background:#F2F8EF;border-color:rgba(47,158,107,.18)}
+.sdiv{font-size:.7cqw;color:#9A948A;margin:.15cqw 0 0 .2cqw}.addstep{font-size:.75cqw;color:#9A948A;text-align:center}
+.prompt{width:28cqw;display:flex;flex-direction:column;gap:.5cqw;background:rgba(255,255,255,.92)}.prompt small{color:#C41C72}.prompt p{margin:0;font-size:1.05cqw;line-height:1.4;color:#191919}
+.caret{display:inline-block;width:.1cqw;height:1.1cqw;background:#C41C72;vertical-align:-.15cqw;margin-left:.1cqw}
+.cbtn{align-self:flex-end;display:inline-flex;align-items:center;gap:.35cqw;background:#C41C72;color:#fff;border-radius:99px;padding:.5cqw 1.1cqw;font-size:.9cqw;font-weight:500;box-shadow:0 .5cqw 1.2cqw rgba(196,28,114,.3)}
+.cbtn.pressed{transform:scale(.94);box-shadow:0 0 0 .5cqw rgba(196,28,114,.18)}
+.doc{width:13cqw;height:16cqw;display:flex;flex-direction:column;gap:.6cqw;padding-top:2cqw}.dl{height:.5cqw;border-radius:99px;background:#ECE8E0}.dl.s{width:65%}
+.chipx{position:absolute;left:-7cqw;top:58%;display:inline-flex;align-items:center;gap:.5cqw;background:#fff;border-radius:.6cqw;padding:.7cqw 1cqw;font-size:.9cqw;color:#37352F;box-shadow:0 1cqw 2.4cqw rgba(90,15,54,.14)}.chipx svg{color:#3C6FD8}
+.chart{width:22cqw;display:flex;flex-wrap:wrap;align-items:flex-end;gap:1cqw}.chart small{width:100%;font-size:1cqw;color:#37352F}
+.semi{width:12cqw;height:6cqw;border-radius:12cqw 12cqw 0 0;background:conic-gradient(from -90deg at 50% 100%,#C41C72 0 70deg,#E07AAE 70deg 125deg,#F3C6DC 125deg 180deg,transparent 180deg);-webkit-mask:radial-gradient(circle at 50% 100%,transparent 3cqw,#000 3.05cqw);mask:radial-gradient(circle at 50% 100%,transparent 3cqw,#000 3.05cqw)}
+.pct{display:grid;grid-template-columns:auto auto;gap:.1cqw .5cqw;align-items:baseline}.pct b{font-size:1.5cqw;color:#C41C72;letter-spacing:-.03em}.pct span{color:#77736A}
+.mail{width:24cqw;display:flex;flex-direction:column;gap:.4cqw}.mail b{font-size:1.05cqw}.mail p{margin:0;color:#4A463E;line-height:1.45}
+.toast{display:inline-flex;align-items:center;gap:.6cqw;background:#191919;color:#fff;border-radius:99px;padding:.7cqw 1.3cqw;font-size:.95cqw;box-shadow:0 1cqw 2.6cqw rgba(25,25,25,.25);white-space:nowrap}.toast svg{color:#6FCF9D}
+</style>
+<style>.stx{flex:1;display:flex;gap:.45cqw;text-align:left;justify-content:flex-start}.sk{font-weight:600;color:#191919}.stp{justify-content:flex-start}</style>
