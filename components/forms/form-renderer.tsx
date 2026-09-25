@@ -231,7 +231,7 @@ export function FormRenderer({
             if (e.key === 'Enter' && !e.shiftKey && block.type !== 'long_text') { e.preventDefault(); advance(block); }
           }}
         >
-          <h1 className="font-display text-h2 leading-snug text-ink-900">
+          <h1 className="font-editorial text-h2 leading-snug text-ink-900">
             {block.label?.trim() || 'Question'}
             {!block.required && <span className="ml-2 align-middle text-meta font-normal text-ink-500">Optional</span>}
           </h1>

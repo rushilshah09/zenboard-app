@@ -262,7 +262,7 @@ function StepShell({ icon, kicker, title, children }: { icon: IconType; kicker: 
       <div className="mb-2 inline-flex items-center gap-1.5 text-overline text-ink-500">
         <Icon icon={icon} size={14} /> {kicker}
       </div>
-      <h1 className="mb-5 text-title-1 font-medium text-balance text-ink-900">{title}</h1>
+      <h1 className="font-editorial mb-5 text-title-1 font-medium text-balance text-ink-900">{title}</h1>
       {children}
     </div>
   );

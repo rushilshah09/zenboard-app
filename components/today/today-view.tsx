@@ -261,7 +261,7 @@ export function TodayView({
         <header className="px-[var(--panel-px)]">
           <div className="mb-2 flex items-center gap-1.5">
             <Mark size={24} />
-            <h1 className="text-title-2 leading-none font-medium text-balance text-ink-800">{greeting}, {name}.</h1>
+            <h1 className="font-editorial text-title-2 leading-none font-medium text-balance text-ink-800">{greeting}, {name}.</h1>
           </div>
           <p className="text-ui text-ink-500">
             {open.length === 0 ? <>Nothing planned for today yet.</> : <>

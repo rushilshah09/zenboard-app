@@ -289,7 +289,7 @@ export function FocusView({ initialTasks, subsByTask, projects }: {
                       larger because this task is the page. */}
                   <Checkbox checked={false} onCheckedChange={() => complete(active.id)} aria-label="Complete task" className="mt-1 size-5 shrink-0" />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 'var(--text-h2-size)', color: 'var(--ink)', lineHeight: 1.4 }}>{active.title}</div>
+                    <div style={{ fontFamily: 'var(--font-editorial)', fontSize: 'var(--text-h2-size)', color: 'var(--ink)', lineHeight: 1.4 }}>{active.title}</div>
                     {/* The same facts, marks and order as the task's row everywhere else. */}
                     <TaskMeta layout="card" className="mt-2" project={proj} priority={active.priority} />
                   </div>

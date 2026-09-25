@@ -574,7 +574,7 @@ export function TaskDetailDrawer() {
                       if (next !== node.title) commit(node.id, { title: next });
                     }}
                     ref={fitHeight} onInput={(e) => fitHeight(e.currentTarget)}
-                    style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', resize: 'none', overflow: 'hidden', fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: 'var(--text-stat-size)', lineHeight: 1.2, letterSpacing: '-0.015em', color: node.done ? 'var(--text-secondary)' : 'var(--ink)', textDecoration: node.done ? 'line-through' : 'none', padding: 0 }} />
+                    style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', resize: 'none', overflow: 'hidden', fontFamily: 'var(--font-editorial)', fontWeight: 500, fontSize: 'var(--text-stat-size)', lineHeight: 1.2, letterSpacing: '-0.015em', color: node.done ? 'var(--text-secondary)' : 'var(--ink)', textDecoration: node.done ? 'line-through' : 'none', padding: 0 }} />
                 </div>
 
                 {/* meta chips */}

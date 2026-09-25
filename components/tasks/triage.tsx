@@ -222,7 +222,7 @@ export function Triage({ items, projects, labels = [], onComplete, onSchedule, o
           /* The reward state — the only budgeted moment of delight. */
           <div className="text-center" style={{ animation: 'fade-rise var(--duration-base) var(--ease-out-quiet)' }}>
             <div className="flex justify-center"><Icon icon={Check} size={24} className="text-accent-text" /></div>
-            <div className="mt-3 text-title-2 text-ink-900">Inbox is clear.</div>
+            <div className="font-editorial mt-3 text-title-2 text-ink-900">Inbox is clear.</div>
             <div className="mt-1 text-ui text-ink-500">
               {canUndo ? <>Every thought has a home. <Kbd keys={['Z']} /> to undo · <Kbd keys={['Enter']} /> to close.</> : <>Every thought has a home. Press <Kbd keys={['Enter']} /> to close.</>}
             </div>
@@ -235,7 +235,7 @@ export function Triage({ items, projects, labels = [], onComplete, onSchedule, o
               {age(cur.created_at)}
               {cur.priority !== 'low' && <span className="inline-flex items-center gap-1.5"><PriorityBars level={cur.priority} size={11} />{PRIO_LABEL[cur.priority]}</span>}
             </div>
-            <div className="text-title-1 leading-tight text-ink-900" style={{ overflowWrap: 'anywhere' }}>{cur.title}</div>
+            <div className="font-editorial text-title-1 leading-tight text-ink-900" style={{ overflowWrap: 'anywhere' }}>{cur.title}</div>
 
             {/* Decision row / sub-panels */}
             <div className="mt-7 min-h-[76px]">

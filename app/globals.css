@@ -388,9 +388,21 @@
   --scrim-color: #000000;
 
   /* Legacy font names → §6 stacks (tokens.css wires next/font handles).
-     --font-editorial resolves to the UI sans — the Fraunces serif is retired. */
+
+     ── THE EDITORIAL VOICE (identity brief, 2026-09-25 — IDENTITY_BRIEF.md) ──────────────────
+     Content TITLES are set in Source Serif 4; everything you operate stays Geist. Of the four
+     references the user sent (Slack, Notion, X, Linear) every one is sans throughout — each owns a
+     different signature (a coloured chrome, a typographic page, heavy type, an inset canvas). A
+     serif title voice is the move none of them makes, and it suits who Zenboard is for: studios
+     and people who make things, for whom a workspace reads better as a well-set page than a panel.
+
+     This REVISITS a retired choice, deliberately and narrowly. Fraunces left with Paper OS in the
+     2026-07-18 B&G redesign — tint, grain and serif removed together — and the failure recorded
+     from that era was AREA (tint on the largest surfaces), not type. So: titles only, never a
+     surface, never UI chrome, on the neutral palette the user chose. It departs from CLAUDE.md's
+     "one family" rule pending the user's confirmation; reverting it is this one line. */
   --font-body: var(--font-ui);
-  --font-editorial: var(--font-ui);
+  --font-editorial: var(--font-serif);
 
   /* ── ELEVATION — B&G: borders define hierarchy, shadows are ambient-only.
      A hairline ring + one soft black layer, never large, never colored. */
@@ -1098,3 +1110,14 @@ input:focus-visible, textarea:focus-visible, [contenteditable]:focus-visible { o
 /* No reduced-motion fallback: flash-highlight is a colour pulse, not movement,
    and colour is what reduced motion keeps. The flat-wash fallback that used to
    sit here existed only because a global reset collapsed every animation. */
+
+
+/* ── THE TITLE OF THE THING YOU ARE LOOKING AT ─────────────────────────────
+   Every `text-h1` in the app is a CONTENT title — a record, a document, a form, the portal, the
+   sign-in headline — so the role itself carries the editorial voice, and a new page gets it without
+   remembering to ask. `:where()` keeps this at zero specificity: any explicit family at a call site
+   (a mono ID, say) still wins. Content titles on OTHER roles opt in with `font-editorial`; UI that
+   borrows a large size (⌘K's query, quick capture, a stat's figure) never does. */
+:where(.text-h1) {
+  font-family: var(--font-editorial);
+}
