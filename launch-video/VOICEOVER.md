@@ -13,6 +13,12 @@ between phrases. Warmer and slower from "Zenboard" onward.
 Speaker boost on · Speed 0.95. `<break>` tags work on v2 / Turbo / Flash; on Eleven v3 delete
 them and let the punctuation carry the pauses.
 
+## Current voice
+
+Recorded in ElevenLabs (voice: Cassidy, "Crisp, Direct and Clear") as one take,
+`audio-src/voiceover-take.mp3`. `python3 scripts/cut-voiceover.py` cuts it into the 13 clips
+below and levels them; re-run it after replacing the take (and update its cut points).
+
 ## How to add it
 
 Render **one clip per line** and save it as `public/vo/<File>` (MP3). The film plays each clip at
