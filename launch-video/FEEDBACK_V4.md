@@ -12,6 +12,7 @@ work starts one direction at a time only after the go-ahead.
 | Flike stills (6–10) | Ring of apps + chat cards, colour ring resolve into logo, app cables merging into one node. |
 | Card refs (Flike UI, Valley ring collage, Fiverr berry banner) | Feature-card styling (D5). |
 | Card look refs (green Project Status card; Morphosis, Lovable, rust WELCOME UI) | UI card look & background (D6). |
+| Animation refs (Equator split screen, 3D terminal icon, Semantical carousel) | Animation patterns (D7). |
 | `refs/app-ui/*.png` | Real Zenboard app screens — the source for every UI element in the film. |
 | Pill wall frame (`1.webp`) | The pill wall itself stays; the look behind it changes (see D2). |
 
@@ -81,7 +82,23 @@ The product UI in the film should look like the green "Project Status" reference
   dark neutral UI, Geist, dense rows, small coloured tags, Berry accents. UI inside the film cards is
   rebuilt from these screens, not invented.
 
-### D7+ — (more directions to come)
+### D7 — How we animate (refs: Equator split screen, 3D terminal icon, Semantical icon carousel)
+- **Split-screen scroll-and-sync (Equator):** left half = a flat brand-colour panel with a vertical list of
+  big pills (icon + label, mono caps) scrolling continuously; the pill passing the centre line turns solid
+  white = "active". Right half = a stack of feature cards on a light Paper stage that swaps to the matching
+  card each time a new pill becomes active (front card slides/scales in, previous ones peek behind,
+  slightly offset and tinted). Brand mark small in the corner. → use for the Zenboard modules
+  (Tasks, Projects, Docs, Calendar, Clients, Money, Habits…) with real app cards on the right.
+- **3D app icons (terminal icon):** Zenboard module icons as soft, chunky 3D tiles — rounded square,
+  bevelled rim with a thin highlight, inset pill "screen", matte surface, lit from the top-left.
+- **Icon carousel (Semantical):** a horizontal row of those 3D tiles on a dark stage sliding sideways,
+  the centre tile scaling up and coming forward, sides smaller and cropping off the frame edges; a label
+  chip under the centre tile changes with each step (spring snap, not linear scroll); a soft warm glow
+  rising from the bottom edge. Tiles use brand field colours + paper white, with the Zenboard star
+  cut-out as the glyph motif (like Semantical's sparkle).
+- Motion rule for all three: step → spring settle → short hold → next step, on the beat.
+
+### D8+ — (more directions to come)
 
 ## Brand note
 The Zenboard brand guidelines (Paper / Ink / single Berry accent, eight flat field colours, no gradients)
