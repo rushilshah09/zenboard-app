@@ -72,7 +72,7 @@ export const S2Resolve: React.FC = () => {
                 <At x={tx} y={ty} style={{ opacity: Math.min(1, p * 1.4) * (1 - absorb), transform: `scale(${p * (1 - absorb * 0.8)}) rotate(${absorb * 90}deg)` }}>
                   <span className={`ricon ${shape(ic)}`} style={{ ["--c" as string]: c }}><Icon name={ic} weight="fill" size="54%" color="#fff" /></span>
                 </At>
-                <At x={50 + u * sp} y={CY + v * sp * 0.92 + 4.4} style={{ opacity: ease(f, 175 + i * 3, 190 + i * 3, 0, 1) * (1 - ease(f, 200, 212, 0, 1)) }}><span className="rlab">{label}</span></At>
+                <At x={50 + u * sp} y={CY + v * sp * 0.92 + 3.75} style={{ opacity: ease(f, 175 + i * 3, 190 + i * 3, 0, 1) * (1 - ease(f, 200, 212, 0, 1)) }}><span className="rlab">{label}</span></At>
               </React.Fragment>
             );
           })}

@@ -224,7 +224,7 @@ def f_2_3r():
     s += icon_ring(sp)
     labels = ["Tasks", "Mail", "Calendar", "Docs", "Projects", "Clients", "Money", "Habits", "Focus", "Automations"]
     for (u, v), t in zip(pos, labels):
-        s += at(50 + u * sp, 28.1 + v * sp * .92 + 4.4, f'<span class="rlab">{t}</span>')
+        s += at(50 + u * sp, 28.1 + v * sp * .92 + 3.75, f'<span class="rlab">{t}</span>')
     s += at(50, 28.1, gmark(7))
     return s
 
