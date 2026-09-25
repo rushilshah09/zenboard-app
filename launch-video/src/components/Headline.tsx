@@ -2,7 +2,7 @@ import React from "react";
 import { interpolateColors, useCurrentFrame } from "remotion";
 import { FONT } from "../brand/fonts";
 import { DUR, EASE, clamp, leave, rise } from "../brand/motion";
-import { aurora, colour, type, TypeStyle } from "../brand/tokens";
+import { colour, energy, type, TypeStyle } from "../brand/tokens";
 
 /**
  * The only way text enters the film (§4): words rise 24px and fade in with a
@@ -12,11 +12,11 @@ import { aurora, colour, type, TypeStyle } from "../brand/tokens";
  * `|` splits phrases that can land on their own beats via `phraseAt`.
  */
 type Tone = "ink" | "stone" | "pink" | "white" | "whiteMuted";
-const TONE: Record<Tone, string> = { ink: colour.ink, stone: colour.stone, pink: colour.pink, white: colour.white, whiteMuted: "rgba(255, 255, 255, 0.62)" };
-/** Words arrive warm (Jurni's shimmer): coral → pink → their final colour. */
+const TONE: Record<Tone, string> = { ink: colour.ink, stone: colour.stone, pink: colour.pink, white: "#F7F1E8", whiteMuted: "rgba(247, 241, 232, 0.62)" };
+/** Words arrive lit by the energy light (apricot → pink) and cool to their final colour. */
 const shimmer = (frame: number, start: number, to: string) => {
   const p = clamp(frame, [start, start + 26], [0, 1], EASE.settle);
-  return p < 0.5 ? interpolateColors(p, [0, 0.5], [aurora.coral, aurora.pink]) : interpolateColors(p, [0.5, 1], [aurora.pink, to]);
+  return p < 0.5 ? interpolateColors(p, [0, 0.5], [energy.apricot, energy.pink]) : interpolateColors(p, [0.5, 1], [energy.pink, to]);
 };
 
 export const Headline: React.FC<{

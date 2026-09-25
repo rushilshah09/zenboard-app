@@ -4,58 +4,53 @@
  */
 
 /**
- * "Zenboard Aurora" — the launch film's look (STYLE.md): a bright warm-white
- * canvas under living violet → pink → coral gradients, white floating UI,
- * deep plum ink, and full-bleed gradient brand moments.
+ * v3 "Everything → One" (DIRECTION_V3.md §2). Two stages, Ink and Ivory, and
+ * one energy gradient that is only ever light, never a flat background.
  */
 export const colour = {
-  /** Canvas: warm white under the aurora. */
-  paper: "#FBF8F6",
-  /** App windows, UI panels, cards. */
+  /** Ivory stage and warm surfaces. */
+  paper: "#F7F1E8",
+  /** UI panels and cards. */
   card: "#FFFFFF",
-  /** Deep plum: headlines, UI text, linework. */
-  ink: "#1B1020",
-  /** Ink at 55%: secondary text, de-emphasised words, inactive UI. */
-  stone: "rgba(27, 16, 32, 0.52)",
-  /** Borders, dividers, skeleton fills. */
-  hairline: "#ECE4EC",
-  /** Zenboard Pink: the brand accent. */
+  /** Deep Burgundy: text and linework. Never pure black. */
+  ink: "#280417",
+  /** Ink at 55%: secondary text. */
+  stone: "rgba(40, 4, 23, 0.55)",
+  /** Soft Sand: borders, dividers. */
+  hairline: "#E8D8C5",
+  /** Zenboard Pink. */
   pink: "#C41C72",
-  /** Selected rows, soft pink surfaces. */
-  blush: "#FBE2EE",
-  /** Type and marks on the full-bleed gradient. */
+  /** Blush: selected rows, soft pink surfaces. */
+  blush: "#F3D9E5",
   white: "#FFFFFF",
 } as const;
 
-/** The aurora: the gradient family behind everything (and full-bleed on brand moments). */
-export const aurora = {
-  violet: "#8A74FF",
-  periwinkle: "#7FA4FF",
-  pink: "#E6358A",
-  coral: "#FF8A5C",
-  peach: "#FFC2A1",
+/** The two stages the film takes place on. */
+export const stage = {
+  /** Ink: deep burgundy at the centre falling to a darker burgundy at the edges, with a dusty-rose haze. */
+  ink: "#280417",
+  inkEdge: "#120109",
+  haze: "#A94A72",
+  /** Type on the Ink stage. */
+  inkText: "#F7F1E8",
+  /** Ivory: warm cream with a soft shadow floor. */
+  ivory: "#F7F1E8",
 } as const;
 
-/** The void of the chaos acts: deep plum, never pure black. */
-export const voidColour = "#0D0915";
-
-/** UI on the void: glassy panels with light hairlines that glow (ElevenLabs). */
-export const glass = {
-  fill: "rgba(255, 255, 255, 0.045)",
-  line: "rgba(255, 255, 255, 0.14)",
-  text: "rgba(255, 255, 255, 0.92)",
-  muted: "rgba(255, 255, 255, 0.48)",
-  glow: "0 0 0 1px rgba(160, 140, 255, 0.10), 0 0 40px rgba(122, 96, 255, 0.18), 0 30px 80px rgba(0, 0, 0, 0.45)",
+/** The energy gradient: light only (orb, rims, pulses, glows, the bloom under the logo). */
+export const energy = {
+  pink: "#C41C72",
+  rose: "#E8A8C5",
+  apricot: "#E8B88A",
+  lavender: "#AAA0D4",
 } as const;
-
-/** The brand gradient as CSS, for full-bleed moments, text shimmer and lines. */
-export const brandGradient = `linear-gradient(115deg, ${aurora.periwinkle} 0%, ${aurora.violet} 28%, ${aurora.pink} 62%, ${aurora.coral} 100%)`;
+export const energyGradient = (angle = 90) => `linear-gradient(${angle}deg, ${energy.lavender} 0%, ${energy.pink} 30%, ${energy.rose} 65%, ${energy.apricot} 100%)`;
 
 /** Faint ink tints for UI fills (skeleton bars, highlights) — never grey. */
 export const tint = {
-  ink06: "rgba(27, 16, 32, 0.05)",
-  ink10: "rgba(27, 16, 32, 0.09)",
-  ink16: "rgba(27, 16, 32, 0.15)",
+  ink06: "rgba(40, 4, 23, 0.06)",
+  ink10: "rgba(40, 4, 23, 0.10)",
+  ink16: "rgba(40, 4, 23, 0.16)",
 } as const;
 
 export type Category = "tasks" | "projects" | "docs" | "notes" | "calendar" | "money" | "clients" | "life";
@@ -90,5 +85,7 @@ export const space = { s1: 8, s2: 16, s3: 24, s4: 32, s6: 48, s8: 64, s12: 96, s
 /** Radii: 20 windows, 12 cards (concentric: 20 = 12 + 8 inset), 999 pills. */
 export const radius = { window: 20, card: 12, inner: 8, pill: 999 } as const;
 
-/** Floating-card shadow: deep, soft, violet-tinted, so white UI hovers over the aurora. */
-export const shadow = "0 40px 90px rgba(76, 40, 130, 0.16), 0 8px 24px rgba(76, 40, 130, 0.08), 0 1px 2px rgba(76, 40, 130, 0.06)";
+/** Panel shadow on Ivory: contact, ambient, far, all burgundy-tinted (v2 §2, carried into v3). */
+export const shadow = "0 1px 2px rgba(40, 4, 23, 0.08), 0 8px 24px rgba(40, 4, 23, 0.08), 0 40px 80px rgba(40, 4, 23, 0.10)";
+/** Panel material: 1px inner top highlight and an 8% burgundy hairline. */
+export const panelEdge = "inset 0 1px 0 rgba(255, 255, 255, 0.7), inset 0 0 0 1px rgba(40, 4, 23, 0.08)";
