@@ -1,6 +1,6 @@
 import React from "react";
 import { useCurrentFrame } from "remotion";
-import { Sfx, Voiceover } from "../components/Audio";
+import { Sfx } from "../components/Audio";
 import { Camera } from "../components/Camera";
 import { Cursor } from "../components/Cursor";
 import { Place, during } from "../components/DebugZones";
@@ -235,7 +235,6 @@ const ModuleScene: React.FC<{ id: ModuleId }> = ({ id }) => {
           <Sfx at={VIEW_AT + MONEY.paidAt} sound="chime-single" volume={0.8} />
         </>
       ) : null}
-      <Voiceover id={id} at={12} />
     </Scene>
   );
 };
@@ -282,7 +281,6 @@ export const S16: React.FC = () => {
       {NAV.map((_, i) => (
         <Sfx key={i} at={TRACE[0] + (i / (NAV.length - 1)) * (TRACE[1] - TRACE[0])} sound="tick-tuned" variant={i} volume={0.18} />
       ))}
-      <Voiceover id="S16" at={8} />
     </Scene>
   );
 };

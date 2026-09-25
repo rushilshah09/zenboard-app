@@ -1,6 +1,6 @@
 import React from "react";
 import { useCurrentFrame } from "remotion";
-import { Sfx, Voiceover } from "../components/Audio";
+import { Sfx } from "../components/Audio";
 import { Camera } from "../components/Camera";
 import { Place, during } from "../components/DebugZones";
 import { Headline } from "../components/Headline";
@@ -49,8 +49,6 @@ export const S01: React.FC = () => {
         <ActOneHeadline offset={0} />
       </Camera>
       <Sfx at={PHRASE_AT[0]} sound="pen-tap" volume={0.3} />
-      <Voiceover id="S01" at={PHRASE_AT[0]} />
-      <Voiceover id="S02" at={PHRASE_AT[1]} />
     </Scene>
   );
 };

@@ -1,6 +1,6 @@
 import React from "react";
 import { useCurrentFrame } from "remotion";
-import { Sfx, Voiceover } from "../components/Audio";
+import { Sfx } from "../components/Audio";
 import { Camera } from "../components/Camera";
 import { Place, during } from "../components/DebugZones";
 import { Headline } from "../components/Headline";
@@ -41,7 +41,6 @@ export const S17: React.FC = () => {
         </Place>
       </Camera>
       <Sfx at={4} sound="breath" volume={0.06} />
-      <Voiceover id="S17" at={PHRASES_S17[0]} />
     </Scene>
   );
 };
@@ -88,7 +87,6 @@ export const S18: React.FC = () => {
         </Place>
       </Camera>
       <Sfx at={8} sound="chime-resolved" volume={0.9} />
-      <Voiceover id="S18" at={20} />
     </Scene>
   );
 };

@@ -55,3 +55,25 @@ export const actRange = (act: Act): [number, number] => {
   const end = sceneStart(ids[ids.length - 1]) + frames(ids[ids.length - 1]);
   return [start, end];
 };
+
+/**
+ * Voice-over cues (§6: optional, same lines as on screen, none in act 3).
+ * One clip per line at public/vo/<id>.mp3. Cues sit on their own track,
+ * so a line may run past its scene's cut; `max` is the room before the next
+ * cue (seconds) — keep each clip under it. See VOICEOVER.md.
+ */
+export const VO_CUES: { id: SceneId; at: number }[] = [
+  { id: "S01", at: sceneStart("S01") + 16 },
+  { id: "S02", at: sceneStart("S01") + 160 },
+  { id: "S04", at: sceneStart("S04") + beat(1) },
+  { id: "S08", at: sceneStart("S08") + 40 },
+  { id: "S09", at: sceneStart("S09") + 40 },
+  { id: "S11", at: sceneStart("S11") + 12 },
+  { id: "S12", at: sceneStart("S12") + 12 },
+  { id: "S13", at: sceneStart("S13") + 12 },
+  { id: "S14", at: sceneStart("S14") + 12 },
+  { id: "S15", at: sceneStart("S15") + 12 },
+  { id: "S16", at: sceneStart("S16") + 8 },
+  { id: "S17", at: sceneStart("S17") + 16 },
+  { id: "S18", at: sceneStart("S18") + 20 },
+];

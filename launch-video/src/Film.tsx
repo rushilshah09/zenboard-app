@@ -1,9 +1,9 @@
 import React from "react";
 import { Audio } from "@remotion/media";
-import { AbsoluteFill, Img, Series, getStaticFiles, interpolate, staticFile } from "remotion";
+import { AbsoluteFill, Img, Sequence, Series, getStaticFiles, interpolate, staticFile } from "remotion";
 import { hasFile } from "./components/media";
 import { colour } from "./brand/tokens";
-import { SCENES, SceneId, TOTAL_FRAMES, beat } from "./brand/timeline";
+import { SCENES, SceneId, TOTAL_FRAMES, VO_CUES, beat } from "./brand/timeline";
 import { S01, S02 } from "./scenes/Act1";
 import { S03, S04 } from "./scenes/Act2";
 import { S05, S06, S07 } from "./scenes/Act3";
@@ -37,6 +37,12 @@ export const Film: React.FC = () => {
           <Img src={staticFile("img/IMG-04.png")} style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.035 }} />
         </AbsoluteFill>
       ) : null}
+      {/* Voice-over track: each cue plays public/vo/<id>.mp3 if it exists. */}
+      {VO_CUES.filter((c) => hasFile(`vo/${c.id}.mp3`)).map((c) => (
+        <Sequence key={c.id} from={c.at} layout="none" name={`vo:${c.id}`}>
+          <Audio src={staticFile(`vo/${c.id}.mp3`)} />
+        </Sequence>
+      ))}
       <Audio
         src={staticFile("audio/score.wav")}
         volume={(f) => interpolate(f, [0, TOTAL_FRAMES - 30, TOTAL_FRAMES], [bed, bed, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })}

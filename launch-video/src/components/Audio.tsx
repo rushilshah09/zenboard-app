@@ -1,7 +1,6 @@
 import React from "react";
 import { Audio } from "@remotion/media";
 import { Sequence, staticFile } from "remotion";
-import { hasFile } from "./media";
 
 export type Sound =
   | "pen-tap"
@@ -31,11 +30,3 @@ export const Sfx: React.FC<{ at: number; sound: Sound; variant?: number; volume?
     <Audio src={staticFile(`audio/sfx/${sound}${variant !== undefined ? `-${variant}` : ""}.wav`)} volume={volume} />
   </Sequence>
 );
-
-/** Optional voice-over (§6): plays public/vo/<scene>.mp3 if it exists. */
-export const Voiceover: React.FC<{ id: string; at: number }> = ({ id, at }) =>
-  hasFile(`vo/${id}.mp3`) ? (
-    <Sequence from={at} layout="none" name={`vo:${id}`}>
-      <Audio src={staticFile(`vo/${id}.mp3`)} />
-    </Sequence>
-  ) : null;

@@ -37,8 +37,9 @@ In sandboxes without Remotion's browser download, pass the path to a chrome-head
 
 - **Illustrations:** see [ILLUSTRATIONS.md](ILLUSTRATIONS.md). Placeholders hold each frame until
   `public/img/IMG-xx.svg` lands.
-- **Voice-over (optional):** `public/vo/S01.mp3` … one clip per scene, same lines as on screen
-  (`vo` in timeline.ts); none in act 3. The music drops 3 dB when any clip exists.
+- **Voice-over (optional):** script, cue times and ElevenLabs settings in
+  [VOICEOVER.md](VOICEOVER.md). One clip per line at `public/vo/S01.mp3` …; none in act 3.
+  The music drops 3 dB when any clip exists.
 - **Sound:** `public/audio/` — original score and SFX synthesised by `scripts/make-audio.py`.
 - **Fonts:** Geist (SIL OFL). **Icons:** Phosphor (MIT), the product's own icon family.
 

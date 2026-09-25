@@ -1,7 +1,7 @@
 import React from "react";
 import { useCurrentFrame } from "remotion";
 import { AppWindow } from "../components/AppWindow";
-import { Sfx, Voiceover } from "../components/Audio";
+import { Sfx } from "../components/Audio";
 import { Camera } from "../components/Camera";
 import { Place, during } from "../components/DebugZones";
 import { Icon } from "../components/Glyph";
@@ -123,7 +123,6 @@ export const S04: React.FC = () => {
         <Sfx key={p} at={p} sound="click" variant={i} volume={0.3} />
       ))}
       <Sfx at={PHRASES_S04[2] + 4} sound="paper-tear" volume={0.15} />
-      <Voiceover id="S04" at={PHRASES_S04[0]} />
     </Scene>
   );
 };
