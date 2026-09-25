@@ -33,6 +33,8 @@ describe('the editorial voice', () => {
       ['components/forms/form-renderer.tsx', /font-editorial text-h2/],
       ['components/focus/focus-view.tsx', /fontFamily: 'var\(--font-editorial\)'/],
       ['components/task-detail/task-detail-drawer.tsx', /fontFamily: 'var\(--font-editorial\)'/],
+      // The one screen a CLIENT sees: its page and section titles. (Its stat figures stay Geist.)
+      ['components/portal/portal-document.tsx', /<h1 style=\{\{ fontFamily: 'var\(--font-editorial\)'/],
     ];
     for (const [file, pattern] of optIns) expect(read(file), file).toMatch(pattern);
   });

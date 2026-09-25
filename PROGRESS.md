@@ -17315,3 +17315,32 @@ scrolls fire no scroll events there — the handler is invoked directly in tests
 **2747 tests / 181 files** · tsc clean · eslint clean on every chat file.
 
 **Owed** — migration 0043 still to be applied by the user. C3: threads and reactions (needs migration 0044).
+
+## Identity — Zenboard's own character, moves 1 and 2 — 2026-09-25
+
+The user: *"Every application has its own character … I feel like Zenboard is missing that right now"*, with Slack,
+Notion, X and Linear as references — study them, don't copy them. Brief saved verbatim: `IDENTITY_BRIEF.md`.
+
+**The study.** Each reference owns ONE structural signature, never decoration: Slack a coloured chrome, Notion a
+typographic page, X heavy type on true black, Linear an inset canvas plus its status glyphs — and all four are sans
+throughout. Zenboard was correct everywhere and signature nowhere, which is what reads as generic.
+
+**Move 1 — the editorial voice.** Content titles speak in Source Serif 4 (already loaded); everything you operate
+stays Geist. `--font-editorial` → serif; `:where(.text-h1)` carries it (every h1 in the app is a content title);
+content titles on other sizes opt in (greeting, onboarding, triage, public forms, focus, the task panel, the
+client portal's page and section titles). UI never does: header chrome, ⌘K, capture, stat figures, buttons.
+- This REVISITS the retired Fraunces serif, narrowly: it left with Paper OS in the 2026-07-18 B&G redesign, and
+  that era's recorded failure was tint on large surfaces, not type. It departs from CLAUDE.md's "one family" rule
+  **pending the user's confirmation** — reverting it is one line.
+
+**Move 2 — the mark means your one thing today.** The highlight wears the Zenboard mark instead of the borrowed
+star (a `Highlight` glyph in the icon seam: solid when highlighted, outline when not), which also untangles a star
+that meant three things. `MARK_PATH` now lives once; the logo reads it too.
+
+**Rejected** — "berry means now": the accent already has a documented meaning (active/selected/important), and
+narrowing it would contradict a standing decision rather than add character.
+
+**Verified** — computed fonts on Home, sign-in and the portal (serif titles, Geist UI and figures); the mark at 6×
+in both weights beside Phosphor's clock. A stale-`globals.css` Turbopack serve hid move 1 at first (served CSS
+still carried the old token) — fixed the recorded way: stop, `rm -rf .next`, restart. `app/identity.test.ts`.
+**2756 tests / 182 files**.

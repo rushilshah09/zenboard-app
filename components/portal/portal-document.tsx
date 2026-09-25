@@ -252,7 +252,9 @@ function PageHeader({ title, caption, action, size = 'section' }: { title: strin
   return (
     <header className="mb-6 flex items-end justify-between gap-4">
       <div className="min-w-0">
-        <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: size === 'page' ? 600 : 500, fontSize: size === 'page' ? 'var(--text-h1-size)' : 20, letterSpacing: '-0.015em', color: 'var(--ink)', margin: 0, lineHeight: 1.15 }}>{title}</h1>
+        {/* The client's portal speaks in Zenboard's editorial voice too (identity move 1): it is the one
+            screen a client sees, so it is where the character has to hold. Figures stay in Geist. */}
+        <h1 style={{ fontFamily: 'var(--font-editorial)', fontWeight: size === 'page' ? 600 : 500, fontSize: size === 'page' ? 'var(--text-h1-size)' : 20, letterSpacing: '-0.015em', color: 'var(--ink)', margin: 0, lineHeight: 1.15 }}>{title}</h1>
         {caption && <p style={{ margin: '5px 0 0', fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{caption}</p>}
       </div>
       {action && <div className="shrink-0">{action}</div>}
