@@ -115,6 +115,18 @@ dd{margin:0;color:var(--ink)}
 .head{font-weight:600;letter-spacing:-.035em;white-space:nowrap;color:#191919}
 .avail{font-family:var(--mono);font-size:1.2cqw;letter-spacing:.08em;text-transform:uppercase;color:#C41C72;border:.1cqw solid rgba(196,28,114,.4);border-radius:99px;padding:.5cqw 1.4cqw}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+/* fixes carried back from the animation round: brand fonts, float card sizing, buttons on one line */
+.fr *{text-transform:none!important}
+.fp,.fp.on{font-family:'Geist',sans-serif;font-weight:500;letter-spacing:-.005em!important}
+.tlabel,.i3lab,.mono-note,.cc small,.dc small,.avail,.lbl{font-family:'Geist',sans-serif;letter-spacing:0!important}
+.float{width:24cqw;height:11cqw;box-sizing:border-box;padding:1.3cqw 1.5cqw;gap:.7cqw;justify-content:flex-start}
+.float .hl-l{height:1.2cqw;line-height:1.2cqw;font-size:.95cqw}
+.float .hl-t{height:3.6cqw;line-height:1.8cqw;font-size:1.5cqw}
+.float .hl-b{height:2.2cqw;gap:.6cqw}
+.hl-b .btn,.donepill{display:inline-flex;align-items:center;justify-content:center;gap:.45cqw;white-space:nowrap;height:2.2cqw;padding:0;border-radius:.55cqw;font-size:1cqw;font-weight:500;box-sizing:border-box}
+.hl-b .btn:first-child{width:8cqw}.hl-b .btn.g,.donepill{width:7.5cqw}
+.donepill{background:#C41C72;color:#fff}
+.btn svg,.donepill svg{flex:none}
 </style>
 
 <div class="wrap">
