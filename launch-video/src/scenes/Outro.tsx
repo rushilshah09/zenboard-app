@@ -7,9 +7,10 @@ import { EASE, clamp } from "../brand/motion";
 import { respond } from "../brand/physics";
 import { energy, stage } from "../brand/tokens";
 import { Icon } from "../components/Glyph";
-import { EnergyField } from "../gl/EnergyField";
+import { MeshGradient } from "../gl/MeshGradient";
 import { Finish } from "../ui/Stage";
 import { Lockup } from "../ui/Lockup";
+import { JOB } from "../data/acme";
 import { rnd } from "./shared3";
 
 /**
@@ -103,7 +104,7 @@ const Exploded: React.FC<{ f: number; x: number; y: number }> = ({ f, x, y }) =>
   const iso = (px: number, py: number) => `${px * 0.866 - py * 0.866},${(px + py) * 0.5}`;
   const W = 150;
   return (
-    <div style={{ position: "absolute", left: x, top: y, opacity: at(f, 140, 170) }}>
+    <div style={{ position: "absolute", left: x, top: y, opacity: at(f, 140, 170), transform: "scale(0.74)", transformOrigin: "0 0" }}>
       <svg width={360} height={300} style={{ overflow: "visible" }}>
         {layers.map((l, i) => {
           const dy = 190 - i * (16 + 34 * open);
@@ -114,7 +115,7 @@ const Exploded: React.FC<{ f: number; x: number; y: number }> = ({ f, x, y }) =>
               <polygon points={`${iso(0, W)} ${iso(W, W)} ${iso(W, W)},6 ${iso(0, W)},6`} fill="none" />
               {/* The leader line and its label. */}
               <line x1={iso(W, W / 2).split(",")[0]} y1={iso(W, W / 2).split(",")[1]} x2={170} y2={Number(iso(W, W / 2).split(",")[1])} stroke={LINE} strokeDasharray="3 4" />
-              <text x={178} y={Number(iso(W, W / 2).split(",")[1]) + 5} fill={CREAM(0.65)} fontFamily={MONO} fontSize={13} letterSpacing="0.08em">
+              <text x={178} y={Number(iso(W, W / 2).split(",")[1]) + 5} fill={CREAM(0.65)} fontFamily={MONO} fontSize={17} letterSpacing="0.08em">
                 {l.label}
               </text>
             </g>
@@ -123,7 +124,7 @@ const Exploded: React.FC<{ f: number; x: number; y: number }> = ({ f, x, y }) =>
         {/* The vertical assembly axis. */}
         <line x1={150} y1={40 - 60 * open} x2={150} y2={260} stroke={SOFT} strokeDasharray="4 5" />
       </svg>
-      <Mono x={-20} y={-40} o={1} size={13}>
+      <Mono x={0} y={-44} o={1} size={18}>
         fig. 02 — one workspace, every layer
       </Mono>
     </div>
@@ -176,6 +177,68 @@ const orbitPoint = (o: (typeof ORBITS)[number], a: number) => {
   return { x: C.x + x * Math.cos(t) - y * Math.sin(t), y: C.y + x * Math.sin(t) + y * Math.cos(t) };
 };
 
+
+/** A corner sheet: a hairline frame with a mono caption, the drawing's side notes. */
+const Sheet: React.FC<{ x: number; y: number; w: number; h: number; p: number; caption: string; children: React.ReactNode }> = ({ x, y, w, h, p, caption, children }) => (
+  <div style={{ position: "absolute", left: x, top: y, width: w, height: h }}>
+    <svg width={w} height={h} style={{ position: "absolute", inset: 0, overflow: "visible" }}>
+      <Draw d={`M0 0 H${w} V${h} H0 Z`} p={p} stroke={SOFT} />
+    </svg>
+    <div style={{ position: "absolute", left: 0, top: -26, fontFamily: MONO, fontSize: 13, letterSpacing: "0.08em", color: CREAM(0.62), opacity: p, whiteSpace: "nowrap" }}>{caption}</div>
+    <div style={{ position: "absolute", inset: 0, opacity: at(p, 0.4, 1) }}>{children}</div>
+  </div>
+);
+
+/** fig. 03: the brand palette as swatches with their values (brand-construction reference). */
+const PALETTE = [
+  { name: "INK", hex: stage.ink },
+  { name: "BERRY", hex: "#8A0F51" },
+  { name: "PINK", hex: energy.pink },
+  { name: "ROSE", hex: energy.rose },
+  { name: "APRICOT", hex: energy.apricot },
+  { name: "LAVENDER", hex: energy.lavender },
+];
+const Palette: React.FC<{ f: number }> = ({ f }) => (
+  <div style={{ position: "absolute", inset: 18, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 16px" }}>
+    {PALETTE.map((c, i) => {
+      const o = at(f, 150 + i * 5, 175 + i * 5);
+      return (
+        <div key={c.name} style={{ display: "flex", alignItems: "center", gap: 12, opacity: o, translate: `0 ${(1 - o) * 8}px` }}>
+          <div style={{ width: 34, height: 34, borderRadius: 999, background: c.hex, boxShadow: `inset 0 0 0 1px ${CREAM(0.25)}` }} />
+          <div style={{ fontFamily: MONO, fontSize: 13, letterSpacing: "0.06em", lineHeight: 1.35 }}>
+            <div style={{ color: CREAM(0.82) }}>{c.name}</div>
+            <div style={{ color: CREAM(0.5) }}>{c.hex.toUpperCase()}</div>
+          </div>
+        </div>
+      );
+    })}
+  </div>
+);
+
+/** fig. 04: this week's tracked hours becoming the invoice, as a plotted readout. */
+const Readout: React.FC<{ f: number }> = ({ f }) => {
+  const W = 344;
+  const H = 96;
+  const pts = [0.8, 1.6, 1.2, 3.0, 2.2, 5.0, 3.4, 2.5, 4.2, 3.1, 4.6, 3.8];
+  const d = pts.map((v, i) => `${i ? "L" : "M"} ${(i / (pts.length - 1)) * W} ${H - (v / 5.4) * H}`).join(" ");
+  const hours = JOB.hours.reduce((a, h) => a + h.h, 0);
+  return (
+    <div style={{ position: "absolute", inset: 18 }}>
+      <svg width={W} height={H} style={{ overflow: "visible" }}>
+        {[0, 0.5, 1].map((g) => (
+          <line key={g} x1={0} x2={W} y1={H * g} y2={H * g} stroke={SOFT} strokeDasharray="3 5" />
+        ))}
+        <Draw d={d} p={at(f, 160, 230)} stroke={energy.rose} w={1.6} />
+        <circle cx={W} cy={H - (3.8 / 5.4) * H} r={4.5} fill={energy.rose} opacity={at(f, 225, 240)} style={{ filter: `drop-shadow(0 0 6px ${energy.rose})` }} />
+      </svg>
+      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 14, fontFamily: MONO, fontSize: 13, letterSpacing: "0.06em", color: CREAM(0.62) }}>
+        <span>{hours.toFixed(1)} h · {JOB.invoice.id}</span>
+        <span style={{ color: CREAM(0.85) }}>${JOB.invoice.amount.toLocaleString("en-US")}.00</span>
+      </div>
+    </div>
+  );
+};
+
 export const OutroArt: React.FC<{ f: number }> = ({ f }) => {
   const field = at(f, 0, 70);
   const frame = at(f, 0, 50);
@@ -192,7 +255,7 @@ export const OutroArt: React.FC<{ f: number }> = ({ f }) => {
   return (
     <div style={{ position: "absolute", inset: 0, overflow: "hidden", background: stage.ink, fontFamily: FONT }}>
       <div style={{ position: "absolute", inset: 0, opacity: 0.25 + 0.75 * field }}>
-        <EnergyField t={f / 60 + 3} intensity={0.35 + 0.65 * field} frame={f} />
+        <MeshGradient t={f / 60 + 3} intensity={0.4 + 0.6 * field} frame={f} />
       </div>
 
       {/* The mark: an energy-lit translucent body, a halftone screen, a traced outline. */}
@@ -204,7 +267,7 @@ export const OutroArt: React.FC<{ f: number }> = ({ f }) => {
             <stop offset="1" stopColor={energy.apricot} stopOpacity={0.4} />
           </linearGradient>
           <pattern id="dots" width={0.62} height={0.62} patternUnits="userSpaceOnUse">
-            <circle cx={0.31} cy={0.31} r={0.13} fill={CREAM(0.55)} />
+            <circle cx={0.31} cy={0.31} r={0.12} fill={CREAM(0.38)} />
           </pattern>
           <clipPath id="grow">
             <circle cx={16} cy={16} r={24 * halftone} />
@@ -285,21 +348,28 @@ export const OutroArt: React.FC<{ f: number }> = ({ f }) => {
           </Mono>
         );
       })}
-      <Tag x={LOBES[0].x - R - 330} y={LOBES[0].y - 40} icon="list-checks" label="WORK" data="11 tasks today" f={f} t0={120} seed="w" />
-      <Tag x={LOBES[1].x + R + 30} y={LOBES[1].y - 40} icon="users" label="CLIENTS" data="3 active · 1 approved" f={f} t0={128} seed="c" right />
-      <Tag x={LOBES[2].x - R - 330} y={LOBES[2].y - 40} icon="sun-horizon" label="LIFE" data="12-day walk streak" f={f} t0={136} seed="l" />
-      <Tag x={LOBES[3].x + R + 30} y={LOBES[3].y - 40} icon="receipt" label="MONEY" data="$1,875.00 paid" f={f} t0={144} seed="m" right />
+      <Tag x={LOBES[0].x - R - 400} y={LOBES[0].y - 6} icon="list-checks" label="WORK" data="11 tasks today" f={f} t0={120} seed="w" />
+      <Tag x={LOBES[1].x + R + 140} y={LOBES[1].y - 6} icon="users" label="CLIENTS" data="3 active · 1 approved" f={f} t0={128} seed="c" right />
+      <Tag x={LOBES[2].x - R - 400} y={LOBES[2].y - 60} icon="sun-horizon" label="LIFE" data="12-day walk streak" f={f} t0={136} seed="l" />
+      <Tag x={LOBES[3].x + R + 140} y={LOBES[3].y - 60} icon="receipt" label="MONEY" data="$1,875.00 paid" f={f} t0={144} seed="m" right />
       <Mono x={214} y={90} o={frame} rotate={90} size={22}>
         fig. 01 — the mark
       </Mono>
       <Mono x={1712} y={1000} o={frame} rotate={-90} size={22}>
         ZENBOARD · 2026
       </Mono>
-      <Mono x={290} y={52} o={at(f, 30, 70)} size={14}>
+      <Mono x={C.x} y={48} o={at(f, 30, 70)} size={14} align="center">
         CONSTRUCTION SHEET 01 — EVERYTHING → ONE
       </Mono>
-      <Exploded f={f} x={250} y={720} />
-      <TitleBlock f={f} x={1250} y={880} />
+      {/* Top left: the exploded workspace; top right: the palette; bottom left: the readout. */}
+      <Exploded f={f} x={230} y={120} />
+      <Sheet x={1330} y={110} w={380} h={170} p={at(f, 140, 190)} caption="fig. 03 — colour, light only">
+        <Palette f={f} />
+      </Sheet>
+      <Sheet x={230} y={850} w={380} h={170} p={at(f, 150, 200)} caption="fig. 04 — hours → invoice, this week">
+        <Readout f={f} />
+      </Sheet>
+      <TitleBlock f={f} x={1270} y={900} />
 
       {/* A soft ink scrim so the lockup and tagline read over the drawing. */}
       <div style={{ position: "absolute", left: C.x - 620, top: C.y - 190, width: 1240, height: 420, borderRadius: "50%", background: `radial-gradient(closest-side, rgba(40,4,23,.62), rgba(40,4,23,.3) 60%, transparent)`, opacity: lock }} />
