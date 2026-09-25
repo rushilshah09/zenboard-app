@@ -1,22 +1,21 @@
-# Illustration delivery
+# Illustrations
 
-Prompts, house style and negative prompt: **CREATIVE_DIRECTION.md §7**; ready-to-paste ChatGPT prompts in **illustration-prompts.json**. This page is only where
-each file goes. Drop a file in `public/img/` with the exact name and the film picks it up; until
-then a labelled placeholder holds its frame.
+The illustrations are in the film. Source SVGs live in `art-src/`, taken from the files uploaded
+to `main`. `node scripts/extract-illustrations.mjs` converts them into
+`src/brand/illustrations.generated.ts`, and `<Illustration>` builds each drawing up shape by
+shape, with slow parallax between its layers. Re-run the script after replacing a file.
 
-| Code | File | Used in | Frame in the film | Notes |
-|---|---|---|---|---|
-| IMG-01 | `public/img/IMG-01.svg` (or .png) | S01, S02 | full frame 1920 × 1080 | 16:9 plate; figure in the right 55%, left 45% empty for the headline |
-| IMG-02 | `public/img/IMG-02.svg` | S02 | 200 × 200 on the desk | 1:1; the card that lifts into the first app window |
-| IMG-03 | not needed | — | — | Replaced by the product's own Phosphor icons (§7 tip 2) |
-| IMG-04 | `public/img/IMG-04.png` | whole film | overlay at 3.5% | optional paper grain |
-| IMG-05 | `public/img/IMG-05.png` | S09, S18 | behind the mark | optional; a matching CSS gradient is used until it lands |
-| IMG-06a | `public/img/IMG-06a.svg` | S15 | 170 × 170 card tile | Deep work |
-| IMG-06b | `public/img/IMG-06b.svg` | S15 | 170 × 170 card tile | A walk |
-| IMG-06c | `public/img/IMG-06c.svg` | S15 | 170 × 170 card tile | Dinner |
-| IMG-06d | `public/img/IMG-06d.svg` | S15 | 170 × 170 card tile | A day off |
-| IMG-07 | `public/img/IMG-07.svg` | S17 | full frame 1920 × 1080 | identical framing to IMG-01, evening |
+| Code | Source file (on `main`) | Used in | Placement |
+|---|---|---|---|
+| IMG-01 | Contemplative Morning Workspace.svg | S01, S02 | right six columns, headline on the left |
+| IMG-02 | — | S02 | not needed: the note card is built from the product's own card, lightbulb icon and lines |
+| IMG-04 | `public/img/IMG-04.png` | whole film | paper grain overlay at 3.5% |
+| IMG-05 | `public/img/IMG-05.png` | S09, S10, S18 | aura behind the mark |
+| IMG-06a | Minimalist Blue Desk Setup.svg | S15 | "Deep work" card |
+| IMG-06b | Sage Sneakers on a Winding Trail.svg | S15 | "A walk" card |
+| IMG-06c | Cozy Candlelit Dining Table.svg | S15 | "Dinner with Sam" card |
+| IMG-06d | Sunny Beach Chair Retreat.svg | S15 | "A day off" card |
+| IMG-07 | Cozy Moonlit Workspace Break.svg | S17 | same framing as IMG-01, evening |
 
-**SVG notes.** Keep a transparent background (or Warm Cream #F7F1E8). The film currently reveals
-art with a left-to-right wipe; once the vectorised files arrive with their linework as stroked
-paths, the reveal can switch to a true stroke draw-on (§9, "SVG and illustration pipeline").
+The uploaded `logo .svg` is the same lockup the film already uses (`src/brand/logo.generated.ts`,
+taken from the app's `<Logo>`).

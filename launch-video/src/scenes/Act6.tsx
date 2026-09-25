@@ -36,7 +36,12 @@ export const S17: React.FC = () => {
           <Headline text={S16_HEADLINE} at={-400} align="center" width={ZONES.headlineTop.w} exitAt={0} />
         </Place>
         <Place id="IMG-07" rect={plate} style={{ opacity: out.opacity }}>
-          <Illustration code="IMG-07" rect={{ x: 0, y: 0, w: plate.w, h: plate.h }} draw={clamp(frame, [8, 80], [0, 1], EASE.breathe)} />
+          <Illustration
+            code="IMG-07"
+            rect={{ x: 0, y: 0, w: plate.w, h: plate.h }}
+            draw={clamp(frame, [8, 120], [0, 1], EASE.settle)}
+            parallax={clamp(frame, [0, len], [0, -28], EASE.breathe)}
+          />
         </Place>
         <Place id="headline" rect={ZONES.headlineLeft} moving={during(frame, syncedSpan(S17_WORDS), [len - 24, len])}>
           <Headline text={S17_TEXT} at={S17_WORDS[0]} wordAt={S17_WORDS} stack exitAt={len - 24} width={ZONES.headlineLeft.w} />

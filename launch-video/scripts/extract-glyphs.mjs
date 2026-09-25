@@ -9,7 +9,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 const ROOT = new URL("../node_modules/@phosphor-icons/core/assets/", import.meta.url);
 const NAMES = [
   "list-checks", "kanban", "file-text", "notepad", "calendar-blank", "receipt", "users", "sun-horizon",
-  "key", "check", "clock", "paper-plane-tilt", "command", "arrow-right",
+  "key", "check", "lightbulb", "clock", "paper-plane-tilt", "command", "arrow-right",
 ];
 
 const paths = (svg) => [...svg.matchAll(/<path d="([^"]+)"( opacity="0.2")?\/>/g)];

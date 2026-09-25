@@ -490,7 +490,12 @@ export const LifeView: React.FC<{ f: number }> = ({ f }) => {
             }}
           >
             <div style={{ position: "relative", width: ch - 48, height: ch - 48, borderRadius: radius.inner, background: CATEGORY[c.category].accent, flexShrink: 0 }}>
-              <Illustration code={c.code} rect={{ x: 0, y: 0, w: ch - 48, h: ch - 48 }} draw={clamp(f, [at + 10, at + 60], [0, 1], EASE.breathe)} />
+              <Illustration
+                code={c.code}
+                rect={{ x: space.s1, y: space.s1, w: ch - 48 - 2 * space.s1, h: ch - 48 - 2 * space.s1 }}
+                draw={clamp(f, [at + 6, at + 70], [0, 1], EASE.settle)}
+                parallax={clamp(f, [at, at + 220], [0, 18], EASE.breathe)}
+              />
             </div>
             <div>
               <div style={{ ...type.uiStrong, color: colour.ink }}>{c.t}</div>

@@ -104,4 +104,4 @@ same gesture.
 - Done: logo reveal in the film (S08–S09), fast reprise on the end card (S18), S10 flies the
   real mark into the sidebar, word-level VO sync on every voiced line, S04 row wave, punch-in
   camera in S11–S15, slow pushes on S04, S08, S09, S17 and S18.
-- Still needed: the illustration SVGs (IMG-01, 02, 06a–d, 07) for S01, S02, S15 and S17.
+- Illustrations in: IMG-01, 06a–d and 07 build up shape by shape with layer parallax (ILLUSTRATIONS.md).

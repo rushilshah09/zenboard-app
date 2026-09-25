@@ -5,10 +5,10 @@ import { Camera } from "../components/Camera";
 import { Place, during } from "../components/DebugZones";
 import { Headline } from "../components/Headline";
 import { Illustration } from "../components/Illustration";
-import { hasFile } from "../components/media";
-import { FRAME, Rect, ZONES } from "../brand/layout";
+import { Icon } from "../components/Glyph";
+import { Rect, ZONES } from "../brand/layout";
 import { EASE, clamp } from "../brand/motion";
-import { colour, radius, shadow } from "../brand/tokens";
+import { colour, radius, shadow, space } from "../brand/tokens";
 import { syncLine, syncedSpan } from "../brand/sync";
 import { VO_AT, actRange, frames, sceneStart } from "../brand/timeline";
 import { Scene, drift, gridSlot } from "./shared";
@@ -26,14 +26,13 @@ const WORDS = syncLine([
   [P2, "S02", VO_AT.S02],
 ]);
 const P2_FIRST = P1.split(" ").length;
-const LINE_EXIT = frames("S01") + 68; // S01-local frame, lands inside S02
+const LINE_EXIT = frames("S01") + 50; // S01-local frame, lands inside S02
 
-/** IMG-01 / IMG-07 are full-frame plates; their placeholder holds the right seven columns. */
-export const plateRect = (code: "IMG-01" | "IMG-07"): Rect =>
-  hasFile(`img/${code}.svg`) || hasFile(`img/${code}.png`) ? { x: 0, y: 0, w: FRAME.w, h: FRAME.h } : ZONES.visualRight;
+/** IMG-01 / IMG-07 (the founder's desk, morning and evening) sit in the right six columns. */
+export const plateRect = (_code: "IMG-01" | "IMG-07"): Rect => ZONES.visualRight;
 
 /** Where the note card lands on the desk, and the size it grows to (S03 opening window). */
-const NOTE: Rect = { x: 1240, y: 640, w: 200, h: 200 };
+const NOTE: Rect = { x: 1136, y: 560, w: 176, h: 176 };
 export const OPENING_SCALE = 1.9;
 
 const ActOneHeadline: React.FC<{ offset: number }> = ({ offset }) => {
@@ -56,7 +55,7 @@ export const S01: React.FC = () => {
     <Scene>
       <Camera scale={drift(g, actRange(1), 1, 1.03)}>
         <Place id="IMG-01" rect={plateRect("IMG-01")}>
-          <Illustration code="IMG-01" rect={{ x: 0, y: 0, ...sizeOf(plateRect("IMG-01")) }} draw={clamp(frame, [0, 72], [0, 1], EASE.breathe)} />
+          <Illustration code="IMG-01" rect={{ x: 0, y: 0, ...sizeOf(plateRect("IMG-01")) }} draw={clamp(frame, [0, 140], [0, 1], EASE.settle)} parallax={plateParallax(g)} />
         </Place>
         <ActOneHeadline offset={0} />
       </Camera>
@@ -66,6 +65,41 @@ export const S01: React.FC = () => {
 };
 
 const sizeOf = (r: Rect) => ({ w: r.w, h: r.h });
+
+/** Layers of the desk plate slide apart slowly across act 1 (foreground travels furthest). */
+const plateParallax = (g: number) => clamp(g, actRange(1), [0, -28], EASE.breathe);
+
+/** The one big idea: a blank card, a lightbulb and two lines written onto it. */
+const NoteCard: React.FC<{ size: number; write: number }> = ({ size, write }) => (
+  <div
+    style={{
+      width: size,
+      height: size,
+      borderRadius: radius.card,
+      background: colour.card,
+      boxShadow: shadow,
+      padding: space.s3,
+      display: "flex",
+      flexDirection: "column",
+      gap: space.s2,
+    }}
+  >
+    <Icon name="lightbulb" size={40} tint={colour.ink} style={{ opacity: clamp(write, [0, 0.4], [0, 1]) }} />
+    {[1, 0.62].map((w, i) => (
+      <div
+        key={i}
+        style={{
+          height: space.s1,
+          width: `${w * 100}%`,
+          borderRadius: radius.pill,
+          background: colour.hairline,
+          transformOrigin: "left",
+          scale: `${clamp(write, [0.3 + i * 0.3, 0.7 + i * 0.3], [0, 1])} 1`,
+        }}
+      />
+    ))}
+  </div>
+);
 
 export const S02: React.FC = () => {
   const frame = useCurrentFrame();
@@ -87,7 +121,7 @@ export const S02: React.FC = () => {
     <Scene>
       <Camera scale={drift(g, actRange(1), 1, 1.03) * (1 - grow) + grow}>
         <Place id="IMG-01" rect={plateRect("IMG-01")} style={{ opacity: 1 - plateOut, filter: `blur(${plateOut * 8}px)` }}>
-          <Illustration code="IMG-01" rect={{ x: 0, y: 0, ...sizeOf(plateRect("IMG-01")) }} draw={1} />
+          <Illustration code="IMG-01" rect={{ x: 0, y: 0, ...sizeOf(plateRect("IMG-01")) }} draw={1} parallax={plateParallax(g)} />
         </Place>
         <ActOneHeadline offset={offset} />
         <Place
@@ -96,7 +130,7 @@ export const S02: React.FC = () => {
           moving={frame < 42}
           style={{ translate: `${-(1 - slideP) * 48}px 0px`, opacity: slideO * (1 - clamp(frame, [72, 84], [0, 1], EASE.settle)) }}
         >
-          <Illustration code="IMG-02" rect={{ x: 0, y: 0, w: NOTE.w, h: NOTE.h }} draw={clamp(frame, [4, 40], [0, 1], EASE.breathe)} />
+          <NoteCard size={NOTE.w} write={clamp(frame, [18, 60], [0, 1], EASE.settle)} />
         </Place>
       </Camera>
       {/* The flattening card, in screen space so it lands exactly on S03's opening window.
