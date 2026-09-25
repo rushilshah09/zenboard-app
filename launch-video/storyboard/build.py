@@ -418,16 +418,34 @@ def snip(name, w, blur=0):
     return f'<div class="snip" style="width:{w}cqw;{f}"><img src="{SNIP[name]}" alt=""></div>'
 
 def f_8_1():
-    """Ring of real Zenboard UI snippets (cropped from the running app) around the headline."""
+    """Ring of designed UI cards: real Zenboard content, rebuilt in the premium card language (not screenshots)."""
     s = paper_stage(.35)
-    for name, x, y, w, blur in [("calendar", 14, 14, 22, 0), ("highlight", 43, 6.5, 24, 0), ("stats", 74, 6, 26, .06),
-                                ("client", 88, 22, 18, 0), ("habits", 86, 41, 19, 0), ("invoices", 64, 49, 22, 0),
-                                ("inbox", 36, 48, 19, .06), ("docs", 12, 40, 18, 0)]:
-        s += at(x, y, snip(name, w, blur))
-    s += at(22, 26.5, f'<div class="cc" style="width:7cqw;height:7cqw;background:{BERRY}"><div class="grid"></div>{mark(3.6, "#fff")}</div>')
-    s += at(80, 32, f'<div class="cc white" style="width:10cqw;height:5.6cqw"><small>STREAK</small><b>12 days</b></div>')
-    s += at(50, 24.5, "Work, life and business.", "head", "font-size:3.6cqw")
-    s += at(50, 30.5, "One workspace.", "head", "font-size:3.6cqw;color:" + BERRY)
+    face = lambda k: f'<span class="dface"><img src="{PEOPLE[k]}" alt=""></span>'
+    dots = "".join(f'<i class="{"" if k in (3, 9) else "on"}"></i>' for k in range(14))
+    cards = [
+     (14, 14, 21, f'<div class="dc cream"><div class="dh"><span class="dico" style="background:#DDEFF5;color:#1C5A70">{ph("CalendarBlank", "fill", size="60%")}</span>Friday, Sep 25</div>'
+        '<div class="ev2" style="--c:#A6D1E0"><b>Standup</b><em>9:00</em></div><div class="ev2" style="--c:#EAB9CB"><b>Coffee with Mira</b><em>15:00</em></div>'
+        '<div class="ev2" style="--c:#B8BDEE"><b>Design review</b><em>16:00</em></div></div>'),
+     (43, 7.5, 22, '<div class="dc white"><small>Today&#39;s highlight</small><b class="dt">Send invoice for July to TechSpark</b>'
+        f'<div class="drow"><span class="dbtn dark">{ph("Play", "fill", size="1em")} Start focus</span><span class="dchip">High</span><span class="dchip">5h</span></div></div>'),
+     (72, 11, 24, '<div class="dc cream"><small>Outstanding</small><b class="dbig">$4,300</b>'
+        '<div class="bars2"><div><span style="width:92%">Meridian Studio</span><em>$3,200</em></div><div><span style="width:70%">Fernwood Hotels</span><em>$2,800</em></div>'
+        '<div><span style="width:44%">Atlas Coffee</span><em>$900</em></div></div></div>'),
+     (89, 31, 17, f'<div class="dc" style="background:#DCE8D4"><div class="dh">{face("p3")}<div><b>Meridian Studio</b><small>Sarah Chen · Head of Brand</small></div></div>'
+        '<div class="drow"><span class="dchip g">Active</span><span class="dchip">$7,000 billed</span></div></div>'),
+     (84, 46.5, 20, f'<div class="spills"><div class="spill"><span class="dico" style="background:#E3EEDD;color:#2F5A27">{ph("CheckCircle", "fill", size="60%")}</span><b>$6,000</b> paid this month</div>'
+        f'<div class="spill"><span class="dico" style="background:#F6E1EA;color:#8A2E57">{ph("Clock", "fill", size="60%")}</span><b>6h 30m</b> unbilled</div></div>'),
+     (60, 47.5, 15, f'<div class="dc" style="background:#F3DCE6"><small>Morning walk</small><b class="dbig">12<span> days</span></b><div class="hdots">{dots}</div></div>'),
+     (37, 47, 19, f'<div class="dc white"><div class="dh"><span class="dico" style="background:#E6E7FA;color:#3A3F8F">{ph("Tray", "fill", size="60%")}</span>Inbox <em>9</em></div>'
+        '<div class="chk"><i></i>Renew the domain before it lapses</div><div class="chk"><i></i>Book the Q3 tax call</div><div class="chk"><i class="on"></i>Sketch the pricing page hero</div></div>'),
+     (13, 40, 18, f'<div class="dc" style="background:#F4EDCF"><div class="dh"><span class="dico" style="background:#fff;color:#6B5A12">{ph("FileText", "fill", size="60%")}</span>Rebrand proposal</div>'
+        f'<p>Acme wants a calmer, warmer identity that works from shop window to invoice.</p><div class="drow">{face("p4")}<small>Mara commented · Approved</small></div></div>'),
+     (23, 27.5, 8.5, '<div class="dc" style="background:#DDEFF5;align-items:center"><small>FOCUS</small><b class="dbig" style="font-size:1.7cqw">18:42</b></div>'),
+    ]
+    for x, y, w, c in cards:
+        s += at(x, y, c, "", f"width:{w}cqw")
+    s += at(50, 24.5, "Work, life and business.", "head", "font-size:3.4cqw")
+    s += at(50, 30.3, "One workspace.", "head", "font-size:3.4cqw;color:" + BERRY)
     return s
 
 def blueprint(strength=1.0, tagline=False):
@@ -565,7 +583,7 @@ SCENES = [
             "Habits", "Clack per step, on the beat")],
   out="The glow blooms to Paper and the tiles scatter outward into a ring of cards."),
  dict(n=8, name="The one", t="0:52–1:04", purpose="A calm resolution: everything around one workspace, then the logo.",
-  frames=[("8.1", "0:52", f_8_1, "A ring of real Zenboard UI snippets cropped from the running app (calendar week, today's highlight, money stats, invoices, Meridian Studio client, habits, inbox, docs) plus one Berry mark card, around a centred headline. The ring drifts slowly at three depths.",
+  frames=[("8.1", "0:52", f_8_1, "A ring of designed UI cards built from the real app's content in the premium card language: calendar day, today's highlight, outstanding $4,300 with client bars, Meridian Studio with Sarah's face, paid and unbilled stat pills, a 12-day habit streak, inbox, the Acme proposal with Mara's approval and a focus timer. They sit around a centred headline and drift slowly at three depths.",
             "“Work, life and business. One workspace.”", "Music opens up"),
           ("8.2", "0:58", f_8_2, "Light flash into the outro. On the Berry field (dark to light, fine grain) a blueprint draws on in hairlines and dotted lines: the construction of the Zenboard mark (32-unit box, four lobe circles, diagonals, star angle), a Geist type specimen, outline component cards, grid blocks and mono notes. The lockup lands in the centre, crisp white, framed by rails with corner handles.",
             "Zenboard", "Pen-scratch ticks as lines draw, the chime on the lockup"),
