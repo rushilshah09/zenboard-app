@@ -27,7 +27,24 @@ export const Wordmark: React.FC<{ size?: number; style?: React.CSSProperties }> 
  */
 export const Aura: React.FC<{ size: number; style?: React.CSSProperties }> = ({ size, style }) => {
   if (hasFile("img/IMG-05.png")) {
-    return <Img src={staticFile("img/IMG-05.png")} style={{ width: size * 1.78, height: size, objectFit: "cover", ...style }} />;
+    // The 16:9 plate, centred on the mark and faded out radially so its edges never show on Paper.
+    const w = size * 1.78;
+    return (
+      <Img
+        src={staticFile("img/IMG-05.png")}
+        style={{
+          position: "absolute",
+          left: (size - w) / 2,
+          top: 0,
+          width: w,
+          height: size,
+          objectFit: "cover",
+          maskImage: "radial-gradient(closest-side, black 55%, transparent 100%)",
+          WebkitMaskImage: "radial-gradient(closest-side, black 55%, transparent 100%)",
+          ...style,
+        }}
+      />
+    );
   }
   return (
     <div
