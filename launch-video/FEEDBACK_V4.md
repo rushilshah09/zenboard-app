@@ -98,7 +98,18 @@ The product UI in the film should look like the green "Project Status" reference
   cut-out as the glyph motif (like Semantical's sparkle).
 - Motion rule for all three: step → spring settle → short hold → next step, on the beat.
 
-### D8+ — (more directions to come)
+### D8 — Icons and card language
+- Icons: **Phosphor** only (duotone for app tiles, fill/bold for buttons), read from `@phosphor-icons/react`.
+- Cards: warm cream surfaces, soft tinted squircle tiles, small mono meta labels, dark mono count badges,
+  avatars and the hero portrait masked in the Zenboard lobe shape, a faint dot grid on the stage
+  (refs: PXDX "UI Style" sheet, muted real-estate card collage, cream revenue cards).
+
+### D9 — Connector lines (never the same straight fan of equal white lines)
+- Many → one: each app sends a fan of fine hairlines in its own colour; all fans converge on one bright
+  point, then three dots lead into Zenboard (ref: "Bringing together").
+- One line: soft colour waves ripple along a line and settle into a single Berry line (ref: layered waves).
+
+### D10+ — (more directions to come)
 
 ## Brand note
 The Zenboard brand guidelines (Paper / Ink / single Berry accent, eight flat field colours, no gradients)
