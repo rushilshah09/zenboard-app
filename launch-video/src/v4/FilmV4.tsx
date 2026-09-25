@@ -2,6 +2,7 @@
 import React from "react";
 import { AbsoluteFill, Sequence, interpolate, staticFile } from "remotion";
 import { Audio } from "@remotion/media";
+import { CameraMotionBlur } from "@remotion/motion-blur";
 import { SFX } from "./sound";
 import { VO4, voDur } from "./vo";
 import { V4, V4Scene, v4At, v4Len } from "./timeline";
@@ -25,7 +26,10 @@ export const FilmV4: React.FC<{ score?: boolean }> = () => (
       const C = SCENES_V4[k];
       return C ? (
         <Sequence key={k} from={v4At(k)} durationInFrames={v4Len(k)} name={k}>
-          <C />
+          {/* film-camera motion blur: each frame blends 5 sub-frame samples over a 180° shutter */}
+          <CameraMotionBlur samples={5} shutterAngle={180}>
+            <C />
+          </CameraMotionBlur>
         </Sequence>
       ) : null;
     })}
