@@ -320,7 +320,7 @@ export const TodayView: React.FC<{ f: number }> = ({ f }) => {
           filter: `blur(${morph * 2}px)`,
           boxShadow: lifted ? shadow : "none",
           borderRadius: radius.card,
-          scale: lifted ? "1.02" : "1",
+          scale: String(1 + 0.05 * clamp(f, [TODAY.grabAt, TODAY.grabAt + 10], [0, 1], EASE.settle) * (1 - clamp(f, [TODAY.dropAt - 6, TODAY.dropAt], [0, 1], EASE.settle))),
         }}
       >
         <TaskRow {...TASKS[0]} />
@@ -342,6 +342,11 @@ export const DOC = { lineAt: 84, updateAt: 132 };
 /** Content-local hero: the task chip that flips to "Ready for review". Lifts from its left edge. */
 export const DOC_HERO = { x: 0, y: 184, w: 520, h: 48, origin: { x: 0, y: 208 } };
 type ViewProps = { f: number; hero?: HeroMode; lift?: number };
+/** The chip's parts slide in from the left, 2 frames apart, overlapping as they settle. */
+const chipPart = (f: number, i: number): React.CSSProperties => {
+  const p = clamp(f, [14 + i * 2, 14 + i * 2 + 30], [0, 1], EASE.settle);
+  return { opacity: clamp(p, [0, 0.4], [0, 1]), translate: `${(1 - p) * -40}px 0px` };
+};
 export const DocView: React.FC<ViewProps> = ({ f, hero = "show", lift = 0 }) => {
   const upd = clamp(f, [DOC.updateAt, DOC.updateAt + 16], [0, 1], EASE.settle);
   return (
@@ -353,8 +358,18 @@ export const DocView: React.FC<ViewProps> = ({ f, hero = "show", lift = 0 }) => 
           <div style={{ position: "absolute", top: 104, ...type.ui, color: colour.stone, width: 880 }}>
             Phase two carries the new brand into the product: a type scale, a component kit and the pricing page.
           </div>
-          <div style={{ position: "absolute", top: 296 }}>
+          <div style={{ position: "absolute", top: 296, display: "flex", alignItems: "center" }}>
             <Headline text="Timeline: two weeks, three reviews, one fixed fee." at={DOC.lineAt} style="ui" tone="ink" />
+            {/* Text caret: solid while writing, then a hard on/off blink (no easing, like a real caret). */}
+            <div
+              style={{
+                width: 2,
+                height: 26,
+                marginLeft: -4,
+                background: colour.pink,
+                opacity: f < DOC.lineAt - 24 || f > DOC.lineAt + 150 ? 0 : f < DOC.lineAt + 36 ? 1 : Math.floor((f - DOC.lineAt) / 16) % 2 === 0 ? 1 : 0,
+              }}
+            />
           </div>
         </>
       ) : null}
@@ -374,10 +389,12 @@ export const DocView: React.FC<ViewProps> = ({ f, hero = "show", lift = 0 }) => 
             boxShadow: shadow,
           }}
         >
-          <Dot c={colour.pink} />
-          <div style={{ ...type.uiStrong, color: colour.ink, whiteSpace: "nowrap" }}>Draft Acme proposal</div>
-          <div style={{ width: 1, height: 20, background: colour.hairline }} />
-          <div style={{ position: "relative", minWidth: 150, height: 30 }}>
+          <div style={chipPart(f, 0)}>
+            <Dot c={colour.pink} />
+          </div>
+          <div style={{ ...type.uiStrong, color: colour.ink, whiteSpace: "nowrap", ...chipPart(f, 1) }}>Draft Acme proposal</div>
+          <div style={{ width: 1, height: 20, background: colour.hairline, ...chipPart(f, 2) }} />
+          <div style={{ position: "relative", minWidth: 150, height: 30, ...chipPart(f, 3) }}>
             <div style={{ position: "absolute", ...type.ui, color: colour.stone, opacity: 1 - upd, filter: `blur(${upd * 2}px)`, translate: `0 ${-upd * 10}px`, whiteSpace: "nowrap" }}>
               Today, 10:00
             </div>
@@ -426,7 +443,7 @@ export const ClientView: React.FC<ViewProps & { rowAt?: number[] }> = ({ f, hero
           </div>
           <div style={{ position: "absolute", top: 216, width: "100%", display: "flex", flexDirection: "column", gap: space.s2 }}>
             {CLIENT_ROWS.map((r, i) => (
-              <div key={r.t} style={{ display: "flex", alignItems: "center", gap: space.s2, height: 64, padding: `0 ${space.s2}px`, borderRadius: radius.card, background: tint.ink06, ...rise(f, rowAt[i], { dist: 32 }) }}>
+              <div key={r.t} style={{ display: "flex", alignItems: "center", gap: space.s2, height: 64, padding: `0 ${space.s2}px`, borderRadius: radius.card, background: tint.ink06, ...rise(f, rowAt[0] + i * 3, { dist: -32 }) }}>
                 <Glyph category={r.category} size={40} colourProgress={1} />
                 <div style={{ ...type.uiStrong, color: colour.ink, flex: 1 }}>{r.t}</div>
                 <Caption>{r.meta}</Caption>
@@ -462,7 +479,8 @@ export const MONEY_SEND = { x: 1184 - 24 - 60, y: 64 + 330 - 24 - 24 }; // conte
 /** Content-local hero: the invoice card, lifted for Send → Paid. */
 export const MONEY_HERO = { x: 0, y: 64, w: 1184, h: 330, origin: { x: 592, y: 229 } };
 
-export const MoneyView: React.FC<ViewProps> = ({ f, hero = "show", lift = 0 }) => {
+export const MoneyView: React.FC<ViewProps & { magnet?: { x: number; y: number } }> = ({ f, hero = "show", lift = 0, magnet = { x: 0, y: 0 } }) => {
+  const clickRing = clamp(f, [MONEY.sendAt, MONEY.sendAt + 36], [0, 1], EASE.settle);
   const press = clamp(f, [MONEY.sendAt - 4, MONEY.sendAt], [0, 1], EASE.snap) * (1 - clamp(f, [MONEY.sendAt + 2, MONEY.sendAt + 10], [0, 1], EASE.settle));
   const sent = f >= MONEY.sendAt + 4;
   const paid = clamp(f, [MONEY.paidAt, MONEY.paidAt + 18], [0, 1], EASE.settle);
@@ -570,9 +588,22 @@ export const MoneyView: React.FC<ViewProps> = ({ f, hero = "show", lift = 0 }) =
                 background: colour.ink,
                 color: colour.paper,
                 ...type.uiStrong,
+                position: "relative",
                 scale: String(1 - press * 0.06),
+                // Magnetic hover: the button leans toward the approaching cursor.
+                translate: `${magnet.x}px ${magnet.y}px`,
               }}
             >
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  borderRadius: radius.pill,
+                  border: `2px solid ${colour.pink}`,
+                  opacity: clickRing > 0 ? (1 - clickRing) * 0.8 : 0,
+                  scale: `${1 + clickRing * 0.6} ${1 + clickRing * 1.4}`,
+                }}
+              />
               Send
               <Icon name="arrow-right" size={20} tint={colour.paper} style={{ translate: `${clamp(f, [MONEY.sendAt, MONEY.sendAt + 14], [0, 6], EASE.settle) * (1 - clamp(f, [MONEY.sendAt + 14, MONEY.sendAt + 40], [0, 1], EASE.settle))}px 0px` }} />
             </div>
@@ -593,6 +624,13 @@ const LIFE: { code: IllustrationCode; t: string; meta: string; category: Categor
 const LIFE_CW = (1184 - 32) / 2;
 const LIFE_CH = (CONTENT.h - 64 - 32) / 2;
 const lifeRect = (i: number) => ({ x: (i % 2) * (LIFE_CW + 32), y: 64 + Math.floor(i / 2) * (LIFE_CH + 32), w: LIFE_CW, h: LIFE_CH });
+/** Each card flies in from its own corner and snaps into the grid on the settle curve. */
+const diagonalIn = (f: number, at: number, i: number): React.CSSProperties => {
+  const p = clamp(f, [at, at + 44], [0, 1], EASE.settle);
+  const dx = (i % 2 === 0 ? -1 : 1) * 160;
+  const dy = (i < 2 ? -1 : 1) * 110;
+  return { opacity: clamp(f, [at, at + 14], [0, 1], EASE.settle), translate: `${(1 - p) * dx}px ${(1 - p) * dy}px`, scale: String(0.9 + 0.1 * p) };
+};
 /** Content-local hero: the "A walk" card. */
 export const LIFE_HERO_INDEX = 1;
 export const LIFE_HERO = { ...lifeRect(LIFE_HERO_INDEX), origin: { x: lifeRect(LIFE_HERO_INDEX).x + LIFE_CW / 2, y: lifeRect(LIFE_HERO_INDEX).y + LIFE_CH / 2 } };
@@ -621,7 +659,7 @@ export const LifeView: React.FC<ViewProps & { cardAt?: number[] }> = ({ f, hero 
             gap: space.s3,
             padding: space.s3,
             ...(isHero && lift > 0 ? { background: colour.card, boxShadow: shadow } : null),
-            ...rise(f, at, { scale: true }),
+            ...diagonalIn(f, at, i),
           }}
         >
           <div style={{ position: "relative", width: art, height: art, borderRadius: radius.inner, background: CATEGORY[c.category].accent, flexShrink: 0 }}>

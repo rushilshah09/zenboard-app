@@ -59,3 +59,19 @@ blur on the spin, and the mark handing off into the product.
 No new easing curves: entries use `EASE.settle` (long-tail decel), exits at speed use
 `EASE.leave` (accelerating), exactly the mirrored pair the cut catalog asks for. Blur peaks:
 10px for text-size things, 14–18px for surfaces.
+
+## 5 · The motion blueprint (Life Design Studio) — applied
+
+| Blueprint item | Status |
+|---|---|
+| Expo curve `cubic-bezier(0.16, 1, 0.3, 1)` for every entrance and move | **Done**: `EASE.settle` is now this curve, film-wide |
+| 0:00–0:15 cards at varying Z-depths, asynchronous sine float | **Done** in S03: each window floats out of phase at its own depth, settling to rest before S04 |
+| 0:16–0:33 whip-pans with X-axis motion blur; counter reacts on each tick | **Done**: each switch whips the next app in from the right with directional blur; the tab dot glides; the counter jumps a size and darkens, then settles (no bounce, see below) |
+| 0:34–0:42 icons spiral inward, shockwave at impact, dots → logo, kinetic tracking type | **Done** (already built, plus): speed blur on the spin, ripple and spark burst at impact, and the wordmark now opens out from tight tracking |
+| Plan: UI unfolds, not scaled from 0; lifted drag at 1.05 with shadow | **Done**: window assembles from blocks (S10), resolves into Today; the dragged task lifts to 1.05 |
+| Write: tracking zoom into the doc past a blurred sidebar; hard-cut caret; status pill parts slide in 0.03s apart | **Done** |
+| Clients: staircase cascade from above, 0.05s per row; liquid progress fill | **Done** |
+| Invoice: macro zoom, magnetic Send, radial ring on click, Paid badge | **Done**, except the spring bounce and 3° rotation on Paid (see below) |
+| Life: cards enter on diagonal trajectories and snap into the grid; wide pull-back | **Done** (pull-back is S16) |
+| Final lockup: sidebar icons detach and converge into the logo | **Open**: needs S16–S18 restructured (see below) |
+| Darker atmospheric void, chiaroscuro, UI as light source; glow; glassmorphism; elastic overshoot; Y-axis 3D swing; chromatic aberration | **Held**: these contradict the film's brand rules (CLAUDE.md, CREATIVE_DIRECTION.md). Waiting on a decision. |

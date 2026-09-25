@@ -142,7 +142,7 @@ export const S10: React.FC = () => {
 
 // ── S11–S15 · one job through every module ─────────────────────────────────
 type ModuleId = "S11" | "S12" | "S13" | "S14" | "S15";
-type ViewFC = React.FC<{ f: number; hero?: HeroMode; lift?: number; rowAt?: number[]; cardAt?: number[] }>;
+type ViewFC = React.FC<{ f: number; hero?: HeroMode; lift?: number; rowAt?: number[]; cardAt?: number[]; magnet?: { x: number; y: number } }>;
 type Hero = { origin: { x: number; y: number } };
 type Module = {
   row: number;
@@ -200,15 +200,22 @@ const lifted = (m: Module, d: number, p: { x: number; y: number }) => {
 };
 
 /**
- * S11's one camera move: a push into the drop, eased back out before the
- * thread leaves. `focus` is content-local; frames are scene-local.
+ * Macro camera: S11 pushes into the drop, S12 tracks into the document past
+ * the softened sidebar, S14 goes in tight on Send. Each eases back out before
+ * the next beat. `focus` is content-local; frames are scene-local.
  */
-const PUNCH = { focus: { x: TODAY.slot.x + TODAY.slot.w / 2 - 200, y: TODAY.slot.y + 40 }, k: 1.14, in: [VIEW_AT + TODAY.grabAt - 6, VIEW_AT + TODAY.dropAt + 8] as [number, number], out: [150, 186] as [number, number] };
+type Punch = { focus: { x: number; y: number }; k: number; in: [number, number]; out: [number, number] };
+const PUNCH: Partial<Record<ModuleId, Punch>> = {
+  S11: { focus: { x: TODAY.slot.x + TODAY.slot.w / 2 - 200, y: TODAY.slot.y + 40 }, k: 1.14, in: [VIEW_AT + TODAY.grabAt - 6, VIEW_AT + TODAY.dropAt + 8], out: [150, 186] },
+  S12: { focus: { x: 320, y: 240 }, k: 1.18, in: [70, 124], out: [166, 200] },
+  S14: { focus: { x: MONEY_SEND.x - 60, y: MONEY_SEND.y - 40 }, k: 1.2, in: [VIEW_AT + MONEY.sendAt - 46, VIEW_AT + MONEY.sendAt - 4], out: [200, 236] },
+};
 const punchAt = (id: ModuleId, frame: number, drift: number) => {
-  if (id !== "S11") return { scale: drift, x: 0, y: 0 };
-  const k = 1 + (PUNCH.k - 1) * (clamp(frame, PUNCH.in, [0, 1], EASE.settle) - clamp(frame, PUNCH.out, [0, 1], EASE.settle));
-  const fx = WIN.x + CONTENT.x + PUNCH.focus.x - 960;
-  const fy = WIN.y + CONTENT.y + PUNCH.focus.y - 540;
+  const p = PUNCH[id];
+  if (!p) return { scale: drift, x: 0, y: 0 };
+  const k = 1 + (p.k - 1) * (clamp(frame, p.in, [0, 1], EASE.settle) - clamp(frame, p.out, [0, 1], EASE.settle));
+  const fx = WIN.x + CONTENT.x + p.focus.x - 960;
+  const fy = WIN.y + CONTENT.y + p.focus.y - 540;
   return { scale: drift * k, x: fx * drift * (1 - k), y: fy * drift * (1 - k) };
 };
 
@@ -252,7 +259,16 @@ const MONEY_CURSOR: [number, number, number][] = (() => {
 })();
 
 /** Per-module reveals keyed to the voice (view-local frames). */
-const revealProps = (id: ModuleId, words: number[]) => {
+const revealProps = (id: ModuleId, words: number[], cursor: { x: number; y: number } | null) => {
+  if (id === "S14" && cursor) {
+    // Magnetic hover: within ~180px the Send button leans up to 8px toward the cursor.
+    const b = content(MONEY_SEND);
+    const dx = cursor.x - b.x;
+    const dy = cursor.y - b.y;
+    const pull = 1 - clamp(Math.hypot(dx, dy), [24, 180], [0, 1], EASE.settle);
+    const len = Math.max(1, Math.hypot(dx, dy));
+    return { magnet: { x: (dx / len) * 8 * pull, y: (dy / len) * 8 * pull } };
+  }
   if (id === "S13") return { rowAt: [words[1], words[3], words[4]].map((w) => w - VIEW_AT) };
   if (id === "S15") return { cardAt: [words[1], words[3], words[5], words[7]].map((w) => w - VIEW_AT) };
   return {};
@@ -277,7 +293,7 @@ const ModuleScene: React.FC<{ id: ModuleId }> = ({ id }) => {
   const press = clamp(frame, [pressAt - 3, pressAt], [0, 1], EASE.snap) * (1 - clamp(frame, [pressAt + 2, pressAt + 8], [0, 1], EASE.settle));
   const holding = id === "S11" && frame >= VIEW_AT + TODAY.grabAt && frame < VIEW_AT + TODAY.dropAt;
   const words = syncWords(m.headline, id, VO_AT[id]);
-  const extra = revealProps(id, words);
+  const extra = revealProps(id, words, cursor ? along(frame, cursor) : null);
   const Current = m.View;
   const Prev = m.Prev;
   const cam = actCamera(id, frame);

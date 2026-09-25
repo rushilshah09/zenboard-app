@@ -298,7 +298,8 @@ export const LogoReveal: React.FC<{ frame: number; geometry: RevealGeometry; tim
               fill={colour.ink}
               style={{
                 opacity: clamp(t, [0, 0.5], [0, 1]),
-                translate: `${(1 - t) * -14}px 0px`,
+                // Kinetic tracking: letters start tightly packed behind the mark and open out to their set spacing.
+                translate: `${(1 - t) * -(14 + i * 5)}px 0px`,
                 filter: `blur(${(1 - t) * 1.2}px)`,
               }}
             />

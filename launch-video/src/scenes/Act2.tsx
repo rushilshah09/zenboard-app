@@ -11,7 +11,7 @@ import { Rect, col, span } from "../brand/layout";
 import { DUR, EASE, clamp, rise } from "../brand/motion";
 import { colour, radius, space, tint } from "../brand/tokens";
 import { syncWords, syncedSpan } from "../brand/sync";
-import { VO_AT, beat } from "../brand/timeline";
+import { VO_AT, beat, frames } from "../brand/timeline";
 import { OPENING_SCALE } from "./Act1";
 import { APPS, Scene, TILE_SCALE, gridSlot, pillRect, tileRect, tileSlot } from "./shared";
 
@@ -33,6 +33,8 @@ const target = (k: number) => {
 };
 
 const ARRIVE = (k: number) => beat(k);
+/** Relative nearness of each window (1 = nearest), so the grid reads as layered, not flat. */
+const DEPTH = [1, 0.4, 0.8, 0.2, 0.6, 1, 0.3, 0.7];
 
 export const S03: React.FC = () => {
   const frame = useCurrentFrame();
@@ -49,9 +51,21 @@ export const S03: React.FC = () => {
         {APPS.map((a, i) => {
           const r = gridSlot(i);
           const style = i === 0 ? { opacity: 1 } : rise(frame, ARRIVE(i), { dur: 20, easing: EASE.snap, scale: true });
+          // Each window floats on its own slow, out-of-phase sine at its own depth; the float
+          // settles to rest before S04 compresses the grid.
+          const amp = 1 - clamp(frame, [frames("S03") - 44, frames("S03") - 4], [0, 1], EASE.settle);
+          const depth = DEPTH[i];
+          const fx = Math.cos(frame / (58 + i * 7) + i * 1.7) * 5 * amp * (0.6 + depth);
+          const fy = Math.sin(frame / (46 + i * 5) + i * 1.3) * 7 * amp * (0.6 + depth);
           return (
             <Place key={a.label} id={a.short} rect={r} moving={frame >= ARRIVE(i) && frame < ARRIVE(i) + 20} style={style}>
-              <div style={{ opacity: i === 0 ? clamp(frame, [0, 16], [0, 1], EASE.settle) : 1 }}>
+              <div
+                style={{
+                  opacity: i === 0 ? clamp(frame, [0, 16], [0, 1], EASE.settle) : 1,
+                  translate: `${fx}px ${fy}px`,
+                  scale: String(1 - (1 - depth) * 0.03 * amp),
+                }}
+              >
                 {/* The blank card lands first, then its content fills in. */}
                 <AppWindow category={a.category} label={a.label} width={r.w} height={r.h} fill={clamp(frame, [ARRIVE(i) + (i === 0 ? 4 : 10), ARRIVE(i) + (i === 0 ? 34 : 40)], [0, 1], EASE.settle)} />
               </div>

@@ -42,6 +42,12 @@ const Switcher: React.FC<{ id: Id }> = ({ id }) => {
   // S05 opens by turning S04's tiles into the tab strip, then the window rises.
   const tileOut = intro ? leave(frame, 0) : { opacity: 0, translate: "0 0px" };
   const pulse = 1 - clamp(frame, [last, last + 8], [0, 1], EASE.settle);
+  // Whip-pan: every switch lands the next app from the right, already moving, with
+  // horizontal motion blur that clears as it settles.
+  const whip = n > 0 ? 1 - clamp(frame, [last, last + 12], [0, 1], EASE.settle) : 0;
+  const prevApp = appAt(id, Math.max(0, n - 1));
+  const glide = clamp(frame, [last, last + 10], [0, 1], EASE.settle);
+  const dotX = tabRect(tileSlot(prevApp)).x + (tabRect(tileSlot(app)).x - tabRect(tileSlot(prevApp)).x) * (n > 0 ? glide : 1);
   const h = HEADLINES[id];
   const acme = id === "S06" ? clamp(frame, [last, last + 6], [0, 1], EASE.snap) : undefined;
   return (
@@ -75,7 +81,7 @@ const Switcher: React.FC<{ id: Id }> = ({ id }) => {
         <div
           style={{
             position: "absolute",
-            left: tabRect(tileSlot(app)).x + tabRect(0).w / 2 - 5,
+            left: dotX + tabRect(0).w / 2 - 5,
             top: tabRect(0).y + tabRect(0).h + 12,
             width: 10,
             height: 10,
@@ -84,8 +90,22 @@ const Switcher: React.FC<{ id: Id }> = ({ id }) => {
             opacity: intro ? clamp(frame, [30, 40], [0, 1], EASE.settle) : 1,
           }}
         />
-        <Place id="window" rect={BIG} style={intro ? rise(frame, 28, { dur: 20, easing: EASE.snap, scale: true }) : undefined}>
+        <svg width={0} height={0} style={{ position: "absolute" }}>
+          <filter id={`whip-${id}`} x="-20%" y="0" width="140%" height="100%">
+            <feGaussianBlur stdDeviation={`${whip * 28} 0`} />
+          </filter>
+        </svg>
+        <Place
+          id="window"
+          rect={BIG}
+          style={{
+            ...(intro ? rise(frame, 28, { dur: 20, easing: EASE.snap, scale: true }) : null),
+            translate: `${whip * 140}px 0px`,
+            filter: whip > 0.01 ? `url(#whip-${id})` : undefined,
+          }}
+        >
           <AppWindow
+            counterKick={n > 0 ? 1 - clamp(frame, [last, last + 10], [0, 1], EASE.settle) : 0}
             category={APPS[app].category}
             label={APPS[app].label}
             width={BIG.w}

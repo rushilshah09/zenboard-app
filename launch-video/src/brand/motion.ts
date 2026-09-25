@@ -6,8 +6,8 @@ import { Easing, interpolate } from "remotion";
  * No spring(), no bounce, no overshoot. Every value is clamped.
  */
 export const EASE = {
-  /** Entrances and moves from the reveal onward. */
-  settle: Easing.bezier(0.22, 1, 0.36, 1),
+  /** Entrances and moves: aggressive start, long silky deceleration (expo-out family). */
+  settle: Easing.bezier(0.16, 1, 0.3, 1),
   /** Entrances and switches in acts 2–3. */
   snap: Easing.bezier(0.33, 1, 0.68, 1),
   /** All exits, ~40% faster than entrances. */

@@ -1,4 +1,5 @@
 import React from "react";
+import { interpolateColors } from "remotion";
 import { FONT } from "../brand/fonts";
 import { Category, colour, radius, shadow, space, tint, type } from "../brand/tokens";
 import { Glyph } from "./Glyph";
@@ -80,10 +81,12 @@ export const AppWindow: React.FC<{
   /** The Acme line, retyped in this app (S06): its highlight sweep 0 → 1. */
   acme?: number;
   counter?: string;
+  /** The counter jumps a size on each tick and settles back (1 → 0). */
+  counterKick?: number;
   /** Content filling in once the blank card has landed (0 → 1): header first, then the body. */
   fill?: number;
   style?: React.CSSProperties;
-}> = ({ category, label, width, height, acme, counter, fill = 1, style }) => (
+}> = ({ category, label, width, height, acme, counter, counterKick = 0, fill = 1, style }) => (
   <div
     style={{
       width,
@@ -112,7 +115,18 @@ export const AppWindow: React.FC<{
         <div style={{ ...type.uiStrong, color: colour.stone, whiteSpace: "nowrap" }}>{label}</div>
         <div style={{ flex: 1 }} />
         {counter ? (
-          <div style={{ ...type.caption, color: colour.stone, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{counter}</div>
+          <div
+            style={{
+              ...type.caption,
+              color: interpolateColors(counterKick, [0, 1], [colour.stone, colour.ink]),
+              fontVariantNumeric: "tabular-nums",
+              whiteSpace: "nowrap",
+              scale: String(1 + counterKick * 0.18),
+              transformOrigin: "100% 50%",
+            }}
+          >
+            {counter}
+          </div>
         ) : null}
       </div>
       <div style={{ height: 1, background: colour.hairline, margin: `0 ${space.s3}px` }} />
