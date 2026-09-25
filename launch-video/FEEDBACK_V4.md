@@ -106,4 +106,4 @@ differ from the v3 film look (burgundy Ink stage, energy gradient). v4 follows t
 DIRECTION_V3 / CLAUDE.md stage and gradient rules get updated when work starts.
 
 ## Status
-Collecting directions. No build work yet — waiting for the go-ahead and which direction to start with.
+Storyboard v4 drafted (`storyboard/`, built by `storyboard/build.py`): 8 scenes, 18 keyframes, awaiting frame-by-frame approval before any animation.
