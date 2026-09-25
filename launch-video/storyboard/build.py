@@ -205,6 +205,95 @@ def f_5_3():
              '<div class="inv"><span>INV-018</span>Atlas Coffee<em class="tag g">Paid</em><b>$4,200</b></div>')
     return split("Money", stack(front, FIELD["apricot"], FIELD["sage"]))
 
+
+# ---------- scene 5: feature split (left list, right UI in the tinted-field card style) ----------
+FEATS = [  # name, icon, (dark, mid, light), card text tone
+ ("Tasks",    "tasks", ("#3E0825", "#9E1458", "#E48AB7"), "#4A0A2C"),
+ ("Projects", "crm",   ("#16300F", "#3C6A2E", "#9DC08A"), "#1C3A14"),
+ ("Docs",     "docs",  ("#171A4A", "#3F48A0", "#AEB3EE"), "#1E2257"),
+ ("Calendar", "cal",   ("#0B3140", "#23708A", "#9BD0E1"), "#0F3A4A"),
+ ("Clients",  "crm",   ("#40190A", "#A0542A", "#EDBB93"), "#4A220C"),
+ ("Money",    "money", ("#2E2806", "#7E6F1A", "#E0CF84"), "#3A3208"),
+ ("Habits",   "notes", ("#3F1128", "#96406B", "#E6ADC6"), "#4A1530"),
+ ("Focus",    "tasks", ("#15181C", "#46505A", "#BCC3CA"), "#1B1E22"),
+]
+def avatar(txt, bg): return f'<span class="avc" style="background:{bg}">{txt}</span>'
+def feat_ui(name, tone, light):
+    t = tone
+    if name == "Tasks":
+        card = (f'<h4>Today\'s plan</h4><div class="fl"><i></i>Send invoice for July to TechSpark<em>High</em></div>'
+                f'<div class="fl"><i></i>Prepare weekly report<em>Medium</em></div><div class="fl dn"><i class="on"></i>Review design feedback</div>'
+                f'<div class="bars"><span>3 planned</span><span>6h focus</span><span>2h45 meetings</span></div>'
+                f'<div class="track"><b style="width:62%"></b></div>')
+        flt = ('<small>Today\'s highlight</small><b>Send invoice for July to TechSpark</b>'
+               '<div class="fb"><span class="btn">▶ Start focus</span><span class="btn g">✓ Mark done</span></div>')
+    elif name == "Projects":
+        card = ('<h4>Brand identity</h4><p>Acme Studio · 5 open · 12 done</p>'
+                '<div class="cols"><span>In progress</span><span>In review</span><span>Revisions</span><span>Done</span></div>'
+                f'<div class="segs"><b style="background:{light}"></b><b style="background:{t};opacity:.55"></b><b class="knob" style="background:{t}"></b><b style="background:#fff"></b></div>')
+        flt = ('<div class="avs">' + avatar("SC", "#C41C72") + avatar("MO", "#3C6A2E") + avatar("PR", "#A0542A") +
+               '<span class="srch">⌕</span></div>')
+    elif name == "Docs":
+        card = ('<h4>Rebrand proposal · Acme</h4><p class="doc">Acme Studio wants a calmer, warmer identity that works from '
+                'shop window to invoice. We propose three routes, one workshop and a two-week sprint.</p>'
+                '<div class="chips"><span>Proposal</span><span>Client: Acme</span><span>Due Thu</span></div>')
+        flt = ('<div class="cm">' + avatar("MO", "#C41C72") + '<div><small>Mara Okafor</small><b>Love route two. Approved ✓</b></div></div>')
+    elif name == "Calendar":
+        card = ('<h4>Friday, Sep 25</h4>'
+                f'<div class="evr"><s style="background:{t}"></s>Standup<em>9:00–9:30</em></div>'
+                f'<div class="evr"><s style="background:{light}"></s>Coffee with Mira<em>15:00–15:45</em></div>'
+                f'<div class="evr"><s style="background:{t}"></s>Design review<em>16:00–18:00</em></div>'
+                f'<div class="evr"><s style="background:{light}"></s>Book club<em>19:00–20:00</em></div>')
+        flt = '<small>Next · in 20 min</small><b>Design review</b><div class="fb"><span class="btn">Join</span><span class="btn g">16:00–18:00</span></div>'
+    elif name == "Clients":
+        card = ('<h4>Meridian Studio</h4><div class="kvs"><span>Contact</span>Sarah Chen · Head of Brand</div>'
+                '<div class="kvs"><span>Billed</span>$7,000 · $2,800 outstanding</div><div class="kvs"><span>Next step</span>Send the Q3 retainer proposal</div>'
+                '<div class="kvs"><span>Health</span>Healthy</div>')
+        flt = ('<div class="cm">' + avatar("SC", "#A0542A") + '<div><small>Client portal · Sarah Chen</small><b>Proposal approved</b></div></div>')
+    elif name == "Money":
+        card = ('<h4>Money</h4><div class="st2"><div><span>Outstanding</span><b>$4,300</b></div><div><span>Paid this month</span><b>$6,000</b></div></div>'
+                '<div class="ir"><span>INV-021</span>Meridian Studio<b>$3,200</b></div><div class="ir"><span>INV-019</span>Meridian Studio<b>$1,500</b></div>')
+        flt = '<small>INV-018 · Atlas Coffee</small><b class="bigp">$4,200</b><div class="fb"><span class="btn ok">✓ Paid</span></div>'
+    elif name == "Habits":
+        dots = "".join(f'<i class="{"on" if k not in (3, 9) else ""}"></i>' for k in range(14))
+        card = (f'<h4>Morning</h4><div class="fl"><i class="on"></i>Morning walk<em>12 days</em></div><div class="fl"><i></i>Meditate<em>12 days</em></div>'
+                f'<div class="fl"><i></i>Read 20 minutes<em>0</em></div><div class="dots">{dots}</div>')
+        flt = '<small>Morning walk</small><b class="bigp">12-day streak</b>'
+    else:  # Focus
+        card = ('<h4>Focus session</h4><div class="timer"><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="16" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="3"/>'
+                f'<circle cx="20" cy="20" r="16" fill="none" stroke="{t}" stroke-width="3" stroke-linecap="round" stroke-dasharray="70 101" transform="rotate(-90 20 20)"/></svg><b>18:42</b></div>'
+                '<p>Send invoice for July to TechSpark</p>')
+        flt = '<small>Blocking</small><b>Slack, Mail, X</b><div class="fb"><span class="btn">❚❚ Pause</span></div>'
+    return card, flt
+
+def feat_frame(idx):
+    name, icon, (d, m, l), tone = FEATS[idx]
+    s = f'<div class="stage" style="background:{PAPER}"></div>'
+    for k in range(-3, 4):
+        n2, ic2, _, _ = FEATS[(idx + k) % len(FEATS)]
+        cls = "fp on" if k == 0 else "fp"
+        op = 1 if k == 0 else max(.28, 1 - abs(k) * .22)
+        s += at(19, H_/2 - 1.2 + k*6.9, f'<div class="{cls}" style="opacity:{op}">{tile(ic2, 2.8).replace("tile", "pico")}{n2.upper()}</div>')
+    s += at(19, 53.3, lockup(8, INK), "", "transform:translate(-50%,-50%)")
+    field = f'radial-gradient(130% 120% at 100% 100%,{l} 0%,{m} 38%,{d} 100%)'
+    lobes = at(84, 45, mark(46, "#ffffff", ""), "lobes") + at(58, 4, mark(30, "#ffffff", ""), "lobes")
+    card, flt = feat_ui(name, tone, l)
+    s += (f'<div class="rpanel" style="background:{field}">{lobes}'
+          f'<div class="tcard" style="color:{tone};--tone:{tone};--light:{l}">{card}</div>'
+          f'<div class="fcard" style="--tone:{tone}">{flt}</div></div>')
+    return s
+
+FEAT_NOTES = {
+ "Tasks": "Today's plan in the frosted card; the highlight task floats above with Start focus.",
+ "Projects": "Brand identity with status lanes (In progress → Done) and the team floating above.",
+ "Docs": "The Acme proposal doc; Mara's approval comment floats above.",
+ "Calendar": "Friday's schedule; the next event with a Join button floats above.",
+ "Clients": "Meridian Studio's client record; the portal approval floats above.",
+ "Money": "Outstanding and paid totals; a Paid invoice floats above.",
+ "Habits": "Morning habits and a streak grid; the 12-day streak floats above.",
+ "Focus": "A running focus timer; the blocked apps float above.",
+}
+
 PILLS = [("Tasks", "sky"), ("Projects", "sand"), ("Invoices", "apricot"), ("Calendar", "berry"), ("Notes", "butter"),
          ("Habits", "petal"), ("Focus", "sky"), ("Clients", "peri"), ("Docs", "peri"), ("Goals", "sand"),
          ("Payments", "berry"), ("Time tracking", "sage"), ("Proposals", "sand"), ("Life", "sage"), ("Files", "petal"),
@@ -295,14 +384,13 @@ SCENES = [
           ("4.2", "0:26", f_4_2, "A push-in on the highlight card. The cursor clicks Mark done: the title strikes through and the button turns to Done.",
             "—", "One tactile click")],
   out="The Done button morphs into the first pill of the split screen (shape match)."),
- dict(n=5, name="Modules", t="0:28–0:40", purpose="Walk through the modules without one-feature screens. Equator-style split screen.",
-  frames=[("5.1", "0:28", f_5_1, "Left: Berry panel with a column of big pills scrolling up. The pill crossing the centre line turns white (active). Right: a stack of real Zenboard cards on Paper; the front card matches the active pill.",
-            "TASKS", "Tick per pill, soft card slide"),
-          ("5.2", "0:32", f_5_2, "Step to CLIENTS. The pill column springs up one slot; the front card slides in and the previous one tucks behind, offset and tinted.",
-            "CLIENTS", "Tick, card slide"),
-          ("5.3", "0:36", f_5_3, "Step to MONEY, then two faster steps (HABITS, FOCUS) as the music builds.",
-            "MONEY", "Ticks speeding up")],
-  out="The Berry panel expands to fill the frame and the pills multiply into the wall."),
+ dict(n=5, name="Features", t="0:28–0:40", purpose="Every feature, one after another, without one-feature screens. The list on the left steps; the UI on the right changes to match.",
+  frames=[(f"5.{i+1}", f"0:{28 + round(i*1.5):02d}", (lambda i=i: feat_frame(i)),
+           ("Left: Paper panel with the feature list scrolling up; the active feature snaps into a solid ink pill. Right: its own dark-to-light field with the Zenboard mark's lobes blended in, a frosted tinted card and a white card floating over its corner. " if i == 0 else "The list springs up one step; the field recolours and the cards swap (tinted card slides up, white card pops in 4 frames later). ")
+           + FEAT_NOTES[FEATS[i][0]],
+           FEATS[i][0].upper(), "Tick on the step, soft pop on the white card" if i else "Music enters the groove; tick, pop")
+          for i in range(len(FEATS))],
+  out="The field of the last feature expands to fill the frame and the pills multiply into the wall."),
  dict(n=6, name="Pill wall", t="0:40–0:45", purpose="The breadth of Zenboard at a glance.",
   frames=[("6.1", "0:40", f_6_1, "Rows of module pills in the field colours scroll in alternating directions on a plain, flat deep-berry background. No UI cards behind the pills.",
             "—", "Rhythmic ticks on the beat")],

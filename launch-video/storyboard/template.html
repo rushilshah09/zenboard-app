@@ -122,7 +122,7 @@ dd{margin:0;color:var(--ink)}
     <div>
       <div class="lk">{{LOCKUP}}</div>
       <h1>Launch film storyboard, v4</h1>
-      <p>Eight scenes, 18 keyframes. It follows the review directions D1–D7: the juggling opener, the Flike-style resolve and funnel, the Berry product field, the split-screen modules, the plain pill wall, the 3D icon carousel and a calm ending.</p>
+      <p>Eight scenes, 23 keyframes. It follows the review directions D1–D7: the juggling opener, the Flike-style resolve and funnel, the Berry product field, the split-screen modules, the plain pill wall, the 3D icon carousel and a calm ending.</p>
     </div>
     <div class="meta"><span>1:04</span><span>120 BPM</span><span>16:9 · 1080p60</span><span>Geist</span></div>
   </div>
@@ -134,3 +134,35 @@ dd{margin:0;color:var(--ink)}
   </ul>
   {{BODY}}
 </div>
+<style>
+/* scene 5 feature split */
+.fp{display:flex;align-items:center;gap:.9cqw;background:#fff;color:#191919;border:.1cqw solid #E4E0D6;border-radius:99px;padding:.7cqw 1.9cqw .7cqw .8cqw;font-family:var(--mono);font-size:1.55cqw;font-weight:500;letter-spacing:.06em;white-space:nowrap}
+.fp.on{background:#191919;color:#fff;border-color:#191919;font-size:1.8cqw;box-shadow:0 .8cqw 2cqw rgba(25,25,25,.22)}
+.fp .pico{width:2.8cqw;height:2.8cqw;background:#F4F2EC}
+.rpanel{position:absolute;left:38%;top:3%;right:2.2%;bottom:3%;border-radius:2cqw;overflow:hidden}
+.lobes{opacity:.16;mix-blend-mode:screen}
+.tcard{position:absolute;left:9%;top:34%;width:68%;min-height:44%;background:linear-gradient(180deg,rgba(255,255,255,.80),rgba(255,255,255,.62));backdrop-filter:blur(1.2cqw);border-radius:1.4cqw;padding:2cqw 2.2cqw;display:flex;flex-direction:column;gap:.9cqw;font-size:1.25cqw;box-shadow:0 1.5cqw 4cqw rgba(0,0,0,.18);text-align:left}
+.tcard h4{margin:0;font-size:2.3cqw;font-weight:600;letter-spacing:-.025em}
+.tcard p{margin:0;opacity:.75}.tcard p.doc{opacity:.85;line-height:1.45;font-size:1.2cqw}
+.fl{display:flex;align-items:center;gap:.8cqw;padding:.35cqw 0;border-bottom:.08cqw solid color-mix(in srgb,var(--tone) 15%,transparent)}
+.fl i{width:1.2cqw;height:1.2cqw;border:.13cqw solid var(--tone);border-radius:.3cqw;opacity:.7}.fl i.on{background:var(--tone);opacity:1}
+.fl em{margin-left:auto;font-style:normal;font-size:.9em;opacity:.65}.fl.dn{opacity:.5;text-decoration:line-through}
+.bars{display:flex;justify-content:space-between;font-size:1cqw;opacity:.7;margin-top:.3cqw}
+.track{height:1cqw;border-radius:99px;background:rgba(255,255,255,.7)}.track b{display:block;height:100%;border-radius:99px;background:var(--tone)}
+.cols{display:grid;grid-template-columns:repeat(4,1fr);gap:1cqw;font-size:1.2cqw;margin-top:.8cqw}
+.segs{display:grid;grid-template-columns:repeat(4,1fr);gap:1cqw}.segs b{height:1.1cqw;border-radius:99px;position:relative}
+.segs b.knob::after{content:"";position:absolute;right:-.4cqw;top:50%;width:2cqw;height:2cqw;transform:translateY(-50%);border-radius:50%;background:var(--tone);box-shadow:0 0 0 .35cqw #fff}
+.chips{display:flex;gap:.6cqw;flex-wrap:wrap}.chips span{font-size:1cqw;border:.1cqw solid color-mix(in srgb,var(--tone) 35%,transparent);border-radius:99px;padding:.2cqw .8cqw}
+.evr{display:flex;align-items:center;gap:.8cqw;padding:.3cqw 0}.evr s{width:.35cqw;height:1.8cqw;border-radius:.2cqw}.evr em{margin-left:auto;font-style:normal;opacity:.65;font-variant-numeric:tabular-nums}
+.kvs{display:grid;grid-template-columns:8cqw 1fr;padding:.35cqw 0;border-bottom:.08cqw solid color-mix(in srgb,var(--tone) 15%,transparent)}.kvs span{opacity:.6}
+.st2{display:grid;grid-template-columns:1fr 1fr;gap:1cqw}.st2 span{display:block;font-size:.85cqw;letter-spacing:.06em;text-transform:uppercase;opacity:.65}.st2 b{font-size:2.6cqw;letter-spacing:-.03em;font-weight:600}
+.ir{display:grid;grid-template-columns:6cqw 1fr auto;gap:.8cqw;padding:.35cqw 0;border-top:.08cqw solid color-mix(in srgb,var(--tone) 15%,transparent);font-variant-numeric:tabular-nums}.ir span{font-family:var(--mono);font-size:.95cqw;opacity:.6}
+.dots{display:grid;grid-template-columns:repeat(14,1fr);gap:.5cqw;margin-top:.4cqw}.dots i{aspect-ratio:1;border-radius:.3cqw;background:rgba(255,255,255,.75)}.dots i.on{background:var(--tone)}
+.timer{position:relative;width:13cqw;height:13cqw;margin:.4cqw auto}.timer svg{width:100%;height:100%}.timer b{position:absolute;inset:0;display:grid;place-items:center;font-size:2.8cqw;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.fcard{position:absolute;right:6%;top:13%;min-width:27%;background:#fff;color:#191919;border-radius:1.4cqw;padding:1.4cqw 1.6cqw;display:flex;flex-direction:column;gap:.6cqw;box-shadow:0 1.8cqw 4.5cqw rgba(0,0,0,.28);text-align:left}
+.fcard small{font-size:1cqw;color:#77736A}.fcard b{font-size:1.55cqw;letter-spacing:-.02em;font-weight:600;max-width:24cqw}.fcard b.bigp{font-size:2.6cqw}
+.fb{display:flex;gap:.6cqw}.fcard .btn{font-size:1cqw}.btn.ok{background:var(--tone);color:#fff}
+.avs{display:flex;align-items:center}.avc{width:5.4cqw;height:5.4cqw;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:600;font-size:1.5cqw;box-shadow:0 0 0 .35cqw #fff;margin-right:-1cqw}
+.srch{margin-left:2.6cqw;width:5.4cqw;height:5.4cqw;border-radius:50%;background:#EEECEA;display:grid;place-items:center;font-size:2.6cqw;color:#77736A}
+.cm{display:flex;gap:1cqw;align-items:center}.cm .avc{width:3.6cqw;height:3.6cqw;font-size:1.1cqw;margin:0}.cm b{display:block}
+</style>
