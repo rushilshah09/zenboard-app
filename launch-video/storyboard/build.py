@@ -445,13 +445,15 @@ def feat_ui(name, tone, light):
     return card, flt
 
 
-LIST_SCALE = [1.4, 1.05, 0.95, 0.88, 0.84]
-LIST_OPACITY = [1, .8, .55, .32, 0]
+LIST_SCALE = [1.45, 1.08, 1.0, 0.95, 0.92]
+LIST_OPACITY = [1, .92, .62, .38, 0]
 def _lerp_table(t, a):
     i = min(int(a), len(t) - 2); f = min(1, a - i)
     return t[i] + (t[i + 1] - t[i]) * f
 def list_scale(a): return _lerp_table(LIST_SCALE, a)
 def list_opacity(a): return _lerp_table(LIST_OPACITY, a)
+def dial_x(a): return 11.5 - 6.2 * a ** 0.85
+def dial_y(rel): return (1 if rel >= 0 else -1) * (7.6 * abs(rel) - .25 * abs(rel) ** 2)
 def list_y(rel, h=3.1, gap=2.4):
     """Centre offset (cqw) of a pill `rel` steps from the active one, stacking the scaled pill heights."""
     a = abs(rel); y = 0.0; j = 0.0
@@ -464,13 +466,19 @@ def list_y(rel, h=3.1, gap=2.4):
 def feat_frame(idx):
     name, icon, (d, m, l), tone = FEATS[idx]
     s = f'<div class="stage" style="background:{PAPER}"></div>'
-    # stepped hierarchy (review): the active pill is the focal point, each step away is smaller and fainter
+    # clock-dial arc (review): pills sit on a curve, the active one sits furthest right in its feature colour
     for k in range(-3, 4):
-        n2, ic2, _, _ = FEATS[(idx + k) % len(FEATS)]
-        cls = "fp on" if k == 0 else "fp"
+        n2, ic2, (_, m2, l2), t2 = FEATS[(idx + k) % len(FEATS)]
         a = abs(k)
         sc, op = list_scale(a), list_opacity(a)
-        s += at(3.2, H_/2 + list_y(k), f'<div class="{cls}" style="opacity:{op};transform:scale({sc});transform-origin:0 50%">{pico(ic2, 2.5)}{n2}</div>', "", "transform:translate(0,-50%)")
+        x, y = dial_x(a), dial_y(k)
+        if k == 0:
+            pill = (f'<div class="fp on" style="background:{m2};border-color:{m2};box-shadow:0 .8cqw 2cqw {m2}55;transform:scale({sc});transform-origin:0 50%">'
+                    f'<span class="pico" style="width:2.5cqw;height:2.5cqw;background:color-mix(in srgb,{m2} 12%,#fff);color:{t2}">{ph(KIND[ic2][0], "duotone", size="58%")}</span>{n2}</div>')
+        else:
+            pill = (f'<div class="fp" style="opacity:{op};transform:scale({sc});transform-origin:0 50%">'
+                    f'<span class="pico" style="width:2.5cqw;height:2.5cqw;background:color-mix(in srgb,{l2} 30%,#fff);color:{m2}">{ph(KIND[ic2][0], "duotone", size="58%")}</span>{n2}</div>')
+        s += at(x, H_/2 + y, pill, "", "transform:translate(0,-50%)")
     s += at(3.2, 4.2, lockup(10, INK), "", "transform:translate(0,-50%)")
     field = f'radial-gradient(130% 120% at 100% 100%,{l} 0%,{m} 38%,{d} 100%)'
     lobes = at(84, 45, mark(46, "#ffffff", ""), "lobes") + at(58, 4, mark(30, "#ffffff", ""), "lobes")
@@ -822,7 +830,7 @@ SCENES = [
   out="The Done button morphs into the first pill of the split screen (shape match)."),
  dict(n=5, name="Features", t="0:28–0:40", purpose="Every feature, one after another, without one-feature screens. The list on the left steps; the UI on the right changes to match.",
   frames=[(f"5.{i+1}", f"0:{28 + round(i*1.5):02d}", (lambda i=i: feat_frame(i)),
-           ("Left: Paper panel with the feature list scrolling up in a stepped hierarchy: the active feature is a larger Berry pill, and each step away is slightly smaller and fainter, with generous spacing. Right: its own dark-to-light field with the Zenboard mark's lobes blended in, a frosted tinted card and a white card floating over its corner. " if i == 0 else "The list springs up one step; the field recolours and the cards swap (tinted card slides up, white card pops in 4 frames later). ")
+           ("Left: Paper panel with the feature list set on a curved dial like a clock face: the active feature sits furthest right as a larger pill in that feature's own colour (icon colours match), and the neighbours curve away, smaller and fainter. Each step is a crisp clock tick. Right: its own dark-to-light field with the Zenboard mark's lobes blended in, a frosted tinted card and a white card floating over its corner. " if i == 0 else "The list springs up one step; the field recolours and the cards swap (tinted card slides up, white card pops in 4 frames later). ")
            + FEAT_NOTES[FEATS[i][0]],
            FEATS[i][0], "Tick on the step, soft pop on the white card" if i else "Music enters the groove; tick, pop")
           for i in range(len(FEATS))],

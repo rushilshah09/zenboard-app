@@ -4,7 +4,7 @@
  * content and a white card floating over its corner. 8 features × 1.5s. Storyboard 5.1–5.8.
  */
 import React from "react";
-import { useCurrentFrame } from "remotion";
+import { spring, useCurrentFrame } from "remotion";
 import { At, BERRY, CURVE, Face, Frame, Icon, Mark, Lockup, INK, PAPER, blurIn, ease, mix, pop, soft } from "./kit";
 import { IconName } from "./icons.generated";
 
@@ -21,13 +21,10 @@ export const FEATS: Feat[] = [
 ];
 const STEP = 90;
 // stepped hierarchy (storyboard review): active pill is the focal point, each step away smaller and fainter
-const SC = [1.4, 1.05, 0.95, 0.88, 0.84], OP = [1, 0.8, 0.55, 0.32, 0];
+const SC = [1.45, 1.08, 1.0, 0.95, 0.92], OP = [1, 0.92, 0.62, 0.38, 0];
+const dialX = (a: number) => 11.5 - 6.2 * a ** 0.85;
+const dialY = (rel: number) => Math.sign(rel) * (7.6 * Math.abs(rel) - 0.25 * rel * rel);
 const tbl = (t: number[], a: number) => { const i = Math.min(Math.floor(a), t.length - 2); const k = Math.min(1, a - i); return t[i] + (t[i + 1] - t[i]) * k; };
-const listY = (rel: number) => {
-  const a = Math.abs(rel); let y = 0, j = 0;
-  while (j < a) { const d = Math.min(1, a - j); y += d * ((3.1 * (tbl(SC, j) + tbl(SC, j + d))) / 2 + 2.4 * tbl(SC, j + d)); j += d; }
-  return rel >= 0 ? y : -y;
-};
 
 const Chip: React.FC<{ c?: string; children: React.ReactNode }> = ({ c = "", children }) => <span className={`fchip ${c}`}>{children}</span>;
 const FF: React.FC<{ k: "p1" | "p2" | "p3" | "p4" | "p5" }> = ({ k }) => <Face k={k} className="fface" />;
@@ -142,7 +139,8 @@ export const S5Features: React.FC = () => {
   const f = useCurrentFrame();
   // continuous list position: steps with a soft spring every STEP frames
   let pos = 0;
-  for (let k = 1; k < FEATS.length; k++) pos += soft(f, k * STEP, 170, 24);
+  // clock tick: a fast snap with a tiny overshoot, then a still hold
+  for (let k = 1; k < FEATS.length; k++) pos += spring({ frame: f - k * STEP, fps: 60, config: { stiffness: 420, damping: 19, mass: 0.55 } });
   const active = Math.min(FEATS.length - 1, Math.floor((f + 6) / STEP));
   const out = ease(f, 690, 720, 0, 1, CURVE.glide); // hand-off: panel fills the frame for the automation scene
   return (
@@ -160,10 +158,11 @@ export const S5Features: React.FC = () => {
           const a = Math.min(4, Math.abs(rel));
           const enter = pop(f, 4 + Math.abs(j - 2) * 3, 200, 18);
           return (
-            <At key={j} x={3.2} y={56.25 / 2 + listY(rel)} style={{ transform: `translate(0,-50%)`, opacity: tbl(OP, a) * Math.min(1, enter * 1.3) }}>
-              <div className={`fp${on ? " on" : ""}`} style={{ transform: `scale(${tbl(SC, a) * (0.94 + 0.06 * enter)})`, transformOrigin: "0 50%" }}>
-                <span className="pico" style={{ width: "2.5cqw", height: "2.5cqw", background: FEATS[idx].bg, color: FEATS[idx].fg }}><Icon name={FEATS[idx].icon} weight="duotone" size="58%" /></span>
-                {FEATS[idx].name}
+            <At key={j} x={dialX(a)} y={56.25 / 2 + dialY(rel)} style={{ transform: `translate(0,-50%)`, opacity: tbl(OP, a) * Math.min(1, enter * 1.3) }}>
+              <div className={`fp${on ? " on" : ""}`} style={{ transform: `scale(${tbl(SC, a) * (0.94 + 0.06 * enter)})`, transformOrigin: "0 50%",
+                ...(on ? { background: FEATS[idx].m, borderColor: FEATS[idx].m, boxShadow: `0 .8cqw 2cqw ${FEATS[idx].m}55` } : {}) }}>
+                <span className="pico" style={{ width: "2.5cqw", height: "2.5cqw", background: on ? `color-mix(in srgb, ${FEATS[idx].m} 12%, #fff)` : `color-mix(in srgb, ${FEATS[idx].l} 30%, #fff)`, color: on ? FEATS[idx].tone : FEATS[idx].m }}><Icon name={FEATS[idx].icon} weight="duotone" size="58%" /></span>
+              {FEATS[idx].name}
               </div>
             </At>
           );
