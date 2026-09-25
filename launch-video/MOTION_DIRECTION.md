@@ -53,9 +53,11 @@ Three signature gestures, used everywhere, so the film feels like one piece:
   one pink sheen appear only on Zenboard moments (from S09 onward), never in the chaos.
 - **Rotation** is allowed for the mark and the orbiting tiles; still no 3D tilt, no shake.
 
-## 4 · The new logo reveal (built — `LogoConcept` composition)
+## 4 · The new logo reveal (built — in the film as S08→S09, preview in `LogoConcept`)
 
-Replaces the current S08 ending and S09. 6 seconds at 60fps:
+The eight tiles sit in a breathing row under the S08 question, then S09 turns them into the mark
+(`REVEAL_FILM`, a tighter cut than the 6s preview below, so "Zenboard" is spoken as the letters
+land). The preview timing:
 
 | Time | What happens | Sound |
 |---|---|---|
@@ -97,8 +99,9 @@ same gesture.
   once the SVGs are in (their layers separate cleanly when vectorised).
 - Product UI gets close-ups: the camera travels into the element being used, like Jurni.
 
-## 7 · What happens next
+## 7 · Status
 
-1. Sign off the logo reveal (`out/logo-concept.mp4`), or tell me what to change.
-2. I apply §3–§5 across the film and re-measure it against the §1 targets.
-3. The illustrations are still needed for S01, S02, S15 and S17.
+- Done: logo reveal in the film (S08–S09), fast reprise on the end card (S18), S10 flies the
+  real mark into the sidebar, word-level VO sync on every voiced line, S04 row wave, punch-in
+  camera in S11–S15, slow pushes on S04, S08, S09, S17 and S18.
+- Still needed: the illustration SVGs (IMG-01, 02, 06a–d, 07) for S01, S02, S15 and S17.

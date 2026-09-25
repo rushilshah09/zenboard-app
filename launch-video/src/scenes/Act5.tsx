@@ -27,10 +27,12 @@ import {
   rowGlyph,
 } from "../components/Product";
 import { Thread } from "../components/Thread";
-import { Mark } from "../components/ZenMark";
+import { RevealMark } from "../components/LogoReveal";
+import { Aura } from "../components/ZenMark";
 import { ZONES } from "../brand/layout";
 import { DUR, EASE, clamp, leave, rise } from "../brand/motion";
-import { SceneId, actRange, frames, sceneStart } from "../brand/timeline";
+import { syncWords, syncedSpan } from "../brand/sync";
+import { SceneId, VO_AT, actRange, frames, sceneStart } from "../brand/timeline";
 import { LOCKUP, LockupLeaving, lockupMark } from "./Act4";
 import { Scene, drift } from "./shared";
 
@@ -60,50 +62,67 @@ const threadPath = (from: { x: number; y: number }, to: { x: number; y: number }
     : `M${from.x} ${from.y} C${from.x - 60} ${from.y}, ${to.x + 48} ${to.y}, ${to.x} ${to.y}`;
 
 // ── S10 · the eight apps come home ──────────────────────────────────────────
-const ROW_AT = (i: number) => 72 + i * 12;
+const ROW_AT = (i: number) => 36 + i * 9;
+/** S09 ends pushed in; the lockup keeps that scale while it leaves so the cut is invisible. */
+const S09_END_SCALE = 1.09;
+const toScreen = (p: { x: number; y: number }, s: number) => ({ x: 960 + (p.x - 960) * s, y: 540 + (p.y - 540) * s });
 export const S10: React.FC = () => {
   const frame = useCurrentFrame();
-  const travel = clamp(frame, [12, 12 + 48], [0, 1], EASE.settle);
-  const from = lockupMark();
-  const to = { x: WIN.x + 32 + 16, y: WIN.y + 28 + 16 };
-  const scale = 1 + (32 / LOCKUP.markSize - 1) * travel;
-  const landed = clamp(frame, [58, 66], [0, 1], EASE.settle);
+  const travel = clamp(frame, [8, 8 + 52], [0, 1], EASE.settle);
+  // Starts tight and pulls back as the sidebar rows unfold.
+  const cam = actCamera("S10", frame) * (1.06 - 0.06 * clamp(frame, [16, frames("S10")], [0, 1], EASE.settle));
+  const from = toScreen(lockupMark(), S09_END_SCALE);
+  // The header mark: 32px box with a 2-unit pad on the 36-unit grid.
+  const to = toScreen({ x: WIN.x + 32 + 16, y: WIN.y + 28 + 16 }, cam);
+  const size0 = LOCKUP.markSize * S09_END_SCALE;
+  const size1 = (32 * 32) / 36 * cam;
+  const scale = 1 + (size1 / size0 - 1) * travel;
+  const landed = clamp(frame, [56, 64], [0, 1], EASE.settle);
   const rows = NAV.map((_, i) => clamp(frame, [ROW_AT(i), ROW_AT(i) + DUR.settle], [0, 1], EASE.settle));
   const colours = NAV.map((_, i) => clamp(frame, [ROW_AT(i) + 18, ROW_AT(i) + 18 + DUR.colourShift], [0, 1], EASE.settle));
-  const push = clamp(frame, [160, 190], [0, 1], EASE.settle);
-  const sel = clamp(frame, [184, 200], [0, 1], EASE.settle);
+  const push = clamp(frame, [112, 140], [0, 1], EASE.settle);
+  const sel = clamp(frame, [134, 150], [0, 1], EASE.settle);
+  const auraOut = clamp(frame, [0, 40], [0, 1], EASE.leave);
+  const m = toScreen(lockupMark(), S09_END_SCALE);
   return (
     <Scene>
-      <Camera scale={actCamera("S10", frame)}>
+      {/* The aura from the reveal fades as the mark flies home. */}
+      <div style={{ position: "absolute", left: m.x - 460 * S09_END_SCALE, top: m.y - 460 * S09_END_SCALE, width: 920, height: 920, transformOrigin: "0 0", scale: String(S09_END_SCALE * (1 + Math.sin((frames("S09") + frame) / 24) * 0.015)), opacity: 1 - auraOut }}>
+        <Aura size={920} />
+      </div>
+      <Camera scale={S09_END_SCALE}>
         <LockupLeaving frame={frame} />
+      </Camera>
+      <Camera scale={cam}>
         <ProductWindow
           rows={rows}
           colours={colours}
           selected={ROW.today}
           selectedOpacity={sel}
           headerMark={landed}
-          frame={rise(frame, 24, { scale: true })}
-          overlay={<Thread d={`M48 60 C 48 90, 52 110, ${rowEnd(0).x} ${rowEnd(0).y}`} progress={push} opacity={1 - clamp(frame, [196, 212], [0, 1], EASE.leave)} />}
+          frame={rise(frame, 20, { scale: true })}
+          overlay={<Thread d={`M48 60 C 48 90, 52 110, ${rowEnd(0).x} ${rowEnd(0).y}`} progress={push} opacity={1 - clamp(frame, [146, 158], [0, 1], EASE.leave)} />}
         />
-        {landed < 1 ? (
-          <div
-            style={{
-              position: "absolute",
-              left: from.x - LOCKUP.markSize / 2,
-              top: from.y - LOCKUP.markSize / 2,
-              translate: `${(to.x - from.x) * travel}px ${(to.y - from.y) * travel}px`,
-              scale: String(scale),
-              opacity: 1 - landed,
-            }}
-          >
-            <Mark size={LOCKUP.markSize} />
-          </div>
-        ) : null}
       </Camera>
+      {landed < 1 ? (
+        <div
+          style={{
+            position: "absolute",
+            left: from.x - size0 / 2,
+            top: from.y - size0 / 2,
+            translate: `${(to.x - from.x) * travel}px ${(to.y - from.y) * travel}px`,
+            scale: String(scale),
+            opacity: 1 - landed,
+          }}
+        >
+          <RevealMark size={size0} />
+        </div>
+      ) : null}
       {NAV.map((_, i) => (
         <Sfx key={i} at={ROW_AT(i) + 10} sound="tick-tuned" variant={i} volume={0.22} />
       ))}
-      <Sfx at={160} sound="thread" volume={0.14} />
+      <Sfx at={8} sound="whoosh-soft" volume={0.16} />
+      <Sfx at={112} sound="thread" volume={0.14} />
     </Scene>
   );
 };
@@ -129,6 +148,29 @@ const MODULES: Record<ModuleId, Module> = {
   S15: { row: ROW.life, from: ROW.money, headline: "And room for the rest of your life.", View: LifeView, Prev: MoneyView },
 };
 const ORDER: ModuleId[] = ["S11", "S12", "S13", "S14", "S15"];
+
+/**
+ * Punch-in camera: each module pushes in on its action and eases back out
+ * before the thread leaves. Max ~1.15× keeps the window clear of the headline.
+ * `focus` is content-local; frames are scene-local.
+ */
+type Punch = { focus: { x: number; y: number }; k: number; in: [number, number]; out: [number, number] };
+const PUNCH: Record<ModuleId, Punch> = {
+  S11: { focus: { x: TODAY.slot.x + TODAY.slot.w / 2 - 200, y: TODAY.slot.y + 40 }, k: 1.12, in: [VIEW_AT + TODAY.grabAt - 6, VIEW_AT + TODAY.dropAt + 8], out: [150, 190] },
+  S12: { focus: { x: 440, y: 250 }, k: 1.1, in: [VIEW_AT + DOC.lineAt - 20, VIEW_AT + DOC.lineAt + 30], out: [168, 204] },
+  S13: { focus: { x: 592, y: 320 }, k: 1.08, in: [36, 110], out: [168, 204] },
+  S14: { focus: { x: MONEY_SEND.x - 200, y: MONEY_SEND.y }, k: 1.12, in: [VIEW_AT + MONEY.sendAt - 36, VIEW_AT + MONEY.sendAt], out: [VIEW_AT + MONEY.paidAt + 18, 236] },
+  S15: { focus: { x: 700, y: 320 }, k: 1.07, in: [16, 110], out: [180, 236] },
+};
+const punchAt = (id: ModuleId, frame: number, drift: number) => {
+  const p = PUNCH[id];
+  // Between the push and the pull the camera keeps creeping in, so the hold never goes dead.
+  const creep = 0.03 * clamp(frame, [p.in[1], p.out[0]], [0, 1], EASE.breathe);
+  const k = 1 + (p.k - 1 + creep) * (clamp(frame, p.in, [0, 1], EASE.settle) - clamp(frame, p.out, [0, 1], EASE.settle));
+  const fx = WIN.x + CONTENT.x + p.focus.x - 960;
+  const fy = WIN.y + CONTENT.y + p.focus.y - 540;
+  return { scale: drift * k, x: fx * drift * (1 - k), y: fy * drift * (1 - k) };
+};
 
 /** Cursor waypoints per module: [frame, window-local x, y]. */
 const along = (frame: number, pts: [number, number, number][]) => {
@@ -185,14 +227,20 @@ const ModuleScene: React.FC<{ id: ModuleId }> = ({ id }) => {
   const pressAt = id === "S11" ? VIEW_AT + TODAY.grabAt : VIEW_AT + MONEY.sendAt;
   const press = clamp(frame, [pressAt - 3, pressAt], [0, 1], EASE.snap) * (1 - clamp(frame, [pressAt + 2, pressAt + 8], [0, 1], EASE.settle));
   const holding = id === "S11" && frame >= VIEW_AT + TODAY.grabAt && frame < VIEW_AT + TODAY.dropAt;
+  const words = syncWords(m.headline, id, VO_AT[id]);
   const Current = m.View;
   const Prev = m.Prev;
+  const cam = actCamera(id, frame);
+  const punch = punchAt(id, frame, cam);
   return (
     <Scene>
-      <Camera scale={actCamera(id, frame)}>
-        <Place id="headline" rect={ZONES.headlineTop} moving={during(frame, [12, 70], [len - 18, len])}>
-          <Headline text={m.headline} at={12} align="center" width={ZONES.headlineTop.w} exitAt={len - 18} />
+      {/* The headline stays on the act's drift; only the product punches in. */}
+      <Camera scale={cam}>
+        <Place id="headline" rect={ZONES.headlineTop} moving={during(frame, syncedSpan(words), [len - 18, len])}>
+          <Headline text={m.headline} at={words[0]} wordAt={words} align="center" width={ZONES.headlineTop.w} exitAt={len - 18} />
         </Place>
+      </Camera>
+      <Camera scale={punch.scale} x={punch.x} y={punch.y}>
         <Place id="window" rect={WIN}>
           <div />
         </Place>
@@ -247,6 +295,7 @@ export const S15: React.FC = () => <ModuleScene id="S15" />;
 
 // ── S16 · all connected ─────────────────────────────────────────────────────
 export const S16_HEADLINE = "All connected. Nothing to switch.";
+const S16_WORDS = syncWords(S16_HEADLINE, "S16", VO_AT.S16);
 const TRACE: [number, number] = [16, 112];
 export const S16: React.FC = () => {
   const frame = useCurrentFrame();
@@ -264,8 +313,8 @@ export const S16: React.FC = () => {
   return (
     <Scene>
       <Camera scale={cam}>
-        <Place id="headline" rect={ZONES.headlineTop} moving={during(frame, [8, 64])}>
-          <Headline text={S16_HEADLINE} at={8} align="center" width={ZONES.headlineTop.w} />
+        <Place id="headline" rect={ZONES.headlineTop} moving={during(frame, syncedSpan(S16_WORDS))}>
+          <Headline text={S16_HEADLINE} at={S16_WORDS[0]} wordAt={S16_WORDS} align="center" width={ZONES.headlineTop.w} />
         </Place>
         <ProductWindow
           rows={ALL_IN}

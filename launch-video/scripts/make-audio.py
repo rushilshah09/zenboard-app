@@ -31,6 +31,11 @@ TOTAL = t
 FRAME = 1 / 60
 
 
+# When the mark turns pink in LogoReveal: REVEAL_FILM.pink[0] in S09, and the S18 reprise (retime 1.8×, +14).
+PINK_S09 = 156
+PINK_S18 = 14 + round(156 / 1.8)
+
+
 def at(sid, frames=0):
     return START[sid] + frames * FRAME
 
@@ -236,16 +241,16 @@ def score():
     act3 = (drone * (0.06 + 0.5 * ramp) + riser + sweep) * env(len(t), 1.0, 0.004)
     add(act3, d0, 0.14)
 
-    # Act 4: 16 frames of true silence, then one sustained low note as the tiles merge.
-    note_at = s08 + 104 * FRAME
-    t = tt(START["S09"] - note_at + 0.6)
+    # Act 4: 16 frames of true silence, then one sustained low note under the spin (LogoReveal).
+    note_at = at("S09", 10)
+    t = tt(at("S09", PINK_S09) - note_at + 0.6)
     low = (np.sin(2 * np.pi * midi(38) * t) + 0.4 * np.sin(2 * np.pi * midi(50) * t)) * env(len(t), 1.2, 0.5)
     add(low, note_at, 0.18)
     t = tt(START["S09"] - s08 - 0.3)
     add(lp(rng.standard_normal(len(t)), 300) * env(len(t), 0.8, 0.3), s08 + 16 * FRAME, 0.02)
 
-    # Acts 5–6: warm, minimal, 90 BPM, in D. Enters on the S09 chime.
-    enter = at("S09", 6)
+    # Acts 5–6: warm, minimal, 90 BPM, in D. Enters on the S09 chime (the mark turns pink).
+    enter = at("S09", PINK_S09)
     bar = BEAT * 4
     chords = [
         [50, 62, 66, 69, 76],  # D(add9)
@@ -286,7 +291,7 @@ def score():
         piano(c[0] - 12, START["S17"] + off, bar * 1.3, 0.2)
         for j, m in enumerate(c[1:]):
             piano(m, START["S17"] + off + j * 0.02, bar * 1.2, 0.09, 0.4 + 0.05 * j)
-    final = START["S18"] + 8 * FRAME
+    final = at("S18", PINK_S18)
     for j, m in enumerate([38, 50, 57, 62, 66, 69, 74]):
         piano(m, final + j * 0.03, TOTAL - final + 1.0, 0.13 if j else 0.22, 0.35 + 0.05 * j)
     pad([62, 66, 69, 76], START["S17"], TOTAL - START["S17"], 0.09)
@@ -295,7 +300,7 @@ def score():
 
     # Duck the music 3dB under the three chimes.
     duck = np.ones(n)
-    for t0 in [at("S09", 6), at("S14", 10 + 172), at("S18", 8)]:
+    for t0 in [at("S09", PINK_S09), at("S14", 10 + 172), at("S18", PINK_S18)]:
         s = int(t0 * SR)
         w = int(1.4 * SR)
         shape = np.concatenate([np.linspace(1, 0.71, int(0.05 * SR)), np.full(w, 0.71), np.linspace(0.71, 1, int(0.5 * SR))])

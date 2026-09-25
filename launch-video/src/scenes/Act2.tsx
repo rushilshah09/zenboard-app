@@ -10,7 +10,8 @@ import { Tile } from "../components/Tile";
 import { Rect, col, span } from "../brand/layout";
 import { DUR, EASE, clamp, rise } from "../brand/motion";
 import { colour, radius, space, tint } from "../brand/tokens";
-import { beat } from "../brand/timeline";
+import { syncWords, syncedSpan } from "../brand/sync";
+import { VO_AT, beat } from "../brand/timeline";
 import { OPENING_SCALE } from "./Act1";
 import { APPS, Scene, TILE_SCALE, gridSlot, pillRect, tileRect, tileSlot } from "./shared";
 
@@ -69,8 +70,18 @@ export const S03: React.FC = () => {
 const shrinkP = (frame: number, i: number) =>
   i < 4 ? clamp(frame, [0, 28], [0, 1], EASE.settle) : clamp(frame, [20, 48], [0, 1], EASE.settle);
 
-/** Each phrase lands on a beat, after the grid has finished compressing. */
-export const PHRASES_S04 = [beat(1), beat(2), beat(3)];
+/** Each word lands as it is spoken; the row reacts on the nouns (apps, logins, bills). */
+const S04_TEXT = "Eight apps.|Eight logins.|Eight bills.";
+const S04_WORDS = syncWords(S04_TEXT, "S04", VO_AT.S04);
+export const PHRASES_S04 = [S04_WORDS[1], S04_WORDS[3], S04_WORDS[5]];
+/** A soft dip that travels along the row each time a noun is spoken (no overshoot). */
+const wave = (frame: number, slot: number) =>
+  PHRASES_S04.reduce((s, at) => {
+    const t = at + slot * 3;
+    const down = clamp(frame, [t, t + 6], [0, 1], EASE.snap);
+    const up = clamp(frame, [t + 6, t + 22], [0, 1], EASE.settle);
+    return s - 0.05 * (down - up);
+  }, 1);
 const TILE_ROW: Rect = { x: col(1), y: tileRect(0).y, w: span(12), h: pillRect(0).y + pillRect(0).h - tileRect(0).y };
 const HEADLINE_S04: Rect = { x: col(1), y: pillRect(0).y + pillRect(0).h + 96, w: span(12), h: 80 };
 
@@ -78,7 +89,7 @@ export const S04: React.FC = () => {
   const frame = useCurrentFrame();
   return (
     <Scene>
-      <Camera scale={1}>
+      <Camera scale={1 + 0.05 * clamp(frame, [48, beat(8)], [0, 1], EASE.breathe)}>
         {APPS.map((a, i) => {
           const g = gridSlot(i);
           const t = tileRect(tileSlot(i));
@@ -102,7 +113,7 @@ export const S04: React.FC = () => {
                   <AppWindow category={a.category} label={a.label} width={g.w} height={g.h} />
                 </Place>
               ) : null}
-              <div style={{ position: "absolute", left: t.x, top: t.y, opacity: swap }}>
+              <div style={{ position: "absolute", left: t.x, top: t.y, opacity: swap, scale: String(wave(frame, tileSlot(i))) }}>
                 <Tile category={a.category} label={a.short} width={t.w} height={t.h} />
               </div>
               <div style={{ position: "absolute", left: pillRect(tileSlot(i)).x, top: pillRect(tileSlot(i)).y, width: pillRect(0).w, height: pillRect(0).h, ...rise(frame, PHRASES_S04[1] + tileSlot(i) * 2, { dist: 24 }) }}>
@@ -115,8 +126,8 @@ export const S04: React.FC = () => {
         <Place id="tile-row" rect={TILE_ROW} moving={during(frame, [PHRASES_S04[1], PHRASES_S04[1] + 56])} style={{ opacity: shrinkP(frame, 7) >= 1 ? 1 : 0 }}>
           <div />
         </Place>
-        <Place id="headline" rect={HEADLINE_S04} visible={frame >= PHRASES_S04[0]} moving={during(frame, [PHRASES_S04[0], PHRASES_S04[2] + 50], [beat(8) - 18, beat(8)])}>
-          <Headline text="Eight apps.|Eight logins.|Eight bills." at={PHRASES_S04[0]} phraseAt={PHRASES_S04} exitAt={beat(8) - 18} />
+        <Place id="headline" rect={HEADLINE_S04} visible={frame >= S04_WORDS[0]} moving={during(frame, syncedSpan(S04_WORDS), [beat(8) - 18, beat(8)])}>
+          <Headline text={S04_TEXT} at={S04_WORDS[0]} wordAt={S04_WORDS} exitAt={beat(8) - 18} />
         </Place>
       </Camera>
       {PHRASES_S04.map((p, i) => (

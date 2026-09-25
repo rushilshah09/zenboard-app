@@ -19,7 +19,12 @@ The scene list and copy live in CREATIVE_DIRECTION.md, section 5. Never add scen
 ## Motion
 - Easing only via EASE.settle / snap / leave / breathe. No spring(), no bounce, no overshoot.
 - Text only through <Headline>: words rise 24px, 45ms stagger. No typewriter, no letter scramble.
-- No 3D tilt, no rotation, no glow effects, no camera shake.
+- No 3D tilt, no glow effects, no camera shake. Rotation only for the mark and its orbiting tiles (LogoReveal).
+- Motion floor: something purposeful moves every second (the camera counts). Only holds: the silence
+  at the start of S08 and the end of the end card. See MOTION_DIRECTION.md.
+- The camera may punch in on the action (max 1.15× in the product act) and ease back out.
+- Effects (ripple, spark burst, trails, aura, the pink sheen) only on Zenboard moments, S09 onward.
+- Voiced text is word-synced: pass `wordAt={syncWords(text, clip, VO_AT[id])}` to <Headline>.
 - Animate transform and opacity only. Always clamp interpolate.
 
 ## Layout

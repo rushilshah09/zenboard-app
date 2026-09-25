@@ -21,8 +21,8 @@ export const SCENES = [
   { id: "S06", act: 3, beats: 6, vo: null },
   { id: "S07", act: 3, beats: 6, vo: null },
   { id: "S08", act: 4, beats: 6, vo: "What if it all lived in one place?" },
-  { id: "S09", act: 4, beats: 6, vo: "Zenboard. The single platform to manage work, life, and business." },
-  { id: "S10", act: 5, beats: 5, vo: null },
+  { id: "S09", act: 4, beats: 13, vo: "Zenboard. The single platform to manage work, life, and business." },
+  { id: "S10", act: 5, beats: 4, vo: null },
   { id: "S11", act: 5, beats: 6, vo: "Plan your day in seconds." },
   { id: "S12", act: 5, beats: 6, vo: "Write right next to the work." },
   { id: "S13", act: 5, beats: 6, vo: "Every client in one view." },
@@ -30,7 +30,7 @@ export const SCENES = [
   { id: "S15", act: 5, beats: 6, vo: "And room for the rest of your life." },
   { id: "S16", act: 5, beats: 4, vo: "All connected. Nothing to switch." },
   { id: "S17", act: 6, beats: 7, vo: "One workspace. One subscription. One focus." },
-  { id: "S18", act: 6, beats: 9, vo: "Zenboard. Available today." },
+  { id: "S18", act: 6, beats: 7, vo: "Zenboard. Available today." },
 ] as const;
 
 export type SceneId = (typeof SCENES)[number]["id"];
@@ -62,18 +62,39 @@ export const actRange = (act: Act): [number, number] => {
  * so a line may run past its scene's cut; `max` is the room before the next
  * cue (seconds) — keep each clip under it. See VOICEOVER.md.
  */
+/**
+ * Where each voice clip starts, in frames local to the scene it belongs to
+ * (S02's clip plays inside S01). Scenes read their text timing from here via
+ * src/brand/sync.ts, so words appear exactly as they are spoken.
+ */
+export const VO_AT = {
+  S01: 16,
+  S02: 160,
+  S04: 40,
+  S08: 40,
+  S09: 180,
+  S11: 12,
+  S12: 12,
+  S13: 12,
+  S14: 12,
+  S15: 12,
+  S16: 8,
+  S17: 16,
+  S18: 112,
+} as const;
+
 export const VO_CUES: { id: SceneId; at: number }[] = [
-  { id: "S01", at: sceneStart("S01") + 16 },
-  { id: "S02", at: sceneStart("S01") + 160 },
-  { id: "S04", at: sceneStart("S04") + beat(1) },
-  { id: "S08", at: sceneStart("S08") + 40 },
-  { id: "S09", at: sceneStart("S09") + 40 },
-  { id: "S11", at: sceneStart("S11") + 12 },
-  { id: "S12", at: sceneStart("S12") + 12 },
-  { id: "S13", at: sceneStart("S13") + 12 },
-  { id: "S14", at: sceneStart("S14") + 12 },
-  { id: "S15", at: sceneStart("S15") + 12 },
-  { id: "S16", at: sceneStart("S16") + 8 },
-  { id: "S17", at: sceneStart("S17") + 16 },
-  { id: "S18", at: sceneStart("S18") + 20 },
+  { id: "S01", at: sceneStart("S01") + VO_AT.S01 },
+  { id: "S02", at: sceneStart("S01") + VO_AT.S02 },
+  { id: "S04", at: sceneStart("S04") + VO_AT.S04 },
+  { id: "S08", at: sceneStart("S08") + VO_AT.S08 },
+  { id: "S09", at: sceneStart("S09") + VO_AT.S09 },
+  { id: "S11", at: sceneStart("S11") + VO_AT.S11 },
+  { id: "S12", at: sceneStart("S12") + VO_AT.S12 },
+  { id: "S13", at: sceneStart("S13") + VO_AT.S13 },
+  { id: "S14", at: sceneStart("S14") + VO_AT.S14 },
+  { id: "S15", at: sceneStart("S15") + VO_AT.S15 },
+  { id: "S16", at: sceneStart("S16") + VO_AT.S16 },
+  { id: "S17", at: sceneStart("S17") + VO_AT.S17 },
+  { id: "S18", at: sceneStart("S18") + VO_AT.S18 },
 ];

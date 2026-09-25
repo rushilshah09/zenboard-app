@@ -29,6 +29,8 @@ export const Headline: React.FC<{
   stack?: boolean;
   exitAt?: number;
   width?: number;
+  /** Per-word start frames (from syncWords): words appear exactly as they are spoken. */
+  wordAt?: number[];
 }> = ({
   text,
   at,
@@ -42,6 +44,7 @@ export const Headline: React.FC<{
   stack = false,
   exitAt,
   width,
+  wordAt,
 }) => {
   const frame = useCurrentFrame();
   const phrases = text.split("|").map((p) => p.trim().split(/\s+/));
@@ -55,22 +58,28 @@ export const Headline: React.FC<{
     });
   }
   const lastPhrase = phrases.length - 1;
-  const landed = starts[lastPhrase] + (phrases[lastPhrase].length - 1) * DUR.wordStagger + DUR.settle;
+  const landed = wordAt ? wordAt[wordAt.length - 1] + DUR.settle : starts[lastPhrase] + (phrases[lastPhrase].length - 1) * DUR.wordStagger + DUR.settle;
+  // Synced words rise faster so each is readable the moment it is heard.
+  const riseDur = wordAt ? 24 : DUR.settle;
+  let wordIndex = 0;
   const block = exitAt !== undefined ? leave(frame, exitAt) : { opacity: 1, translate: "0 0px" };
 
   let emphasisIndex = 0;
-  const renderWord = (raw: string, start: number, key: string) => {
+  const renderWord = (raw: string, flowStart: number, key: string) => {
+    const start = wordAt ? wordAt[wordIndex] ?? flowStart : flowStart;
+    wordIndex++;
     const isEmphasis = raw.includes("[");
     const word = raw.replace(/[[\]]/g, "");
     let fill = TONE[tone];
     if (isEmphasis) {
-      const shiftAt = landed + DUR.colourDelay + emphasisIndex * emphasisStagger;
+      // Synced lines shift each emphasised word as it is spoken; others after the line lands.
+      const shiftAt = wordAt ? start + 8 : landed + DUR.colourDelay + emphasisIndex * emphasisStagger;
       emphasisIndex++;
       const p = clamp(frame, [shiftAt, shiftAt + DUR.colourShift], [0, 1], EASE.settle);
       fill = interpolateColors(p, [0, 1], [TONE[emphasisFrom], TONE[emphasisTo]]);
     }
     return (
-      <span key={key} style={{ display: "inline-block", color: fill, marginRight: "0.26em", ...rise(frame, start, { dist: 24 }) }}>
+      <span key={key} style={{ display: "inline-block", color: fill, marginRight: "0.26em", ...rise(frame, start, { dist: 24, dur: riseDur }) }}>
         {word}
       </span>
     );

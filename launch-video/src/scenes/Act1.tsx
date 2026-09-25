@@ -9,15 +9,23 @@ import { hasFile } from "../components/media";
 import { FRAME, Rect, ZONES } from "../brand/layout";
 import { EASE, clamp } from "../brand/motion";
 import { colour, radius, shadow } from "../brand/tokens";
-import { actRange, frames, sceneStart } from "../brand/timeline";
+import { syncLine, syncedSpan } from "../brand/sync";
+import { VO_AT, actRange, frames, sceneStart } from "../brand/timeline";
 import { Scene, drift, gridSlot } from "./shared";
 
 /**
  * Act 1 — one person (S01–S02). One two-phrase headline spans both scenes so
  * "And one big idea." stays readable before the card lifts into act 2.
  */
-const LINE = "Every business starts with one person.|And one big idea.";
-const PHRASE_AT = [16, 110]; // S01-local
+const P1 = "Every business starts with one person.";
+const P2 = "And one big idea.";
+const LINE = `${P1}|${P2}`;
+/** Per-word frames, S01-local: each word appears as it is spoken (S02's clip plays inside S01). */
+const WORDS = syncLine([
+  [P1, "S01", VO_AT.S01],
+  [P2, "S02", VO_AT.S02],
+]);
+const P2_FIRST = P1.split(" ").length;
 const LINE_EXIT = frames("S01") + 68; // S01-local frame, lands inside S02
 
 /** IMG-01 / IMG-07 are full-frame plates; their placeholder holds the right seven columns. */
@@ -31,8 +39,12 @@ export const OPENING_SCALE = 1.9;
 const ActOneHeadline: React.FC<{ offset: number }> = ({ offset }) => {
   const frame = useCurrentFrame() + offset;
   return (
-    <Place id="headline" rect={ZONES.headlineLeft} moving={during(frame, [PHRASE_AT[0], PHRASE_AT[0] + 60], [PHRASE_AT[1], PHRASE_AT[1] + 54], [LINE_EXIT, LINE_EXIT + 18])}>
-      <Headline text={LINE} at={PHRASE_AT[0] - offset} phraseAt={PHRASE_AT.map((p) => p - offset)} stack exitAt={LINE_EXIT - offset} width={ZONES.headlineLeft.w} />
+    <Place
+      id="headline"
+      rect={ZONES.headlineLeft}
+      moving={during(frame, syncedSpan(WORDS.slice(0, P2_FIRST)), syncedSpan(WORDS.slice(P2_FIRST)), [LINE_EXIT, LINE_EXIT + 18])}
+    >
+      <Headline text={LINE} at={WORDS[0] - offset} wordAt={WORDS.map((w) => w - offset)} stack exitAt={LINE_EXIT - offset} width={ZONES.headlineLeft.w} />
     </Place>
   );
 };
@@ -48,7 +60,7 @@ export const S01: React.FC = () => {
         </Place>
         <ActOneHeadline offset={0} />
       </Camera>
-      <Sfx at={PHRASE_AT[0]} sound="pen-tap" volume={0.3} />
+      <Sfx at={WORDS[0]} sound="pen-tap" volume={0.3} />
     </Scene>
   );
 };

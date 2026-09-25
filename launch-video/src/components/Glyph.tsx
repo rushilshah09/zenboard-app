@@ -16,9 +16,10 @@ export const GLYPH_OF: Record<Category, GlyphName> = {
 };
 
 /**
- * A category glyph on its tile. Before S10 it is burgundy line on Soft Sand
- * only; `colourProgress` fills the tile with the category accent and the
- * duotone layer with the dominant colour.
+ * A category glyph on its tile: the solid (filled) icon from the product's
+ * icon family, with no inner white. Before S10 it is burgundy on Soft Sand;
+ * `colourProgress` turns the tile to the category accent and the icon to the
+ * category's dominant colour.
  */
 export const Glyph: React.FC<{ category: Category; size: number; colourProgress?: number; style?: React.CSSProperties }> = ({
   category,
@@ -29,7 +30,7 @@ export const Glyph: React.FC<{ category: Category; size: number; colourProgress?
   const g = GLYPHS[GLYPH_OF[category]];
   const pair = CATEGORY[category];
   const tile = interpolateColors(colourProgress, [0, 1], [colour.hairline, pair.accent]);
-  const fill = interpolateColors(colourProgress, [0, 1], [colour.card, pair.dominant]);
+  const icon = interpolateColors(colourProgress, [0, 1], [colour.ink, pair.dominant]);
   return (
     <div
       style={{
@@ -44,12 +45,9 @@ export const Glyph: React.FC<{ category: Category; size: number; colourProgress?
         ...style,
       }}
     >
-      <svg width={size * 0.62} height={size * 0.62} viewBox="0 0 256 256">
-        {g.fill.map((d, i) => (
-          <path key={`f${i}`} d={d} fill={fill} />
-        ))}
-        {g.line.map((d, i) => (
-          <path key={`l${i}`} d={d} fill={colour.ink} />
+      <svg width={size * 0.58} height={size * 0.58} viewBox="0 0 256 256">
+        {g.solid.map((d, i) => (
+          <path key={i} d={d} fill={icon} />
         ))}
       </svg>
     </div>
