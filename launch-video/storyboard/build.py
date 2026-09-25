@@ -302,12 +302,12 @@ def feat_ui(name, tone, light):
 def feat_frame(idx):
     name, icon, (d, m, l), tone = FEATS[idx]
     s = f'<div class="stage" style="background:{PAPER}"></div>'
-    for k in range(-3, 4):
+    for k in range(-3, 5):
         n2, ic2, _, _ = FEATS[(idx + k) % len(FEATS)]
         cls = "fp on" if k == 0 else "fp"
-        op = 1 if k == 0 else max(.28, 1 - abs(k) * .22)
-        s += at(19, H_/2 - 1.2 + k*6.9, f'<div class="{cls}" style="opacity:{op}">{pico(ic2)}{n2.upper()}</div>')
-    s += at(19, 53.3, lockup(8, INK), "", "transform:translate(-50%,-50%)")
+        op = 1 if k == 0 else max(.22, 1 - abs(k) * .2)
+        s += at(4.5, H_/2 - 1.5 + k*5.3, f'<div class="{cls}" style="opacity:{op}">{pico(ic2, 2.5)}{n2.upper()}</div>', "", "transform:translate(0,-50%)")
+    s += at(4.5, 3.6, lockup(8, INK), "", "transform:translate(0,-50%)")
     field = f'radial-gradient(130% 120% at 100% 100%,{l} 0%,{m} 38%,{d} 100%)'
     lobes = at(84, 45, mark(46, "#ffffff", ""), "lobes") + at(58, 4, mark(30, "#ffffff", ""), "lobes")
     card, flt = feat_ui(name, tone, l)
