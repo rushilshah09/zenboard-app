@@ -20,6 +20,14 @@ export const FEATS: Feat[] = [
   { name: "Focus", icon: "timer", bg: "#E7EAEC", fg: "#46505A", d: "#15181C", m: "#46505A", l: "#BCC3CA", tone: "#1B1E22" },
 ];
 const STEP = 90;
+// stepped hierarchy (storyboard review): active pill is the focal point, each step away smaller and fainter
+const SC = [1.4, 1.05, 0.95, 0.88, 0.84], OP = [1, 0.8, 0.55, 0.32, 0];
+const tbl = (t: number[], a: number) => { const i = Math.min(Math.floor(a), t.length - 2); const k = Math.min(1, a - i); return t[i] + (t[i + 1] - t[i]) * k; };
+const listY = (rel: number) => {
+  const a = Math.abs(rel); let y = 0, j = 0;
+  while (j < a) { const d = Math.min(1, a - j); y += d * ((3.1 * (tbl(SC, j) + tbl(SC, j + d))) / 2 + 2.4 * tbl(SC, j + d)); j += d; }
+  return rel >= 0 ? y : -y;
+};
 
 const Chip: React.FC<{ c?: string; children: React.ReactNode }> = ({ c = "", children }) => <span className={`fchip ${c}`}>{children}</span>;
 const FF: React.FC<{ k: "p1" | "p2" | "p3" | "p4" | "p5" }> = ({ k }) => <Face k={k} className="fface" />;
@@ -142,18 +150,18 @@ export const S5Features: React.FC = () => {
       <div className="stage" style={{ background: PAPER }} />
       {/* left: feature list */}
       <div className="stage" style={{ opacity: 1 - out }}>
-        <At x={4.5} y={3.6} style={{ transform: "translate(0,-50%)", ...blurIn(f, 6, 10) }}><Lockup width={8} color={INK} /></At>
+        <At x={3.2} y={4.2} style={{ transform: "translate(0,-50%)", ...blurIn(f, 6, 10) }}><Lockup width={10} color={INK} /></At>
         {Array.from({ length: 12 }, (_, j) => {
           const k = j - 2; // feature index (can run past the ends for continuity)
           const rel = k - pos;
-          if (Math.abs(rel) > 4.2) return null;
+          if (Math.abs(rel) > 3.6) return null;
           const idx = ((k % 8) + 8) % 8;
           const on = k === active;
-          const op = on ? 1 : Math.max(0.22, 1 - Math.abs(rel) * 0.2);
+          const a = Math.min(4, Math.abs(rel));
           const enter = pop(f, 4 + Math.abs(j - 2) * 3, 200, 18);
           return (
-            <At key={j} x={4.5} y={56.25 / 2 - 1.5 + rel * 5.3} style={{ transform: `translate(0,-50%) scale(${0.96 + 0.04 * enter})`, opacity: op * enter }}>
-              <div className={`fp${on ? " on" : ""}`}>
+            <At key={j} x={3.2} y={56.25 / 2 + listY(rel)} style={{ transform: `translate(0,-50%)`, opacity: tbl(OP, a) * Math.min(1, enter * 1.3) }}>
+              <div className={`fp${on ? " on" : ""}`} style={{ transform: `scale(${tbl(SC, a) * (0.94 + 0.06 * enter)})`, transformOrigin: "0 50%" }}>
                 <span className="pico" style={{ width: "2.5cqw", height: "2.5cqw", background: FEATS[idx].bg, color: FEATS[idx].fg }}><Icon name={FEATS[idx].icon} weight="duotone" size="58%" /></span>
                 {FEATS[idx].name}
               </div>
@@ -162,7 +170,7 @@ export const S5Features: React.FC = () => {
         })}
       </div>
       {/* right: field + cards per feature, crossfading on each step */}
-      <div className="rpanel" style={{ left: `${38 * (1 - out)}%`, top: `${3 * (1 - out)}%`, right: `${2.2 * (1 - out)}%`, bottom: `${3 * (1 - out)}%`, borderRadius: `${2 * (1 - out)}cqw` }}>
+      <div className="rpanel" style={{ left: `${34 * (1 - out)}%`, top: `${3 * (1 - out)}%`, right: `${2.2 * (1 - out)}%`, bottom: `${3 * (1 - out)}%`, borderRadius: `${2 * (1 - out)}cqw` }}>
         {FEATS.map((F, i) => {
           const inP = i === 0 ? 1 : soft(f, i * STEP - 2, 150, 24);
           const outP = i === FEATS.length - 1 ? 0 : soft(f, (i + 1) * STEP - 2, 170, 24);

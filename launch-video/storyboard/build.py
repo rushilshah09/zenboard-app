@@ -444,15 +444,34 @@ def feat_ui(name, tone, light):
         flt = '<small>Blocking</small><b>Slack, Mail, X</b><div class="fb"><span class="btn">' + ph("Pause", "fill", size="1em") + ' Pause</span></div>'
     return card, flt
 
+
+LIST_SCALE = [1.4, 1.05, 0.95, 0.88, 0.84]
+LIST_OPACITY = [1, .8, .55, .32, 0]
+def _lerp_table(t, a):
+    i = min(int(a), len(t) - 2); f = min(1, a - i)
+    return t[i] + (t[i + 1] - t[i]) * f
+def list_scale(a): return _lerp_table(LIST_SCALE, a)
+def list_opacity(a): return _lerp_table(LIST_OPACITY, a)
+def list_y(rel, h=3.1, gap=2.4):
+    """Centre offset (cqw) of a pill `rel` steps from the active one, stacking the scaled pill heights."""
+    a = abs(rel); y = 0.0; j = 0.0
+    while j < a:
+        d = min(1.0, a - j)
+        y += d * (h * (list_scale(j) + list_scale(j + d)) / 2 + gap * list_scale(j + d))
+        j += d
+    return y if rel >= 0 else -y
+
 def feat_frame(idx):
     name, icon, (d, m, l), tone = FEATS[idx]
     s = f'<div class="stage" style="background:{PAPER}"></div>'
-    for k in range(-3, 5):
+    # stepped hierarchy (review): the active pill is the focal point, each step away is smaller and fainter
+    for k in range(-3, 4):
         n2, ic2, _, _ = FEATS[(idx + k) % len(FEATS)]
         cls = "fp on" if k == 0 else "fp"
-        op = 1 if k == 0 else max(.22, 1 - abs(k) * .2)
-        s += at(4.5, H_/2 - 1.5 + k*5.3, f'<div class="{cls}" style="opacity:{op}">{pico(ic2, 2.5)}{n2}</div>', "", "transform:translate(0,-50%)")
-    s += at(4.5, 3.6, lockup(8, INK), "", "transform:translate(0,-50%)")
+        a = abs(k)
+        sc, op = list_scale(a), list_opacity(a)
+        s += at(3.2, H_/2 + list_y(k), f'<div class="{cls}" style="opacity:{op};transform:scale({sc});transform-origin:0 50%">{pico(ic2, 2.5)}{n2}</div>', "", "transform:translate(0,-50%)")
+    s += at(3.2, 4.2, lockup(10, INK), "", "transform:translate(0,-50%)")
     field = f'radial-gradient(130% 120% at 100% 100%,{l} 0%,{m} 38%,{d} 100%)'
     lobes = at(84, 45, mark(46, "#ffffff", ""), "lobes") + at(58, 4, mark(30, "#ffffff", ""), "lobes")
     card, flt = feat_ui(name, tone, l)
@@ -803,7 +822,7 @@ SCENES = [
   out="The Done button morphs into the first pill of the split screen (shape match)."),
  dict(n=5, name="Features", t="0:28–0:40", purpose="Every feature, one after another, without one-feature screens. The list on the left steps; the UI on the right changes to match.",
   frames=[(f"5.{i+1}", f"0:{28 + round(i*1.5):02d}", (lambda i=i: feat_frame(i)),
-           ("Left: Paper panel with the feature list scrolling up; the active feature snaps into a solid ink pill. Right: its own dark-to-light field with the Zenboard mark's lobes blended in, a frosted tinted card and a white card floating over its corner. " if i == 0 else "The list springs up one step; the field recolours and the cards swap (tinted card slides up, white card pops in 4 frames later). ")
+           ("Left: Paper panel with the feature list scrolling up in a stepped hierarchy: the active feature is a larger Berry pill, and each step away is slightly smaller and fainter, with generous spacing. Right: its own dark-to-light field with the Zenboard mark's lobes blended in, a frosted tinted card and a white card floating over its corner. " if i == 0 else "The list springs up one step; the field recolours and the cards swap (tinted card slides up, white card pops in 4 frames later). ")
            + FEAT_NOTES[FEATS[i][0]],
            FEATS[i][0], "Tick on the step, soft pop on the white card" if i else "Music enters the groove; tick, pop")
           for i in range(len(FEATS))],

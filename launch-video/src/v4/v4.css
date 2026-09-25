@@ -434,3 +434,11 @@
 .tlabel,.i3lab,.mono-note,.cc small,.dc small,.avail,.lbl{font-family:'Geist',sans-serif;letter-spacing:0!important}
 .fr{font-family:'Geist',ui-sans-serif,system-ui,sans-serif}
 .cstep{display:flex;align-items:center;gap:.5cqw}.cstep i{width:.45cqw;height:.45cqw;border-radius:50%;background:rgba(247,241,232,.25)}.cstep i.on{width:1.6cqw;border-radius:99px;background:#F7F1E8}.cstep em{font-style:normal;font-family:'Geist Mono',monospace;font-size:.8cqw;color:rgba(247,241,232,.5);margin-left:.8cqw}
+/* 5.x list hierarchy + larger right composition (storyboard review) */
+.fp{padding:.4cqw 1.2cqw .4cqw .4cqw;font-size:1.3cqw;gap:.6cqw}
+.fp.on{font-size:1.3cqw;padding:.4cqw 1.2cqw .4cqw .4cqw;box-shadow:0 .5cqw 1.2cqw rgba(196,28,114,.28)}
+.rpanel{left:34%}
+.tcard{left:6%;top:24%;width:76%;font-size:1.12cqw;padding:1.8cqw 2.1cqw;gap:.7cqw}
+.tcard h4{font-size:2.1cqw}
+.fcard{right:4.5%;top:7%;padding:1.7cqw 2cqw;min-width:30%}
+.fcard b{font-size:1.75cqw}.fcard b.bigp{font-size:2.9cqw}.fcard small{font-size:1.1cqw}

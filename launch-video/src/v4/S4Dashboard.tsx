@@ -33,7 +33,7 @@ export const S4Dashboard: React.FC = () => {
   const cur = ease(f, 236, 284, 0, 1, CURVE.glide);
   const fx = lerp(74, 64, close), fy = lerp(13, 30, close);
   // exit: field shrinks into scene 5's right panel (left 38%, top 3%, right 2.2%, bottom 3%)
-  const inset = `inset(${3 * out}% ${2.2 * out}% ${3 * out}% ${38 * out}% round ${2 * out}cqw)`;
+  const inset = `inset(${3 * out}% ${2.2 * out}% ${3 * out}% ${34 * out}% round ${2 * out}cqw)`;
   const doneFly = ease(f, 318, 356, 0, 1, CURVE.glide);
   return (
     <Frame>
@@ -61,7 +61,7 @@ export const S4Dashboard: React.FC = () => {
       </div>
       {/* the Done pill flies to become the first feature pill of scene 5 */}
       {doneFly > 0 ? (
-        <At x={lerp(fx + 1, 10.5, doneFly)} y={lerp(fy + 6, 26.9, doneFly)} style={{ transform: `scale(${lerp(1, 1.25, doneFly)})` }}>
+        <At x={lerp(fx + 1, 10.5, doneFly)} y={lerp(fy + 6, 28.1, doneFly)} style={{ transform: `scale(${lerp(1, 1.4, doneFly)})` }}>
           <span className="btn g on" style={{ fontSize: "1cqw" }}><Icon name="check" weight="bold" size="1em" /> Done</span>
         </At>
       ) : null}
