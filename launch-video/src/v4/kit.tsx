@@ -206,3 +206,51 @@ export const Cursor: React.FC<{ x: number; y: number; press?: number; opacity?: 
     <path d="M1 1 L1 19 L6 14.5 L9.5 22 L12.6 20.6 L9.2 13.3 L16 13.3 Z" fill="#191919" stroke="#fff" strokeWidth={1.4} strokeLinejoin="round" />
   </svg>
 );
+
+/* ---------------- motion language (one system for the whole film) ----------------
+ * Moves:     inOut (accelerate softly, decelerate naturally)
+ * Arrivals:  settle spring (no bounce) or lift spring (≈3% overshoot, only where it adds personality)
+ * Exits:     depart (accelerate away, always faster than the entrance)
+ * Rotation:  integrated angular velocity, so spins build momentum and coast down instead of switching speed
+ * Anticipation: a tiny counter-move before a major move
+ */
+export const M = {
+  inOut: Easing.bezier(0.7, 0, 0.25, 1),
+  out: Easing.bezier(0.16, 1, 0.3, 1),
+  in: Easing.bezier(0.5, 0, 0.9, 0.4),
+};
+
+/** Smooth 0→1 ramp (inOut) between a and b. */
+export const ramp = (f: number, a: number, b: number) => ease(f, a, b, 0, 1, M.inOut);
+
+/** Critically damped arrival: no overshoot. */
+export const settle = (f: number, at: number, dur = 40) =>
+  spring({ frame: f - at, fps: FPS, config: { stiffness: 100, damping: 20, mass: 1 }, durationInFrames: dur });
+
+/** Arrival with a subtle (~3%) overshoot and a clean settle. */
+export const lift = (f: number, at: number, dur = 44) =>
+  spring({ frame: f - at, fps: FPS, config: { stiffness: 120, damping: 15.5, mass: 1 }, durationInFrames: dur });
+
+/**
+ * Anticipation: dips to -amt (a small counter-move) over the first `pre` share of the move, then travels to 1 with inOut.
+ * Use for major moves: position, scale, rotation.
+ */
+export const anticipate = (f: number, at: number, dur: number, amt = 0.06, pre = 0.24) => {
+  const t = Math.max(0, Math.min(1, (f - at) / dur));
+  if (t <= 0) return 0;
+  if (t < pre) return -amt * Math.sin((Math.PI / 2) * M.inOut(t / pre));
+  return -amt + (1 + amt) * M.inOut((t - pre) / (1 - pre));
+};
+
+/**
+ * Integrates an angular velocity (degrees per frame) from 0 to f, so rotations are continuous.
+ * `omega` should itself be built from ramps so the spin accelerates and coasts.
+ */
+export const spinAt = (f: number, omega: (t: number) => number, step = 1) => {
+  let a = 0;
+  for (let t = 0; t < f; t += step) a += omega(t + step / 2) * Math.min(step, f - t);
+  return a;
+};
+
+/** Smooth bump 0→1→0 between a (rise) b (peak) c (fall). */
+export const bump = (f: number, a: number, b: number, c: number) => (f < b ? ramp(f, a, b) : 1 - ramp(f, b, c));

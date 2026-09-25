@@ -1,0 +1,114 @@
+/* Film layout. UI components come from launch-video/src/v4/v4.css (inlined before this file). 1cqw = 19.2px.
+   Anything GSAP transforms is centred with margins or a zero-size flex anchor, never a CSS transform. */
+html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: #FBFAF6; }
+#root { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: hidden; }
+.anc { position: absolute; width: 0; height: 0; display: flex; align-items: center; justify-content: center; }
+.anc > * { flex: none; }
+.glow { opacity: .5; }
+
+/* camera + diagonal lines */
+#cam { position: absolute; inset: 0; }
+#diag, #diagEnd { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: visible; pointer-events: none; }
+#diag line, #diagEnd line { stroke: #C41C72; stroke-width: 1.6; stroke-linecap: round; fill: none; }
+#diag1, #diagEnd line { stroke-dasharray: 1 1; }
+#diag2 { stroke-dasharray: .24 1.3; stroke-opacity: .7; }
+.ripple { position: absolute; left: 0; top: 0; width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 50%; border: 1.5px solid rgba(196,28,114,.6); }
+#rip1 { left: 1300px; top: 330px; } #rip2 { left: 622px; top: 752px; }
+#clickRip { border-color: rgba(196,28,114,.8); }
+
+/* A · orbit */
+#orbitA { position: absolute; left: 960px; top: 540px; width: 0; height: 0; perspective: 1700px; transform-style: preserve-3d; }
+#tiltA, .spin, .arm, .tspin, .ttilt, .tface { position: absolute; left: 0; top: 0; width: 0; height: 0; transform-style: preserve-3d; }
+.arm { position: absolute; }
+.hring { position: absolute; left: 0; top: 0; border-radius: 50%; border: 1.5px solid rgba(196,28,114,.22); }
+.tface .tile, .tspinB .tile, .flyer .tile { position: absolute; left: 0; top: 0; }
+.tface .tile { margin: calc(var(--s, 110px) / -2) 0 0 calc(var(--s, 110px) / -2); }
+.tico { width: 46%; height: 46%; display: block; }
+.badge.odo { overflow: hidden; height: 2.1cqw; display: block; padding: 0; min-width: 2.1cqw; box-sizing: border-box; }
+.odo-s { display: flex; flex-direction: column; align-items: center; }
+.odo-s b { display: block; height: 2.1cqw; line-height: 2.1cqw; font-weight: 600; font-family: 'Geist Mono', monospace; font-size: .95cqw; padding: 0 .35cqw; }
+#bead { position: absolute; left: 0; top: 0; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; background: #C41C72; box-shadow: 0 0 0 6px rgba(196,28,114,.12); }
+#core { position: absolute; left: 960px; top: 540px; width: 0; height: 0; }
+#portrait { position: absolute; left: 0; top: 0; width: 220px; height: 220px; margin: -110px 0 0 -110px; }
+#berryDisc { position: absolute; left: 0; top: 0; width: 240px; height: 240px; margin: -120px 0 0 -120px; border-radius: 50%; background: #C41C72; box-shadow: 0 1.4cqw 3.4cqw rgba(196,28,114,.28); }
+
+/* B · calm orbit + flyers */
+#orbitB { position: absolute; left: 960px; top: 540px; width: 0; height: 0; }
+.armB, .tspinB { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+.tile.sm { width: 72px; height: 72px; margin: -36px 0 0 -36px; }
+#flyers { position: absolute; inset: 0; }
+.flyer { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+
+/* the product window */
+#winWrap { position: absolute; inset: 0; }
+#win { position: absolute; left: 326.4px; top: 184.8px; width: 1267.2px; height: 710.4px; }
+#win .dash { position: absolute; left: 0; top: 0; box-shadow: 0 2cqw 5cqw rgba(40,4,23,.28); }
+#winBerry { position: absolute; inset: 0; background: #C41C72; }
+
+/* D · features */
+#rpanel { position: absolute; inset: 0; }
+.rp-in { position: absolute; left: 34%; top: 3%; right: 2.2%; bottom: 3%; overflow: hidden; }
+#rpanel.full .rp-in { inset: 0; }
+.fstage { position: absolute; inset: 0; }
+.fbg { position: absolute; inset: -60% -10%; }
+.flobe { position: absolute; transform: translate(-50%, -50%); opacity: .16; mix-blend-mode: screen; height: auto; }
+#flist { position: absolute; inset: 0; }
+.fpw { position: absolute; left: 0; top: 540px; margin-top: -1.65cqw; }
+.fpin { position: relative; display: inline-block; }
+.fpon { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+
+/* E · automation */
+#berryField { background: radial-gradient(130% 120% at 100% 100%, #B5226C 0%, #8E1253 40%, #4A0A2C 100%); }
+#auto { position: absolute; inset: 0; }
+.a-head, .a-sub { position: absolute; left: 0; right: 0; text-align: center; color: #fff; }
+.a-head { top: 150px; font-size: 5cqw; letter-spacing: -.045em; }
+.a-sub { top: 270px; font-size: 2cqw; font-weight: 400; color: rgba(255,255,255,.82); }
+.w { display: inline-block; }
+.a-prompt { left: 960px; top: 560px; }
+.a-steps { left: 1330px; top: 600px; }
+.a-steps .acard { transform-origin: 50% 50%; }
+.a-toast { left: 960px; top: 900px; }
+.a-toast .toast { font-size: 1.15cqw; padding: .85cqw 1.5cqw; }
+#prompt p { min-height: 4.4cqw; }
+#create { position: relative; }
+
+/* F · pill wall */
+#wall { position: absolute; inset: 0; transform-origin: 960px 540px; }
+.wrowW { position: absolute; left: 960px; width: 0; height: 0; display: flex; justify-content: center; align-items: center; }
+.wrowW .wrow { flex: none; }
+.wp { display: inline-flex; }
+.wpi { width: 2.2cqw; height: 2.2cqw; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.55); font-style: normal; }
+.wpi svg { width: 58% !important; height: 58% !important; }
+
+/* G · carousel */
+#ink { background: #16060F; }
+#car { position: absolute; left: 960px; top: 450px; width: 0; height: 0; perspective: 1600px; transform-style: preserve-3d; }
+#carTilt, #carSpin, .cslot, .cbill2, .cbill3, .cface { position: absolute; left: 0; top: 0; width: 0; height: 0; transform-style: preserve-3d; }
+.cface .i3 { position: absolute; left: 0; top: 0; margin: -110px 0 0 -110px; }
+.dotc { position: absolute; left: 0; top: 0; width: 140px; height: 140px; margin: -70px 0 0 -70px; border-radius: 50%; background: #C41C72; }
+
+/* H · logo */
+#logo { position: absolute; inset: 0; }
+#night { background: #121012; }
+#appicon { position: absolute; left: 810px; top: 350px; width: 300px; height: 300px; border-radius: 24%;
+  background: radial-gradient(120% 120% at 30% 0%, #E0468F 0%, #C41C72 45%, #A3155E 100%);
+  box-shadow: inset 0 .3cqw .3cqw rgba(255,255,255,.35), 0 2cqw 5cqw rgba(196,28,114,.35); }
+#mark { position: absolute; left: 810px; top: 390px; width: 300px; height: 300px; overflow: visible; }
+#letters { position: absolute; left: 510px; top: 445.26px; width: 900px; height: 189.47px; overflow: visible; }
+.tagw, .availw { position: absolute; left: 0; right: 0; text-align: center; }
+.tagw { top: 700px; font-size: 1.75cqw; font-weight: 500; color: #5E5A52; letter-spacing: -.02em; }
+.availw { top: 700px; font-size: 1.9cqw; font-weight: 500; color: rgba(247,241,232,.85); }
+
+/* cursor, captions, end */
+#cursor { position: absolute; left: 0; top: 0; width: 46px; height: 46px; overflow: visible; transform-origin: 0 0; filter: drop-shadow(0 .25cqw .35cqw rgba(0,0,0,.28)); opacity: 0; }
+.capw { position: absolute; left: 0; right: 0; text-align: center; pointer-events: none; }
+.capw .cap { display: inline-block; font-size: 2.2cqw; color: #191919; }
+.capw.low { top: 972px; } .capw.mid { top: 860px; }
+.capw.big .cap { font-size: 3.1cqw; letter-spacing: -.04em; }
+.capw.light .cap { color: #F7F1E8; }
+#black { background: #000; opacity: 0; }
+#portrait { border-radius: 50%; overflow: hidden; }
+#portrait img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cbtn svg { width: 1em !important; height: 1em !important; }
+.a-toast .toast svg { width: 1.3cqw !important; height: 1.3cqw !important; }
+.stp .ok svg { width: 1.1cqw !important; height: 1.1cqw !important; }

@@ -20,7 +20,7 @@ const GMark: React.FC<{ size: number; style?: React.CSSProperties }> = ({ size, 
   <svg viewBox="-1 -1 34 34" style={{ width: `${size}cqw`, height: `${size}cqw`, display: "block", ...style }}><path d={LOCKUP_MARK} fill="url(#zgrad)" /></svg>
 );
 
-const Steps: React.FC<{ state?: number; spin?: number }> = ({ state, spin = 0 }) => (
+export const Steps: React.FC<{ state?: number; spin?: number }> = ({ state, spin = 0 }) => (
   <div className="acard steps">
     <div className="ah"><Icon name="lightning" size="1cqw" /> Overdue invoice follow-up</div>
     {STEPS.map(([ic, k, t], i) => (
@@ -37,7 +37,7 @@ const Steps: React.FC<{ state?: number; spin?: number }> = ({ state, spin = 0 })
   </div>
 );
 
-const TEXT = "When an invoice is 7 days overdue, send a friendly reminder and move it to Today";
+export const TEXT = "When an invoice is 7 days overdue, send a friendly reminder and move it to Today";
 /** Prompt card with the Create button at a fixed place, so the camera can fly into it exactly. */
 const BTN = { x: 9.3, y: 2.5 }; // button centre relative to the card centre (card units)
 const Prompt: React.FC<{ typed: number; press: number; gloss: number; ring: number }> = ({ typed, press, gloss, ring }) => (

@@ -1,0 +1,5 @@
+out/
+build/fragments.cjs
+# local copies of launch-video/public assets (film will reference the originals)
+assets/*
+!assets/vendor/

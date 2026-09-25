@@ -46,7 +46,7 @@ const Row: React.FC<{ on?: boolean; dn?: boolean; children: React.ReactNode }> =
 const Avc: React.FC<{ k: "p2" | "p3" | "p4"; bg: string; big?: boolean }> = ({ k, bg, big }) => <span className="avc face" style={{ background: bg, ...(big ? {} : {}) }}><Face k={k} /></span>;
 
 /** The frosted card and the white floating card for one feature. */
-const FeatUI: React.FC<{ i: number }> = ({ i }) => {
+export const FeatUI: React.FC<{ i: number }> = ({ i }) => {
   const t = FEATS[i].tone, l = FEATS[i].l;
   switch (FEATS[i].name) {
     case "Tasks":
@@ -135,7 +135,7 @@ const FeatUI: React.FC<{ i: number }> = ({ i }) => {
   }
 };
 
-const Float: React.FC<{ i: number }> = ({ i }) => {
+export const Float: React.FC<{ i: number }> = ({ i }) => {
   switch (FEATS[i].name) {
     case "Tasks": return <><small>Today&apos;s highlight</small><b>Send invoice for July to TechSpark</b><div className="fb"><span className="btn"><Icon name="play" size="1em" /> Start focus</span><span className="btn g"><Icon name="check" weight="bold" size="1em" /> Mark done</span></div></>;
     case "Projects": return <div className="avs"><Avc k="p3" bg={BERRY} /><Avc k="p4" bg="#3C6A2E" /><Avc k="p2" bg="#A0542A" /><span className="srch"><Icon name="magnifying-glass" weight="regular" size="48%" /></span></div>;
