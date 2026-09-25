@@ -233,17 +233,53 @@ def berry_field():
             + at(18, 40, mark(62, "#ffffff", "opacity:.07"), "", "mix-blend-mode:soft-light")
             + at(92, 6, mark(34, "#ffffff", "opacity:.06"), "", "mix-blend-mode:soft-light"))
 
+NAV = [("Sun", "Today", None), ("Tray", "Inbox", "3"), ("CheckSquare", "Tasks", "12"), ("Kanban", "Projects", None),
+       ("FileText", "Docs", None), ("CalendarBlank", "Calendar", None), ("UsersThree", "Clients", None),
+       ("CurrencyCircleDollar", "Money", None), ("Plant", "Habits", None), ("Timer", "Focus", None),
+       ("ClipboardText", "Forms", None), ("Lightning", "Automations", None)]
+def dashboard():
+    """Full Zenboard dashboard (dark design system): sidebar with every feature, Today in the middle,
+    schedule, money, habits and clients on the right. Content from the running app's demo data."""
+    nav = "".join(f'<div class="dn{" on" if i == 0 else ""}">{ph(ic, "regular", size="1.05cqw")}<span>{t}</span>{f"<em>{n}</em>" if n else ""}</div>'
+                  for i, (ic, t, n) in enumerate(NAV))
+    side = (f'<aside class="ds"><div class="dlogo">{lockup(7.4, "#EDE9E1", BERRY)}</div>'
+            f'<div class="dsearch">{ph("MagnifyingGlass", "regular", size=".9cqw")}Search<kbd>⌘K</kbd></div>{nav}'
+            '<div class="dsec">Projects</div><div class="dn"><i style="background:#C41C72"></i><span>Brand identity</span></div>'
+            '<div class="dn"><i style="background:#3C6FD8"></i><span>Website rebuild</span></div>'
+            '<div class="dn"><i style="background:#3F8F55"></i><span>Life</span></div></aside>')
+    main = ('<section class="dm"><div class="dg">Good evening, Darshil.</div>'
+            '<div class="dsub">You\'ve committed to <b>2 tasks</b>. Highlight: <b>Send invoice for July to TechSpark</b>.</div>'
+            f'<div class="dhl"><small>{ph("Star", "fill", size=".8cqw")} Today\'s highlight</small><b>Send invoice for July to TechSpark</b>'
+            f'<div class="drw"><span class="dtag">TechSpark</span><span class="dtag r">High</span><span class="dbtn2">{ph("Play", "fill", size=".8cqw")} Start focus</span></div></div>'
+            '<div class="dsec2">Today\'s plan · 3</div>'
+            '<div class="dr"><i></i>Send invoice for July to TechSpark<em class="dtag r">High</em></div>'
+            '<div class="dr"><i></i>Prepare weekly report<em class="dtag y">Medium</em></div>'
+            '<div class="dr"><i></i>Send the Q3 retainer proposal<em class="dtag">Meridian</em></div>'
+            '<div class="dr dn2"><i class="on"></i>Review design feedback</div></section>')
+    right = ('<section class="dx">'
+             '<div class="dw"><div class="dwh">Schedule</div>'
+             '<div class="de"><s style="background:#3C6FD8"></s>Standup<em>9:00</em></div>'
+             '<div class="de"><s style="background:#E08A2E"></s>Coffee with Mira<em>15:00</em></div>'
+             '<div class="de"><s style="background:#C41C72"></s>Design review<em>16:00</em></div></div>'
+             '<div class="dw"><div class="dwh">Money</div><div class="dms"><div><small>Outstanding</small><b>$4,300</b></div><div><small>Paid</small><b>$6,000</b></div></div></div>'
+             '<div class="dw"><div class="dwh">Habits <em>1/3</em></div>'
+             '<div class="dh2"><i class="on"></i>Morning walk<em>12</em></div><div class="dh2"><i></i>Inbox to zero<em>4</em></div><div class="dh2"><i></i>Read 20 minutes<em>0</em></div></div>'
+             f'<div class="dw"><div class="dwh">Clients</div><div class="dcl"><span class="dface2"><img src="{PEOPLE["p3"]}" alt=""></span>Meridian Studio<em class="dtag g">Active</em></div>'
+             f'<div class="dcl"><span class="dface2"><img src="{PEOPLE["p5"]}" alt=""></span>Fernwood Hotels<em class="dtag r">Overdue</em></div></div>'
+             '</section>')
+    return f'<div class="dash">{side}{main}{right}</div>'
+
 def f_4_1():
     s = berry_field() + at(50, 5, lockup(12, "#fff", "#fff"))
-    s += at(45, 31, f'<div class="frost tilt">{today_card()}</div>')
-    s += at(66, 17, '<div class="float"><div class="hl-l">Today\'s highlight</div><div class="hl-t">Send invoice for July to TechSpark</div>'
+    s += at(49, 29.3, f'<div class="frost tilt wide">{dashboard()}</div>')
+    s += at(74, 13, '<div class="float"><div class="hl-l">Today\'s highlight</div><div class="hl-t">Send invoice for July to TechSpark</div>'
                     '<div class="hl-b"><span class="btn">' + ph("Play", "fill", size="1em") + ' Start focus</span><span class="btn g">' + ph("Check", "bold", size="1em") + ' Mark done</span></div></div>')
-    s += caption("Your whole day. One view.", y=52, size=2.2, color="#fff")
+    s += caption("Your whole day. One view.", y=53.3, size=2.1, color="#fff")
     return s
 
 def f_4_2():
     s = berry_field() + at(50, 5, lockup(12, "#fff", "#fff"))
-    s += at(46, 34, f'<div class="frost tilt close">{today_card()}</div>')
+    s += at(46, 32, f'<div class="frost tilt close wide">{dashboard()}</div>')
     s += at(64, 30, '<div class="float"><div class="hl-l">Today\'s highlight</div><div class="hl-t"><s>Send invoice for July to TechSpark</s></div>'
                     '<div class="hl-b"><span class="btn g on">' + ph("Check", "bold", size="1em") + ' Done</span></div></div><div class="cursor"></div>')
     return s
@@ -553,7 +589,7 @@ SCENES = [
             "“In one place.”", "Swish on the wipe")],
   out="Light flash whip: the panel overexposes to a white bloom for 10 frames and we come out on the tilted window over the Berry field."),
  dict(n=4, name="Product hero", t="0:22–0:28", purpose="The first real look at the product, in the D6 card style.",
-  frames=[("4.1", "0:22", f_4_1, "Berry field from dark to light, with the Zenboard mark large and subtly blended in. The logo sits above. The frosted Today card floats in the centre with a crisp white highlight card overlapping its corner.",
+  frames=[("4.1", "0:22", f_4_1, "Berry field from dark to light, with the Zenboard mark large and subtly blended in. The logo sits above. The full Zenboard dashboard floats in the centre in a frosted frame, with every feature visible: the sidebar (Today, Inbox, Tasks, Projects, Docs, Calendar, Clients, Money, Habits, Focus, Forms, Automations), Today in the middle, and schedule, money, habits and clients on the right. A crisp white highlight card overlaps its corner.",
             "“Your whole day. One view.”", "Music enters"),
           ("4.2", "0:26", f_4_2, "A push-in on the highlight card. The cursor clicks Mark done: the title strikes through and the button turns to Done.",
             "—", "One tactile click")],
