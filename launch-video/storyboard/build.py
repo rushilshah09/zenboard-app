@@ -202,7 +202,31 @@ def icon_ring(spread=15):
     return s
 
 def f_2_3r():
-    return paper_stage(.25) + icon_ring(15) + at(50, 28.1, gmark(7))
+    """Icon ring with detailing: orbit guide, hairline spokes to every icon, halo rings behind the mark,
+    sparkle dust and small labels, all faint so the icons and mark stay the heroes."""
+    import random
+    sp = 15
+    pos = [(-1, -1), (0, -1), (1, -1), (1, -.35), (1, .35), (1, 1), (0, 1), (-1, 1), (-1, .35), (-1, -.35)]
+    g = (f'<rect x="{50 - sp - 1}" y="{28.1 - sp * .92 - 1}" width="{2 * sp + 2}" height="{2 * sp * .92 + 2}" rx="7" fill="none" '
+         f'stroke="rgba(196,28,114,.22)" stroke-width=".08" stroke-dasharray=".5 .6"/>')
+    for (ic, c), (u, v) in zip(RING, pos):
+        x, y = 50 + u * sp, 28.1 + v * sp * .92
+        g += (f'<line x1="50" y1="28.1" x2="{x:.2f}" y2="{y:.2f}" stroke="{c}" stroke-width=".06" opacity=".35" stroke-dasharray=".25 .5"/>'
+              f'<circle cx="{(50 + x) / 2:.2f}" cy="{(28.1 + y) / 2:.2f}" r=".22" fill="{c}" opacity=".6"/>')
+    for r, o in ((6, .5), (9, .3), (12.5, .16)):
+        g += f'<circle cx="50" cy="28.1" r="{r}" fill="none" stroke="rgba(196,28,114,{o})" stroke-width=".06"/>'
+    rnd = random.Random(11)
+    for _ in range(22):
+        x, y = rnd.uniform(25, 75), rnd.uniform(6, 50)
+        g += f'<circle cx="{x:.2f}" cy="{y:.2f}" r="{rnd.uniform(.08, .22):.2f}" fill="#C41C72" opacity="{rnd.uniform(.12, .35):.2f}"/>'
+    s = paper_stage(.25) + f'<svg class="stage" viewBox="0 0 100 56.25" preserveAspectRatio="none">{g}</svg>'
+    s += at(50, 28.1, '<div class="markhalo"></div>')
+    s += icon_ring(sp)
+    labels = ["Tasks", "Mail", "Calendar", "Docs", "Projects", "Clients", "Money", "Habits", "Focus", "Automations"]
+    for (u, v), t in zip(pos, labels):
+        s += at(50 + u * sp, 28.1 + v * sp * .92 + 4.4, f'<span class="rlab">{t}</span>')
+    s += at(50, 28.1, gmark(7))
+    return s
 
 def f_2_4r():
     return paper_stage(.2) + at(50, 28.1, gmark(3.2, "transform:rotate(18deg)"))
@@ -367,7 +391,7 @@ def feat_ui(name, tone, light):
     elif name == "Habits":
         dots = "".join(f'<i class="{"on" if k not in (3, 9) else ""}"></i>' for k in range(14))
         card = (f'<h4>Morning</h4><div class="fl"><i class="on"></i>Morning walk<em>12 days</em></div><div class="fl"><i></i>Meditate<em>12 days</em></div>'
-                f'<div class="fl"><i></i>Read 20 minutes<em>0</em></div><div class="dots">{dots}</div>')
+                f'<div class="fl"><i></i>Read 20 minutes<em>0</em></div><div class="hgrid">{dots}</div>')
         flt = '<small>Morning walk</small><b class="bigp">12-day streak</b>'
     else:  # Focus
         card = ('<h4>Focus session</h4><div class="timer"><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="16" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="3"/>'
@@ -440,8 +464,8 @@ def f_auto_1():
     s += at(7, 28.1, gmark(5, "filter:blur(.25cqw);opacity:.85"))
     s += at(93, 28.1, gmark(5, "filter:blur(.25cqw);opacity:.85;transform:rotate(45deg)"))
     s += at(50, 15, feat_logo(8.5))
-    s += at(50, 27.5, "Effortless automation", "head", "font-size:5cqw;letter-spacing:-.045em")
-    s += at(50, 34, "Describe it once. Zenboard does the work.", "cap", "font-size:1.6cqw;color:#77736A;font-weight:400")
+    s += at(50, 27.3, "Effortless automation", "head", "font-size:5.4cqw;letter-spacing:-.045em")
+    s += at(50, 34.6, "Describe it once. Zenboard does the work.", "cap", "font-size:2.1cqw;color:#5E5A52;font-weight:400;letter-spacing:-.01em")
     return s
 
 def f_auto_zoom():
@@ -452,7 +476,7 @@ def f_auto_zoom():
     s += '<div class="zcard2"><p>due, send a friendly<br>reminder and move it to Today<span class="caret big"></span></p></div>'
     s += at(52, 35, f'<div class="gbtn berry"><span class="gtxt">{ph("Sparkle", "fill", size="1em")} Create</span></div>')
     s += '<div class="cursor zc2"></div>'
-    s += '<div class="stage zoomblur"></div><div class="stage grain" style="opacity:.1"></div>'
+    s += '<div class="stage zoomblur"></div>'
     return s
 
 def f_auto_2():
