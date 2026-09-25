@@ -10,6 +10,7 @@ import { At, CURVE, Frame, Lockup, Mark, PaperStage, Words, blurOut, ease, pop, 
 import { KINDS, Tile } from "./S1Juggling";
 import { Fans, STRAND, Waves } from "./lines";
 import { Dashboard } from "./Dashboard";
+import { BerryField } from "./S4Dashboard";
 
 const CY = 56.25 / 2;
 const YS = [9, 16.5, 24, 31.5, 39, 46.5];
@@ -27,8 +28,13 @@ export const S3AllInOne: React.FC = () => {
   const vel = Math.abs(ease(f, 223, 291, 0, 1, CURVE.glide) - truck) * 60;
   const settle = ease(f, 270, 350, 0, 1, CURVE.settle);
   const wipe = ease(f, 300, 350, 0, 1, CURVE.settle);
-  const push = ease(f, 330, 380, 1, 1.05, CURVE.breathe) * ease(f, 380, 420, 1, 2.1, CURVE.depart);
-  const whip = ease(f, 392, 420, 0, 1, CURVE.depart);
+  // hand-off to scene 4: the camera centres on the desktop and the panel's Berry frame bleeds out into the field
+  const push = ease(f, 362, 419, 0, 1, CURVE.glide);
+  const Z = 1.565; // desktop at full size (the dashboard is 66cqw wide in scene 4)
+  const z = 1 + (Z - 1) * push, ccx = 50 + 26 * push;
+  const bleed = ease(f, 372, 419, 0, 1, CURVE.glide);
+  const hw = 22 * (1 + 0.62 * bleed), hh = 13.25 * (1 + 0.62 * bleed);
+  const px = 50 + (76 - ccx) * z; // panel centre on screen
   const srcs: [number, number, string][] = YS.map((y, i) => [12 + (i % 2 ? 2.5 : 0), y, STRAND[i]]);
   return (
     <Frame>
@@ -37,7 +43,8 @@ export const S3AllInOne: React.FC = () => {
       {/* lockup letters depart as the mark leaves */}
       {f < 40 ? <At x={50} y={24.5} style={blurOut(f, 0, 22)}><Lockup width={40} markColor="transparent" /></At> : null}
       {/* one world, one hub: fans converge on the hub; after it the colour waves carry on to the desktop; the camera trucks along */}
-      <div className="stage" style={{ transform: `translateX(${-62 * truck}cqw) scale(${push})`, transformOrigin: `${138 - 62}% 52%`, filter: vel > 0.2 || whip > 0 ? `blur(${Math.min(6, vel) + whip * 14}px)` : undefined }}>
+      <div className="stage" style={{ transformOrigin: `${ccx}cqw ${CY}cqw`, transform: `translate(${50 - ccx}cqw, 0) scale(${z})` }}>
+      <div className="stage" style={{ transform: `translateX(${-62 * truck}cqw)`, filter: vel > 0.2 ? `blur(${Math.min(6, vel)}px)` : undefined }}>
         <Fans sources={srcs} fx={58} fy={CY} draw={fans} />
         {srcs.map(([x, y], i) => {
           const p = pop(f, 30 + i * 7, 210, 15);
@@ -53,14 +60,26 @@ export const S3AllInOne: React.FC = () => {
         <Waves settle={settle} phase={f / 9} x1={89.5} x2={122} draw={ease(f, 205, 300, 0, 1, CURVE.settle)} tail={9} />
         <At x={82} y={CY} style={{ transform: `scale(${node})`, opacity: node }}><div className="node" /></At>
         <At x={mx} y={my}><Mark size={8.4 - 0.9 * travel} /></At>
+      </div>
+      </div>
+      {/* the Berry frame bleeds out in screen space (unscaled), ending exactly as scene 4's field */}
+      {bleed > 0 ? (
+        <div className="stage" style={{ clipPath: `inset(${CY - hh * z}cqw ${100 - (px + hw * z)}cqw ${CY - hh * z}cqw ${px - hw * z}cqw round ${1.8 * z * (1 - bleed)}cqw)` }}>
+          <BerryField />
+          <div className="stage" style={{ background: "radial-gradient(120% 120% at 60% 30%,#F2BCD6 0%,#D94C92 28%,#A3155E 58%,#4A0A2C 100%)", opacity: 1 - bleed }} />
+        </div>
+      ) : null}
+      <div className="stage" style={{ transformOrigin: `${ccx}cqw ${CY}cqw`, transform: `translate(${50 - ccx}cqw, 0) scale(${z})` }}>
+      <div className="stage" style={{ transform: `translateX(${-62 * truck}cqw)` }}>
         <At x={138} y={CY}>
           <div className="wipe desk" style={{ clipPath: `inset(0 ${(1 - wipe) * 100}% 0 0 round 1.8cqw)` }}>
             <div className="wipe-in"><div className="deskfit"><Dashboard rowStyle={(i) => ({ opacity: soft(f, 320 + i * 6, 160, 22) })} /></div></div>
           </div>
         </At>
       </div>
+      </div>
       <At x={50} y={52}><Words f={f} at={112} exitAt={212} text="Everything you juggle." style={{ fontSize: "2.4cqw" }} /></At>
-      <At x={50} y={52}><Words f={f} at={338} text="In one place." style={{ fontSize: "2.4cqw" }} /></At>
+      <At x={50} y={52}><Words f={f} at={338} exitAt={372} text="In one place." style={{ fontSize: "2.4cqw" }} /></At>
     </Frame>
   );
 };

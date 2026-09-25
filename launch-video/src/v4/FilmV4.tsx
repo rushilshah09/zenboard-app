@@ -6,8 +6,7 @@ import { SFX } from "./sound";
 import { VO4, voDur } from "./vo";
 import { V4, V4Scene, v4At, v4Len } from "./timeline";
 import { SCENES_V4 } from "./scenes";
-import { Flash, PAPER, s } from "./kit";
-import { useCurrentFrame } from "remotion";
+import { PAPER, s } from "./kit";
 
 /** Score ducks to 55% under each voice-over line, with short ramps. */
 const duck = (f: number) => {
@@ -19,15 +18,6 @@ const duck = (f: number) => {
   return d;
 };
 
-const Flashes: React.FC = () => {
-  const f = useCurrentFrame();
-  return (
-    <>
-      <Flash f={f} at={s(23.5)} len={10} />
-      <Flash f={f} at={s(65.5)} len={10} />
-    </>
-  );
-};
 
 export const FilmV4: React.FC<{ score?: boolean }> = () => (
   <AbsoluteFill style={{ background: PAPER }}>
@@ -39,7 +29,6 @@ export const FilmV4: React.FC<{ score?: boolean }> = () => (
         </Sequence>
       ) : null;
     })}
-    <Flashes />
     {SFX.map(([id, t, v], i) => (
       <Sequence key={i} from={s(t)} name={`sfx ${id}`}>
         <Audio src={staticFile(`audio/sfx/${id}.wav`)} volume={v} />

@@ -442,3 +442,12 @@
 .tcard h4{font-size:2.1cqw}
 .fcard{right:4.5%;top:7%;padding:1.7cqw 2cqw;min-width:30%}
 .fcard b{font-size:1.75cqw}.fcard b.bigp{font-size:2.9cqw}.fcard small{font-size:1.1cqw}
+/* highlight card: fixed layout so the cursor can land exactly; buttons are one line */
+.float{width:24cqw;height:11cqw;box-sizing:border-box;padding:1.3cqw 1.5cqw;gap:.7cqw;justify-content:flex-start}
+.float .hl-l{height:1.2cqw;line-height:1.2cqw;font-size:.95cqw}
+.float .hl-t{height:3.6cqw;line-height:1.8cqw;font-size:1.5cqw}
+.float .hl-b{height:2.2cqw;gap:.6cqw}
+.hl-b .btn,.donepill{display:inline-flex;align-items:center;justify-content:center;gap:.45cqw;white-space:nowrap;height:2.2cqw;padding:0;border-radius:.55cqw;font-size:1cqw;font-weight:500;box-sizing:border-box}
+.hl-b .btn:first-child{width:8cqw}.hl-b .btn.g,.donepill{width:7.5cqw}
+.donepill{background:#C41C72;color:#fff}
+.btn svg,.donepill svg{flex:none}

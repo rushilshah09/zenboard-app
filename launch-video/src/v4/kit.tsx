@@ -198,3 +198,11 @@ export const Flash: React.FC<{ f: number; at: number; len?: number; color?: stri
   const o = f < at ? ease(f, at - len, at, 0, 1, CURVE.depart) : ease(f, at, at + len * 1.6, 1, 0, CURVE.settle);
   return o > 0.001 ? <AbsoluteFill style={{ background: `radial-gradient(circle at 50% 50%, #fff, ${color})`, opacity: o }} /> : null;
 };
+
+/** A crisp arrow cursor whose tip sits exactly at (x, y) in cqw. */
+export const Cursor: React.FC<{ x: number; y: number; press?: number; opacity?: number }> = ({ x, y, press = 0, opacity = 1 }) => (
+  <svg viewBox="0 0 24 24" style={{ position: "absolute", left: `${x}cqw`, top: `${y}cqw`, width: "2.4cqw", height: "2.4cqw", overflow: "visible", opacity,
+    transform: `translate(-0.08cqw,-0.08cqw) scale(${1 - 0.12 * press})`, transformOrigin: "0 0", filter: "drop-shadow(0 .25cqw .35cqw rgba(0,0,0,.28))" }}>
+    <path d="M1 1 L1 19 L6 14.5 L9.5 22 L12.6 20.6 L9.2 13.3 L16 13.3 Z" fill="#191919" stroke="#fff" strokeWidth={1.4} strokeLinejoin="round" />
+  </svg>
+);

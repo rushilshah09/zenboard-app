@@ -14,6 +14,6 @@ export const VO4: [keyof typeof LINES, number][] = [
   ["need", 48.2],
   ["made", 53.7],
   ["one", 60.05],
-  ["zenboard", 67.7], ["tagline", 68.85], ["today", 72.25],
+  ["zenboard", 68.7], ["tagline", 69.3], ["today", 70.8],
 ];
 export const voDur = (id: keyof typeof LINES) => LINES[id];

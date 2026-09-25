@@ -185,7 +185,7 @@ export const S5Features: React.FC = () => {
       {/* the Done pill from scene 4 dissolves into the Tasks pill */}
       {f < 24 ? (
         <At x={DONE_TARGET.x} y={DONE_TARGET.y} style={mix({ transform: `scale(${DONE_TARGET.scale})` }, blurOut(f, 0, 18, 10))}>
-          <span className="btn g on" style={{ fontSize: "1cqw" }}><Icon name="check" weight="bold" size="1em" /> Done</span>
+          <span className="donepill"><Icon name="check" weight="bold" size="1em" /> Done</span>
         </At>
       ) : null}
       {/* right: field + cards per feature, crossfading on each step */}
