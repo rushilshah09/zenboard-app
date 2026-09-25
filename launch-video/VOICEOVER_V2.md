@@ -8,7 +8,11 @@ A calm, warm, close-mic voice: a founder talking to another founder. Confident, 
 Slightly faster and tighter in Act 1 and on the "Create. Plan. Write. Send. Done." run; slower and
 warmer from "Zenboard" onward.
 
-**ElevenLabs:** the same voice as v1 (Cassidy) keeps continuity. Multilingual v2 · Stability 50 ·
+**Female or male both work:** the edit is built from the recording's own word timings, so any
+voice drops in. For a female read, pick a warm, mid-low, conversational voice rather than a bright
+announcer. Cassidy (the v1 voice) is female and keeps continuity.
+
+**ElevenLabs:** Multilingual v2 · Stability 50 ·
 Similarity 75 · Style 15 · Speaker boost on · Speed 1.0. `<break>` tags work on v2/Turbo/Flash; on
 Eleven v3, delete them and let the punctuation carry the pauses.
 
