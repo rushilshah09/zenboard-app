@@ -24,7 +24,7 @@ export const Tile: React.FC<{ kind: Kind; size?: number; badge?: number | null; 
   const [icon, bg, fg, name] = KIND[kind];
   return (
     <div className="tile" style={{ width: `${size}cqw`, height: `${size}cqw`, ["--bg" as string]: bg, color: fg, ...style }}>
-      <Icon name={icon} weight="duotone" size="46%" />
+      <Icon name={icon} weight="fill" size="46%" />
       {badge ? <span className="badge">{badge}</span> : null}
       {label ? <span className="tlabel">{name}</span> : null}
     </div>

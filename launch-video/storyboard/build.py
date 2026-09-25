@@ -58,7 +58,7 @@ def tile(kind, size=6.2, blur=0, badge=None, label=None):
     lb = f'<span class="tlabel">{label}</span>' if label else ""
     f = f"filter:blur({blur}cqw);opacity:.7;" if blur else ""
     return (f'<div class="tile" style="width:{size}cqw;height:{size}cqw;--bg:{bg};color:{fg};{f}">'
-            f'{ph(icon, "duotone", size="46%")}{b}{lb}</div>')
+            f'{ph(icon, "fill", size="46%")}{b}{lb}</div>')
 def pico(kind, size=2.8):
     icon, bg, fg, _ = KIND[kind]
     return f'<span class="pico" style="width:{size}cqw;height:{size}cqw;background:{bg};color:{fg}">{ph(icon, "duotone", size="58%")}</span>'
