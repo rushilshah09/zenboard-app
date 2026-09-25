@@ -116,7 +116,15 @@ The product UI in the film should look like the green "Project Status" reference
   into the next shot. Used for scene 3 → 4.
 - Every storyboard frame now carries a Camera note.
 
-### D11+ — (more directions to come)
+### D11 — Outro: blueprint lockup (refs: Superhuman logo construction, Fiverr grid banner, blueprint sheets, Reformr grid)
+- Zenboard lockup large in the centre (SUPERHUMAN-style), crisp white, framed by hairline rails with corner handles.
+- Background: our Berry field (dark to light) with fine grain.
+- Behind it, subtle blueprint drawing in white hairlines and dotted lines: construction of the mark (32-unit box,
+  lobe circles, diagonals, star angle, dimension labels), Geist type specimen, outline component cards
+  (card, checkbox rows, Start focus button, pill), grid blocks, mono notes. Never harsh; Zenboard stays the hero.
+- 8.2 draws the blueprint on; 8.3 dims it to ~50% for the tagline and Available today.
+
+### D12+ — (more directions to come)
 
 ## Brand note
 The Zenboard brand guidelines (Paper / Ink / single Berry accent, eight flat field colours, no gradients)

@@ -367,11 +367,72 @@ def f_8_1():
     s += at(50, 30.5, "One workspace.", "head", "font-size:3.6cqw;color:" + BERRY)
     return s
 
-def f_8_2():
-    s = paper_stage(.45) + at(50, 23, lockup(34))
-    s += caption("The single platform to manage work, life, and business.", y=33, size=1.9, color="#37352F")
-    s += at(50, 40, '<span class="avail">Available today</span>')
+def blueprint(strength=1.0, tagline=False):
+    """Outro: berry field + grain, blueprint hairlines, construction of the mark, type + component specimens."""
+    W = "rgba(255,255,255,{})"
+    a = lambda o: W.format(round(o * strength, 3))
+    hl = f'stroke="{a(.28)}" stroke-width=".06" fill="none"'
+    dl = f'stroke="{a(.3)}" stroke-width=".06" fill="none" stroke-dasharray=".35 .35"'
+    def t(x, y, txt, anchor="start", o=.45, sz=.75, rot=0):
+        tr = f' transform="rotate({rot} {x} {y})"' if rot else ""
+        return (f'<text x="{x}" y="{y}" fill="{a(o)}" font-family="Geist Mono, monospace" font-size="{sz}" letter-spacing=".08" '
+                f'text-anchor="{anchor}"{tr}>{txt}</text>')
+    g = ""
+    # fine grid (right-hand block and left-hand block, like the Fiverr banner)
+    for i in range(9):
+        g += f'<line x1="{2 + i * 2.2}" y1="2" x2="{2 + i * 2.2}" y2="20" {hl} opacity=".55"/>'
+        g += f'<line x1="2" y1="{2 + i * 2.2}" x2="19.6" y2="{2 + i * 2.2}" {hl} opacity=".55"/>'
+        g += f'<line x1="{80 + i * 2.2}" y1="36" x2="{80 + i * 2.2}" y2="54" {hl} opacity=".55"/>'
+        g += f'<line x1="80" y1="{36 + i * 2.2}" x2="97.6" y2="{36 + i * 2.2}" {hl} opacity=".55"/>'
+    # frame rails
+    g += f'<line x1="22" y1="0" x2="22" y2="56.25" {hl}/><line x1="78" y1="0" x2="78" y2="56.25" {hl}/>'
+    g += f'<line x1="0" y1="24.4" x2="100" y2="24.4" {hl}/><line x1="0" y1="31.8" x2="100" y2="31.8" {hl}/>'
+    g += f'<line x1="24" y1="6" x2="76" y2="6" {dl}/><line x1="24" y1="50" x2="76" y2="50" {dl}/>'
+    # construction of the mark, large and centred: 32-unit box, four lobe circles, diagonals, star
+    cx, cy, S = 50, 28.1, 1.25  # 1 mark unit = 1.25 frame units (40 wide)
+    ox, oy = cx - 16 * S, cy - 16 * S
+    P = lambda u, v: (ox + u * S, oy + v * S)
+    x0, y0 = P(0, 0); x1, y1 = P(32, 32)
+    g += f'<rect x="{x0}" y="{y0}" width="{32 * S}" height="{32 * S}" {dl}/>'
+    for u, v in ((7.4, 7.4), (24.6, 7.4), (7.4, 24.6), (24.6, 24.6)):
+        px, py = P(u, v)
+        g += f'<circle cx="{px}" cy="{py}" r="{7.4 * S}" {dl}/><circle cx="{px}" cy="{py}" r=".25" fill="{a(.55)}"/>'
+    g += f'<line x1="{x0}" y1="{y0}" x2="{x1}" y2="{y1}" {hl}/><line x1="{x1}" y1="{y0}" x2="{x0}" y2="{y1}" {hl}/>'
+    g += f'<g transform="translate({ox} {oy}) scale({S})"><path d="{MARK}" fill="none" stroke="{a(.5)}" stroke-width="{.08 / S}"/></g>'
+    # dimension line + labels on the mark
+    g += f'<line x1="{x0}" y1="{y0 - 1.6}" x2="{x1}" y2="{y0 - 1.6}" {hl}/><line x1="{x0}" y1="{y0 - 2.2}" x2="{x0}" y2="{y0 - 1}" {hl}/><line x1="{x1}" y1="{y0 - 2.2}" x2="{x1}" y2="{y0 - 1}" {hl}/>'
+    g += t(50, y0 - 2.1, "32 U", "middle")
+    px, py = P(7.4, 7.4); g += t(px, py - 7.4 * S - .6, "LOBE  R 7.4", "middle", .4, .65)
+    px, py = P(16, 16); g += t(px + 3.2, py - 5.2, "STAR 90°", "start", .4, .65)
+    g += f'<path d="M {px + 2.2} {py - 3.2} A 3.2 3.2 0 0 1 {px + 3.2} {py - 1.8}" {hl}/>'
+    # left: vertical fig label + type specimen
+    g += t(24.6, 10, "fig. 01", "start", .5, 1.1, 90) + t(24.6, 46, "2026", "start", .45, 1.1, 90)
+    g += f'<text x="4" y="30" fill="{a(.18)}" font-family="Geist, sans-serif" font-weight="600" font-size="7" letter-spacing="-.3">Aa</text>'
+    g += t(4, 33, "GEIST SEMIBOLD", "start", .45, .7) + t(4, 34.3, "TRACKING -3%", "start", .35, .7)
+    g += t(4, 37.5, "GEIST MONO / LABELS", "start", .35, .7)
+    g += f'<line x1="4" y1="24.6" x2="17" y2="24.6" {dl}/>'
+    # right: component specimens (card, pill, checkbox) in outline
+    g += f'<rect x="81" y="6" width="15" height="11" rx="1.1" {hl}/>' + t(81, 5.2, "CARD / RADIUS 12", "start", .4, .6)
+    g += f'<rect x="82.2" y="8.2" width="1.1" height="1.1" rx=".25" {hl}/><line x1="84.2" y1="8.75" x2="93" y2="8.75" {dl}/>'
+    g += f'<rect x="82.2" y="10.7" width="1.1" height="1.1" rx=".25" fill="{a(.4)}"/><line x1="84.2" y1="11.25" x2="91" y2="11.25" {dl}/>'
+    g += f'<rect x="82.2" y="13.6" width="7" height="2" rx="1" {hl}/>' + t(85.7, 14.95, "START FOCUS", "middle", .45, .5)
+    g += f'<rect x="81" y="20" width="9" height="2.6" rx="1.3" {dl}/>' + t(81, 24.3, "PILL / FULL", "start", .35, .6)
+    # reformr-style mono paragraphs
+    g += t(4, 46, "ONE WORKSPACE FOR", "start", .35, .6) + t(4, 47.1, "WORK, LIFE AND", "start", .35, .6) + t(4, 48.2, "BUSINESS.", "start", .35, .6)
+    g += t(96, 30, "ZENBOARD®", "end", .35, .6) + t(96, 31.1, "EST. 2026", "end", .35, .6)
+    # handles on the wordmark box
+    for hx, hy in ((29, 24.4), (71, 24.4), (29, 31.8), (71, 31.8)):
+        g += f'<rect x="{hx - .3}" y="{hy - .3}" width=".6" height=".6" fill="{a(.8)}"/>'
+    svg = f'<svg class="stage" viewBox="0 0 100 56.25">{g}</svg>'
+    s = '<div class="stage bp-field"></div><div class="stage grain"></div>' + svg
+    s += at(50, 28.1, lockup(42, "#FBFAF6", "#FBFAF6"), "", "filter:drop-shadow(0 0 2.4cqw rgba(255,255,255,.18))")
+    if tagline:
+        s += at(50, 38, "The single platform to manage work, life, and business.", "cap", "font-size:1.7cqw;color:#FBFAF6;font-weight:500;letter-spacing:-.01em")
+        s += at(50, 43.5, '<span class="avail light">Available today</span>')
     return s
+
+def f_8_2(): return blueprint(1.0)
+def f_8_3(): return blueprint(.55, tagline=True)
 
 CAMERA = {
  "1.1": "Locked off, slow 2% push-in from 0:00.",
@@ -388,7 +449,8 @@ CAMERA = {
  "6.1": "Slow 4° tilt up across the wall, rows at two depths.",
  "7.1": "Low angle on the tiles, slight dolly left with each step.",
  "8.1": "Slow pull-back revealing the full ring; cards at three depths with DOF.",
- "8.2": "Dead still. Nothing moves in the last 2 seconds.",
+ "8.2": "Slow 3% push-in while the lines draw; the lockup is locked centre.",
+ "8.3": "Dead still. Nothing moves in the last 2 seconds.",
 }
 # ---------- storyboard ----------
 SCENES = [
@@ -440,7 +502,9 @@ SCENES = [
  dict(n=8, name="The one", t="0:52–1:04", purpose="A calm resolution: everything around one workspace, then the logo.",
   frames=[("8.1", "0:52", f_8_1, "A ring of mixed cards (real UI crops, stats, a quote, Berry cards with fine grid lines, field-colour cards) around a centred headline. The ring drifts slowly.",
             "“Work, life and business. One workspace.”", "Music opens up"),
-          ("8.2", "0:58", f_8_2, "The cards glide inward and collapse into the mark. The lockup settles and the tagline rises word by word, then Available today. Nothing moves for the last two seconds.",
+          ("8.2", "0:58", f_8_2, "Light flash into the outro. On the Berry field (dark to light, fine grain) a blueprint draws on in hairlines and dotted lines: the construction of the Zenboard mark (32-unit box, four lobe circles, diagonals, star angle), a Geist type specimen, outline component cards, grid blocks and mono notes. The lockup lands in the centre, crisp white, framed by rails with corner handles.",
+            "Zenboard", "Pen-scratch ticks as lines draw, the chime on the lockup"),
+          ("8.3", "1:00", f_8_3, "The blueprint dims to about half so the lockup owns the frame. The tagline rises word by word, then Available today. Nothing moves in the last two seconds.",
             "The single platform to manage work, life, and business. · Available today", "The chime resolves, held chord")],
   out=None),
 ]
