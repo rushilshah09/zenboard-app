@@ -67,7 +67,7 @@ async function video(fps = 30, scale = 1) {
   const wav = path.join(OUT, "mix.wav"); mixAudio(wav);
   const { b, p } = await open();
   const w = Math.round(1920 * scale), h = Math.round(1080 * scale);
-  const mp4 = path.join(OUT, scale === 1 ? "film.mp4" : `film-${h}p.mp4`);
+  const mp4 = path.join(OUT, `zenboard-launch-${h}p${fps}.mp4`);
   const ff = spawn(FF, ["-y", "-loglevel", "error", "-f", "image2pipe", "-framerate", String(fps), "-c:v", "mjpeg", "-i", "-", "-i", wav,
     "-vf", `scale=${w}:${h}:flags=lanczos,format=yuv420p`, "-c:v", "libx264", "-preset", "medium", "-crf", "17", "-c:a", "aac", "-b:a", "192k", "-shortest", "-movflags", "+faststart", mp4], { stdio: ["pipe", "inherit", "inherit"] });
   const n = Math.round(total * fps), t0 = Date.now();

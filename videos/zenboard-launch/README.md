@@ -22,5 +22,5 @@ cd launch-video && ./node_modules/.bin/esbuild ../videos/zenboard-launch/tools/f
 cd ../videos/zenboard-launch
 node tools/build.mjs                          # → film.html (open it in a browser: window.film.seek(t))
 node tools/render.cjs stills 3,12,20,40       # → out/contact.jpg
-node tools/render.cjs video 30                # → out/film.mp4 (1080p, with sound)
+node tools/render.cjs video 60                # → out/zenboard-launch-1080p60.mp4 (with sound)
 ```
