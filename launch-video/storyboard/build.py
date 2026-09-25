@@ -5,6 +5,8 @@ ROOT = pathlib.Path(__file__).resolve().parent
 LOGO = (ROOT.parent / "src/brand/logo.generated.ts").read_text()
 MARK = re.search(r'LOCKUP_MARK = "([^"]+)"', LOGO).group(1)
 LETTERS = re.findall(r'"(M[^"]+)"', LOGO.split("LOCKUP_LETTERS")[1])[:8]
+PEOPLE = {k: "data:image/jpeg;base64," + base64.b64encode((ROOT / "people" / f"{k}.jpg").read_bytes()).decode() for k in ("p1", "p2", "p3", "p4", "p5")}
+FACE = {"SC": "p3", "MO": "p4", "PR": "p2", "Mara": "p4", "Sarah": "p3", "David": "p1", "James": "p2", "Fernwood": "p5"}
 PORTRAIT = "data:image/jpeg;base64," + base64.b64encode((ROOT / "portrait.jpg").read_bytes()).decode()
 
 BERRY, INK, PAPER = "#C41C72", "#191919", "#FBFAF6"
@@ -83,7 +85,10 @@ def chip(t, n=None, dot="#C41C72"):
 AV = {"M": "#EAB9CB", "S": "#B7CEAB", "D": "#B8BDEE", "J": "#A6D1E0", "F": "#ECBF9B"}
 def msg(name, t, w=17, when="2m"):
     ini = "".join(x[0] for x in name.replace("To: ", "").split()[:2]).upper()
-    return (f'<div class="msg" style="width:{w}cqw"><span class="mav" style="background:{AV.get(ini[0], "#E5D494")}">{ini}</span>'
+    first = name.replace("To: ", "").split()[0]
+    av = (f'<span class="mav face"><img src="{PEOPLE[FACE[first]]}" alt=""></span>' if first in FACE
+          else f'<span class="mav" style="background:{AV.get(ini[0], "#E5D494")}">{ini}</span>')
+    return (f'<div class="msg" style="width:{w}cqw">{av}'
             f'<div><b>{H.escape(name)}<small>{when}</small></b><span>{H.escape(t)}</span></div></div>')
 def caption(t, y=48.5, size=2.6, color=INK, dim=None):
     words = t.split(" ")
@@ -121,10 +126,16 @@ def f_2_1():
     s = paper_stage(1)
     for i, (x, y) in enumerate(ring_positions(8, 22, start=-70)):
         s += at(x, y, tile(KINDS[i], 6, blur=.9))
-    cols = [FIELD["petal"], BERRY, FIELD["apricot"], FIELD["sky"], FIELD["sage"], FIELD["butter"], FIELD["peri"]]
-    seg = "".join(f'<circle r="42" cx="50" cy="50" fill="none" stroke="{c}" stroke-width="7" stroke-linecap="round" '
-                  f'stroke-dasharray="28 236" stroke-dashoffset="{-i*38}"/>' for i, c in enumerate(cols))
-    s += at(50, H_/2, f'<svg viewBox="0 0 100 100" style="width:34cqw;transform:rotate(-20deg)">{seg}</svg>')
+    # ring breaks into hairline bundles (same line language as 2.2 and 3.1)
+    cols = [BERRY, "#E0703F", "#2F86A8", "#3F8F55", "#6E63D9", "#C9A21F"]
+    seg = ""
+    for i, c in enumerate(cols):
+        for j in range(9):
+            r = 36 + j * 1.3
+            seg += (f'<circle r="{r}" cx="50" cy="50" fill="none" stroke="{c}" stroke-width=".35" stroke-linecap="round" '
+                    f'stroke-dasharray="{r * .62} {r * 6.283 - r * .62}" stroke-dashoffset="{-i * r * 1.047 - j * 1.1}" '
+                    f'opacity="{.35 + .65 * (1 - abs(j - 4) / 4)}"/>')
+    s += at(50, H_/2, f'<svg viewBox="0 0 100 100" style="width:36cqw;transform:rotate(-20deg)">{seg}</svg>')
     s += portrait(13, "filter:blur(.15cqw)")
     return s
 
@@ -250,7 +261,9 @@ FEATS = [  # name, icon, (dark, mid, light), card text tone
  ("Habits",   "plant", ("#3F1128", "#96406B", "#E6ADC6"), "#4A1530"),
  ("Focus",    "timer", ("#15181C", "#46505A", "#BCC3CA"), "#1B1E22"),
 ]
-def avatar(txt, bg): return f'<span class="avc" style="background:{bg}">{txt}</span>'
+def avatar(txt, bg):
+    if txt in FACE: return f'<span class="avc face" style="background:{bg}"><img src="{PEOPLE[FACE[txt]]}" alt=""></span>'
+    return f'<span class="avc" style="background:{bg}">{txt}</span>'
 def feat_ui(name, tone, light):
     t = tone
     if name == "Tasks":
@@ -349,43 +362,43 @@ def f_6_1():
         s += at(50 + (-6 if r % 2 else 4), 6 + r * 9, f'<div class="wrow">{row}</div>')
     return s
 
-def icon3d(color, glyph_color, size, label=None):
-    return (f'<div class="i3" style="width:{size}cqw;height:{size}cqw;--c:{color}">'
-            f'{mark(size*.42, glyph_color, "filter:drop-shadow(0 .2cqw .2cqw rgba(0,0,0,.25))")}</div>')
+def icon3d(color, glyph_color, size, icon="CheckSquare"):
+    """Chunky 3D module tile with the real Phosphor icon for that module, embossed."""
+    return (f'<div class="i3" style="width:{size}cqw;height:{size}cqw;--c:{color};color:{glyph_color}">'
+            f'<span class="i3g">{ph(icon, "fill", size="100%")}</span></div>')
 
 def carousel(order, label):
     s = '<div class="stage" style="background:#16060F"></div><div class="stage floorglow"></div>'
     s += at(50, 5, lockup(11, "#F7F1E8", "#F7F1E8"))
     xs, sz = [2, 24, 50, 76, 98], [11, 13, 18, 13, 11]
-    for x, (c, g), z in zip(xs, order, sz):
-        s += at(x, 25, icon3d(c, g, z))
+    for x, (c, g, ic), z in zip(xs, order, sz):
+        s += at(x, 25, icon3d(c, g, z, ic))
     s += at(50, 40.5, f'<span class="lbl">{label}</span>')
     return s
 
 def f_7_1():
-    return carousel([(FIELD["apricot"], "#fff"), (FIELD["sky"], "#fff"), ("#F5F1EA", BERRY), (BERRY, "#fff"), (FIELD["sage"], "#fff")], "Tasks")
+    return carousel([(FIELD["apricot"], "#fff", "Receipt"), (FIELD["sky"], "#fff", "CalendarBlank"), ("#F5F1EA", BERRY, "CheckSquare"),
+                     (BERRY, "#fff", "Kanban"), (FIELD["sage"], "#fff", "Plant")], "Tasks")
 
 def f_7_2():
-    return carousel([(FIELD["sky"], "#fff"), ("#F5F1EA", BERRY), (BERRY, "#fff"), (FIELD["sage"], "#fff"), (FIELD["peri"], "#fff")], "Habits")
+    return carousel([(FIELD["sky"], "#fff", "CalendarBlank"), ("#F5F1EA", BERRY, "CheckSquare"), (BERRY, "#fff", "Plant"),
+                     (FIELD["sage"], "#fff", "Timer"), (FIELD["peri"], "#fff", "FileText")], "Habits")
+
+SNIP = {n: "data:image/jpeg;base64," + base64.b64encode((ROOT / "snips" / f"{n}.jpg").read_bytes()).decode()
+        for n in ("highlight", "stats", "invoices", "client", "habits", "calendar", "inbox", "docs")}
+def snip(name, w, blur=0):
+    f = f"filter:blur({blur}cqw);" if blur else ""
+    return f'<div class="snip" style="width:{w}cqw;{f}"><img src="{SNIP[name]}" alt=""></div>'
 
 def f_8_1():
+    """Ring of real Zenboard UI snippets (cropped from the running app) around the headline."""
     s = paper_stage(.35)
-    cards = [
-        (15, 17, 12, 15, f'<div class="cc" style="background:{FIELD["sage"]}"><small>HABITS</small><b>12-day streak</b><em>Morning walk</em></div>'),
-        (29, 8, 12, 12, f'<div class="cc" style="background:{BERRY};color:#fff"><div class="grid"></div>{mark(5, "#fff")}</div>'),
-        (43, 6, 13, 10, '<div class="cc white"><small>OUTSTANDING</small><b class="big">$4,300</b></div>'),
-        (58, 7, 12, 12, f'<div class="cc" style="background:{FIELD["peri"]}"><small>CALENDAR</small><b>Design review</b><em>16:00–18:00</em></div>'),
-        (72, 9, 12, 14, '<div class="cc white q">“I stopped juggling tabs. Everything for Acme is in one place.”<em>Mara · Acme Studio</em></div>'),
-        (85, 19, 12, 13, f'<div class="cc" style="background:{FIELD["apricot"]}"><small>INVOICE</small><b>INV-018 · Paid</b><em>Atlas Coffee · $4,200</em></div>'),
-        (86, 38, 12, 12, f'<div class="cc" style="background:{FIELD["sky"]}"><small>FOCUS</small><b class="big">25:00</b></div>'),
-        (72, 46, 13, 10, '<div class="cc white"><small>TODAY</small><b>Send invoice for July</b><em>High · TechSpark</em></div>'),
-        (57, 47, 12, 11, f'<div class="cc" style="background:{FIELD["butter"]}"><small>DOCS</small><b>Rebrand proposal</b></div>'),
-        (43, 47, 12, 11, f'<div class="cc" style="background:{FIELD["petal"]}"><small>CLIENTS</small><b>Meridian Studio</b><em>Active</em></div>'),
-        (29, 45, 12, 12, '<div class="cc white"><small>PROJECTS</small><b>Brand identity</b><em>5 open · 12 done</em></div>'),
-        (14, 37, 11, 12, f'<div class="cc" style="background:{FIELD["sand"]}"><small>NOTES</small><b>Kickoff agenda</b></div>'),
-    ]
-    for x, y, w, h, c in cards:
-        s += at(x, y, c, "", f"width:{w}cqw;height:{h}cqw")
+    for name, x, y, w, blur in [("calendar", 14, 14, 22, 0), ("highlight", 43, 6.5, 24, 0), ("stats", 74, 6, 26, .06),
+                                ("client", 88, 22, 18, 0), ("habits", 86, 41, 19, 0), ("invoices", 64, 49, 22, 0),
+                                ("inbox", 36, 48, 19, .06), ("docs", 12, 40, 18, 0)]:
+        s += at(x, y, snip(name, w, blur))
+    s += at(22, 26.5, f'<div class="cc" style="width:7cqw;height:7cqw;background:{BERRY}"><div class="grid"></div>{mark(3.6, "#fff")}</div>')
+    s += at(80, 32, f'<div class="cc white" style="width:10cqw;height:5.6cqw"><small>STREAK</small><b>12 days</b></div>')
     s += at(50, 24.5, "Work, life and business.", "head", "font-size:3.6cqw")
     s += at(50, 30.5, "One workspace.", "head", "font-size:3.6cqw;color:" + BERRY)
     return s
@@ -447,7 +460,9 @@ def blueprint(strength=1.0, tagline=False):
     for hx, hy in ((29, 24.4), (71, 24.4), (29, 31.8), (71, 31.8)):
         g += f'<rect x="{hx - .3}" y="{hy - .3}" width=".6" height=".6" fill="{a(.8)}"/>'
     svg = f'<svg class="stage" viewBox="0 0 100 56.25">{g}</svg>'
-    s = '<div class="stage bp-field"></div><div class="stage grain"></div>' + svg
+    s = ('<div class="stage bp-field"></div><div class="stage bp-cloud"></div><div class="stage bp-paper"></div>'
+         '<div class="stage bp-fibre"></div><div class="stage grain bp-grain"></div>'
+         f'<div class="bp-ink">{svg}</div><div class="stage bp-vignette"></div>')
     s += at(50, 28.1, lockup(42, "#FBFAF6", "#FBFAF6"), "", "filter:drop-shadow(0 0 2.4cqw rgba(255,255,255,.18))")
     if tagline:
         s += at(50, 38, "The single platform to manage work, life, and business.", "cap", "font-size:1.7cqw;color:#FBFAF6;font-weight:500;letter-spacing:-.01em")
@@ -486,7 +501,7 @@ SCENES = [
             "“And you live in all of them.”", "Pings stacking, typing, a rising pulse")],
   out="Hard freeze on the peak ping. Focus pulls to the rings; tiles and cards blur out behind."),
  dict(n=2, name="The resolve", t="0:10–0:15", purpose="Everything scattered becomes one thing: the Zenboard mark.",
-  frames=[("2.1", "0:10", f_2_1, "The rings break into thick segments in the brand field colours and Berry, spinning around the portrait. Tiles behind are blurred.",
+  frames=[("2.1", "0:10", f_2_1, "The rings break into bundles of fine hairlines in the brand colours and Berry, spinning around the portrait. Tiles behind are blurred.",
             "—", "Silence, then a reversed swell"),
           ("2.2", "0:12", f_2_2, "The portrait shrinks away. The segments sweep off in one big arc across the frame and the stage clears to Paper. A small ring of segments keeps spinning.",
             "—", "Big whoosh"),
@@ -523,7 +538,7 @@ SCENES = [
             "Habits", "Clack per step, on the beat")],
   out="The glow blooms to Paper and the tiles scatter outward into a ring of cards."),
  dict(n=8, name="The one", t="0:52–1:04", purpose="A calm resolution: everything around one workspace, then the logo.",
-  frames=[("8.1", "0:52", f_8_1, "A ring of mixed cards (real UI crops, stats, a quote, Berry cards with fine grid lines, field-colour cards) around a centred headline. The ring drifts slowly.",
+  frames=[("8.1", "0:52", f_8_1, "A ring of real Zenboard UI snippets cropped from the running app (calendar week, today's highlight, money stats, invoices, Meridian Studio client, habits, inbox, docs) plus one Berry mark card, around a centred headline. The ring drifts slowly at three depths.",
             "“Work, life and business. One workspace.”", "Music opens up"),
           ("8.2", "0:58", f_8_2, "Light flash into the outro. On the Berry field (dark to light, fine grain) a blueprint draws on in hairlines and dotted lines: the construction of the Zenboard mark (32-unit box, four lobe circles, diagonals, star angle), a Geist type specimen, outline component cards, grid blocks and mono notes. The lockup lands in the centre, crisp white, framed by rails with corner handles.",
             "Zenboard", "Pen-scratch ticks as lines draw, the chime on the lockup"),

@@ -228,3 +228,34 @@ dd{margin:0;color:var(--ink)}
 .wpi{width:2.6cqw;height:2.6cqw;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.55);color:#191919;flex:none}
 .wp.glass .wpi{background:rgba(255,255,255,.18);color:#FBFAF6}
 </style>
+<style>
+/* real faces in avatars (review note) */
+.avc.face,.mav.face{overflow:hidden;padding:0}
+.avc.face img,.mav.face img{width:100%;height:100%;object-fit:cover;display:block;max-width:none}
+.mav.face{clip-path:none;border-radius:50%;box-shadow:0 0 0 .15cqw #fff}
+</style>
+<style>
+/* 3D tiles carry the real module icon (review note) */
+.i3g{width:46%;height:46%;display:block;filter:drop-shadow(0 .25cqw .2cqw rgba(0,0,0,.28)) drop-shadow(0 -.08cqw 0 rgba(255,255,255,.45))}
+.i3g svg{display:block}
+</style>
+<style>
+/* 8.1 real UI snippets */
+.snip{border-radius:1cqw;overflow:hidden;border:.12cqw solid rgba(255,255,255,.7);box-shadow:0 0 0 .3cqw rgba(255,255,255,.35),0 1.2cqw 3cqw rgba(90,15,54,.18);background:#1C1B1C}
+.snip img{display:block;width:100%;height:auto;max-width:none}
+</style>
+<style>
+/* 6.1 pills: no inner shadow (review note) — glass edge + outer glow only */
+.wp{box-shadow:0 0 0 .35cqw rgba(255,255,255,.12),0 .8cqw 2cqw rgba(40,4,23,.3)}
+.wp.glass{box-shadow:0 0 0 .35cqw rgba(255,255,255,.1),0 .8cqw 2cqw rgba(40,4,23,.3)}
+/* 8.2/8.3 outro texture (review note): printed-paper feel */
+.bp-cloud{background:radial-gradient(40% 50% at 30% 35%,rgba(255,170,210,.22),transparent 70%),radial-gradient(35% 45% at 75% 70%,rgba(60,0,30,.35),transparent 70%),radial-gradient(50% 40% at 60% 20%,rgba(255,200,170,.12),transparent 70%);mix-blend-mode:soft-light}
+.bp-paper{opacity:.5;mix-blend-mode:soft-light;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012 .018' numOctaves='4' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E");background-size:60cqw 60cqw}
+.bp-fibre{opacity:.22;mix-blend-mode:overlay;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9 .03' numOctaves='2' seed='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");background-size:24cqw 24cqw}
+.bp-grain{opacity:.28}
+.bp-ink{position:absolute;inset:0;filter:url(#inkBleed) drop-shadow(0 0 .12cqw rgba(255,255,255,.25))}
+.bp-ink svg{position:absolute;inset:0;width:100%;height:100%}
+.bp-vignette{background:radial-gradient(75% 80% at 50% 50%,transparent 55%,rgba(30,2,16,.55) 100%)}
+</style>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="inkBleed" x="-2%" y="-2%" width="104%" height="104%"><feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="1" seed="4" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="1.6"/></filter></svg>
+<style>.bp-paper{opacity:.3}</style>
