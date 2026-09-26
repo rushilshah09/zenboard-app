@@ -994,6 +994,13 @@ html[data-vt] .zb-page-in { animation: none !important; }
    and a reader that strips scripts all show every word. Less motion keeps the fade and loses the
    movement, as it does everywhere in the product. */
 :root {
+  /* THE WEBSITE'S PACE. The user, 2026-09-26: "all the interaction is so quick and amateur; I want
+     Linear-type smooth interaction". The app's ladder is tuned for a tool used all day, where 100ms
+     is right; a page read once can take its time. So on the site a colour or a wash eases over
+     `--site-hover`, and a picture or a panel that changes cross-fades over `--site-swap`, through a
+     little blur and scale (Emil: blur masks a crossfade), both on the house's curves. */
+  --site-hover: calc(var(--duration-fast) * 2.2);
+  --site-swap: calc(var(--duration-slow) * 2.5);
   /* One arrival. */
   --site-reveal: calc(var(--duration-slow) * 3);
   /* Between two parts of one arrival, and between two words of a heading. */
@@ -1077,6 +1084,12 @@ html[data-vt] .zb-page-in { animation: none !important; }
   font-family: var(--font-sans); font-weight: 500; line-height: 1; letter-spacing: -0.04em;
   font-size: clamp(64px, 16vw, 168px); font-variant-numeric: tabular-nums; color: var(--color-site-ink-fg);
 }
+
+/* BACK TO THE TOP (back-to-top.tsx): it rises into its corner once the reader is two screens down and
+   sinks away near the top again; while away it takes no pointer. It is a button, so the house's press
+   rule (below) carries its transition: the movement on the arrival curve, the fade on the hover curve. */
+.site-top { opacity: 0; transform: translateY(8px) scale(0.96); pointer-events: none; }
+.site-top[data-shown] { opacity: 1; transform: none; pointer-events: auto; }
 
 /* A TEXT LINK draws its underline in from the side the pointer arrives on and takes it away the way
    it leaves; the rule scales, so nothing around it moves. Focus draws it too. */
@@ -1186,8 +1199,20 @@ html[data-site-loader] .site-loader {
   position: fixed; inset: 0; z-index: var(--z-focus-edge);
   display: grid; place-content: center; justify-items: center; gap: 18px;
   background: var(--color-background);
-  animation: site-loader-out var(--duration-slow) var(--ease-out-quiet) calc(var(--duration-slow) * 5.5) both;
+  animation: site-loader-out calc(var(--duration-slow) * 1.5) var(--ease-out-quiet) calc(var(--duration-slow) * 9) both;
 }
+/* The website's loader takes its time (user, 2026-09-26: "the loader's logo animation is so fast"): it
+   plays on a first visit and then one visit in five, so it can be a moment rather than a blink, where
+   the app's boot splash, which shares these parts, must stay quick. The outline draws on the in-out
+   curve, easing in and out of the stroke as a hand would; the fill arrives as the line closes; the
+   line lifts; the bar keeps pace; the cover leaves once the mark is whole. */
+.site-loader .zb-splash-draw {
+  animation:
+    zb-mark-draw calc(var(--duration-slow) * 5.5) var(--ease-standard) both,
+    zb-mark-lift calc(var(--duration-slow) * 1.5) calc(var(--duration-slow) * 6) var(--ease-hover) both;
+}
+.site-loader .zb-splash-fill { animation: zb-mark-fill calc(var(--duration-slow) * 3) calc(var(--duration-slow) * 4) var(--ease-out-quiet) both; }
+.site-loader .zb-splash-bar > span { animation-duration: calc(var(--duration-slow) * 8); }
 @keyframes site-loader-out { to { opacity: 0; visibility: hidden; } }
 /* A cell's inset. */
 .site-pad { --cell-px: 20px; padding-inline: var(--cell-px); }
@@ -1242,17 +1267,50 @@ html[data-theme='dark'] .site-field {
     var(--f-light);
 }
 /* Petal is the homepage hero's; butter is the day, and the picture is Home. */
-.site-field-hero { --f-top: var(--f-petal); --f-bottom: var(--f-butter); }
+.site-field-hero { --f-top: var(--f-petal); --f-bottom: var(--f-butter); --f-side: var(--f-apricot); }
 /* Her portal in apricot (people), your day in butter. */
-.site-field-how { --f-top: var(--f-apricot); --f-bottom: var(--f-butter); }
+.site-field-how { --f-top: var(--f-apricot); --f-bottom: var(--f-butter); --f-side: var(--f-petal); }
 /* The day's own arc: butter where it starts, periwinkle (the evening shutdown) where it ends. */
-.site-field-day { --f-top: var(--f-butter); --f-bottom: var(--f-periwinkle); }
+.site-field-day { --f-top: var(--f-butter); --f-bottom: var(--f-periwinkle); --f-side: var(--f-apricot); }
 /* Sky for time (the calendar), periwinkle for quiet work (the briefs). */
-.site-field-projects { --f-top: var(--f-sky); --f-bottom: var(--f-periwinkle); }
+.site-field-projects { --f-top: var(--f-sky); --f-bottom: var(--f-periwinkle); --f-side: var(--f-sage); }
 /* Apricot for people, the client; petal for the brand's own moment, the page she opens. */
-.site-field-portal { --f-top: var(--f-apricot); --f-bottom: var(--f-petal); }
+.site-field-portal { --f-top: var(--f-apricot); --f-bottom: var(--f-petal); --f-side: var(--f-butter); }
 /* Sage for growth (finance); sky for the tracked time an invoice is made of. */
-.site-field-money { --f-top: var(--f-sage); --f-bottom: var(--f-sky); }
+.site-field-money { --f-top: var(--f-sage); --f-bottom: var(--f-sky); --f-side: var(--f-butter); }
+
+/* ── THE PICTURES ARE PAINTED, NOT RAMPED (visual.tsx `Mesh`) ───────────────
+   The user, 2026-09-26: "all the gradient execution looks so basic, I want it like Calendly's".
+   Measured on calendly.com the same day: theirs are not CSS gradients at all. Each is a pale ground
+   under six or seven large ORGANIC shapes, each one colour and blurred into its neighbours, a light
+   shape behind the product, and a fine fractal grain over the whole. The ramp above is two stops of
+   geometry; that is a painting. So each picture lays five soft shapes over its ramp: its top hue
+   leaning in from the top corner, its bottom hue from the far corner, a third hue at the side, a
+   small glow of the brand's berry low in the other corner (the one colour in every picture, as
+   Calendly's blue is in every one of theirs), and the illustration's light behind the product, which
+   is what backlights it. The grain turns the screen into a print.
+   Static on purpose: the shapes are painted once and cached; nothing here moves, so nothing costs. */
+.site-field { --f-deep: color-mix(in oklab, var(--accent) 52%, var(--f-light)); }
+html[data-theme='dark'] .site-field { --f-deep: color-mix(in oklch, var(--accent) 42%, var(--color-background)); }
+.site-mesh { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.site-mesh[data-flip] { transform: scaleX(-1); }
+.site-blob {
+  position: absolute; aspect-ratio: 1.35; translate: -50% -50%;
+  border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%;
+  filter: blur(clamp(40px, 7vw, 104px));
+}
+.site-blob[data-b='top'] { left: 16%; top: 6%; width: 80%; rotate: -14deg; background: var(--f-top); }
+.site-blob[data-b='bottom'] { left: 86%; top: 98%; width: 86%; rotate: 10deg; background: var(--f-bottom); }
+.site-blob[data-b='side'] { left: 100%; top: 30%; width: 48%; rotate: 24deg; background: var(--f-side); opacity: 0.85; }
+.site-blob[data-b='deep'] { left: 4%; top: 94%; width: 42%; rotate: -8deg; background: var(--f-deep); opacity: 0.55; }
+.site-blob[data-b='light'] { left: 52%; top: 50%; width: 56%; background: var(--f-light); opacity: 0.92; }
+/* The grain: fractal noise, grey, laid into the colour rather than on top of it. */
+.site-grain {
+  position: absolute; inset: 0; opacity: 0.18; mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+}
+html[data-theme='dark'] .site-grain { opacity: 0.1; mix-blend-mode: overlay; }
 
 /* A feature's icon tile, in its area's colour: the field as the ground and the palette's ink as the
    glyph (the palette's "ink on a field": 7:1 or better on every field). In the dark, the dimmed field,
@@ -1283,6 +1341,25 @@ html[data-theme='dark'] .site-hue-periwinkle { --site-hue: color-mix(in oklch, v
 
 /* Always coloured: an area's name wears its colour wherever it appears. */
 .site-tile { background: var(--site-hue); color: var(--site-hue-fg); }
+/* A TAG (visual.tsx `Eyebrow`, people.tsx's chips): the user, 2026-09-26, of "Money" beside its tile,
+   "improve this and the other tags". A section's name is set IN its colour rather than beside it: a
+   soft wash of the area's hue with a hairline of the same hue, the coloured tile inset in it, and the
+   corners concentric with the tile's (outer radius = inner radius + the inset). The words stay ink:
+   a hue at text strength fails contrast on its own wash. */
+.site-tag {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 4px 14px 4px 4px; border-radius: calc(var(--radius-md) + 4px);
+  background: color-mix(in oklab, var(--site-hue) 30%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--site-hue) 75%, transparent);
+  color: var(--color-ink-900);
+}
+.site-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 10px 5px 8px; border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--site-hue) 38%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--site-hue) 80%, transparent);
+  color: var(--color-ink-900);
+}
 
 /* Coloured only WHILE SHOWING. The tile fades in behind the glyph and the two weights cross-fade,
    so it reads as one icon lighting up rather than two icons swapping (better-ui: animate an icon
@@ -1291,10 +1368,12 @@ html[data-theme='dark'] .site-hue-periwinkle { --site-hue: color-mix(in oklch, v
 .site-feature-tile {
   background: transparent;
   color: var(--color-ink-400);
-  transition: background-color var(--duration-base) var(--ease-hover), color var(--duration-base) var(--ease-hover);
+  transition: background-color var(--site-hover) var(--ease-hover), color var(--site-hover) var(--ease-hover);
 }
 [data-state='active'] .site-feature-tile { background: var(--site-hue); color: var(--site-hue-fg); }
-.site-glyph-line, .site-glyph-fill { transition: opacity var(--duration-base) var(--ease-hover); }
+/* Under the pointer, a quiet item's glyph darkens with its words (the list takes no fill on hover). */
+[data-state='inactive']:hover .site-feature-tile { color: var(--color-ink-700); }
+.site-glyph-line, .site-glyph-fill { transition: opacity var(--site-hover) var(--ease-hover); }
 .site-glyph-fill { opacity: 0; }
 [data-state='active'] .site-glyph-fill { opacity: 1; }
 [data-state='active'] .site-glyph-line { opacity: 0; }

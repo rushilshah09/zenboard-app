@@ -25,13 +25,14 @@
 
 import Link from 'next/link';
 import * as React from 'react';
-import { ArrowRight, Check, CursorClick, Keyboard, Receipt } from '@/components/ds/icons';
+import { ArrowRight, Check, CursorClick, Keyboard, Question, Receipt } from '@/components/ds/icons';
 import { Avatar, Icon, Mark, Toaster, button, cardClass } from '@/components/ds/ui';
 import { cn } from '@/lib/cn';
 import { DayArea, MoneyArea, PortalArea, ProjectsArea } from './areas';
 import { siteLoaderScript } from '@/lib/site-loader';
 import { Bento } from './bento';
 import { CookieConsent } from './cookie-consent';
+import { BackToTop } from './back-to-top';
 import { GuestFocus } from './guest-focus';
 import { Halftone } from './halftone';
 import { LiveHome } from './live-home';
@@ -42,7 +43,7 @@ import { SiteMotion } from './site-motion';
 import { Questions, SIGN_UP, SiteFooter, SiteNav } from './site-chrome';
 import { MEASURE } from './measure';
 import { FACES } from './faces';
-import { Cell, Eyebrow, Grid, Row } from './visual';
+import { Cell, Eyebrow, Grid, Mesh, Row } from './visual';
 import { Words } from './words';
 
 function Hero() {
@@ -120,6 +121,7 @@ function Showcase() {
   return (
     <Row aria-label="Zenboard’s Home, working">
     <Cell className="site-field site-field-hero site-pad overflow-hidden pb-6 pt-8 sm:pb-12 sm:pt-12 lg:pb-16 lg:pt-16">
+      <Mesh />
       <Halftone mark={{ x: 0.5, y: 0.56, size: 1.9 }} />
       {/* Part of the first screen, so it arrives with it: after the hero's buttons, the app itself. */}
       <p className="site-rise zb-enter relative mx-auto mb-4 flex w-full max-w-[1180px] items-center gap-1.5 text-caption text-ink-700" style={{ '--rise-step': 8 } as React.CSSProperties}>
@@ -172,15 +174,15 @@ function Details() {
 function Faq() {
   return (
     <Row id="faq" aria-labelledby="faq-title">
-      <Cell pad className="py-14 sm:py-16 lg:col-span-4 lg:py-20">
+      {/* The heading on the left, as tall as all the questions beside it (one grid row each). */}
+      <Cell pad className="py-14 sm:py-16 lg:col-span-4 lg:row-span-6 lg:py-20">
         <div data-reveal-group>
-          <p data-reveal="rise" className="text-ui font-medium text-ink-500">Questions</p>
+          <Eyebrow hue="sky" icon={Question} data-reveal="rise">Questions</Eyebrow>
           <h2 id="faq-title" data-reveal="words" className="mt-6 text-balance font-editorial text-h1 text-ink-900 sm:text-headline"><Words>The things people ask first.</Words></h2>
         </div>
       </Cell>
-      <Cell pad className="pb-14 pt-4 sm:pb-16 lg:col-span-8 lg:pt-16">
-        <Questions />
-      </Cell>
+      {/* Each question a card of its own on the right, joined by the grid's star (site-chrome.tsx). */}
+      <Questions />
     </Row>
   );
 }
@@ -216,6 +218,7 @@ export function SiteHome() {
       <CookieConsent />
       {/* The focus session anyone can start from the logo, and the one place the site says "done". */}
       <GuestFocus />
+      <BackToTop />
       <Toaster />
     </div>
   );

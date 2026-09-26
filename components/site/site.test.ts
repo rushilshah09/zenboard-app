@@ -243,17 +243,17 @@ describe('the identity', () => {
     const own = [...globals.matchAll(/--color-(field-[a-z]+|illustration-light|site-ink[a-z-]*): (#[0-9A-Fa-f]{6});/g)];
     expect(own.length).toBeGreaterThanOrEqual(13);
     for (const [, name, hex] of own) expect(PALETTE.has(hex.toUpperCase()), `--color-${name}: ${hex}`).toBe(true);
-    // At most two fields in any one picture (the palette's rule). Since 2026-09-26 a field is a
-    // vertical ramp — colour at the top and the bottom, the illustration's light between them,
-    // where the card sits — so each area names exactly its two hues and the shared recipe does
-    // the rest. (The `\n` in the pattern is what keeps this off the shared rule, whose selector
-    // list ends with `.site-field-money`.)
+    // Each picture names THREE fields, top, bottom and side, and the brand's berry is the fourth colour
+    // in every one (user, 2026-09-26, "like Calendly's gradient": theirs are six or seven colours,
+    // blurred together, with their brand blue in each). This replaced the palette's "at most two
+    // fields" rule, which made every picture a two-stop ramp. Sand and mist are neutrals, not hues.
     for (const tone of ['hero', 'how', 'day', 'projects', 'portal', 'money']) {
       const rule = globals.match(new RegExp(`\n\\.site-field-${tone} \\{([^}]*)\\}`))?.[1] ?? '';
       const fields = new Set([...rule.matchAll(/var\(--f-([a-z]+)\)/g)].map((m) => m[1]).filter((f) => f !== 'sand' && f !== 'mist'));
-      expect(fields.size, `${tone}: ${[...fields]}`).toBe(2);
-      expect(rule, `${tone} sets a top and a bottom`).toMatch(/--f-top:[\s\S]*--f-bottom:/);
+      expect(fields.size, `${tone}: ${[...fields]}`).toBe(3);
+      expect(rule, `${tone} sets a top, a bottom and a side`).toMatch(/--f-top:[\s\S]*--f-bottom:[\s\S]*--f-side:/);
     }
+    expect(globals).toMatch(/\.site-field \{ --f-deep: color-mix\(in oklab, var\(--accent\) \d+%, var\(--f-light\)\); \}/);
     // One recipe for every field: the light opens through the middle, which is what backlights the
     // card standing on it.
     expect(globals).toMatch(/linear-gradient\(180deg, var\(--f-top\)[^;]*linear-gradient\(0deg, var\(--f-bottom\)[^;]*var\(--f-light\);/);
@@ -332,8 +332,8 @@ describe('the page arrives as it is read', () => {
     const loop = read('components/site/loop.tsx');
     const step = loop.slice(loop.indexOf('<RT.Trigger', loop.indexOf('One request, step by step')), loop.indexOf('>', loop.indexOf('className="focus-ring group relative col-span-full')));
     expect(step).not.toMatch(/data-reveal=/);
-    expect(step).toMatch(/data-\[state=inactive\]:hover:wash-over/);
-    expect(step).not.toMatch(/hover:bg-surface-hover/);
+    // ...and it takes no fill on hover: the words darken (user: "only the text and content highlight").
+    expect(step).not.toMatch(/hover:(?:bg-|wash-over)/);
   });
 
   it('keeps a heading one sentence: real words, real spaces', () => {
@@ -428,5 +428,81 @@ describe('a focus session without an account', () => {
     // One offer per page load, however often the effect runs.
     expect(importer).toMatch(/offered \?\?= importGuestFocus\(sessions\);/);
     expect(importer).toMatch(/localStorage\.removeItem\(GUEST_FOCUS_KEY\)/);
+  });
+});
+
+describe('the page offers a way back up, and a light or a dark page', () => {
+  // The user, 2026-09-26: "give the website a back to top option, and a dark mode and light mode option".
+  it('switches the theme through the app\'s own appearance, so the two can never disagree', () => {
+    const sw = read('components/site/theme-switch.tsx');
+    expect(sw).toMatch(/commitAppearance\(\{ theme: next \}\)/);
+    expect(sw).toMatch(/useResolvedTheme\(\)/);
+    expect(sw).toMatch(/<IconSwap swapKey=\{theme\}>/);
+    expect(read('components/site/site-chrome.tsx')).toMatch(/<ThemeSwitch \/>/);
+  });
+
+  it('brings the reader back to the top, and the keyboard with them', () => {
+    const top = read('components/site/back-to-top.tsx');
+    expect(top).toMatch(/window\.scrollY > window\.innerHeight \* 2/);
+    expect(top).toMatch(/behavior: still \? 'auto' : 'smooth'/);
+    expect(top).toMatch(/document\.querySelector<HTMLElement>\('header a\[href\]'\)\?\.focus\(\{ preventScroll: true \}\)/);
+    // Hidden, it is out of the tab order and takes no pointer.
+    expect(top).toMatch(/tabIndex=\{shown \? 0 : -1\}/);
+    expect(globals).toMatch(/\.site-top \{ opacity: 0; transform: translateY\(8px\) scale\(0\.96\); pointer-events: none; \}/);
+    for (const f of ['site-home.tsx', 'legal.tsx']) expect(read(`components/site/${f}`), f).toMatch(/<BackToTop \/>/);
+  });
+});
+
+describe('the pictures are painted, not ramped', () => {
+  // The user, 2026-09-26: "the gradient execution looks so basic, I want it like Calendly's". Measured on
+  // calendly.com: blurred organic shapes over a pale ground, and a fine grain. Every picture has them.
+  const visual = read('components/site/visual.tsx');
+
+  it('paints every picture with the same five shapes and a grain', () => {
+    expect(visual).toMatch(/\(\['top', 'bottom', 'side', 'deep', 'light'\] as const\)\.map/);
+    expect(visual).toMatch(/<span className="site-grain" \/>/);
+    expect(visual).toMatch(/export function Stage[\s\S]*?<Mesh flip=\{flip\} \/>/);
+    expect(read('components/site/loop.tsx')).toMatch(/site-field-how[^\n]*\n\s*<Mesh \/>/);
+    expect(home).toMatch(/site-field-hero[^\n]*\n\s*<Mesh \/>/);
+  });
+
+  it('takes every colour from the area\'s own fields, the berry and the light', () => {
+    for (const b of ['top', 'bottom', 'side', 'deep', 'light']) {
+      expect(globals).toMatch(new RegExp(`\\.site-blob\\[data-b='${b}'\\] \\{[^}]*background: var\\(--f-${b}\\);`));
+    }
+    // Soft shapes, blurred into one another, and a grain laid into the colour.
+    expect(globals).toMatch(/\.site-blob \{[^}]*border-radius: [^;]*\/[^;]*;[^}]*filter: blur\(/);
+    expect(globals).toMatch(/\.site-grain \{[^}]*mix-blend-mode: soft-light;[^}]*feTurbulence/);
+    // Nothing in it moves: painted once, cached.
+    expect(globals).not.toMatch(/\.site-blob[^{]*\{[^}]*animation/);
+  });
+});
+
+describe('a hover darkens the words, it never lays a patch', () => {
+  // The user, 2026-09-26, of a feature list's grey hover: "this grey patch looks so bad, I want only the
+  // text and content to highlight". The site's lists take no fill on hover anywhere.
+  it('gives no list on the site a hover fill', () => {
+    for (const f of ['spotlight.tsx', 'loop.tsx', 'bento.tsx', 'legal.tsx', 'site-chrome.tsx']) {
+      const src = read(`components/site/${f}`);
+      const lists = src.split('\n').filter((l) => /RT\.Trigger|<li |<a href=\{`#|<Cell className="site-pad col-span-full/.test(l) || /className="focus-ring group relative/.test(l));
+      for (const l of lists) expect(l, f).not.toMatch(/hover:bg-surface-hover|hover:wash-over|has-\[[^\]]*:hover\]:wash-over/);
+    }
+    expect(read('components/site/spotlight.tsx')).toMatch(/group-hover:text-ink-800/);
+    expect(globals).toMatch(/\[data-state='inactive'\]:hover \.site-feature-tile \{ color: var\(--color-ink-700\); \}/);
+  });
+});
+
+describe('the questions: the heading on the left, a card each on the right', () => {
+  it('spans the heading over exactly as many rows as there are questions', async () => {
+    const { FAQ_COUNT } = await import('./site-chrome');
+    expect(home).toMatch(new RegExp(`lg:col-span-4 lg:row-span-${FAQ_COUNT} `));
+  });
+
+  it('draws the grid\'s star at both ends of every card\'s top line, and keeps the mark close to its words', () => {
+    const chrome = read('components/site/site-chrome.tsx');
+    const q = chrome.slice(chrome.indexOf('export function Questions'), chrome.indexOf('export function SiteFooter'));
+    expect(q).toMatch(/<Cell className="site-pad col-span-full lg:col-span-8">\s*<span aria-hidden className="site-joint" data-at="start" \/>\s*<span aria-hidden className="site-joint" data-at="end" \/>/);
+    expect(q).toMatch(/className="h-auto min-h-16 gap-2\.5 /);
+    expect(q).toMatch(/ps-7\.5/);
   });
 });

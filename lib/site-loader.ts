@@ -25,7 +25,7 @@ export const SITE_LOADER_EVERY = process.env.NODE_ENV === 'production' ? 5 : 1;
  *  expression as the cover's own delay (globals.css `.site-loader`), so the two cannot drift apart.
  *  Written on <html> by the decision script, as `--site-wait`, and read by the first screen's
  *  entrance (globals.css `.site-rise`). */
-export const SITE_LOADER_WAIT = 'calc(var(--duration-slow) * 5.5)';
+export const SITE_LOADER_WAIT = 'calc(var(--duration-slow) * 9)';
 
 /** Whether the `open`-th open on this device (counting from 1) plays the loader. */
 export function shouldShowLoader(open: number, every = SITE_LOADER_EVERY): boolean {

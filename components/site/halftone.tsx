@@ -225,7 +225,9 @@ function latticeFor(w: number, h: number, pitch: number, place: Required<MarkPla
   return { cols, rows, base, seed };
 }
 
-export function Halftone({ mark, fade, weight = 1, pitch = 14, className }: {
+// The screen is fine (user, 2026-09-26: "the dither's spacing is too wide, bring it closer, add a
+// little detail"): 10px between glyphs on the page's own print, 8 on a picture's (visual.tsx).
+export function Halftone({ mark, fade, weight = 1, pitch = 10, className }: {
   mark: MarkPlacement;
   fade?: Fade;
   /** How heavily it prints, 0 to 1: lighter where it lies behind the product rather than beside words. */

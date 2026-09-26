@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
+
+const read = (f: string) => readFileSync(f, 'utf8');
 import { SITE_LOADER_ATTR, SITE_LOADER_EVERY, SITE_LOADER_KEY, SITE_LOADER_WAIT, loaderScript, shouldShowLoader, siteLoaderScript } from './site-loader';
 
 // The loader plays on the first open on a device and then on every fifth (production), or on every open
@@ -98,7 +100,10 @@ describe('how it plays', () => {
 
   it('holds the first screen until its cover lifts, and never moves that moment while the words arrive', () => {
     // The wait is the cover's own delay, spelled once.
-    expect(globals).toContain(`animation: site-loader-out var(--duration-slow) var(--ease-out-quiet) ${SITE_LOADER_WAIT} both;`);
+    expect(globals).toContain(`animation: site-loader-out calc(var(--duration-slow) * 1.5) var(--ease-out-quiet) ${SITE_LOADER_WAIT} both;`);
+    // ...and it leaves only once the mark is whole: the fill has landed before the cover moves.
+    expect(globals).toMatch(/\.site-loader \.zb-splash-fill \{ animation: zb-mark-fill calc\(var\(--duration-slow\) \* 3\) calc\(var\(--duration-slow\) \* 4\)/);
+    expect(read('components/ds/ui/drawn-mark.tsx')).toMatch(/overflow="visible"/);
     expect(globals).toMatch(/\.site-rise, \.site-rise-lift, \.site-rise-words \.site-word \{[^}]*animation-delay: calc\(var\(--site-wait\) \+/);
     // It is written on <html> by the script, not derived from the attribute: the attribute comes off
     // when the cover has gone, which would have moved every word still arriving.

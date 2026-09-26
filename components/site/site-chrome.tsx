@@ -9,14 +9,16 @@
 import Link from 'next/link';
 import * as React from 'react';
 import { ArrowRight, Keyboard, List, MessageCircle, Orbit, Question, Receipt, Sun } from '@/components/ds/icons';
+import { Accordion as RA } from 'radix-ui';
 import {
-  Accordion, AccordionContent, AccordionItem, AccordionTrigger, Icon, IconButton,
+  Accordion, AccordionContent, AccordionTrigger, Icon, IconButton, Mark,
   NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuTrigger,
   Popover, PopoverContent, PopoverTrigger, button,
 } from '@/components/ds/ui';
 import { cn } from '@/lib/cn';
 import { CookieSettingsLink } from './cookie-settings-link';
 import { SiteLogo } from './site-logo';
+import { ThemeSwitch } from './theme-switch';
 import { Halftone } from './halftone';
 import { GUTTER, MEASURE } from './measure';
 import { Cell, Grid, Joints } from './visual';
@@ -95,6 +97,8 @@ export function SiteNav() {
         </NavigationMenu>
 
         <div className="ms-auto me-px flex items-center gap-2">
+          {/* Light or dark, the same switch as the app's (theme-switch.tsx). */}
+          <ThemeSwitch />
           <Link href={LOG_IN} className={cn(button({ variant: 'ghost', size: 'sm' }), 'max-sm:hidden')}>Log in</Link>
           {/* The brand's own fill (user, 2026-09-26: "make accent button"): the one ACCENT-filled
               button on every screen of the site, and always in the same place. The hero's "Start free"
@@ -152,14 +156,42 @@ const FAQ = [
   },
 ];
 
+/** How many questions there are: the heading beside them spans this many of the grid's rows. */
+export const FAQ_COUNT = FAQ.length;
+
+/**
+ * THE QUESTIONS, ONE CARD EACH (user, 2026-09-26, with a sketch: "each a separate card, and the spark
+ * shape joining each card"; then "keep the old layout, the title on the left, the questions on the
+ * right"). Every question is a cell of the page's grid, so the hairline between two questions is the
+ * grid's own gutter, and where that line meets the one beside it the grid's star (the joint: what four
+ * rounded corners leave where lines cross) is drawn at both ends of it. Each leads with the mark;
+ * opening it turns the mark a quarter and lights it in the brand's colour. The accordion draws nothing
+ * itself (`contents`), so its cards sit straight in the grid.
+ */
 export function Questions() {
   return (
-    <Accordion type="single" collapsible data-reveal-group className="border-t border-line">
+    <Accordion type="single" collapsible className="contents">
       {FAQ.map((f) => (
-        <AccordionItem key={f.q} value={f.q} data-reveal="rise" className="border-b border-line">
-          <AccordionTrigger className="py-5 text-start text-body-lg font-medium text-ink-900">{f.q}</AccordionTrigger>
-          <AccordionContent className="max-w-[62ch] pb-5 text-body text-ink-600">{f.a}</AccordionContent>
-        </AccordionItem>
+        <RA.Item key={f.q} value={f.q} asChild>
+          <Cell className="site-pad col-span-full lg:col-span-8">
+            <span aria-hidden className="site-joint" data-at="start" />
+            <span aria-hidden className="site-joint" data-at="end" />
+            <div data-reveal="rise">
+              <AccordionTrigger
+                icon={
+                  <span aria-hidden className="grid size-5 shrink-0 place-items-center text-ink-500 transition-[transform,color] duration-slow ease-out-quiet group-hover:text-ink-700 group-data-[state=open]:rotate-45 group-data-[state=open]:text-accent">
+                    <Mark size={16} style={{ color: 'currentColor' }} />
+                  </span>
+                }
+                className="h-auto min-h-16 gap-2.5 rounded-none px-0 py-5 text-body-lg font-medium text-ink-800 hover:bg-transparent hover:text-ink-900"
+              >
+                {f.q}
+              </AccordionTrigger>
+              {/* The answer hangs under the question's words: the glyph (20) and the gap (10) before them. */}
+              <AccordionContent className="max-w-[calc(62ch+30px)] px-0 pb-6 ps-7.5 text-body text-ink-600">{f.a}</AccordionContent>
+            </div>
+          </Cell>
+        </RA.Item>
       ))}
     </Accordion>
   );

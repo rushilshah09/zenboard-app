@@ -94,8 +94,8 @@ export function People() {
               <p key={who} className="site-swap text-body-lg text-ink-600">{chosen.line}</p>
               <ul key={`${who}-uses`} className="site-swap mt-4 flex flex-wrap gap-2" aria-label={`What ${chosen.who.toLowerCase()} use most`}>
                 {chosen.uses.map((u) => (
-                  <li key={u.label} className={cn('site-tile flex items-center gap-1.5 rounded-md px-2.5 py-1 text-caption font-medium', HUE[chosen.hue])}>
-                    <Icon icon={u.icon} size={14} weight="fill" />{u.label}
+                  <li key={u.label} className={cn('site-chip text-ui font-medium', HUE[chosen.hue])}>
+                    <Icon icon={u.icon} size={14} weight="fill" className="text-ink-700" />{u.label}
                   </li>
                 ))}
               </ul>

@@ -4,14 +4,16 @@ import { ChevronRight } from "@/lib/icons";
 import { cn } from "@/lib/cn";
 
 // design-system.md §4.51 — leading chevron (a disclosure belongs BEFORE the
-// thing it discloses), rotating 90°. Panel opens with Reveal.
+// thing it discloses), rotating 90°. Panel opens with Reveal. `icon` replaces the
+// chevron where a surface leads with its own glyph (the website's questions lead
+// with the mark); it reads the trigger's open state through `group-data-[state]`.
 export const Accordion = RA.Root;
 
 export function AccordionItem({ className, ...props }: React.ComponentPropsWithoutRef<typeof RA.Item>) {
   return <RA.Item className={cn("border-b border-line-soft last:border-b-0", className)} {...props} />;
 }
 
-export function AccordionTrigger({ className, children, ...props }: React.ComponentPropsWithoutRef<typeof RA.Trigger>) {
+export function AccordionTrigger({ className, children, icon, ...props }: React.ComponentPropsWithoutRef<typeof RA.Trigger> & { icon?: React.ReactNode }) {
   return (
     <RA.Header asChild>
       <h3 className="flex">
@@ -23,10 +25,12 @@ export function AccordionTrigger({ className, children, ...props }: React.Compon
           )}
           {...props}
         >
-          <ChevronRight
-            className="size-3.5 shrink-0 text-ink-500 transition-transform duration-fast ease-standard group-data-[state=open]:rotate-90"
-            aria-hidden
-          />
+          {icon ?? (
+            <ChevronRight
+              className="size-3.5 shrink-0 text-ink-500 transition-transform duration-fast ease-standard group-data-[state=open]:rotate-90"
+              aria-hidden
+            />
+          )}
           {children}
         </RA.Trigger>
       </h3>

@@ -8,6 +8,8 @@
 //
 // `pathLength="1"` makes the draw a fraction of the outline rather than a measured length, so the
 // animation cannot go wrong if the mark's path ever changes. The gradient's id is per instance.
+// `overflow="visible"`: the mark touches all four sides of its square, so the line drawn along its
+// edge is half outside the box, and a clipped box cut it (user, 2026-09-26: "the animation is cutting").
 
 import * as React from 'react';
 import { MARK_PATH } from '@/components/ds/icons';
@@ -16,7 +18,7 @@ import { cn } from '@/lib/cn';
 export function DrawnMark({ size = 44, className }: { size?: number; className?: string }) {
   const chalk = `zb-chalk-${React.useId().replace(/:/g, '')}`;
   return (
-    <svg className={cn('zb-splash-mark', className)} width={size} height={size} viewBox="0 0 20 20" role="presentation" aria-hidden>
+    <svg className={cn('zb-splash-mark', className)} width={size} height={size} viewBox="0 0 20 20" overflow="visible" role="presentation" aria-hidden>
       <defs>
         <linearGradient id={chalk} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="var(--color-field-petal)" />

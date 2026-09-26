@@ -14,6 +14,7 @@ import { LEGAL } from '@/lib/legal';
 import { siteLoaderScript } from '@/lib/site-loader';
 import { Toaster } from '@/components/ds/ui';
 import { CookieConsent } from './cookie-consent';
+import { BackToTop } from './back-to-top';
 import { GuestFocus } from './guest-focus';
 import { SiteFooter, SiteNav } from './site-chrome';
 import { MEASURE } from './measure';
@@ -52,7 +53,7 @@ export function LegalShell({ title, lede, toc, children }: { title: string; lede
                   <ol className="mt-3 flex flex-col">
                     {toc.map((t) => (
                       <li key={t.id}>
-                        <a href={`#${t.id}`} className="focus-ring block rounded-md px-2 py-1.5 text-ui text-ink-700 transition-colors duration-fast ease-hover hover:bg-surface-hover hover:text-ink-900">
+                        <a href={`#${t.id}`} className="focus-ring block rounded-md px-2 py-1.5 text-ui text-ink-600 transition-colors duration-fast ease-hover hover:text-ink-900">
                           {t.title}
                         </a>
                       </li>
@@ -68,6 +69,7 @@ export function LegalShell({ title, lede, toc, children }: { title: string; lede
       <SiteFooter />
       <CookieConsent />
       <GuestFocus />
+      <BackToTop />
       <Toaster />
     </div>
   );

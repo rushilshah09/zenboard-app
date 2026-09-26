@@ -107,7 +107,7 @@ export function Bento() {
       <Card className="lg:col-span-6" icon={Keyboard} hue="periwinkle" title="Shortcuts you learn once" body="The keys follow the words: H highlights, E completes, G then P goes to Projects.">
         <ul data-reveal="rise" className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
           {SHORTCUTS.map((s) => (
-            <li key={s.label} className="flex items-center justify-between gap-3 rounded-md px-2 py-1 text-ui text-ink-800 transition-colors duration-fast ease-hover hover:bg-surface-hover">
+            <li key={s.label} className="flex items-center justify-between gap-3 rounded-md px-2 py-1 text-ui text-ink-700 transition-colors duration-fast ease-hover hover:text-ink-900">
               {s.label}<Kbd keys={s.keys} />
             </li>
           ))}

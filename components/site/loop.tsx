@@ -21,7 +21,7 @@ import { cn } from '@/lib/cn';
 import { FACES } from './faces';
 import { Halftone } from './halftone';
 import { Dwell, useAutoAdvance } from './use-auto-advance';
-import { Cell, Eyebrow, Joints } from './visual';
+import { Cell, Eyebrow, Joints, Mesh } from './visual';
 import { Words } from './words';
 
 /** The track between Zenboard and her portal, or between Zenboard and your day. */
@@ -231,6 +231,7 @@ export function Loop() {
             the mark's heart), and the product's cards on top. */}
         {/* Her portal, Zenboard and your day lift onto it in that order: the way the request travels. */}
         <Cell data-reveal-group className="site-field site-field-how overflow-hidden py-14 sm:py-20">
+          <Mesh />
           <Halftone mark={{ x: 0.5, y: 0.5, size: 1.1 }} />
           {STEPS.map((s, i) => (
             <RT.Content key={s.title} value={String(i)} className="relative focus-visible:outline-none">
@@ -249,13 +250,12 @@ export function Loop() {
         <RT.List data-reveal-group aria-label="One request, step by step" className="col-span-full grid grid-cols-subgrid gap-px">
           {STEPS.map((s, i) => (
             // A step IS a cell of the grid, so its words arrive and the cell does not (a cell fading in
-            // would show the line behind it as a grey block), and its hover is a wash OVER its own
-            // ground (`wash-over`): a translucent fill in place of the ground let the grid, and the
-            // light that moves behind it, show through the whole cell.
+            // would show the line behind it as a grey block). Its hover takes no fill at all (user,
+            // 2026-09-26: "only the text and content highlight"): the words darken.
             <RT.Trigger
               key={s.title}
               value={String(i)}
-              className="focus-ring group relative col-span-full rounded-lg bg-background px-5 py-6 text-start data-[state=inactive]:hover:wash-over sm:px-6 lg:col-span-3"
+              className="focus-ring group relative col-span-full rounded-lg bg-background px-5 py-6 text-start sm:px-6 lg:col-span-3"
             >
               {i === active && auto && <Dwell onEnd={next} className="absolute inset-x-5 -top-px h-0.5 overflow-hidden sm:inset-x-6" />}
               {/* A step's NUMBER AND ITS NAME are one thing, so they take one colour (user,
@@ -265,10 +265,10 @@ export function Loop() {
                   what it is. `text-accent-text` rather than the raw accent: berry is 2.91:1 on a
                   dark card, and this list is read in both themes. */}
               <p data-reveal="rise" className="flex items-center gap-2 font-display text-body-lg font-medium">
-                <span className="tabular-nums text-ink-500 transition-colors duration-fast ease-hover group-data-[state=active]:text-accent-text">{i + 1}</span>
-                <span className="text-ink-500 transition-colors duration-fast ease-hover group-data-[state=active]:text-accent-text">{s.title}</span>
+                <span className="tabular-nums text-ink-500 transition-colors duration-fast ease-hover group-hover:text-ink-800 group-data-[state=active]:text-accent-text">{i + 1}</span>
+                <span className="text-ink-500 transition-colors duration-fast ease-hover group-hover:text-ink-800 group-data-[state=active]:text-accent-text">{s.title}</span>
               </p>
-              <p data-reveal="rise" className="mt-2 max-w-[34ch] text-ui text-ink-500 group-data-[state=active]:text-ink-600">{s.body}</p>
+              <p data-reveal="rise" className="mt-2 max-w-[34ch] text-ui text-ink-500 transition-colors duration-fast ease-hover group-hover:text-ink-600 group-data-[state=active]:text-ink-600">{s.body}</p>
             </RT.Trigger>
           ))}
         </RT.List>

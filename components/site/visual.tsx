@@ -83,17 +83,28 @@ export const HUE: Record<Hue, string> = {
   periwinkle: 'site-hue-periwinkle',
 };
 
-/** A picture in three layers: its area's gradient, the mark printed over it in light, and the product on top. */
-export function Stage({ field, mark, fade, className, children, ...rest }: React.HTMLAttributes<HTMLDivElement> & { field: Field; mark: MarkPlacement; fade?: Fade }) {
+/** A picture's colour, painted the way Calendly paints theirs (globals.css "the pictures are painted"):
+    soft organic shapes of the area's hues blurred into one another, a glow of the brand's berry, the
+    light behind the product, and a fine grain. `flip` mirrors it, for a picture on the other side. */
+export function Mesh({ flip = false }: { flip?: boolean }) {
+  return (
+    <span aria-hidden className="site-mesh" data-flip={flip || undefined}>
+      {(['top', 'bottom', 'side', 'deep', 'light'] as const).map((b) => <span key={b} className="site-blob" data-b={b} />)}
+      <span className="site-grain" />
+    </span>
+  );
+}
+
+/** A picture in three layers: its area's painted colour, the mark printed over it in light, and the product on top. */
+export function Stage({ field, mark, fade, flip, className, children, ...rest }: React.HTMLAttributes<HTMLDivElement> & { field: Field; mark: MarkPlacement; fade?: Fade; flip?: boolean }) {
   return (
     <Cell {...rest} className={cn('site-field grid place-items-center overflow-hidden p-5 sm:p-10 lg:p-12', FIELD[field], className)}>
-      {/* A FINER, SOFTER print on a picture (user, 2026-09-26: "a bit smaller and detailed …
-          blend mode … make it subtle"). 10px instead of 14 is about twice the glyphs per area, so
-          the mark reads as screened rather than as dots; `soft-light` lets the light sit IN the
-          gradient instead of on top of it, which is the difference between a print and a sticker.
-          The page's own halftone keeps the coarser pitch and no blending: it has no colour under
-          it to sit in. */}
-      <Halftone mark={mark} fade={fade} pitch={10} className="[mix-blend-mode:soft-light]" />
+      <Mesh flip={flip} />
+      {/* A FINER, SOFTER print on a picture (user, 2026-09-26: "a bit smaller and detailed … blend
+          mode … make it subtle", then "the dither's spacing is too wide, bring it closer"): 8px between
+          glyphs where the page's own print uses 10, and `soft-light`, so the light sits IN the colour
+          instead of on top of it, which is the difference between a print and a sticker. */}
+      <Halftone mark={mark} fade={fade} pitch={8} className="[mix-blend-mode:soft-light]" />
       <TrimMarks />
       {/* The product lifts onto its picture as it comes into view; the picture itself is already there. */}
       <div data-reveal="lift" className="relative grid w-full grid-cols-1 place-items-center">{children}</div>
@@ -101,11 +112,12 @@ export function Stage({ field, mark, fade, className, children, ...rest }: React
   );
 }
 
-/** A section's name, beside a tile of its colour. */
+/** A section's name, as a tag in its colour: the tile inset in a wash of the same hue (globals.css
+    `.site-tag`). */
 export function Eyebrow({ hue, icon, children, className, ...rest }: React.HTMLAttributes<HTMLParagraphElement> & { hue: Hue; icon: IconType }) {
   return (
-    <p {...rest} className={cn('flex items-center gap-2.5 text-ui font-medium text-ink-800', className)}>
-      <span aria-hidden className={cn('site-tile grid size-7 shrink-0 place-items-center rounded-md', HUE[hue])}>
+    <p {...rest} className={cn('site-tag text-body-lg font-medium', HUE[hue], className)}>
+      <span aria-hidden className="site-tile grid size-7 shrink-0 place-items-center rounded-md">
         <Icon icon={icon} size={16} weight="fill" />
       </span>
       {children}

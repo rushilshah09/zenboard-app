@@ -78,13 +78,18 @@ export function Spotlight({
                   key={f.title}
                   value={String(i)}
                   data-reveal="rise"
-                  className="focus-ring group relative flex items-start gap-4 border-b border-line py-3.5 text-start transition-colors duration-fast ease-hover data-[state=inactive]:hover:bg-surface-hover lg:py-5"
+                  // No fill on hover (user, 2026-09-26: "this grey patch looks so bad, I want only the text
+                  // and content to highlight"): the words and the glyph darken, nothing else changes.
+                  className="focus-ring group relative flex items-start gap-4 rounded-xs border-b border-line py-3.5 text-start lg:py-5"
                 >
                   <IconTile icon={f.icon} hue={hue} showing="state" />
-                  {/* The title's first line centres on the tile; the description hangs from the title, not from the tile. */}
-                  <span className="min-w-0 flex-1 pt-[7px]">
-                    <span className="block text-body-lg font-medium leading-snug text-ink-500 transition-colors duration-fast ease-hover group-data-[state=active]:text-ink-900">{f.title}</span>
-                    <span className="mt-1.5 block max-w-[46ch] text-ui leading-relaxed text-ink-500 group-data-[state=active]:text-ink-600 max-lg:hidden">{f.body}</span>
+                  {/* The title's first line centres on the tile (a 28px line beside a 36px tile); the
+                      description hangs from the title, not from the tile. The title is in the titling
+                      face and at a size that holds its own beside the tile (user, 2026-09-26: "increase
+                      the title, use Rubik, it looks so small next to the icon"). */}
+                  <span className="min-w-0 flex-1 pt-1">
+                    <span className="block font-editorial text-title-3 font-medium text-ink-500 transition-colors duration-[var(--site-hover)] ease-hover group-hover:text-ink-800 group-data-[state=active]:text-ink-900">{f.title}</span>
+                    <span className="mt-2 block max-w-[46ch] text-body-lg leading-relaxed text-ink-500 transition-colors duration-[var(--site-hover)] ease-hover group-hover:text-ink-600 group-data-[state=active]:text-ink-600 max-lg:hidden">{f.body}</span>
                   </span>
                   {i === active && auto && <Dwell onEnd={next} />}
                 </RT.Trigger>
@@ -94,7 +99,7 @@ export function Spotlight({
         </Cell>
 
         {/* Pressing inside a picture means the reader is using it: stop turning the pages under them. */}
-        <Stage field={field} mark={mark} onPointerDown={stop} className={cn('min-h-[28rem] sm:min-h-[36rem] lg:col-span-6', flip && 'lg:order-1')}>
+        <Stage field={field} mark={mark} flip={flip} onPointerDown={stop} className={cn('min-h-[28rem] sm:min-h-[36rem] lg:col-span-6', flip && 'lg:order-1')}>
           {features.map((f, i) => (
             <RT.Content
               key={f.title}
@@ -102,8 +107,10 @@ export function Spotlight({
               forceMount
               inert={i !== active}
               className={cn(
-                'col-start-1 row-start-1 grid w-full grid-cols-1 place-items-center rounded-2xl transition-[opacity,translate] duration-slow ease-out-quiet focus-visible:outline-none',
-                i === active ? 'opacity-100' : 'pointer-events-none translate-y-2 opacity-0',
+                // One picture gives way to the next through a little blur and scale, at the site's
+                // pace: a cross-fade that reads as one thing changing, not two swapping.
+                'col-start-1 row-start-1 grid w-full grid-cols-1 place-items-center rounded-2xl transition-[opacity,translate,scale,filter] duration-[var(--site-swap)] ease-out-quiet focus-visible:outline-none',
+                i === active ? 'opacity-100' : 'pointer-events-none translate-y-3 scale-[0.985] opacity-0 blur-[6px]',
               )}
             >
               {f.visual(i === active)}
