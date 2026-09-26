@@ -361,14 +361,16 @@ describe('the logo answers the hand', () => {
 
   it('is the logo everywhere the site shows it', () => {
     expect(chrome).toMatch(/<SiteLogo height=\{24\}/);
-    expect(chrome).toMatch(/<SiteLogo height=\{20\}/);
+    // In the footer it leads the closing statement (user, 2026-09-26), and the studio signs the foot.
+    expect(chrome).toMatch(/<SiteLogo height=\{26\} className="text-site-ink-fg" \/>\s*<p data-reveal="words"/);
+    expect(chrome).toMatch(/A product by\s*<LifestudioLogo /);
     expect(chrome).not.toMatch(/<Logo\b/);
   });
 
   it('offers the wordmark, the logo, and a focus session, in that order', () => {
     const items = [...logo.matchAll(/<ContextMenuItem onSelect=\{[^}]*\}>([^<]+)<\/ContextMenuItem>|<ContextMenuSeparator \/>/g)].map((m) => m[1] ?? '—');
     expect(items).toEqual(['Copy wordmark as SVG', 'Copy logo as SVG', '—', 'Start focus session']);
-    expect(logo).toMatch(/onSelect=\{openGuestFocus\}/);
+    expect(logo).toMatch(/onSelect=\{\(\) => openGuestFocus\(\)\}/);
     // The files are the page's own artwork, made standalone in lib/brand.ts (no colour lives here).
     expect(logo).toMatch(/wordmarkSvg\(svg\.outerHTML\) : logoSvg\(svg\.outerHTML\)/);
   });
@@ -448,7 +450,10 @@ describe('the page offers a way back up, and a light or a dark page', () => {
     expect(top).toMatch(/document\.querySelector<HTMLElement>\('header a\[href\]'\)\?\.focus\(\{ preventScroll: true \}\)/);
     // Hidden, it is out of the tab order and takes no pointer.
     expect(top).toMatch(/tabIndex=\{shown \? 0 : -1\}/);
-    expect(globals).toMatch(/\.site-top \{ opacity: 0; transform: translateY\(8px\) scale\(0\.96\); pointer-events: none; \}/);
+    expect(globals).toMatch(/\.site-top \{\s*opacity: 0; transform: translateY\(8px\) scale\(0\.96\); pointer-events: none;/);
+    // At the foot it rises above the footer's last row, never onto the studio's credit.
+    expect(globals).toMatch(/\.site-top\[data-lifted\] \{ translate: 0 -64px; \}/);
+    expect(top).toMatch(/document\.querySelector\('\[data-site-foot\]'\)/);
     for (const f of ['site-home.tsx', 'legal.tsx']) expect(read(`components/site/${f}`), f).toMatch(/<BackToTop \/>/);
   });
 });

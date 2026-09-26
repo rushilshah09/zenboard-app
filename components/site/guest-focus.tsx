@@ -120,7 +120,9 @@ export function GuestFocus() {
 
   // Opened from anywhere on the site (the logo's menu), by one window event.
   React.useEffect(() => {
-    const show = () => {
+    const show = (e: Event) => {
+      const asked = (e as CustomEvent<{ what?: string } | null>).detail?.what;
+      if (typeof asked === 'string' && asked) setWhat(asked.slice(0, GUEST_LIMITS.what));
       setToday(sessionsOnDay(kept(), new Date()));
       setPhase('setup');
       setOpen(true);

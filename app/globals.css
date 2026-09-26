@@ -1070,6 +1070,10 @@ html[data-vt] .zb-page-in { animation: none !important; }
 }
 /* A state swapping inside a product preview: the new state arrives, the old one is simply gone. */
 .site-swap { animation: fade-rise var(--duration-base) var(--ease-out-quiet) both; }
+/* A page of the product preview arriving (app-demo.tsx): a quiet cross-fade at the site's pace, out of
+   a little blur, as one of the app's own pages arrives. */
+@keyframes site-view-in { from { opacity: 0; transform: translateY(6px); filter: blur(4px); } }
+.site-view { animation: site-view-in var(--site-swap) var(--ease-out-quiet) both; }
 
 /* A FOCUS SESSION ON THE SITE (guest-focus.tsx, warp.tsx). `--site-warp` is the jump into it: into
    the tunnel and out onto the dark ground, once per session, when someone chose to start one. The
@@ -1086,10 +1090,18 @@ html[data-vt] .zb-page-in { animation: none !important; }
 }
 
 /* BACK TO THE TOP (back-to-top.tsx): it rises into its corner once the reader is two screens down and
-   sinks away near the top again; while away it takes no pointer. It is a button, so the house's press
-   rule (below) carries its transition: the movement on the arrival curve, the fade on the hover curve. */
-.site-top { opacity: 0; transform: translateY(8px) scale(0.96); pointer-events: none; }
+   sinks away near the top again; while away it takes no pointer. At the foot of the page it lifts above
+   the footer's last row (`translate`, so the press can still scale it). Its own press, on the house's
+   press values: 100ms on the arrival curve, no bounce. */
+.site-top {
+  opacity: 0; transform: translateY(8px) scale(0.96); pointer-events: none;
+  transition: opacity var(--site-hover) var(--ease-hover), transform var(--site-hover) var(--ease-out-quiet),
+    translate var(--site-swap) var(--ease-out-quiet), scale var(--duration-fast) var(--ease-out-quiet),
+    background-color var(--duration-fast) var(--ease-hover), color var(--duration-fast) var(--ease-hover);
+}
 .site-top[data-shown] { opacity: 1; transform: none; pointer-events: auto; }
+.site-top[data-lifted] { translate: 0 -64px; }
+.site-top:active { scale: 0.96; }
 
 /* A TEXT LINK draws its underline in from the side the pointer arrives on and takes it away the way
    it leaves; the rule scales, so nothing around it moves. Focus draws it too. */
@@ -1470,6 +1482,7 @@ html[data-theme='dark'] .site-hue-periwinkle { --site-hue: color-mix(in oklch, v
   @keyframes reveal-up { to { opacity: 0; } }
   @keyframes fade-rise { from { opacity: 0; } }
   @keyframes site-dive { to { opacity: 0; } }
+  @keyframes site-view-in { from { opacity: 0; } }
   @keyframes site-in { from { opacity: 0; } }
   @keyframes site-word-in { from { opacity: 0; } }
   @keyframes site-lift-in { from { opacity: 0; } }

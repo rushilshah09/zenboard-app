@@ -17,6 +17,7 @@ import {
 } from '@/components/ds/ui';
 import { cn } from '@/lib/cn';
 import { CookieSettingsLink } from './cookie-settings-link';
+import { LifestudioLogo } from './lifestudio-logo';
 import { SiteLogo } from './site-logo';
 import { ThemeSwitch } from './theme-switch';
 import { Halftone } from './halftone';
@@ -228,6 +229,9 @@ export function SiteFooter() {
               follow it in. */}
           <div data-reveal-group className="site-pad relative grid gap-12 pb-12 pt-16 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:gap-16 lg:pt-24">
             <div className="flex flex-col items-start gap-6">
+              {/* The logo leads the closing statement (user, 2026-09-26: "move the Zenboard logo above
+                  'Open Zenboard. Do the work.'"). Right-click still offers the files and a session. */}
+              <SiteLogo height={26} className="text-site-ink-fg" />
               <p data-reveal="words" className="max-w-[14ch] text-balance font-editorial text-headline text-site-ink-fg sm:text-hero"><Words>Open Zenboard. Do the work.</Words></p>
               <p data-reveal="rise" className="max-w-[42ch] text-body-lg text-site-ink-muted">
                 Setting up takes about two minutes: your name, your first project, and the few things you want done today.
@@ -243,13 +247,17 @@ export function SiteFooter() {
               {col('Legal', [['Terms of service', '/legal/terms'], ['Privacy notice', '/legal/privacy-notice'], ['Cookie notice', '/legal/cookie-notice']])}
             </div>
           </div>
-          <div className="site-pad relative flex flex-wrap items-center justify-between gap-4 border-t border-site-ink-line py-6">
-            <SiteLogo height={20} className="text-site-ink-fg" />
+          {/* The foot: the fine print where the logo was, and who makes it on the other side. */}
+          <div data-site-foot className="site-pad relative flex flex-wrap items-center justify-between gap-4 border-t border-site-ink-line py-6">
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-caption text-site-ink-muted">
               <Link href="/legal" className="site-link focus-ring rounded-xs transition-colors duration-fast ease-hover hover:text-site-ink-fg">Legal</Link>
               <CookieSettingsLink className="site-link text-site-ink-muted no-underline transition-colors duration-fast ease-hover hover:text-site-ink-fg" />
               <p>© 2026 Zenboard</p>
             </div>
+            <p className="flex items-center gap-2.5 text-caption text-site-ink-muted">
+              A product by
+              <LifestudioLogo height={16} className="text-site-ink-fg" />
+            </p>
           </div>
         </Cell>
         </div>

@@ -35,7 +35,7 @@ import { CookieConsent } from './cookie-consent';
 import { BackToTop } from './back-to-top';
 import { GuestFocus } from './guest-focus';
 import { Halftone } from './halftone';
-import { LiveHome } from './live-home';
+import { AppDemo } from './app-demo';
 import { Loop } from './loop';
 import { People } from './people';
 import { SiteLoader } from './site-loader';
@@ -125,25 +125,25 @@ function Showcase() {
       <Halftone mark={{ x: 0.5, y: 0.56, size: 1.9 }} />
       {/* Part of the first screen, so it arrives with it: after the hero's buttons, the app itself. */}
       <p className="site-rise zb-enter relative mx-auto mb-4 flex w-full max-w-[1180px] items-center gap-1.5 text-caption text-ink-700" style={{ '--rise-step': 8 } as React.CSSProperties}>
-        <Icon icon={CursorClick} size={14} />Try it: tick a task, or pick today’s highlight.
+        <Icon icon={CursorClick} size={14} />Try it: tick a task, open any place in the sidebar, or press Start focus.
       </p>
       <div className="site-rise-lift zb-enter relative mx-auto w-full max-w-[1180px]" style={{ '--rise-step': 9 } as React.CSSProperties}>
         <div className="site-tilt">
           <div className="site-glass rounded-xl">
-            <LiveHome fluid />
+            <AppDemo />
           </div>
         </div>
-        <Resting className="-start-12 bottom-24" drift={0} step={14}>
+        <Resting className="-start-16 -bottom-7" drift={0} step={14}>
           <Avatar name="Priya Nair" src={FACES.priya} size="sm" decorative />
           <p className="text-ink-800"><span className="font-medium text-ink-900">Priya</span> approved the logo presentation</p>
           <span className="ms-1 text-ink-500">now</span>
         </Resting>
-        <Resting className="-end-12 top-28" drift={0.35} step={15}>
+        <Resting className="-end-14 -top-6" drift={0.35} step={15}>
           <Icon icon={Receipt} size={16} weight="fill" className="text-ink-500" />
           <span className="font-medium text-ink-900">INV-021 paid · $4,200</span>
           <Icon icon={Check} size={14} className="text-success-600" />
         </Resting>
-        <Resting className="-end-8 bottom-10" drift={0.65} step={16}>
+        <Resting className="-bottom-8 end-24" drift={0.65} step={16}>
           <span className="site-pulse size-1.5 rounded-full bg-success-600" />
           <span className="font-medium text-ink-900">Now · Ridgeline call</span>
           <span className="text-ink-500">11:30</span>

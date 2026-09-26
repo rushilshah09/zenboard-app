@@ -123,6 +123,8 @@ export function sessionOf(c: FocusClock, now: number, what: string): GuestSessio
 // the cookie settings (lib/consent.ts `openCookieSettings`).
 
 export const GUEST_FOCUS_OPEN = 'zb:guest-focus-open';
-export function openGuestFocus(): void {
-  window.dispatchEvent(new Event(GUEST_FOCUS_OPEN));
+/** Opens the session; `what` fills in what it is about (the product preview's "Start focus" passes the
+    highlight it was pressed on). */
+export function openGuestFocus(what?: string): void {
+  window.dispatchEvent(new CustomEvent(GUEST_FOCUS_OPEN, { detail: { what } }));
 }

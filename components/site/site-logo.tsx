@@ -122,7 +122,7 @@ export function SiteLogo({ height = 24, className }: { height?: number; classNam
         <ContextMenuItem onSelect={() => copy('wordmark')}>Copy wordmark as SVG</ContextMenuItem>
         <ContextMenuItem onSelect={() => copy('logo')}>Copy logo as SVG</ContextMenuItem>
         <ContextMenuSeparator />
-        <ContextMenuItem onSelect={openGuestFocus}>Start focus session</ContextMenuItem>
+        <ContextMenuItem onSelect={() => openGuestFocus()}>Start focus session</ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
   );

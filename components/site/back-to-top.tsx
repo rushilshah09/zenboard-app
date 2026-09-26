@@ -8,7 +8,8 @@
 // stranded on a button that has just gone.
 //
 // Bottom right, clear of the cookie choice (bottom left on a wide screen). On a phone that choice spans
-// the width, so while it is being asked this waits.
+// the width, so while it is being asked this waits. At the very foot of the page it rises above the
+// footer's last row, so it never sits on the studio's credit there.
 
 import * as React from 'react';
 import { ArrowUp } from '@/components/ds/icons';
@@ -17,6 +18,15 @@ import { cn } from '@/lib/cn';
 
 export function BackToTop() {
   const [shown, setShown] = React.useState(false);
+  const [lifted, setLifted] = React.useState(false);
+
+  React.useEffect(() => {
+    const foot = document.querySelector('[data-site-foot]');
+    if (!foot) return;
+    const io = new IntersectionObserver(([e]) => setLifted(e.isIntersecting));
+    io.observe(foot);
+    return () => io.disconnect();
+  }, []);
 
   React.useEffect(() => {
     let frame = 0;
@@ -50,8 +60,11 @@ export function BackToTop() {
       aria-hidden={!shown || undefined}
       tabIndex={shown ? 0 : -1}
       data-shown={shown || undefined}
+      data-lifted={lifted || undefined}
       className={cn(
-        'site-top focus-ring fixed bottom-4 end-4 z-sticky grid size-11 place-items-center rounded-full border border-line bg-surface-raised text-ink-800 shadow-panel sm:bottom-6 sm:end-6',
+        // Its own press (`zb-nopress` hands the house's over): it moves on three properties the house's
+        // press rule does not carry, and a press there would replace the lift for as long as it lasted.
+        'site-top zb-nopress focus-ring fixed bottom-4 end-4 z-sticky grid size-11 place-items-center rounded-full border border-line bg-surface-raised text-ink-800 shadow-panel sm:bottom-6 sm:end-6',
         'hover:bg-surface-hover hover:text-ink-900',
       )}
     >

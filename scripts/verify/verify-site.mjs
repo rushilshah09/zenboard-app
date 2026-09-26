@@ -85,16 +85,18 @@ try {
   check(await ev('Math.round(scrollY)') === 0, 'the page opens at its top, not on a demo further down', await ev('Math.round(scrollY)'));
   console.log('\n── the dashboard ──');
   const live = `document.querySelector('[aria-label="A working preview of Zenboard’s Home"]')`;
+  const rowOf = (title) => `[...${live}.querySelectorAll('.group')].find((r) => r.textContent.includes(${JSON.stringify(title)}))`;
   const said = () => ev(`${live}.querySelector('[aria-live]').textContent`);
   check(/3 tasks/.test(await said()), 'Home opens with three tasks to go', await said());
   await click(await centre(`${live}.querySelector('[aria-label="Complete “Send the Ridgeline invoice”"]')`));
   await sleep(300);
   check(/2 tasks/.test(await said()), 'ticking a task counts it down', await said());
-  const row = await centre(`[...${live}.querySelectorAll('[aria-label="Highlight this task"]')][0]?.closest('.group')`);
+  check(/Highlight: Finish the logo presentation/.test(await said()), 'and the highlight, finished, passes to what is next', await said());
+  const row = await centre(rowOf('Reply to Beacon about scope'));
   await move(row.x, row.y); await sleep(200);
-  await click(await centre(`[...${live}.querySelectorAll('[aria-label="Highlight this task"]')][0]`));
+  await click(await centre(`${rowOf('Reply to Beacon about scope')}?.querySelector('[aria-label="Highlight this task"]')`));
   await sleep(400);
-  check(/Highlight: Finish the logo presentation/.test(await said()), 'the mark beside a task makes it the highlight', await said());
+  check(/Highlight: Reply to Beacon about scope/.test(await said()), 'the mark beside a task makes it the highlight', await said());
 
   console.log('\n── the halftone ──');
   const heroCanvas = 'main section canvas';
