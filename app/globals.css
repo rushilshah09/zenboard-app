@@ -753,14 +753,43 @@ html[data-booted] .zb-splash { display: none; }
 /* The exit: quicker than the arrival, and the only thing that moves is opacity. */
 html[data-boot-ready] .zb-splash { opacity: 0; }
 
-/* The mark settles rather than appearing: it is already there, it just comes into focus. */
-.zb-splash-mark {
-  color: var(--color-ink-900);
-  animation: zb-splash-mark calc(var(--duration-slow) * 2) var(--ease-out-quiet) both;
+/* ── THE MARK DRAWS ITSELF, THEN FILLS ─────────────────────────────────────
+   User, 2026-09-26: "logo loader — outline Zenboard mark, outline draw and fill, with chalk
+   colours". The one place in the product where a little theatre is right: it is seen ONCE per
+   session, which is Emil's "rare" row — the row that is allowed to delight — and it covers the
+   frame where the fonts swap and the shell measures itself, so the time is real time rather than
+   time we are spending on an animation.
+
+   Two stages, on one curve. The outline draws in 640ms (`pathLength="1"` makes the dash maths a
+   fraction rather than a measured length, so it cannot drift if the path changes), and the fill
+   floods in behind it as the line closes — the chalk gradient, the site's own marketing colours,
+   settling onto the brand. The stroke then fades, because a drawn line around a filled mark is a
+   sketch and the mark is not a sketch.
+
+   Reduced motion gets the mark, filled, with nothing drawn: the drawing IS the movement. */
+.zb-splash-mark { color: var(--color-ink-900); }
+.zb-splash-draw {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 0.9;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation:
+    zb-mark-draw calc(var(--duration-slow) * 3.2) var(--ease-out-quiet) both,
+    zb-mark-lift var(--duration-slow) calc(var(--duration-slow) * 3) var(--ease-hover) both;
 }
-@keyframes zb-splash-mark {
-  from { opacity: 0; transform: scale(0.96); filter: blur(3px); }
-  to   { opacity: 1; transform: none; filter: blur(0); }
+@keyframes zb-mark-draw { to { stroke-dashoffset: 0; } }
+@keyframes zb-mark-lift { to { opacity: 0; } }
+.zb-splash-fill {
+  opacity: 0;
+  transform-origin: center;
+  animation: zb-mark-fill calc(var(--duration-slow) * 2) calc(var(--duration-slow) * 2.2) var(--ease-out-quiet) both;
+}
+@keyframes zb-mark-fill {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: none; }
 }
 
 /* The bar is the app arriving. It fills on a decelerating curve — fast at the start, easing as it
@@ -797,6 +826,10 @@ html[data-boot-ready] .zb-splash-bar > span {
      file does it — the mark simply appears, and the bar is a still line rather than a filling one
      (it was never load-bearing information). */
   @keyframes zb-splash-mark { from { opacity: 0; } to { opacity: 1; } }
+  /* The mark is simply there, filled: the drawing was the movement. */
+  @keyframes zb-mark-draw { from, to { opacity: 0; } }
+  @keyframes zb-mark-lift { from, to { opacity: 0; } }
+  @keyframes zb-mark-fill { from, to { opacity: 1; } }
   /* The twin holds still — a transform inside it would BE the movement this setting refuses, so
      the full bar is a plain declaration on the element instead of a keyframe. */
   @keyframes zb-splash-fill { from { opacity: 1; } to { opacity: 1; } }
@@ -1048,6 +1081,19 @@ html[data-theme='dark'] { --site-glass-ring: color-mix(in oklab, var(--color-ill
 .site-joint[data-foot][data-at='start'] { inset-inline-start: calc(-1 * var(--r)); }
 .site-joint[data-foot][data-at='end'] { inset-inline-end: calc(-1 * var(--r)); }
 .site-guides { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+
+/* THE WEBSITE'S LOADER (components/site/site-loader.tsx; when it plays: lib/site-loader.ts). The
+   app's boot splash, on the site: the mark draws and fills, the line fills, and after the mark has
+   settled the whole cover lifts away (the exit quicker than what came before it, opacity only).
+   Its exit's end takes the attribute off <html>, so nothing reached afterwards plays it again. */
+.site-loader { display: none; }
+html[data-site-loader] .site-loader {
+  position: fixed; inset: 0; z-index: var(--z-focus-edge);
+  display: grid; place-content: center; justify-items: center; gap: 18px;
+  background: var(--color-background);
+  animation: site-loader-out var(--duration-slow) var(--ease-out-quiet) calc(var(--duration-slow) * 5.5) both;
+}
+@keyframes site-loader-out { to { opacity: 0; visibility: hidden; } }
 /* A cell's inset. */
 .site-pad { --cell-px: 20px; padding-inline: var(--cell-px); }
 @media (min-width: 40rem) { .site-pad { --cell-px: 32px; } }

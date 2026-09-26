@@ -27,12 +27,14 @@ import { ArrowRight, Check, CursorClick, Keyboard, Receipt } from '@/components/
 import { Avatar, Icon, Mark, button, cardClass } from '@/components/ds/ui';
 import { cn } from '@/lib/cn';
 import { DayArea, MoneyArea, PortalArea, ProjectsArea } from './areas';
+import { siteLoaderScript } from '@/lib/site-loader';
 import { Bento } from './bento';
 import { CookieConsent } from './cookie-consent';
 import { Halftone } from './halftone';
 import { LiveHome } from './live-home';
 import { Loop } from './loop';
 import { People } from './people';
+import { SiteLoader } from './site-loader';
 import { Questions, SIGN_UP, SiteFooter, SiteNav } from './site-chrome';
 import { MEASURE } from './measure';
 import { FACES } from './faces';
@@ -177,6 +179,9 @@ export function SiteHome() {
     <div className="relative isolate min-h-dvh overflow-x-clip bg-background">
       {/* The grid's two outer rules, the height of the page: above the grid and below it, past the
           navigation and the footer, they are the page's only lines. */}
+      {/* Decided before anything below it paints: plays the loader on an open, at most every 4 hours. */}
+      <script dangerouslySetInnerHTML={{ __html: siteLoaderScript }} />
+      <SiteLoader />
       <div aria-hidden className="site-guides"><div className={cn(MEASURE, 'h-full')}><div className="h-full border-x border-line" /></div></div>
       <SiteNav />
       <main className={MEASURE}>

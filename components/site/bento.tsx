@@ -48,9 +48,22 @@ function Card({ className, icon, hue, title, body, children }: { className?: str
 
 function CommandDemo() {
   const [ran, setRan] = React.useState<string | null>(null);
+  // THE PAGE MUST NOT JUMP TO THIS. cmdk scrolls its selected item into view whenever it mounts or
+  // selects, with `scrollIntoView`, which scrolls every ancestor up to the window: a first visit
+  // landed 5,773px down the page, on this card. So nothing is selected until the visitor reaches
+  // the palette (a pointer over it, or focus in it); with nothing selected there is nothing to scroll
+  // to, and once they are here a "nearest" scroll has nothing left to move.
+  const [value, setValue] = React.useState('');
+  const here = React.useRef(false);
+  const arrive = () => { here.current = true; };
   return (
-    <div className="flex flex-1 flex-col gap-3">
-      <Command className={cardClass('shadow-panel')} loop>
+    <div className="flex flex-1 flex-col gap-3" onPointerEnter={arrive} onFocusCapture={arrive}>
+      <Command
+        className={cardClass('shadow-panel')}
+        loop
+        value={value}
+        onValueChange={(v) => { if (here.current) setValue(v); }}
+      >
         <CommandInput placeholder="Type a command…" className="text-ui text-ink-900 placeholder:text-ink-500" aria-label="Command" />
         <CommandList className="max-h-[15rem] p-1">
           <CommandEmpty className="py-6 text-center text-ui text-ink-500">No command by that name.</CommandEmpty>

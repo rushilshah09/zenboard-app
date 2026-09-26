@@ -11,9 +11,11 @@ import * as React from 'react';
 import { Scroll } from '@/components/ds/icons';
 import { cn } from '@/lib/cn';
 import { LEGAL } from '@/lib/legal';
+import { siteLoaderScript } from '@/lib/site-loader';
 import { CookieConsent } from './cookie-consent';
 import { SiteFooter, SiteNav } from './site-chrome';
 import { MEASURE } from './measure';
+import { SiteLoader } from './site-loader';
 import { Cell, Eyebrow, Grid, Row } from './visual';
 
 export type Toc = { id: string; title: string }[];
@@ -22,6 +24,9 @@ export type Toc = { id: string; title: string }[];
 export function LegalShell({ title, lede, toc, children }: { title: string; lede?: React.ReactNode; toc?: Toc; children: React.ReactNode }) {
   return (
     <div className="relative isolate min-h-dvh overflow-x-clip bg-background">
+      {/* Decided before anything below it paints: plays the loader on an open, at most every 4 hours. */}
+      <script dangerouslySetInnerHTML={{ __html: siteLoaderScript }} />
+      <SiteLoader />
       <div aria-hidden className="site-guides"><div className={cn(MEASURE, 'h-full')}><div className="h-full border-x border-line" /></div></div>
       <SiteNav />
       <main className={MEASURE}>

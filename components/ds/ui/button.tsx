@@ -41,6 +41,23 @@ export const button = cva(
         // B&G: no colorful buttons. Primary = the ink solid (#F2F1EB fill,
         // #121212 label) — at most one per view.
         primary: "bg-ink-900 text-onsolid hover:bg-ink-700 active:bg-ink-900",
+        // BRAND — the accent solid. The house allows one filled-accent element
+        // per view (CLAUDE.md), and inside the app that one is `primary`, which
+        // B&G made the ink solid so no screen full of work competes with the
+        // work. The brand fill is for the screens that are the PRODUCT rather
+        // than a workspace — sign-up, onboarding, the portal's one action —
+        // where the button is the first colour anyone sees, and the website's
+        // navigation ("Start free", on every page of the site; site.test.ts).
+        // Outside those screens, `primary` stands.
+        brand:
+          "bg-[var(--accent)] text-[var(--on-accent)] hover:bg-[var(--accent-hover)] active:bg-[var(--accent)]",
+        // The pair of `brand`: the same hue as an EDGE, for the second action on
+        // a brand surface (the "Log in" pill beside "Create account"). It keeps
+        // the filled-accent count at one while the header still carries the
+        // brand — which is the whole reason a sign-up page has two buttons.
+        brandOutline:
+          "border border-[var(--accent)] bg-transparent text-accent-text " +
+          "hover:bg-[var(--accent-soft)] active:bg-transparent",
         // B&G secondary (Figma 1:811): white-12% fill, no border, default ink label.
         // `light:border` is not decoration. A secondary button is `surface-fill`
         // — #F5F5F5 in light — and on a white panel that measures 1.04:1

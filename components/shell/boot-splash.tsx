@@ -21,7 +21,7 @@
 // the whole thing leaves faster than it arrived. Reduced motion keeps the cover and drops the
 // movement: the bar is then a still line, and the fade is all that remains.
 import { useEffect, useRef } from 'react';
-import { Mark } from '@/components/ds/ui';
+import { DrawnMark } from '@/components/ds/ui/drawn-mark';
 import { BOOTED_ATTR, BOOT_KEY } from '@/lib/boot';
 
 /** How long the splash is guaranteed to be visible, so it never flickers past. */
@@ -64,7 +64,8 @@ export function BootSplash() {
 
   return (
     <div className="zb-splash" aria-hidden>
-      <div className="zb-splash-mark"><Mark size={34} /></div>
+      {/* The mark DRAWN, then filled (DrawnMark): the same mark the website's loader draws. */}
+      <DrawnMark size={44} />
       <div className="zb-splash-bar"><span /></div>
     </div>
   );

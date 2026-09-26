@@ -79,6 +79,10 @@ try {
 
   // ── Motion welcome ──────────────────────────────────────────────────────
   await open('no-preference');
+  console.log('\n── the first screen ──');
+  // cmdk scrolls its selected item into view on mount; on this long page that dragged a first visit
+  // 5,773px down to the command palette demo (bento.tsx holds its selection until the visitor arrives).
+  check(await ev('Math.round(scrollY)') === 0, 'the page opens at its top, not on a demo further down', await ev('Math.round(scrollY)'));
   console.log('\n── the dashboard ──');
   const live = `document.querySelector('[aria-label="A working preview of Zenboard’s Home"]')`;
   const said = () => ev(`${live}.querySelector('[aria-live]').textContent`);

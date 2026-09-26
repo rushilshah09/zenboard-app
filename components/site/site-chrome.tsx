@@ -91,8 +91,10 @@ export function SiteNav() {
 
         <div className="ms-auto me-px flex items-center gap-2">
           <Link href={LOG_IN} className={cn(button({ variant: 'ghost', size: 'sm' }), 'max-sm:hidden')}>Log in</Link>
-          {/* Secondary on purpose: the hero's own "Start free" is this screen's one filled button. */}
-          <Link href={SIGN_UP} className={button({ variant: 'secondary', size: 'sm' })}>Start free</Link>
+          {/* The brand's own fill (user, 2026-09-26: "make accent button"): the one ACCENT-filled
+              button on every screen of the site, and always in the same place. The hero's "Start free"
+              is the ink fill, so the first screen still has one accent and one ink, never two berries. */}
+          <Link href={SIGN_UP} className={button({ variant: 'brand', size: 'sm' })}>Start free</Link>
           <Popover>
             <PopoverTrigger asChild>
               <IconButton label="Menu" size="sm" className="md:hidden" icon={<Icon icon={List} size={16} />} />

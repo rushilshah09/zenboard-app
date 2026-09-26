@@ -81,10 +81,15 @@ describe('the product pictures', () => {
 });
 
 describe('the page', () => {
-  it('has one filled button per screen: the hero’s, never the navigation’s', () => {
+  it('has one ink-filled button (the hero\'s) and one accent-filled button (the navigation\'s)', () => {
+    // The user, 2026-09-26, of the navigation's "Start free": "make accent button". The house rule is
+    // one ACCENT fill per view; the hero's is the ink fill, so the first screen holds one of each.
     expect(home.match(/variant: 'primary'/g)).toHaveLength(1);
+    expect(home).not.toMatch(/variant: 'brand'/);
     const nav = read('components/site/site-chrome.tsx');
-    expect(nav.slice(nav.indexOf('export function SiteNav'), nav.indexOf('const FAQ'))).not.toMatch(/variant: 'primary'/);
+    const bar = nav.slice(nav.indexOf('export function SiteNav'), nav.indexOf('const FAQ'));
+    expect(bar.match(/variant: 'brand'/g)).toHaveLength(1);
+    expect(bar).not.toMatch(/variant: 'primary'/);
   });
 
   it('sets headlines in the product’s title face, and everything else in the app’s face', () => {
@@ -156,6 +161,17 @@ describe('motion', () => {
     expect(globals).toMatch(/--site-shimmer: \d+s;/);
     // A picture, not content.
     expect(ht).toMatch(/<canvas ref=\{ref\} aria-hidden className=\{cn\('pointer-events-none absolute inset-0/);
+  });
+});
+
+describe('the first screen', () => {
+  it('is where a visit starts: no demo further down pulls the page to itself', () => {
+    // cmdk calls scrollIntoView on its selected item when it mounts, and that scrolls the WINDOW:
+    // a first visit landed 5,773px down, on the command palette. The demo stays unselected until the
+    // visitor reaches it.
+    const bento = read('components/site/bento.tsx');
+    expect(bento).toMatch(/value=\{value\}\s*onValueChange=\{\(v\) => \{ if \(here\.current\) setValue\(v\); \}\}/);
+    expect(bento).toMatch(/onPointerEnter=\{arrive\} onFocusCapture=\{arrive\}/);
   });
 });
 
