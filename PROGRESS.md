@@ -17344,3 +17344,39 @@ narrowing it would contradict a standing decision rather than add character.
 in both weights beside Phosphor's clock. A stale-`globals.css` Turbopack serve hid move 1 at first (served CSS
 still carried the old token) — fixed the recorded way: stop, `rm -rf .next`, restart. `app/identity.test.ts`.
 **2756 tests / 182 files**.
+
+## The website arrives as it is read; the logo answers the hand; focus without an account — 2026-09-26
+User: "the entire website looks basic, no interaction and animation … subtle animation as the page
+appears in view, like Linear and Calendly and Notion and Miro"; with Attio's logo menu, "instead of
+brand guidelines I want start focus session"; "a focus session without login … and make this count
+when they log in"; "the loader on every reload now, and on production every 5th time".
+- **Arrivals** (`components/site/site-motion.tsx`, `words.tsx`, globals.css "the website arrives as it
+  is read"). The first screen arrives on CSS alone (the hero heading a word at a time out of a 4px
+  blur, the product lifting in after it, waiting for the loader's cover). Below it, parts marked
+  `data-reveal="rise|words|lift|rule"` arrive as they scroll in; a `data-reveal-group` arrives in
+  reading order; each section's rule draws out to the window's edges. Only the script ever hides a
+  part (`data-shown="false"`), and only what is still below the window when it wakes, so no script,
+  print and find-in-page all see every word. Tokens: `--site-reveal` 600ms, `--site-stagger` 80ms,
+  `--site-word-step` 60ms, all from the ladder. Less motion keeps the fades.
+- **The lines catch the light**: a berry disc moves behind each Grid's cells, so the line and the
+  star joints light up under the pointer (transform on the disc, never a custom property).
+  Links draw their underline (`.site-link`); the navigation frosts on scroll (`.site-bar`).
+- **A cell never fades** (it would show the grid as a grey block): the loop's step cells animate
+  their words, and their hover is `wash-over` (the translucent fill let the grid show through).
+- **The logo** (`site-logo.tsx`): right-click → Copy wordmark as SVG · Copy logo as SVG · Start
+  focus session. The files are the page's own artwork made standalone in berry and ink
+  (`lib/brand.ts`). It leans toward the pointer and turns as the pointer circles it, resting on a
+  quarter turn.
+- **Focus without an account** (`guest-focus.tsx`, `warp.tsx`, `lib/guest-focus.ts`): what, how
+  long (15/25/50), start → a warp in the brand's colours → a dark session screen (wall-clock
+  clock, Pause, End, Escape keeps what was done). Finished sessions are kept on the device and
+  move into `time_entries` (timer, not billable, note "Focus session · …") the first time the app
+  opens signed in (`lib/actions/guest-focus.ts`, `components/shell/guest-focus-import.tsx`), never
+  twice. The warp ends on a clock backstop even when no frame comes.
+- **Loader**: counted opens; production plays on the 1st and every 5th after, development on every
+  open (`lib/site-loader.ts`).
+- `components/ds/ui/toast.tsx` is a client module now (a server page rendering the Toaster 500'd).
+- Verified: tsc clean; full vitest; `scripts/verify/verify-site.mjs` (real input over CDP: right-
+  click menu, copy, spin, session start → done → kept, reduced motion) twice clean.
+- Owed: the committed icon.tsx lacks `Mark tone`/the lockup's `data-slot="logo"` (the other
+  session's uncommitted wordmark work, which site files already relied on).
