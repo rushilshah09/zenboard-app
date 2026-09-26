@@ -127,10 +127,10 @@ export function People() {
                       className={cn(
                         'h-[22rem] w-full object-cover transition-[transform,filter] duration-slow ease-out-quiet sm:h-[26rem]',
                         p.focus,
-                        // The chosen one is in colour and a touch closer; the others step back.
-                        // Saturation, not an overlay: a scrim over a photograph reads as a
-                        // disabled control, and these are all choosable.
-                        i === who ? 'scale-[1.02]' : 'saturate-[0.55] group-hover:saturate-100',
+                        // The chosen one is in colour and a touch closer; the others wait in black and
+                        // white (user, 2026-09-26), warming a little under the pointer. A filter, not
+                        // an overlay: a scrim over a photograph reads as a disabled control.
+                        i === who ? 'scale-[1.02]' : 'grayscale group-hover:grayscale-[55%]',
                       )}
                     />
                   </div>

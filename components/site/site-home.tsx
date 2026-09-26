@@ -52,7 +52,9 @@ function Hero() {
             logo overflow"). A complete mark sitting inside the frame is a picture OF the logo;
             one that runs off the edge is the same shape the rest of this page uses — something
             larger than the window, seen in part. Centred on the right edge at nearly twice the
-            cell's short side, so about half of it is in frame and it is cut top and bottom too. */}
+            cell's short side, so about half of it is in frame and it is cut top and bottom too.
+            It answers the pointer (halftone.tsx): the print swells and catches the brand's colour
+            where the visitor points. */}
         <Halftone mark={{ x: 0.92, y: 0.5, size: 1.12 }} fade="start" />
         <div className="relative max-w-[42rem]">
           <p className="site-rise zb-enter flex items-center gap-2 text-ui font-medium text-ink-800">
@@ -86,7 +88,9 @@ function Hero() {
 /** A piece of the product resting on the showcase, lifted a little further than the app, drifting. */
 function Resting({ className, drift = 0, children }: { className?: string; drift?: number; children: React.ReactNode }) {
   return (
-    <div aria-hidden inert className={cn('site-reveal pointer-events-none absolute z-10 select-none max-xl:hidden', className)}>
+    // `z-[1]`: above the app it rests on, and BELOW the sticky navigation (`z-sticky`, 10). At 10 it
+    // tied with the navigation and, coming later in the page, painted over it while scrolling.
+    <div aria-hidden inert className={cn('site-reveal pointer-events-none absolute z-[1] select-none max-xl:hidden', className)}>
       <div
         className={cardClass('site-lift site-drift flex items-center gap-2.5 rounded-lg px-3.5 py-2.5 text-caption')}
         style={{ '--drift-at': `calc(var(--site-shimmer) * ${-drift})` } as React.CSSProperties}

@@ -14,7 +14,8 @@
 // four areas between them hold the whole mark). A gradient here is the mark, drawn in marks.
 //
 // It moves the way print does not, only a little: a slow wave crosses the screen and steps the glyphs
-// it passes one weight up or down, and now and then a glyph catches the brand's colour. It runs only
+// it passes one weight up or down, and now and then a glyph catches the brand's colour. And it answers
+// the pointer: the print swells where the visitor points, and its middle catches the colour. It runs only
 // while the cell is on screen and the tab is visible, and never when less motion is asked for; then it
 // is printed once and left alone. It is decoration, so it is hidden from assistive technology and
 // takes no pointer.
@@ -47,6 +48,16 @@ const SPARKS = 0.03;
 const SPARK_SPAN = 0.08;
 /** Frames drawn per second while it moves. The wave is slow: more frames would only cost battery. */
 const FPS = 24;
+/** THE POINTER (user, 2026-09-26: "all the halftone effect with mouse interactive"). Where the visitor
+    points, the print swells: a patch about `REACH` glyphs across lifts every glyph in it by up to
+    `LIFT`, its middle catches the brand's colour, and bare ground near it shows a faint grain of its
+    own, so the pointer is answered even where there is no mark. The patch follows the pointer and
+    fades in and out by a share of the way each frame (`FOLLOW`, `FADE`), so it trails like light
+    rather than snapping like a cursor. */
+const REACH = 11;
+const LIFT = 0.55;
+const FOLLOW = 0.22;
+const FADE = 0.16;
 
 const level = (d: number) => {
   let l = 0;
@@ -242,6 +253,14 @@ export function Halftone({ mark, fade, weight = 1, pitch = 14, className }: {
     let last = -Infinity;
     let onScreen = false;
     const t0 = performance.now();
+    // The pointer as the print feels it: where it is, where the light has got to, and how strongly.
+    let tx = 0;
+    let ty = 0;
+    let px = 0;
+    let py = 0;
+    let pull = 0;
+    let want = 0;
+    let fresh = true;
 
     const inks = () => ['--site-glyph', '--site-glyph-strong', '--site-glyph-accent'].map((t) => colour(canvas, t));
 
@@ -251,16 +270,33 @@ export function Halftone({ mark, fade, weight = 1, pitch = 14, className }: {
       const { cols, rows, base, seed } = lattice;
       const c = pitch * dpr;
       const phase = t == null ? 0 : (t / period) * Math.PI * 2;
+      if (t != null) {
+        px += (tx - px) * FOLLOW;
+        py += (ty - py) * FOLLOW;
+        pull += (want - pull) * FADE;
+        if (want === 0 && pull < 0.01) { pull = 0; fresh = true; }
+      }
+      const reach2 = (REACH * pitch) ** 2;
       for (let j = 0; j < rows; j++) {
         for (let i = 0; i < cols; i++) {
           const k = j * cols + i;
           const d0 = base[k];
-          if (d0 <= 0) continue;
-          const d = t != null && d0 > STEPS[1] ? d0 + SWELL * Math.sin((i + j * 0.6) / WAVE - phase) : d0;
+          if (d0 <= 0 && pull === 0) continue;
+          let lift = 0;
+          if (pull > 0) {
+            const dx = (i + 0.5) * pitch - px;
+            const dy = (j + 0.5) * pitch - py;
+            const q = (dx * dx + dy * dy) / reach2;
+            if (q < 1) lift = (1 - q) * (1 - q) * pull;
+          }
+          if (d0 <= 0 && lift <= 0) continue;
+          let d = t != null && d0 > STEPS[1] ? d0 + SWELL * Math.sin((i + j * 0.6) / WAVE - phase) : d0;
+          if (lift > 0) d = Math.max(d + LIFT * lift, lift * 0.42);
           const l = level(d);
           if (!l) continue;
           const spark = t != null && l >= 3 && seed[k] < SPARKS && (t / period + seed[k] * 97) % 1 < SPARK_SPAN;
-          const ink = spark ? 2 : l >= 4 ? 1 : 0;
+          const lit = lift > 0.6 && seed[k] < 0.3;
+          const ink = spark || lit ? 2 : l >= 4 ? 1 : 0;
           ctx.drawImage(sheet, (l - 1) * c, ink * c, c, c, i * pitch, j * pitch, pitch, pitch);
         }
       }
@@ -303,6 +339,18 @@ export function Halftone({ mark, fade, weight = 1, pitch = 14, className }: {
     layout();
     draw(null);
 
+    // The pointer is read from the cell the print lies in (the canvas itself takes no pointer).
+    const onMove = (e: PointerEvent) => {
+      const r = canvas.getBoundingClientRect();
+      tx = e.clientX - r.left;
+      ty = e.clientY - r.top;
+      want = 1;
+      if (fresh) { px = tx; py = ty; fresh = false; }
+    };
+    const onLeave = () => { want = 0; };
+    host.addEventListener('pointermove', onMove, { passive: true });
+    host.addEventListener('pointerleave', onLeave);
+
     const resized = new ResizeObserver(() => {
       layout();
       draw(moving() ? (performance.now() - t0) / 1000 : null);
@@ -329,6 +377,8 @@ export function Halftone({ mark, fade, weight = 1, pitch = 14, className }: {
       themed.disconnect();
       document.removeEventListener('visibilitychange', sync);
       still.removeEventListener('change', sync);
+      host.removeEventListener('pointermove', onMove);
+      host.removeEventListener('pointerleave', onLeave);
     };
   }, [x, y, size, turn, fade, weight, pitch]);
 

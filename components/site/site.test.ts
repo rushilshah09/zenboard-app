@@ -58,6 +58,7 @@ describe('the product pictures', () => {
   it('are made of the product’s own parts, not images of them', () => {
     const parts = all.map(([, s]) => s).join('\n');
     for (const part of ['Panel', 'Checkbox', 'Badge', 'Progress', 'SegmentedControl', 'Avatar', 'Stat']) expect(parts).toMatch(new RegExp(`<${part}\\b`));
+    // Photographs are of PEOPLE (who it is for), never of the product: only this section shows any.
     for (const [f, src] of all) if (f !== 'components/site/people.tsx') expect(src, f).not.toMatch(/<img\b/);
   });
 
@@ -66,13 +67,14 @@ describe('the product pictures', () => {
     // rounded); a chip or a label is not.
     for (const [f, src] of all) {
       for (const m of src.matchAll(/className=["'`{][^"'`]*\brounded-full\b[^"'`]*/g)) {
-        expect(m[0], `${f}: a pill`).toMatch(/\bsize-[\d.]+\b|\bh-3\b/);
+        // A disc (a square box, fully rounded) or a hairline bar is not a pill.
+        expect(m[0], `${f}: a pill`).toMatch(/\bsize-[\d.]+\b|\bh-(?:3|0\.5)\b/);
       }
     }
   });
 
   it('keep decoration out of the way: every lifted piece is inert and hidden from assistive tech', () => {
-    expect(home).toMatch(/function Resting[\s\S]*?<div aria-hidden inert className=\{cn\('site-reveal pointer-events-none absolute/);
+    expect(home).toMatch(/function Resting[\s\S]*?<div aria-hidden inert className=\{cn\('site-reveal pointer-events-none absolute z-\[1\]/);
     // The explanatory drawing is a picture of the step list beside it: each panel says its step in words.
     const loop = read('components/site/loop.tsx');
     expect(loop).toMatch(/<div aria-hidden inert className="mx-auto grid/);
