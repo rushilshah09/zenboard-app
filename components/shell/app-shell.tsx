@@ -39,6 +39,7 @@ import { BootSplash } from '@/components/shell/boot-splash';
 import { navigateWithTransition } from '@/lib/view-transition';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuRadioGroup, DropdownMenuRadioItem } from "@/components/ds/ui/dropdown-menu";
 import { FocusTimer } from '@/components/focus/focus-timer';
+import { GuestFocusImport } from '@/components/shell/guest-focus-import';
 import { PinnedRail } from '@/components/shell/pinned-rail';
 import type { Pin } from '@/lib/pins';
 import { createClient } from '@/lib/supabase/client';
@@ -782,6 +783,8 @@ export function AppShell({ name, email, spaces, pins, activeSpaceId, timezone = 
                 nowhere. The store is a module singleton, so a second mount
                 would render every toast twice; views must NOT add their own. */}
             <Toaster />
+            {/* Focus sessions run on the website before signing in, moving into the account. */}
+            <GuestFocusImport />
           </div>
           {isMobile && !focusMode && <BottomTabs current={current} onOpenNav={openDrawer} />}
         </div>

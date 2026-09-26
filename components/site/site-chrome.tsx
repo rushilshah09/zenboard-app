@@ -10,15 +10,17 @@ import Link from 'next/link';
 import * as React from 'react';
 import { ArrowRight, Keyboard, List, MessageCircle, Orbit, Question, Receipt, Sun } from '@/components/ds/icons';
 import {
-  Accordion, AccordionContent, AccordionItem, AccordionTrigger, Icon, IconButton, Logo,
+  Accordion, AccordionContent, AccordionItem, AccordionTrigger, Icon, IconButton,
   NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuTrigger,
   Popover, PopoverContent, PopoverTrigger, button,
 } from '@/components/ds/ui';
 import { cn } from '@/lib/cn';
 import { CookieSettingsLink } from './cookie-settings-link';
+import { SiteLogo } from './site-logo';
 import { Halftone } from './halftone';
 import { GUTTER, MEASURE } from './measure';
 import { Cell, Grid, Joints } from './visual';
+import { Words } from './words';
 
 export const SIGN_UP = '/login';
 export const LOG_IN = '/login';
@@ -42,17 +44,20 @@ export function SiteNav() {
   }, []);
 
   return (
+    // Once the page moves under it, a frosted pane of the page's own ground (globals.css `.site-bar`).
     <header
+      data-scrolled={scrolled || undefined}
       className={cn(
-        'sticky top-0 z-sticky border-b transition-colors duration-fast ease-hover',
-        scrolled ? 'border-line bg-background' : 'border-transparent',
+        'site-bar sticky top-0 z-sticky border-b transition-colors duration-fast ease-hover',
+        scrolled ? 'border-line' : 'border-transparent',
       )}
     >
       {/* `ms-px` is the grid's own 1px rule: with it the wordmark starts on exactly the column the
           hero's first line does, at every breakpoint. */}
       <div className={MEASURE}>
       <div className={cn(GUTTER, 'flex h-16 w-full items-center gap-4')}>
-        <Link href="/" aria-label="Zenboard home" className="focus-ring me-2 ms-px rounded-md"><Logo height={24} /></Link>
+        {/* Right-click it: copy the wordmark or the logo, or start a focus session (site-logo.tsx). */}
+        <SiteLogo height={24} className="me-2 ms-px" />
 
         <NavigationMenu className="max-md:hidden" aria-label="Main">
           <NavigationMenuList>
@@ -149,9 +154,9 @@ const FAQ = [
 
 export function Questions() {
   return (
-    <Accordion type="single" collapsible className="border-t border-line">
+    <Accordion type="single" collapsible data-reveal-group className="border-t border-line">
       {FAQ.map((f) => (
-        <AccordionItem key={f.q} value={f.q} className="border-b border-line">
+        <AccordionItem key={f.q} value={f.q} data-reveal="rise" className="border-b border-line">
           <AccordionTrigger className="py-5 text-start text-body-lg font-medium text-ink-900">{f.q}</AccordionTrigger>
           <AccordionContent className="max-w-[62ch] pb-5 text-body text-ink-600">{f.a}</AccordionContent>
         </AccordionItem>
@@ -162,7 +167,7 @@ export function Questions() {
 
 export function SiteFooter() {
   const col = (title: string, links: [string, string][]) => (
-    <div>
+    <div data-reveal="rise">
       <p className="text-ui font-medium text-site-ink-fg">{title}</p>
       <ul className="mt-3 flex flex-col gap-2">
         {links.map(([label, href]) => (
@@ -183,19 +188,21 @@ export function SiteFooter() {
       {/* The page's last row: its top rule and the grid's foot both run out to the window's edges. */}
       <Grid className="site-foot">
         <Joints foot />
-        <div className="site-row col-span-full grid grid-cols-subgrid gap-px">
+        <div data-reveal="rule" className="site-row col-span-full grid grid-cols-subgrid gap-px">
         <Joints />
         <Cell className="site-ink overflow-hidden bg-site-ink text-site-ink-fg">
           <Halftone mark={{ x: 0.86, y: 0.42, size: 1.25 }} fade="start" />
-          <div className="site-pad relative grid gap-12 pb-12 pt-16 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:gap-16 lg:pt-24">
+          {/* The closing statement arrives the way the first one did, a word at a time, and the columns
+              follow it in. */}
+          <div data-reveal-group className="site-pad relative grid gap-12 pb-12 pt-16 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:gap-16 lg:pt-24">
             <div className="flex flex-col items-start gap-6">
-              <p className="max-w-[14ch] text-balance font-editorial text-headline text-site-ink-fg sm:text-hero">Open Zenboard. Do the work.</p>
-              <p className="max-w-[42ch] text-body-lg text-site-ink-muted">
+              <p data-reveal="words" className="max-w-[14ch] text-balance font-editorial text-headline text-site-ink-fg sm:text-hero"><Words>Open Zenboard. Do the work.</Words></p>
+              <p data-reveal="rise" className="max-w-[42ch] text-body-lg text-site-ink-muted">
                 Setting up takes about two minutes: your name, your first project, and the few things you want done today.
               </p>
               {/* The page's filled button, turned over for the dark cell: a light fill with dark words. The
                   DS buttons are drawn for the page's ground, so on this one their words would be ink on ink. */}
-              <Link href={SIGN_UP} className={cn(button({ variant: 'secondary', size: 'lg' }), 'border-transparent bg-site-ink-fg text-site-ink hover:bg-site-ink-fg/90 active:bg-site-ink-fg/90')}>Start free</Link>
+              <Link href={SIGN_UP} data-reveal="rise" className={cn(button({ variant: 'secondary', size: 'lg' }), 'border-transparent bg-site-ink-fg text-site-ink hover:bg-site-ink-fg/90 active:bg-site-ink-fg/90')}>Start free</Link>
             </div>
             <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
               {col('Product', [['How it fits', '/#how'], ['Your day', '/#day'], ['Projects', '/#projects'], ['Client portal', '/#portal'], ['Money', '/#money'], ['The details', '/#details']])}
@@ -205,10 +212,10 @@ export function SiteFooter() {
             </div>
           </div>
           <div className="site-pad relative flex flex-wrap items-center justify-between gap-4 border-t border-site-ink-line py-6">
-            <span className="text-site-ink-fg"><Logo height={20} /></span>
+            <SiteLogo height={20} className="text-site-ink-fg" />
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-caption text-site-ink-muted">
-              <Link href="/legal" className="focus-ring rounded-xs transition-colors duration-fast ease-hover hover:text-site-ink-fg">Legal</Link>
-              <CookieSettingsLink className="text-site-ink-muted no-underline transition-colors duration-fast ease-hover hover:text-site-ink-fg" />
+              <Link href="/legal" className="site-link focus-ring rounded-xs transition-colors duration-fast ease-hover hover:text-site-ink-fg">Legal</Link>
+              <CookieSettingsLink className="site-link text-site-ink-muted no-underline transition-colors duration-fast ease-hover hover:text-site-ink-fg" />
               <p>© 2026 Zenboard</p>
             </div>
           </div>

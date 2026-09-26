@@ -22,6 +22,7 @@ import { FACES } from './faces';
 import { Halftone } from './halftone';
 import { Dwell, useAutoAdvance } from './use-auto-advance';
 import { Cell, Eyebrow, Joints } from './visual';
+import { Words } from './words';
 
 /** The track between Zenboard and her portal, or between Zenboard and your day. */
 type Track = 'portal' | 'day';
@@ -115,7 +116,7 @@ function Line({ title, end, hops = null }: { title: string; end: React.ReactNode
 
 function Portal({ step }: { step: number }) {
   return (
-    <div className={cardClass('site-glass w-full max-w-[18rem] rounded-xl p-4')}>
+    <div data-reveal="lift" className={cardClass('site-glass w-full max-w-[18rem] rounded-xl p-4')}>
       <div className="flex items-center gap-2.5">
         <Avatar name="Priya Nair" src={FACES.priya} size="sm" decorative />
         <div className="min-w-0">
@@ -147,7 +148,7 @@ function Portal({ step }: { step: number }) {
 function Hub({ step }: { step: number }) {
   const log = arrive(1);
   return (
-    <div className="flex flex-col items-center gap-3 py-2 lg:px-2">
+    <div data-reveal="lift" className="flex flex-col items-center gap-3 py-2 lg:px-2">
       <div className="relative grid size-24 place-items-center">
         <svg viewBox="0 0 96 96" className="absolute inset-0 size-full text-line-strong">
           <circle cx="48" cy="48" r="46.5" fill="none" stroke="currentColor" strokeDasharray="2 5" />
@@ -170,7 +171,7 @@ function Day({ step }: { step: number }) {
   const task = arrive(step === 0 ? 2 : null);
   const paid = arrive(step === 3 ? 2 : null);
   return (
-    <div className={cardClass('site-glass w-full max-w-[18rem] rounded-xl p-4')}>
+    <div data-reveal="lift" className={cardClass('site-glass w-full max-w-[18rem] rounded-xl p-4')}>
       <div className="flex items-center gap-2">
         <Mark size={18} tone="brand" />
         <p className="font-editorial text-body-lg font-medium text-ink-900">Your day</p>
@@ -209,17 +210,18 @@ export function Loop() {
         aria-labelledby="how-title"
         data-running={running}
         data-playing={seen}
+        data-reveal="rule"
         {...hold}
         className="site-row col-span-full grid scroll-mt-20 grid-cols-subgrid gap-px"
       >
         <Joints />
         <Cell pad className="py-14 sm:py-16 lg:py-20">
-          <div className="site-reveal grid gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-end lg:gap-16">
+          <div data-reveal-group className="grid gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-end lg:gap-16">
             <div>
-              <Eyebrow hue="petal" icon={Orbit}>How it fits together</Eyebrow>
-              <h2 id="how-title" className="mt-6 max-w-[18ch] text-balance font-editorial text-h1 text-ink-900 sm:text-headline">One request, from ask to paid.</h2>
+              <Eyebrow hue="petal" icon={Orbit} data-reveal="rise">How it fits together</Eyebrow>
+              <h2 id="how-title" data-reveal="words" className="mt-6 max-w-[18ch] text-balance font-editorial text-h1 text-ink-900 sm:text-headline"><Words>One request, from ask to paid.</Words></h2>
             </div>
-            <p className="max-w-[44ch] text-body-lg text-ink-600">
+            <p data-reveal="rise" className="max-w-[44ch] text-body-lg text-ink-600">
               Her portal, your plan and your invoices are one system, so a request moves through it by itself. Follow one from start to finish.
             </p>
           </div>
@@ -227,7 +229,8 @@ export function Loop() {
 
         {/* The picture in its three layers: the gradient, the mark printed over it in light (the hub at
             the mark's heart), and the product's cards on top. */}
-        <Cell className="site-field site-field-how overflow-hidden py-14 sm:py-20">
+        {/* Her portal, Zenboard and your day lift onto it in that order: the way the request travels. */}
+        <Cell data-reveal-group className="site-field site-field-how overflow-hidden py-14 sm:py-20">
           <Halftone mark={{ x: 0.5, y: 0.5, size: 1.1 }} />
           {STEPS.map((s, i) => (
             <RT.Content key={s.title} value={String(i)} className="relative focus-visible:outline-none">
@@ -243,12 +246,16 @@ export function Loop() {
           ))}
         </Cell>
 
-        <RT.List aria-label="One request, step by step" className="col-span-full grid grid-cols-subgrid gap-px">
+        <RT.List data-reveal-group aria-label="One request, step by step" className="col-span-full grid grid-cols-subgrid gap-px">
           {STEPS.map((s, i) => (
+            // A step IS a cell of the grid, so its words arrive and the cell does not (a cell fading in
+            // would show the line behind it as a grey block), and its hover is a wash OVER its own
+            // ground (`wash-over`): a translucent fill in place of the ground let the grid, and the
+            // light that moves behind it, show through the whole cell.
             <RT.Trigger
               key={s.title}
               value={String(i)}
-              className="focus-ring group relative col-span-full rounded-lg bg-background px-5 py-6 text-start transition-colors duration-fast ease-hover data-[state=inactive]:hover:bg-surface-hover sm:px-6 lg:col-span-3"
+              className="focus-ring group relative col-span-full rounded-lg bg-background px-5 py-6 text-start data-[state=inactive]:hover:wash-over sm:px-6 lg:col-span-3"
             >
               {i === active && auto && <Dwell onEnd={next} className="absolute inset-x-5 -top-px h-0.5 overflow-hidden sm:inset-x-6" />}
               {/* A step's NUMBER AND ITS NAME are one thing, so they take one colour (user,
@@ -257,11 +264,11 @@ export function Loop() {
                   the one that is showing. The name is set in the titling face, because that is
                   what it is. `text-accent-text` rather than the raw accent: berry is 2.91:1 on a
                   dark card, and this list is read in both themes. */}
-              <p className="flex items-center gap-2 font-display text-body-lg font-medium">
+              <p data-reveal="rise" className="flex items-center gap-2 font-display text-body-lg font-medium">
                 <span className="tabular-nums text-ink-500 transition-colors duration-fast ease-hover group-data-[state=active]:text-accent-text">{i + 1}</span>
                 <span className="text-ink-500 transition-colors duration-fast ease-hover group-data-[state=active]:text-accent-text">{s.title}</span>
               </p>
-              <p className="mt-2 max-w-[34ch] text-ui text-ink-500 group-data-[state=active]:text-ink-600">{s.body}</p>
+              <p data-reveal="rise" className="mt-2 max-w-[34ch] text-ui text-ink-500 group-data-[state=active]:text-ink-600">{s.body}</p>
             </RT.Trigger>
           ))}
         </RT.List>

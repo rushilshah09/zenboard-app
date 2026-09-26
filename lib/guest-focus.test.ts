@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { GUEST_LIMITS, addGuestSession, focusNote, readGuestSessions, sanitizeGuestSessions, sessionsOnDay } from './guest-focus';
+import {
+  GUEST_LIMITS, addGuestSession, clockText, focusNote, focusedMs, pauseClock, readGuestSessions, remainingMs, resumeClock,
+  sanitizeGuestSessions, sessionOf, sessionsOnDay, startClock,
+} from './guest-focus';
 
 // What a visitor focuses on before signing in becomes their account's focus time. Anything read from
 // a browser can be edited, so the rules are tested as the server applies them: only real, recent,
@@ -59,5 +62,41 @@ describe('on the device', () => {
   it('files each under a note a person can read in their focus time', () => {
     expect(focusNote('Logo presentation')).toBe('Focus session · Logo presentation');
     expect(focusNote('')).toBe('Focus session');
+  });
+});
+
+describe('the clock', () => {
+  const T = Date.UTC(2026, 8, 26, 15, 0, 0);
+  const MIN = 60_000;
+
+  it('counts down from the wall clock, not from ticks', () => {
+    const c = startClock(T, 25);
+    expect(clockText(remainingMs(c, T))).toBe('25:00');
+    expect(clockText(remainingMs(c, T + 1))).toBe('25:00');
+    expect(clockText(remainingMs(c, T + 1000))).toBe('24:59');
+    expect(clockText(remainingMs(c, T + 24 * MIN + 59_001))).toBe('0:01');
+    expect(clockText(remainingMs(c, T + 25 * MIN))).toBe('0:00');
+    // A tab left in the background for an hour comes back done, never negative.
+    expect(remainingMs(c, T + 60 * MIN)).toBe(0);
+  });
+
+  it('stops while paused, and does not count the pause', () => {
+    let c = startClock(T, 25);
+    c = pauseClock(c, T + 5 * MIN);
+    expect(focusedMs(c, T + 30 * MIN)).toBe(5 * MIN);
+    c = resumeClock(c, T + 30 * MIN);
+    expect(focusedMs(c, T + 31 * MIN)).toBe(6 * MIN);
+    // Pausing twice, or resuming a running clock, changes nothing.
+    expect(pauseClock(pauseClock(c, T + 32 * MIN), T + 40 * MIN).pausedAt).toBe(T + 32 * MIN);
+    expect(resumeClock(c, T + 50 * MIN)).toBe(c);
+  });
+
+  it('becomes a session of the whole minutes focused, and nothing under a minute', () => {
+    const c = startClock(T, 25);
+    expect(sessionOf(c, T + 25 * MIN, 'Logo')).toEqual({ startedAt: new Date(T).toISOString(), minutes: 25, what: 'Logo' });
+    expect(sessionOf(c, T + 12 * MIN + 40_000, '')?.minutes).toBe(13);
+    expect(sessionOf(c, T + 20_000, '')).toBeNull();
+    // What it becomes is what the rules keep.
+    expect(sanitizeGuestSessions([sessionOf(c, T + 25 * MIN, 'Logo')], new Date(T + 26 * MIN))).toHaveLength(1);
   });
 });

@@ -73,3 +73,56 @@ export function sessionsOnDay(list: GuestSession[], now: Date): number {
 export function focusNote(what: string): string {
   return what ? `Focus session · ${what}` : 'Focus session';
 }
+
+// ── THE CLOCK ────────────────────────────────────────────────────────────────
+// Anchored to the wall clock rather than counted in ticks: a tab in the background runs its timers
+// late or not at all, and a session read from `now` is right whenever it is looked at.
+
+export type FocusClock = {
+  /** When the session started (ms since the epoch). */
+  startedAt: number;
+  /** How long it was set for. */
+  minutes: number;
+  /** When it was paused, while it is; `null` while it runs. */
+  pausedAt: number | null;
+  /** Everything spent paused before now. */
+  paused: number;
+};
+
+/** The lengths offered: a short one, the classic, and a long one. */
+export const FOCUS_LENGTHS = [15, 25, 50] as const;
+
+export const startClock = (now: number, minutes: number): FocusClock => ({ startedAt: now, minutes, pausedAt: null, paused: 0 });
+export const pauseClock = (c: FocusClock, now: number): FocusClock => (c.pausedAt == null ? { ...c, pausedAt: now } : c);
+export const resumeClock = (c: FocusClock, now: number): FocusClock =>
+  c.pausedAt == null ? c : { ...c, paused: c.paused + Math.max(0, now - c.pausedAt), pausedAt: null };
+
+/** Time actually spent focusing so far, never more than the session was set for. */
+export function focusedMs(c: FocusClock, now: number): number {
+  const spent = (c.pausedAt ?? now) - c.startedAt - c.paused;
+  return Math.min(c.minutes * 60_000, Math.max(0, spent));
+}
+
+export const remainingMs = (c: FocusClock, now: number): number => c.minutes * 60_000 - focusedMs(c, now);
+
+/** A countdown as it is read: minutes and seconds, the seconds rounded up so "0:00" means done. */
+export function clockText(ms: number): string {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+/** The session a clock becomes when it ends: whole minutes focused, or nothing under a minute. */
+export function sessionOf(c: FocusClock, now: number, what: string): GuestSession | null {
+  const minutes = Math.round(focusedMs(c, now) / 60_000);
+  return minutes >= GUEST_LIMITS.minMinutes ? { startedAt: new Date(c.startedAt).toISOString(), minutes, what } : null;
+}
+
+// ── OPENING IT ───────────────────────────────────────────────────────────────
+// From anywhere on the site (the logo's menu today), without the opener knowing where the session
+// lives: one window event, heard by the one `<GuestFocus />` each page mounts. The same shape as
+// the cookie settings (lib/consent.ts `openCookieSettings`).
+
+export const GUEST_FOCUS_OPEN = 'zb:guest-focus-open';
+export function openGuestFocus(): void {
+  window.dispatchEvent(new Event(GUEST_FOCUS_OPEN));
+}

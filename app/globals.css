@@ -979,30 +979,142 @@ html[data-vt] .zb-page-in { animation: none !important; }
   @keyframes zb-vt-sidebar-in { from { opacity: 0; } }
 }
 .zb-page-in { animation: zb-page-in var(--duration-base, 150ms) var(--ease-out-quiet, ease-out); }
-/* THE WEBSITE'S ENTRANCE (components/site). A first visit may arrive in order — Emil: a rare surface
-   can carry a staged entrance, one seen every day never does. Each step waits one --duration-fast
-   longer than the last, so the product lands just after the words that introduce it. `zb-enter`
-   beside it skips all of it for a keyboard arrival. */
-.site-rise { animation: fade-rise var(--duration-slow) var(--ease-out-quiet) both; animation-delay: calc(var(--rise-step, 0) * var(--duration-fast)); }
-@keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes blurin { from { opacity: 0; filter: blur(8px); transform: scale(0.98); } to { opacity: 1; filter: blur(0); transform: scale(1); } }
-@keyframes pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
-@keyframes popIn { 0% { transform: scale(0.96); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
-/* SCROLL-LINKED, and progressive. Where the browser cannot tie an animation to scroll, or the reader
-   asked for less motion, every section is simply there: nothing on the page waits for JavaScript or an
-   observer to become visible (a reveal that needs a script is a page that can stay blank).
-   `site-reveal` lifts a section into place as it enters; `site-tilt` lays the hero's product sheet flat
-   as the reader scrolls toward it. Both are transform and opacity only. */
-@keyframes site-reveal { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+/* ── THE WEBSITE ARRIVES AS IT IS READ (components/site/site-motion.tsx, words.tsx) ─────────────
+   The user, 2026-09-26: "the entire website looks basic, no interaction and animation … add subtle
+   animation as the page appears in view, like Linear and Calendly and Notion and Miro". Emil
+   Kowalski's decision tree, applied to a page someone reads once: a rare surface may carry a staged
+   entrance; every arrival is a strong ease-out; the parts of one arrival come in reading order, 80ms
+   apart (his 30 to 80), and a heading a word at a time, 60ms apart. The values are better-ui's: text
+   rises 12px out of a 4px blur; a picture lifts without the blur, because blurring a large layer is
+   the expensive kind.
+
+   PROGRESSIVE, both ways. The first screen arrives on CSS alone (`site-rise`), so it never waits on a
+   script. Below it, only the script ever hides anything (`data-shown`, which it sets when it wakes,
+   and only on what is still below the window then): a page whose script never runs, a printed page
+   and a reader that strips scripts all show every word. Less motion keeps the fade and loses the
+   movement, as it does everywhere in the product. */
+:root {
+  /* One arrival. */
+  --site-reveal: calc(var(--duration-slow) * 3);
+  /* Between two parts of one arrival, and between two words of a heading. */
+  --site-stagger: calc(var(--duration-fast) * 0.8);
+  --site-word-step: calc(var(--duration-fast) * 0.6);
+  /* When the loader plays, the first screen waits for its cover to start lifting: the decision script
+     writes the wait on <html> (lib/site-loader.ts `SITE_LOADER_WAIT`), where nothing changes it while
+     the words are arriving. */
+  --site-wait: 0s;
+}
+/* A heading's words (words.tsx): each its own box, so it can rise, with the real space between them. */
+.site-word { display: inline-block; }
+
+/* THE FIRST SCREEN, on CSS alone. `--rise-step` puts it in order; `zb-enter` beside it skips it for a
+   keyboard arrival, and the words inside with it. */
+@keyframes site-in { from { opacity: 0; transform: translateY(12px); filter: blur(4px); } }
+@keyframes site-word-in { from { opacity: 0; transform: translateY(0.3em); filter: blur(4px); } }
+@keyframes site-lift-in { from { opacity: 0; transform: translateY(28px) scale(0.98); } }
+.site-rise, .site-rise-lift, .site-rise-words .site-word {
+  animation: site-in var(--site-reveal) var(--ease-out-quiet) both;
+  animation-delay: calc(var(--site-wait) + var(--rise-step, 0) * var(--site-stagger));
+}
+.site-rise-lift { animation-name: site-lift-in; animation-duration: calc(var(--site-reveal) * 1.5); }
+.site-rise-words .site-word {
+  animation-name: site-word-in;
+  animation-delay: calc(var(--site-wait) + var(--rise-step, 0) * var(--site-stagger) + var(--w, 0) * var(--site-word-step));
+}
+
+/* BELOW IT, as it scrolls into view. A part is `data-reveal="rise|words|lift|rule"`; the script marks
+   it `data-shown="false"` while it waits and `"true"` as it arrives, numbering it in its arrival
+   (`--reveal-i`), and takes both off once it has landed. */
+[data-shown='false']:is([data-reveal='rise'], [data-reveal='lift']),
+[data-shown='false'][data-reveal='words'] .site-word { opacity: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  [data-shown='false'][data-reveal='rise'] { transform: translateY(12px); filter: blur(4px); }
+  [data-shown='false'][data-reveal='lift'] { transform: translateY(28px) scale(0.98); }
+  [data-shown='false'][data-reveal='words'] .site-word { transform: translateY(0.3em); filter: blur(4px); }
+  /* A section's rule draws out from the grid to the window's edges (it is drawn behind the grid, so
+     only the part beyond the frame is seen growing), and the stars where it crosses the frame open. */
+  [data-shown='false'][data-reveal='rule']::before { transform: scaleX(0); }
+  [data-shown='false'][data-reveal='rule'] > .site-joint { opacity: 0; transform: scale(0.4); }
+}
+[data-shown='true']:is([data-reveal='rise'], [data-reveal='lift']),
+[data-shown='true'][data-reveal='words'] .site-word,
+[data-shown='true'][data-reveal='rule'] > .site-joint {
+  transition-property: opacity, transform, filter;
+  transition-duration: var(--site-reveal);
+  transition-timing-function: var(--ease-out-quiet);
+  transition-delay: calc(var(--reveal-i, 0) * var(--site-stagger));
+}
+[data-shown='true'][data-reveal='lift'] { transition-duration: calc(var(--site-reveal) * 1.5); }
+[data-shown='true'][data-reveal='words'] .site-word { transition-delay: calc(var(--reveal-i, 0) * var(--site-stagger) + var(--w, 0) * var(--site-word-step)); }
+[data-shown='true'][data-reveal='rule']::before { transition: transform calc(var(--site-reveal) * 2) var(--ease-out-quiet); }
+[data-shown='true'][data-reveal='rule'] > .site-joint { transition-delay: calc(var(--site-stagger) * 3); }
+@media print {
+  [data-shown='false'], [data-shown='false'] .site-word, [data-shown='false'] > .site-joint { opacity: 1 !important; transform: none !important; filter: none !important; }
+  [data-shown='false']::before { transform: none !important; }
+}
+
+/* SCROLL-LINKED, and progressive: `site-tilt` lays the hero's product sheet flat as the reader scrolls
+   toward it, where the browser can tie an animation to scroll and motion is welcome. */
 @keyframes site-tilt { from { transform: perspective(1600px) rotateX(9deg) scale(0.95); } to { transform: none; } }
 @supports (animation-timeline: view()) {
   @media (prefers-reduced-motion: no-preference) {
-    .site-reveal { animation: site-reveal linear both; animation-timeline: view(); animation-range: entry 0% entry 55%; }
     .site-tilt { transform-origin: 50% 0%; animation: site-tilt linear both; animation-timeline: view(); animation-range: entry 15% cover 45%; }
   }
 }
 /* A state swapping inside a product preview: the new state arrives, the old one is simply gone. */
 .site-swap { animation: fade-rise var(--duration-base) var(--ease-out-quiet) both; }
+
+/* THE LINES CATCH THE LIGHT (site-motion.tsx). Where the pointer is, the grid's own line takes the
+   brand's colour and the stars where the cells meet light up: the page's structure is the mark, so
+   the mark is what answers the hand. A soft disc of the accent moves BEHIND the cells, so it shows
+   only through the pixel between them and the stars at their corners, and its box is clipped to the
+   grid's, so it can never make the page wider or taller. For a fine pointer that hovers only. */
+:root {
+  --site-glow-size: 560px;
+  --site-glow-ink: color-mix(in oklab, var(--accent) 45%, transparent);
+}
+html[data-theme='dark'] { --site-glow-ink: color-mix(in oklab, var(--accent) 62%, transparent); }
+.site-glow { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.site-glow > span {
+  position: absolute; top: 0; left: 0;
+  width: var(--site-glow-size); height: var(--site-glow-size);
+  background: radial-gradient(closest-side, var(--site-glow-ink), transparent);
+  opacity: 0;
+  transition: opacity var(--duration-slow) var(--ease-hover);
+}
+.site-glow[data-on] > span { opacity: 1; }
+@media (hover: none), (pointer: coarse) { .site-glow { display: none; } }
+
+/* A FOCUS SESSION ON THE SITE (guest-focus.tsx, warp.tsx). `--site-warp` is the jump into it: into
+   the tunnel and out onto the dark ground, once per session, when someone chose to start one. The
+   clock is the one number on the screen, as large as a phone allows and larger on a desk, in the
+   app's face with figures that do not jump as they change. */
+:root { --site-warp: 1.4s; }
+.site-clock {
+  font-family: var(--font-sans); font-weight: 500; line-height: 1; letter-spacing: -0.04em;
+  font-size: clamp(64px, 16vw, 168px); font-variant-numeric: tabular-nums; color: var(--color-site-ink-fg);
+}
+
+/* A TEXT LINK draws its underline in from the side the pointer arrives on and takes it away the way
+   it leaves; the rule scales, so nothing around it moves. Focus draws it too. */
+.site-link { position: relative; }
+.site-link::after {
+  content: ''; position: absolute; inset-inline: 0; bottom: -1px; height: 1px;
+  background: currentColor; transform: scaleX(0); transform-origin: right center;
+  transition: transform var(--duration-slow) var(--ease-out-quiet);
+}
+.site-link:focus-visible::after { transform: scaleX(1); }
+@media (hover: hover) and (pointer: fine) {
+  .site-link:hover::after { transform: scaleX(1); transform-origin: left center; }
+}
+
+/* THE NAVIGATION, once the page moves under it: a pane of the page's own ground, frosted, so what
+   passes beneath still reads as the page rather than being cut off by a wall. */
+.site-bar[data-scrolled] {
+  background: color-mix(in oklab, var(--color-background) 80%, transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(1.6);
+  backdrop-filter: blur(16px) saturate(1.6);
+}
 
 /* ── THE WEBSITE'S VISUAL LAYER (components/site/visual.tsx, halftone.tsx, loop.tsx) ─────────────
    THE MARK IS THE GRID. The page is a lattice of rounded cells tiled edge to edge (`Grid` in
@@ -1295,7 +1407,9 @@ html[data-theme='dark'] .site-hue-periwinkle { --site-hue: color-mix(in oklch, v
   @keyframes reveal-down { from { opacity: 0; } }
   @keyframes reveal-up { to { opacity: 0; } }
   @keyframes fade-rise { from { opacity: 0; } }
-  @keyframes site-reveal { from { opacity: 0; } }
+  @keyframes site-in { from { opacity: 0; } }
+  @keyframes site-word-in { from { opacity: 0; } }
+  @keyframes site-lift-in { from { opacity: 0; } }
   @keyframes site-tilt { from { opacity: 1; } }
   @keyframes site-dwell { from { opacity: 1; } }
   @keyframes slideUp { from { opacity: 0; } }
@@ -1318,11 +1432,14 @@ html[data-theme='dark'] .site-hue-periwinkle { --site-hue: color-mix(in oklch, v
    unmounts at once when there is no animation to wait for. */
 html[data-input="keyboard"] .zb-enter,
 html[data-input="keyboard"] .zb-page-in { animation: none !important; }
+/* The website's headings arrive a word at a time: the words are what move, so they are what stops. */
+html[data-input="keyboard"] .zb-enter .site-word { animation: none !important; }
 /* …and what was on screen while the keyboard drove never enters AGAIN when the pointer returns. Lifting the rule
    above restarts an animation from its first frame: the task panel re-slid in from off-screen under the very press
    that changed hands, and that click fell through to the page behind. lib/input-modality.ts stamps `data-entered`
    on every entrance on screen before it hands the page back to the pointer. */
 .zb-enter[data-entered],
+.zb-enter[data-entered] .site-word,
 .zb-page-in[data-entered] { animation: none !important; }
 
 /* Native text selection matches the editor's block-sweep blue, app-wide. */

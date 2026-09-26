@@ -18,15 +18,23 @@ import { Icon } from '@/components/ds/ui';
 import { cn } from '@/lib/cn';
 import { Halftone, type Fade, type MarkPlacement } from './halftone';
 
-/** The page's lattice: twelve columns on a wide screen; on a phone every cell is a row of its own. */
+/** The page's lattice: twelve columns on a wide screen; on a phone every cell is a row of its own.
+    Behind its cells, the light that follows the pointer (site-motion.tsx): it shows only through the
+    line between them, so the lattice lights up where the visitor points. */
 export function Grid({ className, children }: { className?: string; children: React.ReactNode }) {
-  return <div className={cn('grid grid-cols-12 gap-px bg-line p-px', className)}>{children}</div>;
+  return (
+    <div className={cn('relative grid grid-cols-12 gap-px bg-line p-px', className)}>
+      <span aria-hidden className="site-glow"><span /></span>
+      {children}
+    </div>
+  );
 }
 
-/** A section whose cells take the grid's own columns, so every line on the page is one line. */
+/** A section whose cells take the grid's own columns, so every line on the page is one line. Its rule
+    draws out to the window's edges as it comes into view (`data-reveal="rule"`). */
 export function Row({ className, children, ...rest }: React.HTMLAttributes<HTMLElement>) {
   return (
-    <section {...rest} className={cn('site-row col-span-full grid scroll-mt-20 grid-cols-subgrid gap-px', className)}>
+    <section data-reveal="rule" {...rest} className={cn('site-row col-span-full grid scroll-mt-20 grid-cols-subgrid gap-px', className)}>
       <Joints />
       {children}
     </section>
@@ -91,15 +99,16 @@ export function Stage({ field, mark, fade, className, children, ...rest }: React
           it to sit in. */}
       <Halftone mark={mark} fade={fade} pitch={10} className="[mix-blend-mode:soft-light]" />
       <TrimMarks />
-      <div className="relative grid w-full grid-cols-1 place-items-center">{children}</div>
+      {/* The product lifts onto its picture as it comes into view; the picture itself is already there. */}
+      <div data-reveal="lift" className="relative grid w-full grid-cols-1 place-items-center">{children}</div>
     </Cell>
   );
 }
 
 /** A section's name, beside a tile of its colour. */
-export function Eyebrow({ hue, icon, children, className }: { hue: Hue; icon: IconType; children: React.ReactNode; className?: string }) {
+export function Eyebrow({ hue, icon, children, className, ...rest }: React.HTMLAttributes<HTMLParagraphElement> & { hue: Hue; icon: IconType }) {
   return (
-    <p className={cn('flex items-center gap-2.5 text-ui font-medium text-ink-800', className)}>
+    <p {...rest} className={cn('flex items-center gap-2.5 text-ui font-medium text-ink-800', className)}>
       <span aria-hidden className={cn('site-tile grid size-7 shrink-0 place-items-center rounded-md', HUE[hue])}>
         <Icon icon={icon} size={16} weight="fill" />
       </span>

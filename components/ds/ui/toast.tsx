@@ -1,3 +1,6 @@
+"use client";
+// A client module: the Toaster reads the store through `useSyncExternalStore`, so a server page
+// (the website) can render it and a server never runs it.
 import * as React from "react";
 import { X } from "@/lib/icons";
 

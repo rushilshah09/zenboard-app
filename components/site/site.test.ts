@@ -74,7 +74,7 @@ describe('the product pictures', () => {
   });
 
   it('keep decoration out of the way: every lifted piece is inert and hidden from assistive tech', () => {
-    expect(home).toMatch(/function Resting[\s\S]*?<div aria-hidden inert className=\{cn\('site-reveal pointer-events-none absolute z-\[1\]/);
+    expect(home).toMatch(/function Resting[\s\S]*?<div aria-hidden inert className=\{cn\('site-rise-lift zb-enter pointer-events-none absolute z-\[1\]/);
     // The explanatory drawing is a picture of the step list beside it: each panel says its step in words.
     const loop = read('components/site/loop.tsx');
     expect(loop).toMatch(/<div aria-hidden inert className="mx-auto grid/);
@@ -99,7 +99,7 @@ describe('the page', () => {
     // title in the product speaks in. The site asks for the role, so it follows the product.
     expect(home).toMatch(/<h1 id="hero-title" className="[^"]*font-editorial[^"]*text-hero/);
     const spot = read('components/site/spotlight.tsx');
-    expect(spot).toMatch(/<h2 id=\{`\$\{id\}-title`\} className="[^"]*font-editorial/);
+    expect(spot).toMatch(/<h2 id=\{`\$\{id\}-title`\}[^>]*className="[^"]*font-editorial/);
   });
 
   it('uses tokens only — no raw colour and no palette class', () => {
@@ -126,8 +126,8 @@ describe('the page', () => {
 });
 
 describe('motion', () => {
-  it('reveals and tilts only where the browser ties it to scroll, and only when motion is welcome', () => {
-    expect(globals).toMatch(/@supports \(animation-timeline: view\(\)\) \{\s*@media \(prefers-reduced-motion: no-preference\) \{\s*\.site-reveal/);
+  it('tilts the product only where the browser ties it to scroll, and only when motion is welcome', () => {
+    expect(globals).toMatch(/@supports \(animation-timeline: view\(\)\) \{\s*@media \(prefers-reduced-motion: no-preference\) \{\s*\.site-tilt/);
   });
 
   it('never advances a list on its own when less motion is asked for', () => {
@@ -180,7 +180,7 @@ describe('the first screen', () => {
 describe('the identity', () => {
   it('lays the page on one grid: the line between cells, whose corners leave the heart of the mark', () => {
     const visual = read('components/site/visual.tsx');
-    expect(visual).toMatch(/className=\{cn\('grid grid-cols-12 gap-px bg-line p-px', className\)\}/);
+    expect(visual).toMatch(/className=\{cn\('relative grid grid-cols-12 gap-px bg-line p-px', className\)\}/);
     // Rows take the grid's own columns, so a line in one section runs on through the next.
     expect(visual).toMatch(/col-span-full grid scroll-mt-20 grid-cols-subgrid gap-px/);
     expect(visual).toMatch(/relative col-span-full min-w-0 rounded-lg bg-background/);
@@ -263,5 +263,171 @@ describe('the identity', () => {
     // The user, 2026-09-26, of "07 / 07 · The details": "remove this, this looks so identical".
     for (const [f, src] of all) expect(src, f).not.toMatch(/site-tick|function Index\b|<Index\b/);
     expect(globals).not.toMatch(/\.site-tick/);
+  });
+});
+
+describe('the page arrives as it is read', () => {
+  // The user, 2026-09-26: "the entire website looks basic, no interaction and animation … add subtle
+  // animation as the page appears in view, like Linear and Calendly and Notion and Miro". The rules
+  // that keep that from costing the page anything are held here; the controller's behaviour is in
+  // site-motion.test.ts.
+  const strip = (css: string) => css.replace(/\/\*[\s\S]*?\*\//g, '');
+  const css = strip(globals);
+
+  it('hides nothing until the script says so: every waiting state is `data-shown="false"`', () => {
+    // A rule that hid `[data-reveal]` by itself would leave a page whose script never ran blank.
+    const rules = [...css.matchAll(/([^{}]*\[data-reveal[^{}]*)\{([^}]*)\}/g)];
+    expect(rules.length).toBeGreaterThan(5);
+    for (const [, selector, body] of rules) {
+      if (!/opacity:\s*0|scaleX\(0\)|translateY|blur\(/.test(body)) continue;
+      // One selector at a time: split on the commas that are not inside an `:is(…)`.
+      const list: string[] = [];
+      let depth = 0, from = 0;
+      [...selector].forEach((ch, i) => {
+        if (ch === '(') depth++; else if (ch === ')') depth--; else if (ch === ',' && depth === 0) { list.push(selector.slice(from, i)); from = i + 1; }
+      });
+      list.push(selector.slice(from));
+      for (const one of list) expect(one.trim(), `${one.trim()} hides without the script`).toMatch(/\[data-shown='false'\]/);
+    }
+    // ...and a printed page shows every word.
+    expect(css).toMatch(/@media print \{\s*\[data-shown='false'\], \[data-shown='false'\] \.site-word, \[data-shown='false'\] > \.site-joint \{ opacity: 1 !important;/);
+  });
+
+  it('moves only where motion is welcome: less motion keeps the fade', () => {
+    const still = css.match(/@media \(prefers-reduced-motion: no-preference\) \{\s*\[data-shown='false'\]\[data-reveal='rise'\] \{ transform: translateY\(12px\); filter: blur\(4px\); \}[\s\S]*?\n\}/)?.[0] ?? '';
+    expect(still, 'the movement lives in one no-preference block').not.toBe('');
+    for (const m of ['translateY(28px) scale(0.98)', 'translateY(0.3em)', 'scaleX(0)']) expect(still).toContain(m);
+    // Outside it, waiting is opacity and nothing else.
+    expect(css).toMatch(/\[data-shown='false'\]:is\(\[data-reveal='rise'\], \[data-reveal='lift'\]\),\s*\[data-shown='false'\]\[data-reveal='words'\] \.site-word \{ opacity: 0; \}/);
+  });
+
+  it('times every arrival from the ladder and the house curve', () => {
+    expect(css).toMatch(/--site-reveal: calc\(var\(--duration-slow\) \* 3\);/);
+    expect(css).toMatch(/--site-stagger: calc\(var\(--duration-fast\) \* 0\.8\);/);
+    expect(css).toMatch(/--site-word-step: calc\(var\(--duration-fast\) \* 0\.6\);/);
+    expect(css).toMatch(/transition-timing-function: var\(--ease-out-quiet\);\s*transition-delay: calc\(var\(--reveal-i, 0\) \* var\(--site-stagger\)\);/);
+  });
+
+  it('brings the first screen in on CSS alone, the heading a word at a time', () => {
+    expect(home).toMatch(/<h1 id="hero-title" className="site-rise-words zb-enter /);
+    expect(home).toMatch(/<Words>Open Zenboard\.<\/Words>[\s\S]*<Words from=\{2\}>Know what matters\.<\/Words>[\s\S]*<Words from=\{5\}>Do the work\.<\/Words>/);
+    expect(home).toMatch(/className="site-rise-lift zb-enter relative mx-auto w-full max-w-\[1180px\]"/);
+    // Nothing on the first screen waits for the script.
+    const hero = home.slice(home.indexOf('function Hero'), home.indexOf('function Resting'));
+    expect(hero).not.toMatch(/data-reveal/);
+  });
+
+  it('brings every section heading in a word at a time', () => {
+    for (const f of ['site-home.tsx', 'spotlight.tsx', 'loop.tsx', 'people.tsx']) {
+      const src = read(`components/site/${f}`);
+      const headings = [...src.matchAll(/<h2 [^>]*>/g)].map((m) => m[0]);
+      expect(headings.length, f).toBeGreaterThan(0);
+      for (const h of headings) expect(h, f).toMatch(/data-reveal="words"/);
+    }
+  });
+
+  it('never fades a cell: a cell fading in shows the grid behind it as a grey block', () => {
+    for (const [f, src] of all) expect(src, f).not.toMatch(/<Cell\b[^>]*\sdata-reveal="/);
+    // The loop's steps ARE cells: their words arrive, and their hover is a wash over their own ground.
+    const loop = read('components/site/loop.tsx');
+    const step = loop.slice(loop.indexOf('<RT.Trigger', loop.indexOf('One request, step by step')), loop.indexOf('>', loop.indexOf('className="focus-ring group relative col-span-full')));
+    expect(step).not.toMatch(/data-reveal=/);
+    expect(step).toMatch(/data-\[state=inactive\]:hover:wash-over/);
+    expect(step).not.toMatch(/hover:bg-surface-hover/);
+  });
+
+  it('keeps a heading one sentence: real words, real spaces', () => {
+    const words = read('components/site/words.tsx');
+    expect(words.trimStart().startsWith("'use client'"), 'a server component can render it').toBe(false);
+    expect(words).toMatch(/\{i > 0 && ' '\}\s*<span className="site-word"/);
+    expect(words).not.toMatch(/aria-hidden|aria-label/);
+  });
+});
+
+describe('the lines catch the light', () => {
+  const css = globals.replace(/\/\*[\s\S]*?\*\//g, '');
+
+  it('lights the grid from BEHIND its cells, inside the grid\'s own box', () => {
+    const visual = read('components/site/visual.tsx');
+    // The first thing in the grid, so every cell paints over it and only the line shows it.
+    expect(visual).toMatch(/gap-px bg-line p-px', className\)\}>\s*<span aria-hidden className="site-glow"><span \/><\/span>\s*\{children\}/);
+    expect(css).toMatch(/\.site-glow \{ position: absolute; inset: 0; overflow: hidden; pointer-events: none; \}/);
+    // A fine pointer only, and in the accent.
+    expect(css).toMatch(/@media \(hover: none\), \(pointer: coarse\) \{ \.site-glow \{ display: none; \} \}/);
+    expect(css).toMatch(/--site-glow-ink: color-mix\(in oklab, var\(--accent\)/);
+  });
+
+  it('moves the light with a transform on the light itself, easing after the hand', () => {
+    const motion = read('components/site/site-motion.tsx');
+    const lamp = motion.slice(motion.indexOf('export function light'));
+    expect(lamp).toMatch(/lamp\.disc\.style\.transform = `translate\(/);
+    // Never a custom property: one changed on a parent restyles everything under it (Emil).
+    expect(lamp).not.toMatch(/style\.(left|top) =|setProperty\('--/);
+    expect(motion).toMatch(/lamp\.x \+= \(tx - lamp\.x\) \* FOLLOW;/);
+    expect(motion).toMatch(/if \(e\.pointerType !== 'mouse' \|\| !fine\.matches\) return;/);
+  });
+});
+
+describe('the logo answers the hand', () => {
+  // The user, 2026-09-26, with Attio's menu: "right-click on the logo, instead of brand guidelines I
+  // want start focus session", and earlier: "on hover it's like a magnet, and they can spin it round
+  // with the mouse".
+  const logo = read('components/site/site-logo.tsx');
+  const chrome = read('components/site/site-chrome.tsx');
+
+  it('is the logo everywhere the site shows it', () => {
+    expect(chrome).toMatch(/<SiteLogo height=\{24\}/);
+    expect(chrome).toMatch(/<SiteLogo height=\{20\}/);
+    expect(chrome).not.toMatch(/<Logo\b/);
+  });
+
+  it('offers the wordmark, the logo, and a focus session, in that order', () => {
+    const items = [...logo.matchAll(/<ContextMenuItem onSelect=\{[^}]*\}>([^<]+)<\/ContextMenuItem>|<ContextMenuSeparator \/>/g)].map((m) => m[1] ?? '—');
+    expect(items).toEqual(['Copy wordmark as SVG', 'Copy logo as SVG', '—', 'Start focus session']);
+    expect(logo).toMatch(/onSelect=\{openGuestFocus\}/);
+    // The files are the page's own artwork, made standalone in lib/brand.ts (no colour lives here).
+    expect(logo).toMatch(/wordmarkSvg\(svg\.outerHTML\) : logoSvg\(svg\.outerHTML\)/);
+  });
+
+  it('leans and turns by moving itself, never by moving the page', () => {
+    // `translate`, the property, so the press's own transform still applies; the mark turns about
+    // its own middle; at rest it is always on a quarter turn, which is how a four-petal mark looks.
+    expect(logo).toMatch(/link\.style\.translate = /);
+    expect(logo).toMatch(/mark\.style\.transformBox = 'fill-box';/);
+    expect(logo).toMatch(/toTurn = Math\.round\(toTurn \/ 90\) \* 90;/);
+    expect(logo).toMatch(/if \(e\.pointerType !== 'mouse' \|\| !fine\.matches \|\| still\.matches\) return;/);
+  });
+});
+
+describe('a focus session without an account', () => {
+  const focus = read('components/site/guest-focus.tsx');
+  const warp = read('components/site/warp.tsx');
+
+  it('is a real modal, and leaving it keeps what was done', () => {
+    expect(focus).toMatch(/import \{ Dialog as RD \} from 'radix-ui';/);
+    expect(focus).toMatch(/onOpenChange=\{\(o\) => \{ if \(!o\) close\(\); \}\}/);
+    expect(focus).toMatch(/const close = \(\) => \{\s*\/\/ Leaving mid-session keeps what was done, and says so\.\s*if \(phase === 'focus' && clock\) \{\s*const session = finish\(clock, Date\.now\(\), true\);/);
+  });
+
+  it('keeps sessions by the shared rules, under the shared key', () => {
+    expect(focus).toMatch(/readGuestSessions\(localStorage\.getItem\(GUEST_FOCUS_KEY\), new Date\(\)\)/);
+    expect(focus).toMatch(/addGuestSession\(kept\(\), session, new Date\(\)\)/);
+  });
+
+  it('enters through the warp in the brand\'s colours, once, and never for someone who asked for less motion', () => {
+    expect(warp).toMatch(/const INKS = \['--accent', '--color-field-petal', '--color-field-periwinkle', '--color-field-apricot', '--color-illustration-light'\];/);
+    expect(warp).toMatch(/window\.matchMedia\('\(prefers-reduced-motion: reduce\)'\)\.matches\) \{\s*done\.current\(\);/);
+    expect(warp).toMatch(/getPropertyValue\('--site-warp'\)/);
+    expect(globals).toMatch(/:root \{ --site-warp: [\d.]+s; \}/);
+    expect(warp).toMatch(/<canvas ref=\{ref\} aria-hidden /);
+  });
+
+  it('moves into the account the first time Zenboard opens signed in', () => {
+    const shell = read('components/shell/app-shell.tsx');
+    expect(shell).toMatch(/<Toaster \/>\s*\{\/\*[^*]*\*\/\}\s*<GuestFocusImport \/>/);
+    const importer = read('components/shell/guest-focus-import.tsx');
+    // One offer per page load, however often the effect runs.
+    expect(importer).toMatch(/offered \?\?= importGuestFocus\(sessions\);/);
+    expect(importer).toMatch(/localStorage\.removeItem\(GUEST_FOCUS_KEY\)/);
   });
 });

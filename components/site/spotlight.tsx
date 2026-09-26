@@ -23,6 +23,7 @@ import { cn } from '@/lib/cn';
 import { type MarkPlacement } from './halftone';
 import { Dwell, useAutoAdvance } from './use-auto-advance';
 import { Cell, Eyebrow, HUE, IconTile, Joints, Stage, type Field, type Hue } from './visual';
+import { Words } from './words';
 
 export type Feature = {
   title: string;
@@ -58,14 +59,16 @@ export function Spotlight({
         ref={ref}
         aria-labelledby={`${id}-title`}
         data-running={running}
+        data-reveal="rule"
         {...hold}
         className="site-row col-span-full grid scroll-mt-20 grid-cols-subgrid gap-px"
       >
         <Joints />
         <Cell pad className={cn('flex flex-col justify-center py-14 sm:py-16 lg:col-span-6 lg:py-20', flip && 'lg:order-2')}>
-          <div className="site-reveal">
-            <Eyebrow hue={hue} icon={icon}>{name}</Eyebrow>
-            <h2 id={`${id}-title`} className="mt-6 max-w-[15ch] text-balance font-editorial text-h1 text-ink-900 sm:text-headline">{title}</h2>
+          {/* Arrives as one sentence: the area's name, its heading a word at a time, then its list. */}
+          <div data-reveal-group>
+            <Eyebrow hue={hue} icon={icon} data-reveal="rise">{name}</Eyebrow>
+            <h2 id={`${id}-title`} data-reveal="words" className="mt-6 max-w-[15ch] text-balance font-editorial text-h1 text-ink-900 sm:text-headline"><Words>{title}</Words></h2>
 
             {/* The area's hue is set ONCE, here: the tile below takes it only while its row is the
                 one showing, and the rule that times the row is the same hue at ink strength. */}
@@ -74,6 +77,7 @@ export function Spotlight({
                 <RT.Trigger
                   key={f.title}
                   value={String(i)}
+                  data-reveal="rise"
                   className="focus-ring group relative flex items-start gap-4 border-b border-line py-3.5 text-start transition-colors duration-fast ease-hover data-[state=inactive]:hover:bg-surface-hover lg:py-5"
                 >
                   <IconTile icon={f.icon} hue={hue} showing="state" />

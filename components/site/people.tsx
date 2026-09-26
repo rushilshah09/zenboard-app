@@ -29,6 +29,7 @@ import { cn } from '@/lib/cn';
 import { Users, type IconType, Sun, Folder, Wallet, Check, FileText, Timer } from '@/components/ds/icons';
 import { Icon } from '@/components/ds/ui';
 import { Cell, Eyebrow, HUE, Row, type Hue } from './visual';
+import { Words } from './words';
 
 type Person = {
   src: string;
@@ -79,17 +80,17 @@ export function People() {
     <RT.Root asChild value={String(who)} onValueChange={(v) => setWho(Number(v))}>
       <Row id="who" aria-labelledby="people-title">
         <Cell pad className="py-14 sm:py-16 lg:py-20">
-          <div className="site-reveal grid gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-end lg:gap-16">
+          <div data-reveal-group className="grid gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-end lg:gap-16">
             <div>
-              <Eyebrow hue="apricot" icon={Users}>Who it’s for</Eyebrow>
-              <h2 id="people-title" className="mt-6 max-w-[20ch] text-balance font-editorial text-h1 text-ink-900 sm:text-headline">
-                Made for the people who run the business and do the work.
+              <Eyebrow hue="apricot" icon={Users} data-reveal="rise">Who it’s for</Eyebrow>
+              <h2 id="people-title" data-reveal="words" className="mt-6 max-w-[20ch] text-balance font-editorial text-h1 text-ink-900 sm:text-headline">
+                <Words>Made for the people who run the business and do the work.</Words>
               </h2>
             </div>
             {/* The answer to the choice, in the reader's own place on the page. `key` makes each
                 answer a new element, so it arrives rather than mutating — the one animation here,
                 and it is a fade with a hair of rise (`site-swap`), not a slide. */}
-            <div className="max-w-[44ch]">
+            <div data-reveal="rise" className="max-w-[44ch]">
               <p key={who} className="site-swap text-body-lg text-ink-600">{chosen.line}</p>
               <ul key={`${who}-uses`} className="site-swap mt-4 flex flex-wrap gap-2" aria-label={`What ${chosen.who.toLowerCase()} use most`}>
                 {chosen.uses.map((u) => (
@@ -114,7 +115,7 @@ export function People() {
                 className="focus-ring block h-full w-full text-start"
                 aria-label={`${p.who}: ${p.line}`}
               >
-                <figure className="site-reveal flex h-full flex-col">
+                <figure data-reveal="lift" className="flex h-full flex-col">
                   <div className="overflow-hidden">
                     {/* eslint-disable-next-line @next/next/no-img-element -- pre-sized in /public; there is nothing for next/image to do on this host */}
                     <img
@@ -130,7 +131,7 @@ export function People() {
                         // The chosen one is in colour and a touch closer; the others wait in black and
                         // white (user, 2026-09-26), warming a little under the pointer. A filter, not
                         // an overlay: a scrim over a photograph reads as a disabled control.
-                        i === who ? 'scale-[1.02]' : 'grayscale group-hover:grayscale-[55%]',
+                        i === who ? 'scale-[1.02]' : 'grayscale group-hover:scale-[1.01] group-hover:grayscale-[55%]',
                       )}
                     />
                   </div>

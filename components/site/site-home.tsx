@@ -18,27 +18,32 @@
 //   · the words: Rubik for what the page SAYS (the product's title face), Geist for everything you
 //     operate or scan. One filled button per screen: the hero's.
 //
-// Motion is scroll-linked and progressive (globals.css): nothing waits on a script to be readable, and
-// less motion means nothing moves or advances on its own.
+// Motion (globals.css, "the website arrives as it is read"; site-motion.tsx): the first screen arrives
+// on CSS alone, a heading a word at a time; everything below it arrives as it scrolls into view, and
+// each section's rule draws out to the window's edges. The grid's line lights up where the pointer is.
+// Nothing waits on a script to be readable, and less motion means nothing moves or advances on its own.
 
 import Link from 'next/link';
 import * as React from 'react';
 import { ArrowRight, Check, CursorClick, Keyboard, Receipt } from '@/components/ds/icons';
-import { Avatar, Icon, Mark, button, cardClass } from '@/components/ds/ui';
+import { Avatar, Icon, Mark, Toaster, button, cardClass } from '@/components/ds/ui';
 import { cn } from '@/lib/cn';
 import { DayArea, MoneyArea, PortalArea, ProjectsArea } from './areas';
 import { siteLoaderScript } from '@/lib/site-loader';
 import { Bento } from './bento';
 import { CookieConsent } from './cookie-consent';
+import { GuestFocus } from './guest-focus';
 import { Halftone } from './halftone';
 import { LiveHome } from './live-home';
 import { Loop } from './loop';
 import { People } from './people';
 import { SiteLoader } from './site-loader';
+import { SiteMotion } from './site-motion';
 import { Questions, SIGN_UP, SiteFooter, SiteNav } from './site-chrome';
 import { MEASURE } from './measure';
 import { FACES } from './faces';
 import { Cell, Eyebrow, Grid, Row } from './visual';
+import { Words } from './words';
 
 function Hero() {
   const step = (n: number) => ({ '--rise-step': n }) as React.CSSProperties;
@@ -62,17 +67,19 @@ function Hero() {
             For people who run a creative business
           </p>
           {/* One sentence to a line: the three steps of a day, read as three steps. On a phone the longest
-              wraps inside itself, and never runs on into the next ("matters. Do the / work."). */}
-          <h1 id="hero-title" className="site-rise zb-enter mt-6 font-editorial text-headline text-ink-900 sm:text-hero" style={step(1)}>
-            <span className="block">Open Zenboard. </span>
-            <span className="block">Know what matters. </span>
-            <span className="block">Do the work.</span>
+              wraps inside itself, and never runs on into the next ("matters. Do the / work."). It
+              arrives a word at a time; the words are counted on across the lines. */}
+          <h1 id="hero-title" className="site-rise-words zb-enter mt-6 font-editorial text-headline text-ink-900 sm:text-hero" style={step(1)}>
+            <span className="block"><Words>Open Zenboard.</Words> </span>
+            <span className="block"><Words from={2}>Know what matters.</Words> </span>
+            <span className="block"><Words from={5}>Do the work.</Words></span>
           </h1>
-          <p className="site-rise zb-enter mt-6 max-w-[50ch] text-body-lg text-ink-600" style={step(2)}>
+          {/* After the heading's last words have started (its eight words take up six steps). */}
+          <p className="site-rise zb-enter mt-6 max-w-[50ch] text-body-lg text-ink-600" style={step(5)}>
             Your day, your clients, your documents and your money in one calm workspace. It’s all connected,
             so the work around the work gets out of your way.
           </p>
-          <div className="site-rise zb-enter mt-8 flex flex-wrap items-center gap-3" style={step(3)}>
+          <div className="site-rise zb-enter mt-8 flex flex-wrap items-center gap-3" style={step(6)}>
             <Link href={SIGN_UP} className={button({ variant: 'primary', size: 'lg' })}>Start free</Link>
             <a href="#how" className={cn(button({ variant: 'ghost', size: 'lg' }), 'group')}>
               See how it works
@@ -85,12 +92,13 @@ function Hero() {
   );
 }
 
-/** A piece of the product resting on the showcase, lifted a little further than the app, drifting. */
-function Resting({ className, drift = 0, children }: { className?: string; drift?: number; children: React.ReactNode }) {
+/** A piece of the product resting on the showcase, lifted a little further than the app, drifting. It
+    lands just after the app does (`step`), the way these things arrive in the day. */
+function Resting({ className, drift = 0, step, children }: { className?: string; drift?: number; step: number; children: React.ReactNode }) {
   return (
     // `z-[1]`: above the app it rests on, and BELOW the sticky navigation (`z-sticky`, 10). At 10 it
     // tied with the navigation and, coming later in the page, painted over it while scrolling.
-    <div aria-hidden inert className={cn('site-reveal pointer-events-none absolute z-[1] select-none max-xl:hidden', className)}>
+    <div aria-hidden inert className={cn('site-rise-lift zb-enter pointer-events-none absolute z-[1] select-none max-xl:hidden', className)} style={{ '--rise-step': step } as React.CSSProperties}>
       <div
         className={cardClass('site-lift site-drift flex items-center gap-2.5 rounded-lg px-3.5 py-2.5 text-caption')}
         style={{ '--drift-at': `calc(var(--site-shimmer) * ${-drift})` } as React.CSSProperties}
@@ -113,26 +121,27 @@ function Showcase() {
     <Row aria-label="Zenboard’s Home, working">
     <Cell className="site-field site-field-hero site-pad overflow-hidden pb-6 pt-8 sm:pb-12 sm:pt-12 lg:pb-16 lg:pt-16">
       <Halftone mark={{ x: 0.5, y: 0.56, size: 1.9 }} />
-      <p className="site-reveal relative mx-auto mb-4 flex w-full max-w-[1180px] items-center gap-1.5 text-caption text-ink-700">
+      {/* Part of the first screen, so it arrives with it: after the hero's buttons, the app itself. */}
+      <p className="site-rise zb-enter relative mx-auto mb-4 flex w-full max-w-[1180px] items-center gap-1.5 text-caption text-ink-700" style={{ '--rise-step': 8 } as React.CSSProperties}>
         <Icon icon={CursorClick} size={14} />Try it: tick a task, or pick today’s highlight.
       </p>
-      <div className="relative mx-auto w-full max-w-[1180px]">
+      <div className="site-rise-lift zb-enter relative mx-auto w-full max-w-[1180px]" style={{ '--rise-step': 9 } as React.CSSProperties}>
         <div className="site-tilt">
           <div className="site-glass rounded-xl">
             <LiveHome fluid />
           </div>
         </div>
-        <Resting className="-start-12 bottom-24" drift={0}>
+        <Resting className="-start-12 bottom-24" drift={0} step={14}>
           <Avatar name="Priya Nair" src={FACES.priya} size="sm" decorative />
           <p className="text-ink-800"><span className="font-medium text-ink-900">Priya</span> approved the logo presentation</p>
           <span className="ms-1 text-ink-500">now</span>
         </Resting>
-        <Resting className="-end-12 top-28" drift={0.35}>
+        <Resting className="-end-12 top-28" drift={0.35} step={15}>
           <Icon icon={Receipt} size={16} weight="fill" className="text-ink-500" />
           <span className="font-medium text-ink-900">INV-021 paid · $4,200</span>
           <Icon icon={Check} size={14} className="text-success-600" />
         </Resting>
-        <Resting className="-end-8 bottom-10" drift={0.65}>
+        <Resting className="-end-8 bottom-10" drift={0.65} step={16}>
           <span className="site-pulse size-1.5 rounded-full bg-success-600" />
           <span className="font-medium text-ink-900">Now · Ridgeline call</span>
           <span className="text-ink-500">11:30</span>
@@ -147,12 +156,12 @@ function Details() {
   return (
     <Row id="details" aria-labelledby="details-title">
       <Cell pad className="py-14 sm:py-16 lg:py-20">
-        <div className="site-reveal grid gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-end lg:gap-16">
+        <div data-reveal-group className="grid gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-end lg:gap-16">
           <div>
-            <Eyebrow hue="periwinkle" icon={Keyboard}>The details</Eyebrow>
-            <h2 id="details-title" className="mt-6 text-balance font-editorial text-h1 text-ink-900 sm:text-headline">Small things, done properly.</h2>
+            <Eyebrow hue="periwinkle" icon={Keyboard} data-reveal="rise">The details</Eyebrow>
+            <h2 id="details-title" data-reveal="words" className="mt-6 text-balance font-editorial text-h1 text-ink-900 sm:text-headline"><Words>Small things, done properly.</Words></h2>
           </div>
-          <p className="max-w-[44ch] text-body-lg text-ink-600">The parts you use a hundred times a day, made to be quick and to stay out of the way.</p>
+          <p data-reveal="rise" className="max-w-[44ch] text-body-lg text-ink-600">The parts you use a hundred times a day, made to be quick and to stay out of the way.</p>
         </div>
       </Cell>
       <Bento />
@@ -164,13 +173,13 @@ function Faq() {
   return (
     <Row id="faq" aria-labelledby="faq-title">
       <Cell pad className="py-14 sm:py-16 lg:col-span-4 lg:py-20">
-        <div className="site-reveal">
-          <p className="text-ui font-medium text-ink-500">Questions</p>
-          <h2 id="faq-title" className="mt-6 text-balance font-editorial text-h1 text-ink-900 sm:text-headline">The things people ask first.</h2>
+        <div data-reveal-group>
+          <p data-reveal="rise" className="text-ui font-medium text-ink-500">Questions</p>
+          <h2 id="faq-title" data-reveal="words" className="mt-6 text-balance font-editorial text-h1 text-ink-900 sm:text-headline"><Words>The things people ask first.</Words></h2>
         </div>
       </Cell>
       <Cell pad className="pb-14 pt-4 sm:pb-16 lg:col-span-8 lg:pt-16">
-        <div className="site-reveal"><Questions /></div>
+        <Questions />
       </Cell>
     </Row>
   );
@@ -186,6 +195,7 @@ export function SiteHome() {
       {/* Decided before anything below it paints: plays the loader on an open, at most every 4 hours. */}
       <script dangerouslySetInnerHTML={{ __html: siteLoaderScript }} />
       <SiteLoader />
+      <SiteMotion />
       <div aria-hidden className="site-guides"><div className={cn(MEASURE, 'h-full')}><div className="h-full border-x border-line" /></div></div>
       <SiteNav />
       <main className={MEASURE}>
@@ -204,6 +214,9 @@ export function SiteHome() {
       </main>
       <SiteFooter />
       <CookieConsent />
+      {/* The focus session anyone can start from the logo, and the one place the site says "done". */}
+      <GuestFocus />
+      <Toaster />
     </div>
   );
 }

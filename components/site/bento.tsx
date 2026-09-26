@@ -33,9 +33,12 @@ const SHORTCUTS = [
 /** One cell of the grid: its glyph, a title that says what it is, a line that says why, and the thing itself. */
 function Card({ className, icon, hue, title, body, children }: { className?: string; icon: IconType; hue: Hue; title: string; body: string; children?: React.ReactNode }) {
   return (
-    <Cell className={cn('flex flex-col gap-6 p-6 sm:p-8', className)}>
-      <div className="site-reveal flex items-start gap-4">
-        <IconTile icon={icon} hue={hue} />
+    // Its words arrive, then the thing itself (each child is `data-reveal="rise"`); the cell does not
+    // fade, because a cell fading in shows the grid's line behind it. Under the pointer its tile turns
+    // a little toward the reader, the one sign the card is more than a picture.
+    <Cell data-reveal-group className={cn('group/card flex flex-col gap-6 p-6 sm:p-8', className)}>
+      <div data-reveal="rise" className="flex items-start gap-4">
+        <IconTile icon={icon} hue={hue} className="transition-transform duration-slow ease-out-quiet group-hover/card:-rotate-6 group-hover/card:scale-105" />
         <div className="min-w-0 pt-[7px]">
           <p className="text-body-lg font-medium leading-snug text-ink-900">{title}</p>
           <p className="mt-1.5 max-w-[42ch] text-ui text-ink-600">{body}</p>
@@ -57,7 +60,7 @@ function CommandDemo() {
   const here = React.useRef(false);
   const arrive = () => { here.current = true; };
   return (
-    <div className="flex flex-1 flex-col gap-3" onPointerEnter={arrive} onFocusCapture={arrive}>
+    <div data-reveal="rise" className="flex flex-1 flex-col gap-3" onPointerEnter={arrive} onFocusCapture={arrive}>
       <Command
         className={cardClass('shadow-panel')}
         loop
@@ -102,7 +105,7 @@ export function Bento() {
       </Card>
 
       <Card className="lg:col-span-6" icon={Keyboard} hue="periwinkle" title="Shortcuts you learn once" body="The keys follow the words: H highlights, E completes, G then P goes to Projects.">
-        <ul className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
+        <ul data-reveal="rise" className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
           {SHORTCUTS.map((s) => (
             <li key={s.label} className="flex items-center justify-between gap-3 rounded-md px-2 py-1 text-ui text-ink-800 transition-colors duration-fast ease-hover hover:bg-surface-hover">
               {s.label}<Kbd keys={s.keys} />
@@ -112,7 +115,7 @@ export function Bento() {
       </Card>
 
       <Card className="lg:col-span-6" icon={Timer} hue="periwinkle" title="Focus mode" body="One task on screen, a timer, and nothing else until you come back.">
-        <div className="mt-auto flex items-center gap-4 rounded-lg bg-surface-fill px-4 py-3">
+        <div data-reveal="rise" className="mt-auto flex items-center gap-4 rounded-lg bg-surface-fill px-4 py-3">
           <span className="text-title-3 tabular-nums text-ink-900">24:12</span>
           <span className="min-w-0 flex-1 truncate text-ui text-ink-700">Finish the logo presentation</span>
           <Kbd keys={['F']} />
@@ -120,14 +123,14 @@ export function Bento() {
       </Card>
 
       <Card className="lg:col-span-4" icon={CalendarIcon} hue="periwinkle" title="Your calendar, beside your tasks" body="Connect Google Calendar and your meetings sit on the same day as your plan.">
-        <ul className="mt-auto flex flex-col gap-1.5 text-ui">
+        <ul data-reveal="rise" className="mt-auto flex flex-col gap-1.5 text-ui">
           <li className="flex items-center gap-3 rounded-md bg-surface-fill px-3 py-2"><span className="tabular-nums text-caption text-ink-500">11:30</span><span className="truncate text-ink-800">Ridgeline call</span></li>
           <li className="flex items-center gap-3 rounded-md border border-line px-3 py-2"><span className="tabular-nums text-caption text-ink-500">14:00</span><span className="truncate text-ink-900">Type and color system</span></li>
         </ul>
       </Card>
 
       <Card className="lg:col-span-4" icon={Mail} hue="periwinkle" title="Your day, in your inbox" body="A short email each morning: the highlight, the plan, and what is waiting on others.">
-        <div className={cardClass('mt-auto px-4 py-3 text-ui')}>
+        <div data-reveal="rise" className={cardClass('mt-auto px-4 py-3 text-ui')}>
           <p className="text-caption text-ink-500">Zenboard · 7:30</p>
           <p className="mt-1 font-medium text-ink-900">Thursday: 4 tasks, 2 meetings</p>
           <p className="mt-0.5 truncate text-ink-600">Highlight: Send the Ridgeline invoice</p>
@@ -135,7 +138,7 @@ export function Bento() {
       </Card>
 
       <Card className="lg:col-span-4" icon={Plug} hue="periwinkle" title="Bring your work with you" body="Import your pages from Notion. Connect an AI assistant through Zenboard’s MCP server.">
-        <ul className="mt-auto flex flex-col gap-1.5 text-ui text-ink-800">
+        <ul data-reveal="rise" className="mt-auto flex flex-col gap-1.5 text-ui text-ink-800">
           <li className="flex items-center gap-2.5"><Icon icon={Upload} size={16} weight="fill" className="text-ink-500" />Import from Notion</li>
           <li className="flex items-center gap-2.5"><Icon icon={Plug} size={16} weight="fill" className="text-ink-500" />MCP server for AI assistants</li>
         </ul>
