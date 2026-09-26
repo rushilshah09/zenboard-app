@@ -68,12 +68,26 @@ export function Warp({ onDone }: { onDone: () => void }) {
     }));
     const total = ms(getComputedStyle(document.documentElement).getPropertyValue('--site-warp'), 1400);
 
+    // The session starts when the warp ends, so the warp must END even when frames do not come: a tab
+    // put in the background the moment it starts gets no frames at all. The clock is the backstop.
     let raf = 0;
+    let over = false;
+    const finish = () => {
+      if (over) return;
+      over = true;
+      cancelAnimationFrame(raf);
+      window.clearTimeout(backstop);
+      done.current();
+    };
+    const backstop = window.setTimeout(finish, total + 250);
     let last = performance.now();
     const start = last;
     const frame = (t: number) => {
-      const p = Math.min(1, (t - start) / total);
-      const dt = Math.min(0.05, (t - last) / 1000);
+      // A frame's timestamp is when the frame began, which can be a hair BEFORE the moment this
+      // started: held at 0, or the first frame's speed is a fractional power of a negative number
+      // (NaN), and drawing with it throws and ends the loop.
+      const p = Math.min(1, Math.max(0, (t - start) / total));
+      const dt = Math.min(0.05, Math.max(0, (t - last) / 1000));
       last = t;
       // Into the jump and out of it: the speed rises to its peak and falls away again, so it arrives.
       const speed = Math.pow(Math.sin(Math.PI * p), 1.6);
@@ -108,11 +122,15 @@ export function Warp({ onDone }: { onDone: () => void }) {
         ctx.stroke();
       }
       if (p < 1) raf = requestAnimationFrame(frame);
-      else done.current();
+      else finish();
     };
     raf = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      over = true;
+      cancelAnimationFrame(raf);
+      window.clearTimeout(backstop);
+    };
   }, []);
 
-  return <canvas ref={ref} aria-hidden className="pointer-events-none absolute inset-0 size-full" />;
+  return <canvas ref={ref} data-warp aria-hidden className="pointer-events-none absolute inset-0 size-full" />;
 }

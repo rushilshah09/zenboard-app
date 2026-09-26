@@ -419,7 +419,12 @@ describe('a focus session without an account', () => {
     expect(warp).toMatch(/window\.matchMedia\('\(prefers-reduced-motion: reduce\)'\)\.matches\) \{\s*done\.current\(\);/);
     expect(warp).toMatch(/getPropertyValue\('--site-warp'\)/);
     expect(globals).toMatch(/:root \{ --site-warp: [\d.]+s; \}/);
-    expect(warp).toMatch(/<canvas ref=\{ref\} aria-hidden /);
+    expect(warp).toMatch(/<canvas ref=\{ref\} data-warp aria-hidden /);
+    // A frame can be stamped a hair before the start: progress is held at 0, never negative (a
+    // negative progress made the speed NaN and drawing threw, ending the loop mid-warp).
+    expect(warp).toMatch(/const p = Math\.min\(1, Math\.max\(0, \(t - start\) \/ total\)\);/);
+    // The session starts when the warp ends, so it ends on the clock even if no frame comes.
+    expect(warp).toMatch(/const backstop = window\.setTimeout\(finish, total \+ 250\);/);
   });
 
   it('moves into the account the first time Zenboard opens signed in', () => {

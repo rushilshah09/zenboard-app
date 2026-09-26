@@ -202,6 +202,75 @@ try {
   check(!(await bannerUp()) && /"analytics":false/.test(gpcSaid), 'Global Privacy Control is recorded as a decline, and nothing is asked', gpcSaid);
   await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: gpc.identifier });
 
+  // ── The logo, and a focus session without an account ───────────────────
+  console.log('\n── the logo ──');
+  await open('no-preference');
+  // What the page hands the clipboard is what is checked (a headless clipboard may be closed).
+  await ev(`window.__copied = []; navigator.clipboard.writeText = async (t) => { window.__copied.push(t); }`);
+  const logoAt = await ev(`(() => { const r = document.querySelector('header a[aria-label="Zenboard home"]').getBoundingClientRect(); return { x: r.left + 12, y: r.top + r.height / 2 }; })()`);
+  const rightClick = async (p) => {
+    await move(p.x, p.y);
+    await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: p.x, y: p.y, button: 'right', clickCount: 1 });
+    await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: p.x, y: p.y, button: 'right', clickCount: 1 });
+    await sleep(300);
+  };
+  // Enter as a keyboard types it, character and all: without the character a form never submits.
+  const enter = async () => {
+    await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, text: '\r' });
+    await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
+  };
+  const menuItem = (label) => `[...document.querySelectorAll('[data-slot="context-menu-content"] [role="menuitem"]')].find((i) => i.textContent === ${JSON.stringify(label)})`;
+  await rightClick(logoAt);
+  const offered = await ev(`[...document.querySelectorAll('[data-slot="context-menu-content"] [role="menuitem"]')].map((i) => i.textContent)`);
+  check(JSON.stringify(offered) === JSON.stringify(['Copy wordmark as SVG', 'Copy logo as SVG', 'Start focus session']), 'a right-click on the logo offers the wordmark, the logo and a focus session', offered);
+  await click(await centre(menuItem('Copy wordmark as SVG')));
+  await sleep(400);
+  const file = await ev(`window.__copied[0] ?? ''`);
+  check(file.startsWith('<svg xmlns="http://www.w3.org/2000/svg" width="152" height="32"') && file.includes('fill="#C41C72"') && !/var\(|currentColor|class=/.test(file), 'Copy wordmark hands over a standalone file in the brand\'s colours', file.slice(0, 90));
+  check(await ev(`document.body.textContent.includes('Wordmark copied as SVG')`), 'and says so');
+
+  // Circle the pointer round the mark: it turns with it, and settles on a quarter turn when let go.
+  const mid = await ev(`(() => { const r = document.querySelector('header a[aria-label="Zenboard home"] svg > path').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
+  for (let i = 0; i <= 32; i++) { const a = (i / 32) * Math.PI * 2; await move(mid.x + Math.cos(a) * 18, mid.y + Math.sin(a) * 18); await sleep(16); }
+  const turning = await ev(`parseFloat((document.querySelector('header a[aria-label="Zenboard home"] svg > path').style.transform.match(/rotate\\(([-\\d.]+)deg\\)/) ?? [])[1] ?? '0')`);
+  check(Math.abs(turning) > 90, 'circling the mark turns it', turning);
+  await move(mid.x + 500, mid.y + 400); await sleep(900);
+  const rest = await ev(`parseFloat((document.querySelector('header a[aria-label="Zenboard home"] svg > path').style.transform.match(/rotate\\(([-\\d.]+)deg\\)/) ?? [])[1] ?? '0')`);
+  check(Math.abs(rest - Math.round(rest / 90) * 90) < 1, 'and it comes to rest on a quarter turn, which is how it always looks', rest);
+
+  console.log('\n── a focus session without an account ──');
+  await ev(`localStorage.removeItem('zb-guest-focus')`);
+  await rightClick(logoAt);
+  await click(await centre(menuItem('Start focus session')));
+  await sleep(500);
+  check(await ev(`document.querySelector('[role=dialog] h2')?.textContent === 'Focus session'`), 'Start focus session opens it, no account asked');
+  await send('Input.insertText', { text: 'Logo presentation' });
+  await enter();
+  await sleep(300);
+  check(await ev(`!!document.querySelector('[data-warp]') && !document.querySelector('[role=timer]')`), 'starting it enters through the warp');
+  await sleep(1800);
+  const clockSaid = await ev(`document.querySelector('[role=timer]')?.textContent ?? ''`);
+  check(/^2[45]:\d\d$/.test(clockSaid) && /Focus session/.test(await ev('document.title')), 'and lands on the session: the clock running, the tab saying the time', clockSaid);
+  // Twenty-six minutes later (the clock reads the wall clock, so moving the wall clock is enough).
+  await ev(`(() => { const real = Date.now.bind(Date); Date.now = () => real() + 26 * 60000; })()`);
+  await sleep(900);
+  check(/Session done\./.test(await ev(`document.querySelector('[role=dialog]')?.textContent ?? ''`)), 'when the time is up, it is done');
+  const keptNow = await ev(`localStorage.getItem('zb-guest-focus') ?? ''`);
+  check(/"minutes":25/.test(keptNow) && /Logo presentation/.test(keptNow), 'and the session is kept on this device, to move into the account on signing in', keptNow);
+  await key('Escape');
+  await sleep(300);
+  check(await ev(`!document.querySelector('[role=dialog]')`), 'Escape closes it');
+
+  await open('reduce');
+  await ev(`localStorage.removeItem('zb-guest-focus')`);
+  await rightClick(logoAt);
+  await click(await centre(menuItem('Start focus session')));
+  await sleep(400);
+  await enter();
+  await sleep(250);
+  check(await ev(`!!document.querySelector('[role=timer]') && !document.querySelector('[data-warp]')`), 'with less motion, the session starts without the warp');
+  await key('Escape');
+
   // ── The legal pages ─────────────────────────────────────────────────────
   console.log('\n── the legal pages ──');
   for (const [path, title] of [['/legal', 'The terms we work by'], ['/legal/terms', 'Terms of service'], ['/legal/privacy-notice', 'Privacy notice'], ['/legal/cookie-notice', 'Cookie notice']]) {
@@ -212,6 +281,8 @@ try {
   const toc = await ev(`[...document.querySelectorAll('nav[aria-label="On this page"] a')].every((a) => document.getElementById(a.getAttribute('href').slice(1)))`);
   check(toc, 'every contents link lands on its part');
 
+  // An exception the page threw is a problem too; say what it was.
+  for (const e of errors.filter((m) => m.startsWith('exception: '))) console.log('  ✗ ' + e);
   console.log(errors.length ? `\n${errors.length} problem(s)` : '\n✓ every part works, and every motion rule holds');
 } finally {
   try { ws?.close(); } catch {}
