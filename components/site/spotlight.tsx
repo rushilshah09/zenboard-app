@@ -22,7 +22,7 @@ import { type IconType } from '@/components/ds/icons';
 import { cn } from '@/lib/cn';
 import { type MarkPlacement } from './halftone';
 import { Dwell, useAutoAdvance } from './use-auto-advance';
-import { Cell, Eyebrow, IconTile, Stage, type Field, type Hue } from './visual';
+import { Cell, Eyebrow, HUE, IconTile, Joints, Stage, type Field, type Hue } from './visual';
 
 export type Feature = {
   title: string;
@@ -59,21 +59,24 @@ export function Spotlight({
         aria-labelledby={`${id}-title`}
         data-running={running}
         {...hold}
-        className="col-span-full grid scroll-mt-20 grid-cols-subgrid gap-px"
+        className="site-row col-span-full grid scroll-mt-20 grid-cols-subgrid gap-px"
       >
+        <Joints />
         <Cell pad className={cn('flex flex-col justify-center py-14 sm:py-16 lg:col-span-6 lg:py-20', flip && 'lg:order-2')}>
           <div className="site-reveal">
             <Eyebrow hue={hue} icon={icon}>{name}</Eyebrow>
             <h2 id={`${id}-title`} className="mt-6 max-w-[15ch] text-balance font-editorial text-h1 text-ink-900 sm:text-headline">{title}</h2>
 
-            <RT.List aria-label={`${name}: what it does`} className="mt-10 flex flex-col border-t border-line">
+            {/* The area's hue is set ONCE, here: the tile below takes it only while its row is the
+                one showing, and the rule that times the row is the same hue at ink strength. */}
+            <RT.List aria-label={`${name}: what it does`} className={cn('mt-10 flex flex-col border-t border-line', HUE[hue])}>
               {features.map((f, i) => (
                 <RT.Trigger
                   key={f.title}
                   value={String(i)}
                   className="focus-ring group relative flex items-start gap-4 border-b border-line py-3.5 text-start transition-colors duration-fast ease-hover data-[state=inactive]:hover:bg-surface-hover lg:py-5"
                 >
-                  <IconTile icon={f.icon} hue={hue} />
+                  <IconTile icon={f.icon} hue={hue} showing="state" />
                   {/* The title's first line centres on the tile; the description hangs from the title, not from the tile. */}
                   <span className="min-w-0 flex-1 pt-[7px]">
                     <span className="block text-body-lg font-medium leading-snug text-ink-500 transition-colors duration-fast ease-hover group-data-[state=active]:text-ink-900">{f.title}</span>

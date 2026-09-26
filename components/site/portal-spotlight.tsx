@@ -32,7 +32,7 @@ export function PortalView({ initialSide = 'client' }: { initialSide?: Side }) {
 
       <div>
         {/* Keyed on the side, so switching reads as turning the page over rather than rows blinking. */}
-        <div key={side} className={cardClass('site-swap zb-enter site-lift w-full rounded-xl p-6 sm:p-8')}>
+        <div key={side} className={cardClass('site-swap zb-enter site-glass w-full rounded-xl p-6 sm:p-8')}>
           <p className="text-caption text-ink-500">{side === 'client' ? 'Shared by Northlight Studio' : 'Project · Ridgeline'}</p>
           <p className="mt-1 font-editorial text-title-1 text-ink-900">Ridgeline rebrand</p>
 

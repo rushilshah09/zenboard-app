@@ -28,11 +28,13 @@ import { Avatar, Icon, Mark, button, cardClass } from '@/components/ds/ui';
 import { cn } from '@/lib/cn';
 import { DayArea, MoneyArea, PortalArea, ProjectsArea } from './areas';
 import { Bento } from './bento';
+import { CookieConsent } from './cookie-consent';
 import { Halftone } from './halftone';
 import { LiveHome } from './live-home';
 import { Loop } from './loop';
 import { People } from './people';
-import { MEASURE, Questions, SIGN_UP, SiteFooter, SiteNav } from './site-chrome';
+import { Questions, SIGN_UP, SiteFooter, SiteNav } from './site-chrome';
+import { MEASURE } from './measure';
 import { FACES } from './faces';
 import { Cell, Eyebrow, Grid, Row } from './visual';
 
@@ -44,7 +46,12 @@ function Hero() {
           slowly under the halftone's wave, and thinning out toward the words so they always read first.
           Nothing else: the product has the next cell to itself. */}
       <Cell pad className="overflow-hidden pb-16 pt-20 sm:pb-24 sm:pt-28">
-        <Halftone mark={{ x: 0.76, y: 0.5, size: 0.96 }} fade="start" />
+        {/* HALF A MARK, not a whole one (user, 2026-09-26: "don't show full logo, show half cut
+            logo overflow"). A complete mark sitting inside the frame is a picture OF the logo;
+            one that runs off the edge is the same shape the rest of this page uses — something
+            larger than the window, seen in part. Centred on the right edge at nearly twice the
+            cell's short side, so about half of it is in frame and it is cut top and bottom too. */}
+        <Halftone mark={{ x: 0.92, y: 0.5, size: 1.12 }} fade="start" />
         <div className="relative max-w-[42rem]">
           <p className="site-rise zb-enter flex items-center gap-2 text-ui font-medium text-ink-800">
             <Mark size={16} tone="brand" />
@@ -70,7 +77,6 @@ function Hero() {
           </div>
         </div>
       </Cell>
-      <Showcase />
     </Row>
   );
 }
@@ -91,17 +97,22 @@ function Resting({ className, drift = 0, children }: { className?: string; drift
 
 /** THE PRODUCT, WHOLE: Home as it opens every morning, sidebar and all, working, on a picture in three
     layers (the hero's gradient, the mark printed over it in light, the app on top). It lies flat as you
-    scroll to it, and three pieces of the product rest on its edges, the way they arrive in the day. */
+    scroll to it, and three pieces of the product rest on its edges, the way they arrive in the day.
+    It is an ordinary cell (2026-09-26): it was briefly the page's one full-bleed band, and the user's
+    answer was to take the frame off the WHOLE page instead ("don't extend this section … I want extend
+    from both sides, all sections", site-chrome.tsx `MEASURE`). Its inset is a cell's own, so the
+    gradient starts on the same column every other section's words do. */
 function Showcase() {
   return (
-    <Cell className="site-field site-field-hero overflow-hidden px-3 pb-3 pt-8 sm:px-8 sm:pb-12 sm:pt-12 lg:px-16 lg:pb-20 lg:pt-16">
+    <Row aria-label="Zenboard’s Home, working">
+    <Cell className="site-field site-field-hero site-pad overflow-hidden pb-6 pt-8 sm:pb-12 sm:pt-12 lg:pb-16 lg:pt-16">
       <Halftone mark={{ x: 0.5, y: 0.56, size: 1.9 }} />
       <p className="site-reveal relative mx-auto mb-4 flex w-full max-w-[1180px] items-center gap-1.5 text-caption text-ink-700">
         <Icon icon={CursorClick} size={14} />Try it: tick a task, or pick today’s highlight.
       </p>
       <div className="relative mx-auto w-full max-w-[1180px]">
         <div className="site-tilt">
-          <div className="site-lift rounded-xl">
+          <div className="site-glass rounded-xl">
             <LiveHome fluid />
           </div>
         </div>
@@ -122,6 +133,7 @@ function Showcase() {
         </Resting>
       </div>
     </Cell>
+    </Row>
   );
 }
 
@@ -160,11 +172,17 @@ function Faq() {
 
 export function SiteHome() {
   return (
-    <div className="min-h-dvh bg-background">
+    // `isolate`: the lines that run past the sections are drawn behind them, and this is the ground
+    // they are drawn on.
+    <div className="relative isolate min-h-dvh overflow-x-clip bg-background">
+      {/* The grid's two outer rules, the height of the page: above the grid and below it, past the
+          navigation and the footer, they are the page's only lines. */}
+      <div aria-hidden className="site-guides"><div className={cn(MEASURE, 'h-full')}><div className="h-full border-x border-line" /></div></div>
       <SiteNav />
       <main className={MEASURE}>
         <Grid>
           <Hero />
+          <Showcase />
           <Loop />
           <People />
           <DayArea />
@@ -176,6 +194,7 @@ export function SiteHome() {
         </Grid>
       </main>
       <SiteFooter />
+      <CookieConsent />
     </div>
   );
 }

@@ -21,7 +21,7 @@ import { cn } from '@/lib/cn';
 import { FACES } from './faces';
 import { Halftone } from './halftone';
 import { Dwell, useAutoAdvance } from './use-auto-advance';
-import { Cell, Eyebrow } from './visual';
+import { Cell, Eyebrow, Joints } from './visual';
 
 /** The track between Zenboard and her portal, or between Zenboard and your day. */
 type Track = 'portal' | 'day';
@@ -115,7 +115,7 @@ function Line({ title, end, hops = null }: { title: string; end: React.ReactNode
 
 function Portal({ step }: { step: number }) {
   return (
-    <div className={cardClass('site-lift w-full max-w-[18rem] rounded-xl p-4')}>
+    <div className={cardClass('site-glass w-full max-w-[18rem] rounded-xl p-4')}>
       <div className="flex items-center gap-2.5">
         <Avatar name="Priya Nair" src={FACES.priya} size="sm" decorative />
         <div className="min-w-0">
@@ -170,7 +170,7 @@ function Day({ step }: { step: number }) {
   const task = arrive(step === 0 ? 2 : null);
   const paid = arrive(step === 3 ? 2 : null);
   return (
-    <div className={cardClass('site-lift w-full max-w-[18rem] rounded-xl p-4')}>
+    <div className={cardClass('site-glass w-full max-w-[18rem] rounded-xl p-4')}>
       <div className="flex items-center gap-2">
         <Mark size={18} tone="brand" />
         <p className="font-editorial text-body-lg font-medium text-ink-900">Your day</p>
@@ -210,8 +210,9 @@ export function Loop() {
         data-running={running}
         data-playing={seen}
         {...hold}
-        className="col-span-full grid scroll-mt-20 grid-cols-subgrid gap-px"
+        className="site-row col-span-full grid scroll-mt-20 grid-cols-subgrid gap-px"
       >
+        <Joints />
         <Cell pad className="py-14 sm:py-16 lg:py-20">
           <div className="site-reveal grid gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-end lg:gap-16">
             <div>
@@ -250,9 +251,15 @@ export function Loop() {
               className="focus-ring group relative col-span-full rounded-lg bg-background px-5 py-6 text-start transition-colors duration-fast ease-hover data-[state=inactive]:hover:bg-surface-hover sm:px-6 lg:col-span-3"
             >
               {i === active && auto && <Dwell onEnd={next} className="absolute inset-x-5 -top-px h-0.5 overflow-hidden sm:inset-x-6" />}
-              <p className="flex items-center gap-2 text-body-lg font-medium">
-                <span className="tabular-nums text-ink-500 group-data-[state=active]:text-accent">{i + 1}</span>
-                <span className="text-ink-500 transition-colors duration-fast ease-hover group-data-[state=active]:text-ink-900">{s.title}</span>
+              {/* A step's NUMBER AND ITS NAME are one thing, so they take one colour (user,
+                  2026-09-26: "make number and text both coloured in brand") — and the step you are
+                  on takes the brand, which is the same rule the feature lists follow: colour marks
+                  the one that is showing. The name is set in the titling face, because that is
+                  what it is. `text-accent-text` rather than the raw accent: berry is 2.91:1 on a
+                  dark card, and this list is read in both themes. */}
+              <p className="flex items-center gap-2 font-display text-body-lg font-medium">
+                <span className="tabular-nums text-ink-500 transition-colors duration-fast ease-hover group-data-[state=active]:text-accent-text">{i + 1}</span>
+                <span className="text-ink-500 transition-colors duration-fast ease-hover group-data-[state=active]:text-accent-text">{s.title}</span>
               </p>
               <p className="mt-2 max-w-[34ch] text-ui text-ink-500 group-data-[state=active]:text-ink-600">{s.body}</p>
             </RT.Trigger>

@@ -483,10 +483,6 @@ html[data-density="compact"] {
      behind a picture, an illustration (<Illustration>), never as a surface. (The website stopped
      standing its product on them: its grounds are the page itself, printed with the mark.) */
   --color-edge-image: var(--edge-image);
-  --color-field-petal: #EAB9CB;
-  --color-field-apricot: #ECBF9B;
-  --color-field-butter: #E5D494;
-  --color-field-sage: #B7CEAB;
   /* THE WEBSITE'S INK BLOCK — the footer's dark ground, the same in both themes (it is the site's
      closing statement, not a theme surface). The marketing palette's own dark section: Ink as the
      ground, Paper for copy on it (17:1), the dark theme's muted (6.4:1) and line. */
@@ -494,6 +490,10 @@ html[data-density="compact"] {
   --color-site-ink-fg: #FBFAF6;
   --color-site-ink-muted: #9B9B9B;
   --color-site-ink-line: #2F2F2F;
+  --color-field-petal: #EAB9CB;
+  --color-field-apricot: #ECBF9B;
+  --color-field-butter: #E5D494;
+  --color-field-sage: #B7CEAB;
   --color-field-sky: #A6D1E0;
   --color-field-periwinkle: #B8BDEE;
   --color-field-sand: #EEE7D9;
@@ -1000,6 +1000,54 @@ html[data-theme='dark'] {
   --site-lift: var(--edge-light), 0 1px 2px rgb(0 0 0 / 0.4), 0 32px 56px -26px rgb(0 0 0 / 0.75);
 }
 .site-lift { box-shadow: var(--site-lift); }
+/* The GLASS RING: a card of the product lying on a picture wears a band of the picture's own light
+   around it, as if seen through the edge of a pane (the user's reference, 2026-09-26). A spread
+   shadow, so it keeps the card's corner concentric at every radius, and it carries the lift under it. */
+:root { --site-glass-ring: color-mix(in oklab, var(--color-illustration-light) 46%, transparent); }
+html[data-theme='dark'] { --site-glass-ring: color-mix(in oklab, var(--color-illustration-light) 7%, transparent); }
+.site-glass { box-shadow: 0 0 0 10px var(--site-glass-ring), var(--site-lift); }
+
+/* THE LINES RUN ON (user, 2026-09-26: "extend the line", and then "I don't want a line and a shape:
+   like this, extended"). The sections keep the page's measure; their lines do not stop at it. Each
+   section's top rule runs out to both edges of the window (`.site-row::before`), the grid's foot does
+   too (`.site-foot::before`), and the grid's two outer rules run the height of the page
+   (`.site-guides`). Where they cross, at the grid's corners, the joint is the SAME star the grid makes
+   inside, where four rounded corners meet (`.site-joint`): the page beyond the frame reads as more of
+   the grid, not as a ruler laid over it. The rules are drawn BEHIND the grid, so inside it they are
+   simply the grid's own line and only the part beyond it shows. */
+.site-row, .site-foot { position: relative; }
+.site-row::before, .site-foot::before {
+  content: ''; position: absolute; z-index: -1; height: 1px; pointer-events: none;
+  inset-inline-start: calc(50% - 50vw); width: 100vw; background: var(--color-line);
+}
+.site-row::before { top: -1px; }
+.site-foot::before { bottom: 0; }
+/* A joint: a square of the line colour two corner-radii wide, with a quarter disc of that radius taken
+   out of each corner, which is exactly the space four cells with that corner leave between them. Its
+   middle pixel sits on the crossing: one pixel outside a row (the grid's own rule), on a foot's edge. */
+.site-joint {
+  --r: var(--radius-lg);
+  position: absolute; z-index: 1; pointer-events: none;
+  width: calc(2 * var(--r) + 1px); height: calc(2 * var(--r) + 1px);
+  top: calc(-1 * var(--r) - 1px);
+  background: var(--color-line);
+  -webkit-mask:
+    radial-gradient(circle at 0 0, transparent var(--r), #000 calc(var(--r) + 0.5px)) 0 0 / 50% 50% no-repeat,
+    radial-gradient(circle at 100% 0, transparent var(--r), #000 calc(var(--r) + 0.5px)) 100% 0 / 50% 50% no-repeat,
+    radial-gradient(circle at 0 100%, transparent var(--r), #000 calc(var(--r) + 0.5px)) 0 100% / 50% 50% no-repeat,
+    radial-gradient(circle at 100% 100%, transparent var(--r), #000 calc(var(--r) + 0.5px)) 100% 100% / 50% 50% no-repeat;
+  mask:
+    radial-gradient(circle at 0 0, transparent var(--r), #000 calc(var(--r) + 0.5px)) 0 0 / 50% 50% no-repeat,
+    radial-gradient(circle at 100% 0, transparent var(--r), #000 calc(var(--r) + 0.5px)) 100% 0 / 50% 50% no-repeat,
+    radial-gradient(circle at 0 100%, transparent var(--r), #000 calc(var(--r) + 0.5px)) 0 100% / 50% 50% no-repeat,
+    radial-gradient(circle at 100% 100%, transparent var(--r), #000 calc(var(--r) + 0.5px)) 100% 100% / 50% 50% no-repeat;
+}
+.site-joint[data-at='start'] { inset-inline-start: calc(-1 * var(--r) - 1px); }
+.site-joint[data-at='end'] { inset-inline-end: calc(-1 * var(--r) - 1px); }
+.site-joint[data-foot] { top: auto; bottom: calc(-1 * var(--r)); }
+.site-joint[data-foot][data-at='start'] { inset-inline-start: calc(-1 * var(--r)); }
+.site-joint[data-foot][data-at='end'] { inset-inline-end: calc(-1 * var(--r)); }
+.site-guides { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
 /* A cell's inset. */
 .site-pad { --cell-px: 20px; padding-inline: var(--cell-px); }
 @media (min-width: 40rem) { .site-pad { --cell-px: 32px; } }
@@ -1014,7 +1062,10 @@ html[data-theme='dark'] {
   --f-petal: var(--color-field-petal); --f-apricot: var(--color-field-apricot); --f-butter: var(--color-field-butter);
   --f-sage: var(--color-field-sage); --f-sky: var(--color-field-sky); --f-periwinkle: var(--color-field-periwinkle);
   --f-sand: var(--color-field-sand); --f-mist: var(--color-field-mist);
-  /* The print over a field is the illustration's light, not ink: the mark as light on the colour. */
+  /* What opens between a field's two hues (see `.site-field-*`): the illustration's own light. */
+  --f-light: var(--color-illustration-light);
+  /* The print over a field is the illustration's light, not ink: the mark as light on the colour.
+     (User, 2026-09-26: "use white colour halftone … in blend mode, not in brand colour".) */
   --site-glyph: color-mix(in oklab, var(--color-illustration-light) 60%, transparent);
   --site-glyph-strong: color-mix(in oklab, var(--color-illustration-light) 92%, transparent);
 }
@@ -1027,67 +1078,85 @@ html[data-theme='dark'] .site-field {
   --f-periwinkle: color-mix(in oklch, var(--color-field-periwinkle) 30%, var(--color-background));
   --f-sand: color-mix(in oklch, var(--color-field-sand) 10%, var(--color-background));
   --f-mist: color-mix(in oklch, var(--color-field-mist) 10%, var(--color-background));
+  --f-light: var(--color-background);
   --site-glyph: color-mix(in oklab, var(--color-illustration-light) 8%, transparent);
   --site-glyph-strong: color-mix(in oklab, var(--color-illustration-light) 16%, transparent);
 }
-.site-field-hero {
-  /* Petal is the homepage hero's; butter is the day, and the picture is Home. */
+/* ── THE FIELDS ────────────────────────────────────────────────────────────
+   Restructured 2026-09-26 after studying Calendly's, at the user's request. Theirs are not clouds:
+   each is a VERTICAL ramp with real colour at the top and the bottom and the light opening through
+   the MIDDLE, which is where the product card sits — the card is backlit, and the panel reads as a
+   deliberate object rather than a blurred photograph. Ours were two corner radials on a neutral,
+   which is the airbrushed version: pretty, and saying nothing about where to look.
+
+   So: one recipe, two hues per area (the same pairs that were already chosen, for the same
+   reasons), and the illustration's own light between them. In the dark the light between them is
+   the page's ground, so a field reads as tinted dark rather than as a pastel window cut into a
+   black page — the rule `.site-field` has always followed. */
+.site-field-hero, .site-field-how, .site-field-day,
+.site-field-projects, .site-field-portal, .site-field-money {
   background:
-    radial-gradient(70% 90% at 96% 4%, var(--f-petal) 0%, transparent 64%),
-    radial-gradient(60% 80% at 4% 100%, var(--f-butter) 0%, transparent 62%),
-    var(--f-sand);
+    linear-gradient(180deg, var(--f-top) 0%, color-mix(in oklab, var(--f-top) 34%, var(--f-light)) 26%, transparent 52%),
+    linear-gradient(0deg, var(--f-bottom) 0%, color-mix(in oklab, var(--f-bottom) 30%, var(--f-light)) 24%, transparent 50%),
+    var(--f-light);
 }
-.site-field-how {
-  /* Her portal on the left in apricot (people), your day on the right in butter (the day). */
-  background:
-    radial-gradient(60% 100% at 0% 50%, var(--f-apricot) 0%, transparent 64%),
-    radial-gradient(60% 100% at 100% 50%, var(--f-butter) 0%, transparent 64%),
-    var(--f-sand);
-}
-.site-field-day {
-  /* The day's own arc: butter where it starts, periwinkle (the evening shutdown) where it ends. */
-  background:
-    radial-gradient(80% 90% at 0% 0%, var(--f-butter) 0%, transparent 64%),
-    radial-gradient(70% 80% at 100% 100%, var(--f-periwinkle) 0%, transparent 60%),
-    var(--f-sand);
-}
-.site-field-projects {
-  /* Sky for time (the calendar), periwinkle for quiet work (the briefs). */
-  background:
-    radial-gradient(80% 90% at 100% 0%, var(--f-sky) 0%, transparent 62%),
-    radial-gradient(80% 90% at 0% 100%, var(--f-periwinkle) 0%, transparent 62%),
-    var(--f-mist);
-}
-.site-field-portal {
-  /* Apricot for people, the client; petal for the brand's own moment, the page she opens. */
-  background:
-    radial-gradient(80% 90% at 0% 0%, var(--f-apricot) 0%, transparent 64%),
-    radial-gradient(70% 90% at 100% 100%, var(--f-petal) 0%, transparent 60%),
-    var(--f-sand);
-}
-.site-field-money {
-  /* Sage for growth (finance); sky for the tracked time an invoice is made of. */
-  background:
-    radial-gradient(80% 90% at 100% 0%, var(--f-sage) 0%, transparent 62%),
-    radial-gradient(70% 80% at 0% 100%, var(--f-sky) 0%, transparent 60%),
-    var(--f-mist);
-}
+/* Petal is the homepage hero's; butter is the day, and the picture is Home. */
+.site-field-hero { --f-top: var(--f-petal); --f-bottom: var(--f-butter); }
+/* Her portal in apricot (people), your day in butter. */
+.site-field-how { --f-top: var(--f-apricot); --f-bottom: var(--f-butter); }
+/* The day's own arc: butter where it starts, periwinkle (the evening shutdown) where it ends. */
+.site-field-day { --f-top: var(--f-butter); --f-bottom: var(--f-periwinkle); }
+/* Sky for time (the calendar), periwinkle for quiet work (the briefs). */
+.site-field-projects { --f-top: var(--f-sky); --f-bottom: var(--f-periwinkle); }
+/* Apricot for people, the client; petal for the brand's own moment, the page she opens. */
+.site-field-portal { --f-top: var(--f-apricot); --f-bottom: var(--f-petal); }
+/* Sage for growth (finance); sky for the tracked time an invoice is made of. */
+.site-field-money { --f-top: var(--f-sage); --f-bottom: var(--f-sky); }
 
 /* A feature's icon tile, in its area's colour: the field as the ground and the palette's ink as the
    glyph (the palette's "ink on a field": 7:1 or better on every field). In the dark, the dimmed field,
    and the field colour itself as the glyph. */
-.site-tile-petal { background: var(--color-field-petal); color: var(--color-ink-900); }
-.site-tile-apricot { background: var(--color-field-apricot); color: var(--color-ink-900); }
-.site-tile-butter { background: var(--color-field-butter); color: var(--color-ink-900); }
-.site-tile-sage { background: var(--color-field-sage); color: var(--color-ink-900); }
-.site-tile-sky { background: var(--color-field-sky); color: var(--color-ink-900); }
-.site-tile-periwinkle { background: var(--color-field-periwinkle); color: var(--color-ink-900); }
-html[data-theme='dark'] .site-tile-petal { background: color-mix(in oklch, var(--color-field-petal) 22%, var(--color-background)); color: var(--color-field-petal); }
-html[data-theme='dark'] .site-tile-apricot { background: color-mix(in oklch, var(--color-field-apricot) 22%, var(--color-background)); color: var(--color-field-apricot); }
-html[data-theme='dark'] .site-tile-butter { background: color-mix(in oklch, var(--color-field-butter) 20%, var(--color-background)); color: var(--color-field-butter); }
-html[data-theme='dark'] .site-tile-sage { background: color-mix(in oklch, var(--color-field-sage) 22%, var(--color-background)); color: var(--color-field-sage); }
-html[data-theme='dark'] .site-tile-sky { background: color-mix(in oklch, var(--color-field-sky) 22%, var(--color-background)); color: var(--color-field-sky); }
-html[data-theme='dark'] .site-tile-periwinkle { background: color-mix(in oklch, var(--color-field-periwinkle) 22%, var(--color-background)); color: var(--color-field-periwinkle); }
+/* ── AN AREA'S HUE, SAID ONCE ──────────────────────────────────────────────
+   Calendly's rule, and the user's (2026-09-26): colour marks the ONE thing that is showing.
+   Every feature in a list is the same quiet ink; the one on screen takes its area's colour, and
+   the rule that times it is that colour too, so there is a single thing to follow down the page.
+
+   `--site-hue` is the area's field colour · `--site-hue-fg` the ink that reads on it · and
+   `--site-hue-ink` is the same hue at INK strength, because a 2px rule in a pale field colour is
+   invisible on white and the bar is the one part that must be seen. Set once per area; the
+   eyebrow, the tile and the dwell all read it, so an area's colour is written in one place.
+   In the dark the field is dimmed into the page and the hue itself becomes the ink, exactly as
+   the tiles have always done. */
+.site-hue-petal { --site-hue: var(--color-field-petal); --site-hue-fg: var(--color-ink-900); --site-hue-ink: color-mix(in oklab, var(--color-field-petal) 58%, var(--color-ink-900)); }
+.site-hue-apricot { --site-hue: var(--color-field-apricot); --site-hue-fg: var(--color-ink-900); --site-hue-ink: color-mix(in oklab, var(--color-field-apricot) 58%, var(--color-ink-900)); }
+.site-hue-butter { --site-hue: var(--color-field-butter); --site-hue-fg: var(--color-ink-900); --site-hue-ink: color-mix(in oklab, var(--color-field-butter) 58%, var(--color-ink-900)); }
+.site-hue-sage { --site-hue: var(--color-field-sage); --site-hue-fg: var(--color-ink-900); --site-hue-ink: color-mix(in oklab, var(--color-field-sage) 58%, var(--color-ink-900)); }
+.site-hue-sky { --site-hue: var(--color-field-sky); --site-hue-fg: var(--color-ink-900); --site-hue-ink: color-mix(in oklab, var(--color-field-sky) 58%, var(--color-ink-900)); }
+.site-hue-periwinkle { --site-hue: var(--color-field-periwinkle); --site-hue-fg: var(--color-ink-900); --site-hue-ink: color-mix(in oklab, var(--color-field-periwinkle) 58%, var(--color-ink-900)); }
+html[data-theme='dark'] .site-hue-petal { --site-hue: color-mix(in oklch, var(--color-field-petal) 22%, var(--color-background)); --site-hue-fg: var(--color-field-petal); --site-hue-ink: var(--color-field-petal); }
+html[data-theme='dark'] .site-hue-apricot { --site-hue: color-mix(in oklch, var(--color-field-apricot) 22%, var(--color-background)); --site-hue-fg: var(--color-field-apricot); --site-hue-ink: var(--color-field-apricot); }
+html[data-theme='dark'] .site-hue-butter { --site-hue: color-mix(in oklch, var(--color-field-butter) 22%, var(--color-background)); --site-hue-fg: var(--color-field-butter); --site-hue-ink: var(--color-field-butter); }
+html[data-theme='dark'] .site-hue-sage { --site-hue: color-mix(in oklch, var(--color-field-sage) 22%, var(--color-background)); --site-hue-fg: var(--color-field-sage); --site-hue-ink: var(--color-field-sage); }
+html[data-theme='dark'] .site-hue-sky { --site-hue: color-mix(in oklch, var(--color-field-sky) 22%, var(--color-background)); --site-hue-fg: var(--color-field-sky); --site-hue-ink: var(--color-field-sky); }
+html[data-theme='dark'] .site-hue-periwinkle { --site-hue: color-mix(in oklch, var(--color-field-periwinkle) 22%, var(--color-background)); --site-hue-fg: var(--color-field-periwinkle); --site-hue-ink: var(--color-field-periwinkle); }
+
+/* Always coloured: an area's name wears its colour wherever it appears. */
+.site-tile { background: var(--site-hue); color: var(--site-hue-fg); }
+
+/* Coloured only WHILE SHOWING. The tile fades in behind the glyph and the two weights cross-fade,
+   so it reads as one icon lighting up rather than two icons swapping (better-ui: animate an icon
+   with opacity and colour, never by toggling visibility; outline is the resting variant and fill
+   marks the active one). */
+.site-feature-tile {
+  background: transparent;
+  color: var(--color-ink-400);
+  transition: background-color var(--duration-base) var(--ease-hover), color var(--duration-base) var(--ease-hover);
+}
+[data-state='active'] .site-feature-tile { background: var(--site-hue); color: var(--site-hue-fg); }
+.site-glyph-line, .site-glyph-fill { transition: opacity var(--duration-base) var(--ease-hover); }
+.site-glyph-fill { opacity: 0; }
+[data-state='active'] .site-glyph-fill { opacity: 1; }
+[data-state='active'] .site-glyph-line { opacity: 0; }
 /* The one dark cell: the glyphs change ink so the halftone reads on it. */
 .site-ink {
   --site-glyph: color-mix(in oklch, var(--color-site-ink-fg) 10%, var(--color-site-ink));
@@ -1180,13 +1249,13 @@ html[data-theme='dark'] .site-tile-periwinkle { background: color-mix(in oklch, 
   @keyframes reveal-down { from { opacity: 0; } }
   @keyframes reveal-up { to { opacity: 0; } }
   @keyframes fade-rise { from { opacity: 0; } }
+  @keyframes site-reveal { from { opacity: 0; } }
+  @keyframes site-tilt { from { opacity: 1; } }
+  @keyframes site-dwell { from { opacity: 1; } }
   @keyframes slideUp { from { opacity: 0; } }
   @keyframes blurin { from { opacity: 0; } }
   @keyframes popIn { from { opacity: 0; } }
   @keyframes zb-pop-in { from { opacity: 0; } to { opacity: 1; } }
-  @keyframes site-reveal { from { opacity: 0; } }
-  @keyframes site-tilt { from { opacity: 1; } }
-  @keyframes site-dwell { from { opacity: 1; } }
   @keyframes zb-modal-in { from { opacity: 0; } to { opacity: 1; } }
   /* A busy bar still says busy, without sweeping across the screen. */
   @keyframes indeterminate { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }

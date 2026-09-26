@@ -15,22 +15,21 @@ import {
   Popover, PopoverContent, PopoverTrigger, button,
 } from '@/components/ds/ui';
 import { cn } from '@/lib/cn';
+import { CookieSettingsLink } from './cookie-settings-link';
 import { Halftone } from './halftone';
-import { Cell, Grid } from './visual';
+import { GUTTER, MEASURE } from './measure';
+import { Cell, Grid, Joints } from './visual';
 
 export const SIGN_UP = '/login';
 export const LOG_IN = '/login';
 
-/** The page's measure: the grid and everything aligned to it (the navigation, the footer). */
-export const MEASURE = 'mx-auto w-full max-w-[1440px] px-3 sm:px-6';
-
 const PRODUCT = [
-  { href: '#how', icon: Orbit, title: 'How it fits together', body: 'One request, from ask to paid.' },
-  { href: '#day', icon: Sun, title: 'Your day', body: 'The highlight, the plan, and closing the day.' },
-  { href: '#projects', icon: List, title: 'Projects', body: 'Boards, your calendar, briefs and Waiting on.' },
-  { href: '#portal', icon: MessageCircle, title: 'Client portal', body: 'What your clients see, and what they don’t.' },
-  { href: '#money', icon: Receipt, title: 'Money', body: 'Invoices from your time, payments, exports.' },
-  { href: '#details', icon: Keyboard, title: 'The details', body: 'Shortcuts, focus mode, calendar and imports.' },
+  { href: '/#how', icon: Orbit, title: 'How it fits together', body: 'One request, from ask to paid.' },
+  { href: '/#day', icon: Sun, title: 'Your day', body: 'The highlight, the plan, and closing the day.' },
+  { href: '/#projects', icon: List, title: 'Projects', body: 'Boards, your calendar, briefs and Waiting on.' },
+  { href: '/#portal', icon: MessageCircle, title: 'Client portal', body: 'What your clients see, and what they don’t.' },
+  { href: '/#money', icon: Receipt, title: 'Money', body: 'Invoices from your time, payments, exports.' },
+  { href: '/#details', icon: Keyboard, title: 'The details', body: 'Shortcuts, focus mode, calendar and imports.' },
 ];
 
 export function SiteNav() {
@@ -49,8 +48,11 @@ export function SiteNav() {
         scrolled ? 'border-line bg-background' : 'border-transparent',
       )}
     >
-      <div className={cn(MEASURE, 'flex h-16 items-center gap-4')}>
-        <Link href="/" aria-label="Zenboard home" className="focus-ring me-2 ms-px rounded-md sm:ms-3"><Logo height={24} /></Link>
+      {/* `ms-px` is the grid's own 1px rule: with it the wordmark starts on exactly the column the
+          hero's first line does, at every breakpoint. */}
+      <div className={MEASURE}>
+      <div className={cn(GUTTER, 'flex h-16 w-full items-center gap-4')}>
+        <Link href="/" aria-label="Zenboard home" className="focus-ring me-2 ms-px rounded-md"><Logo height={24} /></Link>
 
         <NavigationMenu className="max-md:hidden" aria-label="Main">
           <NavigationMenuList>
@@ -76,18 +78,18 @@ export function SiteNav() {
             </NavigationMenuItem>
             <NavigationMenuItem>
               <NavigationMenuLink asChild>
-                <a href="#portal" className={button({ variant: 'ghost', size: 'sm' })}>Clients</a>
+                <Link href="/#portal" className={button({ variant: 'ghost', size: 'sm' })}>Clients</Link>
               </NavigationMenuLink>
             </NavigationMenuItem>
             <NavigationMenuItem>
               <NavigationMenuLink asChild>
-                <a href="#faq" className={button({ variant: 'ghost', size: 'sm' })}>Questions</a>
+                <Link href="/#faq" className={button({ variant: 'ghost', size: 'sm' })}>Questions</Link>
               </NavigationMenuLink>
             </NavigationMenuItem>
           </NavigationMenuList>
         </NavigationMenu>
 
-        <div className="ms-auto flex items-center gap-2 sm:me-3">
+        <div className="ms-auto me-px flex items-center gap-2">
           <Link href={LOG_IN} className={cn(button({ variant: 'ghost', size: 'sm' }), 'max-sm:hidden')}>Log in</Link>
           {/* Secondary on purpose: the hero's own "Start free" is this screen's one filled button. */}
           <Link href={SIGN_UP} className={button({ variant: 'secondary', size: 'sm' })}>Start free</Link>
@@ -102,14 +104,15 @@ export function SiteNav() {
                     <Icon icon={p.icon} size={16} weight="fill" className="text-ink-500" />{p.title}
                   </a>
                 ))}
-                <a href="#faq" className="focus-ring touch-row flex items-center gap-3 rounded-md px-3 py-2.5 text-ui text-ink-900 hover:bg-surface-hover">
+                <Link href="/#faq" className="focus-ring touch-row flex items-center gap-3 rounded-md px-3 py-2.5 text-ui text-ink-900 hover:bg-surface-hover">
                   <Icon icon={Question} size={16} weight="fill" className="text-ink-500" />Questions
-                </a>
+                </Link>
                 <Link href={LOG_IN} className="focus-ring touch-row mt-1 flex items-center rounded-md border-t border-line-soft px-3 py-2.5 text-ui text-ink-900 hover:bg-surface-hover">Log in</Link>
               </nav>
             </PopoverContent>
           </Popover>
         </div>
+      </div>
       </div>
     </header>
   );
@@ -175,10 +178,14 @@ export function SiteFooter() {
     // The last row of the grid, and its one dark cell: the site's closing statement, the same in both
     // themes, printed with the mark at the size of the page.
     <footer className={cn(MEASURE, '-mt-px pb-3 sm:pb-6')}>
-      <Grid>
+      {/* The page's last row: its top rule and the grid's foot both run out to the window's edges. */}
+      <Grid className="site-foot">
+        <Joints foot />
+        <div className="site-row col-span-full grid grid-cols-subgrid gap-px">
+        <Joints />
         <Cell className="site-ink overflow-hidden bg-site-ink text-site-ink-fg">
           <Halftone mark={{ x: 0.86, y: 0.42, size: 1.25 }} fade="start" />
-          <div className="relative grid gap-12 px-6 pb-12 pt-16 sm:px-10 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:gap-16 lg:px-12 lg:pt-24">
+          <div className="site-pad relative grid gap-12 pb-12 pt-16 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:gap-16 lg:pt-24">
             <div className="flex flex-col items-start gap-6">
               <p className="max-w-[14ch] text-balance font-editorial text-headline text-site-ink-fg sm:text-hero">Open Zenboard. Do the work.</p>
               <p className="max-w-[42ch] text-body-lg text-site-ink-muted">
@@ -188,17 +195,23 @@ export function SiteFooter() {
                   DS buttons are drawn for the page's ground, so on this one their words would be ink on ink. */}
               <Link href={SIGN_UP} className={cn(button({ variant: 'secondary', size: 'lg' }), 'border-transparent bg-site-ink-fg text-site-ink hover:bg-site-ink-fg/90 active:bg-site-ink-fg/90')}>Start free</Link>
             </div>
-            <div className="grid grid-cols-2 gap-8 sm:grid-cols-3">
-              {col('Product', [['How it fits', '#how'], ['Your day', '#day'], ['Projects', '#projects'], ['Client portal', '#portal'], ['Money', '#money'], ['The details', '#details']])}
+            <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
+              {col('Product', [['How it fits', '/#how'], ['Your day', '/#day'], ['Projects', '/#projects'], ['Client portal', '/#portal'], ['Money', '/#money'], ['The details', '/#details']])}
               {col('Get started', [['Start free', SIGN_UP], ['Log in', LOG_IN]])}
-              {col('Help', [['Questions', '#faq']])}
+              {col('Help', [['Questions', '/#faq']])}
+              {col('Legal', [['Terms of service', '/legal/terms'], ['Privacy notice', '/legal/privacy-notice'], ['Cookie notice', '/legal/cookie-notice']])}
             </div>
           </div>
-          <div className="relative flex flex-wrap items-center justify-between gap-4 border-t border-site-ink-line px-6 py-6 sm:px-10 lg:px-12">
+          <div className="site-pad relative flex flex-wrap items-center justify-between gap-4 border-t border-site-ink-line py-6">
             <span className="text-site-ink-fg"><Logo height={20} /></span>
-            <p className="text-caption text-site-ink-muted">© 2026 Zenboard</p>
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-caption text-site-ink-muted">
+              <Link href="/legal" className="focus-ring rounded-xs transition-colors duration-fast ease-hover hover:text-site-ink-fg">Legal</Link>
+              <CookieSettingsLink className="text-site-ink-muted no-underline transition-colors duration-fast ease-hover hover:text-site-ink-fg" />
+              <p>© 2026 Zenboard</p>
+            </div>
           </div>
         </Cell>
+        </div>
       </Grid>
     </footer>
   );

@@ -19,7 +19,7 @@ import { FACES } from './faces';
 /** The product's own card, lifted off the printed stage it lies on. */
 export function Sheet({ className, children, inert = true }: { className?: string; children: React.ReactNode; inert?: boolean }) {
   return (
-    <div aria-hidden={inert || undefined} inert={inert} className={cardClass(cn('site-lift w-full rounded-xl p-5 sm:p-6', inert && 'select-none', className))}>
+    <div aria-hidden={inert || undefined} inert={inert} className={cardClass(cn('site-glass w-full rounded-xl p-5 sm:p-6', inert && 'select-none', className))}>
       {children}
     </div>
   );

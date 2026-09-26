@@ -41,11 +41,14 @@ export function useAutoAdvance(count: number) {
   return { ref, active, auto, seen, running, choose, next, stop, hold };
 }
 
-/** The dwell under the active item: a berry rule that fills, and hands over when it is full. */
+/** The dwell under the active item: a rule that fills, and hands over when it is full.
+ *  It is the AREA'S hue (`--site-hue-ink`, set by `site-hue-*` on an ancestor), so the bar, the
+ *  glyph beside it and the picture it is turning are one colour — Calendly's rule, and the reason
+ *  the eye has only one thing to follow. Where no area owns it, it falls back to the accent. */
 export function Dwell({ onEnd, className }: { onEnd: () => void; className?: string }) {
   return (
     <span aria-hidden className={className ?? 'absolute inset-x-0 -bottom-px h-0.5 overflow-hidden'}>
-      <span className="site-dwell block h-full bg-accent" onAnimationEnd={onEnd} />
+      <span className="site-dwell block h-full bg-[var(--site-hue-ink,var(--accent))]" onAnimationEnd={onEnd} />
     </span>
   );
 }

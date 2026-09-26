@@ -166,6 +166,48 @@ try {
   const orbit = await ev(`getComputedStyle(document.querySelector('#how .site-orbit')).animationName`);
   check(orbit === 'site-orbit', 'the orbit keeps its (still) twin', orbit);
 
+  // ── The cookie choice ───────────────────────────────────────────────────
+  console.log('\n── the cookie choice ──');
+  await send('Network.enable');
+  await send('Network.clearBrowserCookies');
+  await open('no-preference');
+  await sleep(600);
+  const bannerUp = () => ev(`!!document.querySelector('[role=region][aria-label="Cookie choice"]')`);
+  const consent = () => ev(`(document.cookie.split('; ').find((c) => c.startsWith('zb-consent=')) ?? '').slice(11)`);
+  check(await bannerUp(), 'a first visit is asked once');
+  await click(await centre(`[...document.querySelectorAll('[role=region][aria-label="Cookie choice"] button')].find((b) => b.textContent.trim() === 'Decline')`));
+  await sleep(300);
+  const declined = decodeURIComponent(await consent());
+  check(!(await bannerUp()) && /"analytics":false/.test(declined) && /"marketing":false/.test(declined), 'Decline keeps only the essential, and the card goes', declined);
+  await send('Page.reload'); await sleep(3000);
+  check(!(await bannerUp()), 'and it is not asked again');
+  await click(await centre(`[...document.querySelectorAll('footer button')].find((b) => b.textContent.trim() === 'Cookie settings')`));
+  await sleep(500);
+  check(await ev(`!!document.querySelector('[role=dialog]')`), 'the footer opens the cookie settings');
+  await click(await centre(`document.querySelector('[role=dialog] [aria-label="Analytics cookies"]')`));
+  await click(await centre(`[...document.querySelectorAll('[role=dialog] button')].find((b) => b.textContent.trim() === 'Save choices')`));
+  await sleep(400);
+  const saved = decodeURIComponent(await consent());
+  check(/"analytics":true/.test(saved) && /"marketing":false/.test(saved), 'and saves exactly what was switched on', saved);
+
+  // A browser sending Global Privacy Control has answered already.
+  await send('Network.clearBrowserCookies');
+  const gpc = await send('Page.addScriptToEvaluateOnNewDocument', { source: 'Object.defineProperty(Navigator.prototype, "globalPrivacyControl", { get: () => true });' });
+  await send('Page.reload'); await sleep(3500);
+  const gpcSaid = decodeURIComponent(await consent());
+  check(!(await bannerUp()) && /"analytics":false/.test(gpcSaid), 'Global Privacy Control is recorded as a decline, and nothing is asked', gpcSaid);
+  await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: gpc.identifier });
+
+  // ── The legal pages ─────────────────────────────────────────────────────
+  console.log('\n── the legal pages ──');
+  for (const [path, title] of [['/legal', 'The terms we work by'], ['/legal/terms', 'Terms of service'], ['/legal/privacy-notice', 'Privacy notice'], ['/legal/cookie-notice', 'Cookie notice']]) {
+    await send('Page.navigate', { url: base + path }); await sleep(2500);
+    const h1 = await ev(`document.querySelector('h1')?.textContent ?? ''`);
+    check(h1.startsWith(title), `${path} opens on its title`, h1);
+  }
+  const toc = await ev(`[...document.querySelectorAll('nav[aria-label="On this page"] a')].every((a) => document.getElementById(a.getAttribute('href').slice(1)))`);
+  check(toc, 'every contents link lands on its part');
+
   console.log(errors.length ? `\n${errors.length} problem(s)` : '\n✓ every part works, and every motion rule holds');
 } finally {
   try { ws?.close(); } catch {}

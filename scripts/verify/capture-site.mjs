@@ -39,7 +39,7 @@ const shot = async (name) => writeFileSync(join(out, name), Buffer.from((await s
 // The parts of the page, top to bottom: a selector for each, and the name its capture is saved under.
 const PARTS = [
   ['hero', 'main section:first-of-type'],
-  ['showcase', 'main section:first-of-type > div:nth-of-type(2)'],
+  ['showcase', 'main section:nth-of-type(2)'],
   ['how', '#how'],
   ['people', '#who'],
   ['day', '#day'],
