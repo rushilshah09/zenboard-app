@@ -229,14 +229,18 @@ try {
   check(file.startsWith('<svg xmlns="http://www.w3.org/2000/svg" width="152" height="32"') && file.includes('fill="#C41C72"') && !/var\(|currentColor|class=/.test(file), 'Copy wordmark hands over a standalone file in the brand\'s colours', file.slice(0, 90));
   check(await ev(`document.body.textContent.includes('Wordmark copied as SVG')`), 'and says so');
 
-  // Circle the pointer round the mark: it turns with it, and settles on a quarter turn when let go.
+  // Move the cursor round the mark: the mark turns with it, drawn whole, and nothing else of the logo
+  // moves; let go and it comes to rest on a quarter turn.
+  const turnOf = `parseFloat((document.querySelector('header a[aria-label="Zenboard home"] svg > path').style.transform.match(/rotate\\(([-\\d.]+)deg\\)/) ?? [])[1] ?? '0')`;
   const mid = await ev(`(() => { const r = document.querySelector('header a[aria-label="Zenboard home"] svg > path').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
-  for (let i = 0; i <= 32; i++) { const a = (i / 32) * Math.PI * 2; await move(mid.x + Math.cos(a) * 18, mid.y + Math.sin(a) * 18); await sleep(16); }
-  const turning = await ev(`parseFloat((document.querySelector('header a[aria-label="Zenboard home"] svg > path').style.transform.match(/rotate\\(([-\\d.]+)deg\\)/) ?? [])[1] ?? '0')`);
-  check(Math.abs(turning) > 90, 'circling the mark turns it', turning);
-  await move(mid.x + 500, mid.y + 400); await sleep(900);
-  const rest = await ev(`parseFloat((document.querySelector('header a[aria-label="Zenboard home"] svg > path').style.transform.match(/rotate\\(([-\\d.]+)deg\\)/) ?? [])[1] ?? '0')`);
-  check(Math.abs(rest - Math.round(rest / 90) * 90) < 1, 'and it comes to rest on a quarter turn, which is how it always looks', rest);
+  for (let i = 0; i <= 24; i++) { const a = (i / 24) * Math.PI; await move(mid.x + Math.cos(a) * 20, mid.y + Math.sin(a) * 20); await sleep(20); }
+  await sleep(500);
+  const turning = await ev(turnOf);
+  check(turning > 150, 'moving the cursor half way round the mark turns it half way round', turning);
+  check(await ev(`(() => { const a = document.querySelector('header a[aria-label="Zenboard home"]'); return !a.style.translate && !a.style.transform && a.querySelector('svg').style.overflow === 'visible'; })()`), 'and nothing else of the logo moves, and the mark is drawn whole');
+  await move(mid.x + 500, mid.y + 400); await sleep(1200);
+  const rest = await ev(turnOf);
+  check(Math.abs(rest - Math.round(rest / 90) * 90) < 0.5, 'let go, it comes to rest on a quarter turn, which is how it always looks', rest);
 
   console.log('\n── a focus session without an account ──');
   await ev(`localStorage.removeItem('zb-guest-focus')`);

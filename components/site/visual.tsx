@@ -19,15 +19,11 @@ import { cn } from '@/lib/cn';
 import { Halftone, type Fade, type MarkPlacement } from './halftone';
 
 /** The page's lattice: twelve columns on a wide screen; on a phone every cell is a row of its own.
-    Behind its cells, the light that follows the pointer (site-motion.tsx): it shows only through the
-    line between them, so the lattice lights up where the visitor points. */
+    (It carried a light that followed the pointer along its lines for a day; the user, 2026-09-26:
+    "this pink glow on the hairline does not look good". The line is the page's structure, and it
+    stays quiet.) */
 export function Grid({ className, children }: { className?: string; children: React.ReactNode }) {
-  return (
-    <div className={cn('relative grid grid-cols-12 gap-px bg-line p-px', className)}>
-      <span aria-hidden className="site-glow"><span /></span>
-      {children}
-    </div>
-  );
+  return <div className={cn('relative grid grid-cols-12 gap-px bg-line p-px', className)}>{children}</div>;
 }
 
 /** A section whose cells take the grid's own columns, so every line on the page is one line. Its rule

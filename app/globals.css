@@ -1064,32 +1064,15 @@ html[data-vt] .zb-page-in { animation: none !important; }
 /* A state swapping inside a product preview: the new state arrives, the old one is simply gone. */
 .site-swap { animation: fade-rise var(--duration-base) var(--ease-out-quiet) both; }
 
-/* THE LINES CATCH THE LIGHT (site-motion.tsx). Where the pointer is, the grid's own line takes the
-   brand's colour and the stars where the cells meet light up: the page's structure is the mark, so
-   the mark is what answers the hand. A soft disc of the accent moves BEHIND the cells, so it shows
-   only through the pixel between them and the stars at their corners, and its box is clipped to the
-   grid's, so it can never make the page wider or taller. For a fine pointer that hovers only. */
-:root {
-  --site-glow-size: 560px;
-  --site-glow-ink: color-mix(in oklab, var(--accent) 45%, transparent);
-}
-html[data-theme='dark'] { --site-glow-ink: color-mix(in oklab, var(--accent) 62%, transparent); }
-.site-glow { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
-.site-glow > span {
-  position: absolute; top: 0; left: 0;
-  width: var(--site-glow-size); height: var(--site-glow-size);
-  background: radial-gradient(closest-side, var(--site-glow-ink), transparent);
-  opacity: 0;
-  transition: opacity var(--duration-slow) var(--ease-hover);
-}
-.site-glow[data-on] > span { opacity: 1; }
-@media (hover: none), (pointer: coarse) { .site-glow { display: none; } }
-
 /* A FOCUS SESSION ON THE SITE (guest-focus.tsx, warp.tsx). `--site-warp` is the jump into it: into
    the tunnel and out onto the dark ground, once per session, when someone chose to start one. The
    clock is the one number on the screen, as large as a phone allows and larger on a desk, in the
    app's face with figures that do not jump as they change. */
-:root { --site-warp: 1.4s; }
+:root { --site-warp: 1.7s; }
+/* As the warp begins, the setup card rushes toward the reader and dissolves, so starting reads as
+   going IN, not as a card swapped for a picture. Quicker than the jump it opens onto. */
+@keyframes site-dive { to { opacity: 0; transform: scale(1.18); filter: blur(10px); } }
+.site-dive { animation: site-dive calc(var(--duration-slow) * 2) var(--ease-out-quiet) forwards; }
 .site-clock {
   font-family: var(--font-sans); font-weight: 500; line-height: 1; letter-spacing: -0.04em;
   font-size: clamp(64px, 16vw, 168px); font-variant-numeric: tabular-nums; color: var(--color-site-ink-fg);
@@ -1407,6 +1390,7 @@ html[data-theme='dark'] .site-hue-periwinkle { --site-hue: color-mix(in oklch, v
   @keyframes reveal-down { from { opacity: 0; } }
   @keyframes reveal-up { to { opacity: 0; } }
   @keyframes fade-rise { from { opacity: 0; } }
+  @keyframes site-dive { to { opacity: 0; } }
   @keyframes site-in { from { opacity: 0; } }
   @keyframes site-word-in { from { opacity: 0; } }
   @keyframes site-lift-in { from { opacity: 0; } }

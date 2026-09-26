@@ -7,10 +7,8 @@
 //     SVG", and, in place of their brand guidelines, "Start focus session": the product's own first
 //     minute, without an account (guest-focus.tsx). The files are the page's own artwork with the
 //     brand's colours put in (lib/brand.ts).
-//   · POINT AT IT, and it leans toward the pointer a little, like a magnet; circle the pointer round
-//     the mark and the mark turns with it. Let go and it settles on the nearest quarter turn, which
-//     for a mark of four petals is exactly how it always looks, so it never visibly unwinds. A fine
-//     pointer only, and never under less motion.
+//   · MOVE THE CURSOR ROUND IT, and the mark turns with it, while the lettering stays exactly where it
+//     is (`useTurn`, below).
 
 import Link from 'next/link';
 import * as React from 'react';
@@ -20,53 +18,50 @@ import { logoSvg, wordmarkSvg } from '@/lib/brand';
 import { cn } from '@/lib/cn';
 import { openGuestFocus } from '@/lib/guest-focus';
 
-/** How far outside the logo the pointer still counts as near it. */
+/** How far outside the logo the pointer still turns the mark. */
 const REACH = 28;
-/** How much of the pointer's offset the logo leans by, and the most it ever moves. */
-const PULL = 0.12;
-const MAX = 3;
-/** How much of the way to where it is going it moves each frame (it eases after the hand). */
-const EASE = 0.18;
+/** How much of the way to the pointer's turn the mark goes each frame: it eases after the hand. */
+const EASE = 0.2;
 /** Nearer the mark's middle than this, the pointer's angle is noise, so it does not turn it. */
 const DEAD = 6;
 
-const clamp = (v: number) => Math.max(-MAX, Math.min(MAX, v));
-
-function useMagnet(ref: React.RefObject<HTMLAnchorElement | null>) {
+/**
+ * THE MARK TURNS WITH THE CURSOR; NOTHING ELSE MOVES. The user, 2026-09-26: "only the logo mark
+ * rotating", then "not rotating by itself on hover: I want it to rotate with the mouse cursor", and
+ * "the logo is cutting while rotating". So the mark turns as the pointer goes round it, by as much as
+ * the pointer turned, easing after it; the lettering never moves. Let go and it settles on the nearest
+ * quarter turn, which for a mark of four petals is exactly how it always looks, so it never visibly
+ * unwinds. The lockup is allowed to draw outside its own box, because a square turned inside a square
+ * box loses its corners. A fine pointer only, and never under less motion.
+ */
+function useTurn(ref: React.RefObject<HTMLAnchorElement | null>) {
   React.useEffect(() => {
     const link = ref.current;
+    const svg = link?.querySelector('svg');
     // The lockup's first shape is the mark (components/ds/ui/icon.tsx `Logo`).
     const mark = link?.querySelector<SVGPathElement>('svg > path');
-    if (!link || !mark) return;
+    if (!link || !svg || !mark) return;
     const fine = window.matchMedia('(hover: hover) and (pointer: fine)');
     const still = window.matchMedia('(prefers-reduced-motion: reduce)');
+    svg.style.overflow = 'visible';
     mark.style.transformBox = 'fill-box';
     mark.style.transformOrigin = 'center';
 
     let turn = 0;
     let toTurn = 0;
     let angle: number | null = null;
-    let x = 0;
-    let y = 0;
-    let toX = 0;
-    let toY = 0;
     let frame = 0;
     const tick = () => {
       frame = 0;
       turn += (toTurn - turn) * EASE;
-      x += (toX - x) * EASE;
-      y += (toY - y) * EASE;
       mark.style.transform = `rotate(${turn.toFixed(2)}deg)`;
-      link.style.translate = `${x.toFixed(2)}px ${y.toFixed(2)}px`;
-      if (Math.abs(toTurn - turn) > 0.05 || Math.abs(toX - x) + Math.abs(toY - y) > 0.02) frame = requestAnimationFrame(tick);
+      if (Math.abs(toTurn - turn) > 0.05) frame = requestAnimationFrame(tick);
     };
     const wake = () => { if (!frame) frame = requestAnimationFrame(tick); };
     const letGo = () => {
-      if (angle == null && toX === 0 && toY === 0) return;
+      if (angle == null) return;
       angle = null;
       toTurn = Math.round(toTurn / 90) * 90;
-      toX = 0;
-      toY = 0;
       wake();
     };
     const move = (e: PointerEvent) => {
@@ -77,19 +72,16 @@ function useMagnet(ref: React.RefObject<HTMLAnchorElement | null>) {
       const m = mark.getBoundingClientRect();
       const dx = e.clientX - (m.left + m.width / 2);
       const dy = e.clientY - (m.top + m.height / 2);
-      if (Math.hypot(dx, dy) > DEAD) {
-        const a = (Math.atan2(dy, dx) * 180) / Math.PI;
-        if (angle != null) {
-          let d = a - angle;
-          if (d > 180) d -= 360;
-          else if (d < -180) d += 360;
-          toTurn += d;
-        }
-        angle = a;
+      if (Math.hypot(dx, dy) < DEAD) return;
+      const a = (Math.atan2(dy, dx) * 180) / Math.PI;
+      if (angle != null) {
+        let d = a - angle;
+        if (d > 180) d -= 360;
+        else if (d < -180) d += 360;
+        toTurn += d;
+        wake();
       }
-      toX = clamp(dx * PULL);
-      toY = clamp(dy * PULL);
-      wake();
+      angle = a;
     };
 
     window.addEventListener('pointermove', move, { passive: true });
@@ -99,14 +91,13 @@ function useMagnet(ref: React.RefObject<HTMLAnchorElement | null>) {
       document.documentElement.removeEventListener('pointerleave', letGo);
       cancelAnimationFrame(frame);
       mark.style.transform = '';
-      link.style.translate = '';
     };
   }, [ref]);
 }
 
 export function SiteLogo({ height = 24, className }: { height?: number; className?: string }) {
   const ref = React.useRef<HTMLAnchorElement>(null);
-  useMagnet(ref);
+  useTurn(ref);
 
   const copy = (part: 'wordmark' | 'logo') => {
     const svg = ref.current?.querySelector('svg');

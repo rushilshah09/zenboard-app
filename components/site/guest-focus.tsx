@@ -58,6 +58,55 @@ const ON_DARK = cn(button({ variant: 'secondary', size: 'lg' }), 'border-transpa
 /** A quieter action on the dark ground: words, lit on hover. */
 const QUIET_ON_DARK = 'site-link focus-ring rounded-xs text-ui text-site-ink-muted transition-colors duration-fast ease-hover hover:text-site-ink-fg';
 
+const ABOUT = 'One thing, one timer, nothing else. No account needed: what you finish is kept on this device, and counts in Zenboard when you sign up.';
+
+/** What the session is about and how long it runs: the card a session starts from. The same card
+    rushes toward the visitor as the warp opens (`site-dive`), so it is one component in two places. */
+function SetupCard({ what, setWhat, length, setLength, today, onStart, diving = false }: {
+  /** The copy that dives into the warp: a picture of the card, so it names nothing to assistive
+      technology (the dialog's title is the live one) and does not arrive again as it leaves. */
+  diving?: boolean;
+  what: string;
+  setWhat: (v: string) => void;
+  length: number;
+  setLength: (v: number) => void;
+  today: number;
+  onStart: (e: React.FormEvent) => void;
+}) {
+  return (
+    <form onSubmit={onStart} className={cardClass(cn('w-full max-w-[26rem] rounded-xl p-6 shadow-panel', !diving && 'zb-enter animate-rise'))}>
+      <div className="flex items-center gap-2.5">
+        <Mark size={20} tone="brand" />
+        {diving
+          ? <p className="font-editorial text-title-2 text-ink-900">Focus session</p>
+          : <RD.Title className="font-editorial text-title-2 text-ink-900">Focus session</RD.Title>}
+      </div>
+      {diving
+        ? <p className="mt-2 text-ui text-ink-600">{ABOUT}</p>
+        : <RD.Description id="guest-focus-about" className="mt-2 text-ui text-ink-600">{ABOUT}</RD.Description>}
+      <div className="mt-6 flex flex-col gap-5">
+        <Field label="What are you focusing on?" optional>
+          <TextInput value={what} onChange={(e) => setWhat(e.target.value)} placeholder="Finish the logo presentation" maxLength={GUEST_LIMITS.what} />
+        </Field>
+        <div className="flex flex-col gap-1.5">
+          <p className="text-body font-medium text-ink-800">How long</p>
+          <SegmentedControl
+            aria-label="How long"
+            value={String(length)}
+            onValueChange={(v) => setLength(Number(v))}
+            options={FOCUS_LENGTHS.map((m) => ({ value: String(m), label: `${m} min` }))}
+          />
+        </div>
+      </div>
+      {today > 0 && <p className="mt-4 text-caption text-ink-500">{today === 1 ? 'One session' : `${today} sessions`} today on this device.</p>}
+      <div className="mt-6 flex items-center justify-end gap-2">
+        <RD.Close asChild><Button variant="ghost">Cancel</Button></RD.Close>
+        <Button variant="primary" type="submit"><Icon icon={Play} size={16} weight="fill" />Start</Button>
+      </div>
+    </form>
+  );
+}
+
 export function GuestFocus() {
   const [open, setOpen] = React.useState(false);
   const [phase, setPhase] = React.useState<Phase>('setup');
@@ -163,39 +212,18 @@ export function GuestFocus() {
           className="fixed inset-0 z-fullscreen grid place-items-center overflow-y-auto p-4 outline-none"
         >
           {phase === 'setup' ? (
-            <form onSubmit={start} className={cardClass('zb-enter w-full max-w-[26rem] animate-rise rounded-xl p-6 shadow-panel')}>
-              <div className="flex items-center gap-2.5">
-                <Mark size={20} tone="brand" />
-                <RD.Title className="font-editorial text-title-2 text-ink-900">Focus session</RD.Title>
-              </div>
-              <RD.Description id="guest-focus-about" className="mt-2 text-ui text-ink-600">
-                One thing, one timer, nothing else. No account needed: what you finish is kept on this device, and counts in Zenboard when you sign up.
-              </RD.Description>
-              <div className="mt-6 flex flex-col gap-5">
-                <Field label="What are you focusing on?" optional>
-                  <TextInput value={what} onChange={(e) => setWhat(e.target.value)} placeholder="Finish the logo presentation" maxLength={GUEST_LIMITS.what} />
-                </Field>
-                <div className="flex flex-col gap-1.5">
-                  <p className="text-body font-medium text-ink-800">How long</p>
-                  <SegmentedControl
-                    aria-label="How long"
-                    value={String(length)}
-                    onValueChange={(v) => setLength(Number(v))}
-                    options={FOCUS_LENGTHS.map((m) => ({ value: String(m), label: `${m} min` }))}
-                  />
-                </div>
-              </div>
-              {today > 0 && <p className="mt-4 text-caption text-ink-500">{today === 1 ? 'One session' : `${today} sessions`} today on this device.</p>}
-              <div className="mt-6 flex items-center justify-end gap-2">
-                <RD.Close asChild><Button variant="ghost">Cancel</Button></RD.Close>
-                <Button variant="primary" type="submit"><Icon icon={Play} size={16} weight="fill" />Start</Button>
-              </div>
-            </form>
+            <SetupCard what={what} setWhat={setWhat} length={length} setLength={setLength} today={today} onStart={start} />
           ) : (
             <div className="site-ink absolute inset-0 grid place-items-center overflow-hidden text-site-ink-fg">
               <RD.Title className="sr-only">Focus session</RD.Title>
               {phase !== 'warp' && <Halftone mark={{ x: 0.5, y: 0.5, size: 1.5 }} />}
               {phase === 'warp' && <Warp onDone={arrive} />}
+              {/* The card the visitor pressed Start on rushes toward them and dissolves as the way opens. */}
+              {phase === 'warp' && (
+                <div aria-hidden inert className="site-dive pointer-events-none relative w-full max-w-[26rem]">
+                  <SetupCard diving what={what} setWhat={setWhat} length={length} setLength={setLength} today={today} onStart={start} />
+                </div>
+              )}
 
               {phase === 'focus' && clock && (
                 <div className="zb-enter relative flex flex-col items-center px-6 text-center animate-fadein">

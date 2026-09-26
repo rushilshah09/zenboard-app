@@ -344,27 +344,11 @@ describe('the page arrives as it is read', () => {
   });
 });
 
-describe('the lines catch the light', () => {
-  const css = globals.replace(/\/\*[\s\S]*?\*\//g, '');
-
-  it('lights the grid from BEHIND its cells, inside the grid\'s own box', () => {
-    const visual = read('components/site/visual.tsx');
-    // The first thing in the grid, so every cell paints over it and only the line shows it.
-    expect(visual).toMatch(/gap-px bg-line p-px', className\)\}>\s*<span aria-hidden className="site-glow"><span \/><\/span>\s*\{children\}/);
-    expect(css).toMatch(/\.site-glow \{ position: absolute; inset: 0; overflow: hidden; pointer-events: none; \}/);
-    // A fine pointer only, and in the accent.
-    expect(css).toMatch(/@media \(hover: none\), \(pointer: coarse\) \{ \.site-glow \{ display: none; \} \}/);
-    expect(css).toMatch(/--site-glow-ink: color-mix\(in oklab, var\(--accent\)/);
-  });
-
-  it('moves the light with a transform on the light itself, easing after the hand', () => {
-    const motion = read('components/site/site-motion.tsx');
-    const lamp = motion.slice(motion.indexOf('export function light'));
-    expect(lamp).toMatch(/lamp\.disc\.style\.transform = `translate\(/);
-    // Never a custom property: one changed on a parent restyles everything under it (Emil).
-    expect(lamp).not.toMatch(/style\.(left|top) =|setProperty\('--/);
-    expect(motion).toMatch(/lamp\.x \+= \(tx - lamp\.x\) \* FOLLOW;/);
-    expect(motion).toMatch(/if \(e\.pointerType !== 'mouse' \|\| !fine\.matches\) return;/);
+describe('the lines stay quiet', () => {
+  it('draws no light along the grid: the user found the pink glow on the hairline did not look good', () => {
+    expect(read('components/site/visual.tsx')).not.toMatch(/site-glow/);
+    expect(globals).not.toMatch(/\.site-glow/);
+    expect(read('components/site/site-motion.tsx')).not.toMatch(/function light\(/);
   });
 });
 
@@ -389,11 +373,18 @@ describe('the logo answers the hand', () => {
     expect(logo).toMatch(/wordmarkSvg\(svg\.outerHTML\) : logoSvg\(svg\.outerHTML\)/);
   });
 
-  it('leans and turns by moving itself, never by moving the page', () => {
-    // `translate`, the property, so the press's own transform still applies; the mark turns about
-    // its own middle; at rest it is always on a quarter turn, which is how a four-petal mark looks.
-    expect(logo).toMatch(/link\.style\.translate = /);
+  it('turns only its mark, with the cursor, and draws it whole', () => {
+    // "Only the logo mark rotating"; "not by itself on hover: with the mouse cursor"; "the logo is
+    // cutting while rotating".
+    expect(logo).toMatch(/const mark = link\?\.querySelector<SVGPathElement>\('svg > path'\);/);
     expect(logo).toMatch(/mark\.style\.transformBox = 'fill-box';/);
+    expect(logo).not.toMatch(/style\.translate|link\.style\.transform|--site-spin/);
+    // It turns by as much as the pointer turned round it, and nothing turns it on a timer.
+    expect(logo).toMatch(/toTurn \+= d;/);
+    expect(logo).not.toMatch(/360 \/ perTurn/);
+    // A square turned inside a square box loses its corners, so the lockup may draw outside its box.
+    expect(logo).toMatch(/svg\.style\.overflow = 'visible';/);
+    // At rest, a quarter turn, which is how a four-petal mark looks.
     expect(logo).toMatch(/toTurn = Math\.round\(toTurn \/ 90\) \* 90;/);
     expect(logo).toMatch(/if \(e\.pointerType !== 'mouse' \|\| !fine\.matches \|\| still\.matches\) return;/);
   });
@@ -419,7 +410,10 @@ describe('a focus session without an account', () => {
     expect(warp).toMatch(/window\.matchMedia\('\(prefers-reduced-motion: reduce\)'\)\.matches\) \{\s*done\.current\(\);/);
     expect(warp).toMatch(/getPropertyValue\('--site-warp'\)/);
     expect(globals).toMatch(/:root \{ --site-warp: [\d.]+s; \}/);
-    expect(warp).toMatch(/<canvas ref=\{ref\} data-warp aria-hidden /);
+    expect(warp).toMatch(/<div ref=\{ref\} data-warp aria-hidden className="zb-enter [^"]*animate-fadein" \/>/);
+    // A fresh canvas every run: a canvas whose GPU context was let go hands the dead one back.
+    expect(warp).toMatch(/const canvas = document\.createElement\('canvas'\);/);
+    expect(warp).toMatch(/painter\?\.release\(\);\s*canvas\.remove\(\);/);
     // A frame can be stamped a hair before the start: progress is held at 0, never negative (a
     // negative progress made the speed NaN and drawing threw, ending the loop mid-warp).
     expect(warp).toMatch(/const p = Math\.min\(1, Math\.max\(0, \(t - start\) \/ total\)\);/);

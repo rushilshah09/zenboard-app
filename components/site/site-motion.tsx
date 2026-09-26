@@ -1,20 +1,16 @@
 'use client';
-// ── THE WEBSITE ARRIVES AS IT IS READ, AND ANSWERS THE HAND ─────────────────
+// ── THE WEBSITE ARRIVES AS IT IS READ ───────────────────────────────────────
 //
-// Two things, from one quiet component mounted once on every page of the site:
-//
-//   · ARRIVALS (globals.css, "the website arrives as it is read"). What is still below the window
-//     when the page wakes waits, hidden (`data-shown="false"`), and arrives as it scrolls into view.
-//     A part marked `data-reveal` arrives by itself; the parts inside a `data-reveal-group` arrive
-//     together when the group comes into view, in reading order, so a section's name, its heading and
-//     its list land as one sentence rather than three. What is already on screen, or above it, when
-//     the script wakes is left alone: it has been seen, and hiding it to bring it back is a flash.
-//   · THE LINES CATCH THE LIGHT. A soft disc of the accent behind each grid follows the pointer, so
-//     the line between the cells and the stars at their corners light up where the visitor points.
+// One quiet component, mounted once on every page of the site (globals.css, "the website arrives as
+// it is read"). What is still below the window when the page wakes waits, hidden (`data-shown=
+// "false"`), and arrives as it scrolls into view. A part marked `data-reveal` arrives by itself; the
+// parts inside a `data-reveal-group` arrive together when the group comes into view, in reading order,
+// so a section's name, its heading and its list land as one sentence rather than three. What is
+// already on screen, or above it, when the script wakes is left alone: it has been seen, and hiding it
+// to bring it back is a flash.
 //
 // None of it is needed to read the page: with no script every word is simply there. Less motion keeps
-// the fades and drops the movement (the stylesheet decides), and the light follows the hand without
-// easing after it.
+// the fades and drops the movement (the stylesheet decides).
 
 import * as React from 'react';
 
@@ -22,13 +18,9 @@ import * as React from 'react';
 const MARGIN = '0px 0px -10% 0px';
 /** The most steps the last part of one arrival waits: past this, sequence starts to read as delay. */
 const MAX_STEPS = 12;
-/** How much of the way to the pointer the light moves each frame (Emil: a hand-tracking effect eases
-    after the hand rather than being nailed to it). */
-const FOLLOW = 0.2;
 
 export function SiteMotion() {
   React.useEffect(() => arrivals(document), []);
-  React.useEffect(() => light(document), []);
   return null;
 }
 
@@ -118,76 +110,6 @@ export function arrivals(doc: Document): () => void {
 
   return () => {
     io.disconnect();
-    win.cancelAnimationFrame(frame);
-  };
-}
-
-export function light(doc: Document): () => void {
-  const win = doc.defaultView;
-  if (!win) return () => {};
-  const fine = win.matchMedia('(hover: hover) and (pointer: fine)');
-  const still = win.matchMedia('(prefers-reduced-motion: reduce)');
-  const lamps = [...doc.querySelectorAll<HTMLElement>('.site-glow')].flatMap((box) => {
-    const disc = box.firstElementChild;
-    return disc instanceof win.HTMLElement ? [{ box, disc, x: 0, y: 0, placed: false, on: false }] : [];
-  });
-  if (!lamps.length) return () => {};
-
-  let px = 0;
-  let py = 0;
-  let here = false;
-  let frame = 0;
-  const tick = () => {
-    frame = 0;
-    let again = false;
-    for (const lamp of lamps) {
-      const r = lamp.box.getBoundingClientRect();
-      const inside = here && px >= r.left && px <= r.right && py >= r.top && py <= r.bottom;
-      if (inside !== lamp.on) {
-        lamp.on = inside;
-        lamp.box.toggleAttribute('data-on', inside);
-        // It lights where the pointer comes in, rather than sliding over from where it went out.
-        if (inside) lamp.placed = false;
-      }
-      if (!inside) continue;
-      const half = lamp.disc.offsetWidth / 2;
-      const tx = px - r.left - half;
-      const ty = py - r.top - half;
-      if (!lamp.placed || still.matches) {
-        lamp.x = tx;
-        lamp.y = ty;
-        lamp.placed = true;
-      } else {
-        lamp.x += (tx - lamp.x) * FOLLOW;
-        lamp.y += (ty - lamp.y) * FOLLOW;
-      }
-      lamp.disc.style.transform = `translate(${lamp.x.toFixed(1)}px, ${lamp.y.toFixed(1)}px)`;
-      if (Math.abs(tx - lamp.x) + Math.abs(ty - lamp.y) > 0.5) again = true;
-    }
-    if (again) frame = win.requestAnimationFrame(tick);
-  };
-  const wake = () => {
-    if (!frame) frame = win.requestAnimationFrame(tick);
-  };
-  const move = (e: PointerEvent) => {
-    if (e.pointerType !== 'mouse' || !fine.matches) return;
-    px = e.clientX;
-    py = e.clientY;
-    here = true;
-    wake();
-  };
-  const leave = () => {
-    here = false;
-    wake();
-  };
-
-  win.addEventListener('pointermove', move, { passive: true });
-  win.addEventListener('scroll', wake, { passive: true });
-  doc.documentElement.addEventListener('pointerleave', leave);
-  return () => {
-    win.removeEventListener('pointermove', move);
-    win.removeEventListener('scroll', wake);
-    doc.documentElement.removeEventListener('pointerleave', leave);
     win.cancelAnimationFrame(frame);
   };
 }
