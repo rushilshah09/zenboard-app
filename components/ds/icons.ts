@@ -105,6 +105,29 @@ export const Trash = phosphor(Ph.Trash);
 export const Trash2 = phosphor(Ph.Trash);
 export const GripVertical = phosphor(Ph.DotsSixVertical);
 
+// ── Marketing site (zenboard.app) — fixed-weight Phosphor glyphs ─────────────
+// The public site's feature tiles and illustrations draw filled/bold glyphs at
+// one weight, never toggled by the app's `fill` shim. Prefixed `Site` so they
+// never collide with (or leak into) the app's regular-weight nav set.
+function phosphorAs(G: Ph.Icon, weight: Ph.IconWeight) {
+  return React.forwardRef<SVGSVGElement, AdapterProps>(function PhosphorFixed(
+    { strokeWidth: _strokeWidth, fill: _fill, ...rest },
+    ref,
+  ) {
+    return React.createElement(G, { ref, weight, ...rest });
+  });
+}
+export const SiteLink = phosphorAs(Ph.Link, "bold");               // "One link" tile
+export const SiteEye = phosphorAs(Ph.Eye, "fill");                 // visibility tile + client view
+export const SiteChat = phosphorAs(Ph.ChatCircleText, "fill");     // requests tile + request chip
+export const SiteSealCheck = phosphorAs(Ph.SealCheck, "fill");     // approvals tile
+export const SiteReceipt = phosphorAs(Ph.Receipt, "fill");         // invoices tile
+export const SiteUsersThree = phosphorAs(Ph.UsersThree, "fill");   // client portal eyebrow
+export const SiteLock = phosphorAs(Ph.LockSimple, "fill");         // private / internal
+export const SiteCheckCircle = phosphorAs(Ph.CheckCircle, "fill"); // done / paid / approved
+export const SiteCheck = phosphorAs(Ph.Check, "bold");             // copied / approved marks
+export const SiteFileText = phosphorAs(Ph.FileText, "regular");    // shared file row
+
 // ── Remaining glyphs (Tabler) — screens not yet on the Figma pass ────────────
 export {
   IconActivity as Activity,

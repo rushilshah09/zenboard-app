@@ -1,0 +1,281 @@
+/* ==========================================================================
+   Site section primitives — SiteSection · SectionHeader · FeatureGrid ·
+   FeatureCard · Stage. The hairline-grid language of zenboard.app: rounded
+   cells on a 1px grid, lavender icon tiles, an illustration stage per cell.
+   Reads only site tokens (site-tokens.module.css).
+   ========================================================================== */
+
+.section {
+  background: var(--site-bg);
+  padding-block: var(--site-space-24);
+}
+
+.container {
+  max-width: calc(var(--site-container) + var(--site-gutter) * 2);
+  margin-inline: auto;
+  padding-inline: var(--site-gutter);
+  box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .section { padding-block: var(--site-space-16); }
+}
+
+/* ── Grid: 1px hairlines between rounded cells ── */
+
+.grid {
+  container: site-grid / inline-size;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 1px;
+  padding: 1px;
+  background: var(--site-grid);
+  border-radius: calc(var(--site-radius-xl) + 1px);
+}
+
+/* ── Header cell ── */
+
+.header {
+  grid-column: 1 / -1;
+  container: site-header / inline-size;
+  border-radius: var(--site-radius-xl);
+  background: var(--site-bg);
+}
+
+.headerInner {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--site-space-12);
+  padding: var(--site-space-12);
+}
+
+.headerMain {
+  display: flex;
+  flex-direction: column;
+  gap: var(--site-space-5);
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--site-text-small);
+  line-height: var(--site-text-small-lh);
+  font-weight: 500;
+  color: var(--site-ink-2);
+}
+
+.eyebrowTile {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--site-radius-md);
+  background: var(--site-accent-tile);
+  color: var(--site-accent-tile-ink);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.title {
+  margin: 0;
+  max-width: 22ch;
+  font-size: var(--site-text-display);
+  line-height: var(--site-text-display-lh);
+  font-weight: 500;
+  letter-spacing: var(--site-tracking-display);
+  color: var(--site-ink);
+  text-wrap: balance;
+}
+
+.lead {
+  margin: 0;
+  max-width: 420px;
+  font-size: var(--site-text-lead);
+  line-height: var(--site-text-lead-lh);
+  color: var(--site-ink-2);
+  text-wrap: pretty;
+}
+
+@container site-header (max-width: 899px) {
+  .headerInner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--site-space-4);
+    padding: var(--site-space-10) var(--site-space-8);
+  }
+}
+@container site-header (max-width: 479px) {
+  .headerInner { padding: var(--site-space-8) var(--site-space-6); }
+}
+
+/* ── Feature card ── */
+
+.card {
+  container: site-card / inline-size;
+  position: relative;
+  grid-column: span 12;
+  border-radius: var(--site-radius-xl);
+  background: var(--site-bg);
+  overflow: hidden;
+  transition: box-shadow var(--site-dur) var(--site-ease);
+}
+
+.spanWide { grid-column: span 7; }
+.spanNarrow { grid-column: span 5; }
+.spanThird { grid-column: span 4; }
+
+@container site-grid (max-width: 999px) {
+  .spanWide { grid-column: span 12; }
+  .spanNarrow,
+  .spanThird { grid-column: span 6; }
+}
+@container site-grid (max-width: 639px) {
+  .spanWide,
+  .spanNarrow,
+  .spanThird { grid-column: span 12; }
+}
+
+.cardInner {
+  --card-pad: var(--site-space-10);
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--site-space-6);
+  padding: var(--card-pad);
+}
+
+@container site-card (max-width: 479px) {
+  .cardInner { --card-pad: var(--site-space-6); }
+}
+
+.cardHead {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--site-space-5);
+}
+
+@container site-card (max-width: 399px) {
+  .cardHead { gap: var(--site-space-4); }
+}
+
+.tile {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: var(--site-accent-tile);
+  color: var(--site-accent-tile-ink);
+  display: grid;
+  place-items: center;
+  transition: transform var(--site-dur) var(--site-ease);
+}
+
+.cardText {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 2px;
+  min-width: 0;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: var(--site-text-title);
+  line-height: var(--site-text-title-lh);
+  font-weight: 500;
+  letter-spacing: var(--site-tracking-title);
+  color: var(--site-ink);
+}
+
+.cardDesc {
+  margin: 0;
+  max-width: 470px;
+  font-size: var(--site-text-body);
+  line-height: var(--site-text-body-lh);
+  color: var(--site-ink-2);
+  text-wrap: pretty;
+}
+
+.hint {
+  margin: 0;
+  font-size: var(--site-text-small);
+  line-height: var(--site-text-small-lh);
+  color: var(--site-ink-2);
+}
+
+@media (hover: hover) {
+  .card:hover {
+    z-index: 1;
+    box-shadow: inset 0 0 0 1px var(--site-line), var(--site-shadow-sm);
+  }
+  .card:hover .tile { transform: rotate(-6deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .tile { transition: none; }
+  .card:hover .tile { transform: none; }
+}
+
+/* ==========================================================================
+   Stage — an illustration drawn at a fixed design size, scaled to its card.
+   The card is the size container and the stage bleeds to the card's edges,
+   so the container width IS the stage width. Scale steps are chosen so the
+   design always fits; A "fitWide"/"fitMid" stage swaps to its compact design
+   (--stage-w-compact) on narrow cards, where its illustration re-lays out.
+   ========================================================================== */
+
+.stage {
+  --s: 1;
+  --stage-w: var(--stage-w-wide);
+  --stage-h: var(--stage-h-wide);
+  position: relative;
+  flex-grow: 1;
+  flex-shrink: 0;
+  margin-inline: calc(var(--card-pad) * -1);
+  height: calc(var(--stage-h) * var(--s));
+  overflow: hidden;
+}
+
+.stageBleed { margin-bottom: calc(var(--card-pad) * -1); }
+
+.stageInner {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: var(--stage-w);
+  height: var(--stage-h);
+  transform: translateX(-50%) scale(var(--s));
+  transform-origin: top center;
+  /* Keep small UI type evenly spaced when the stage is scaled. */
+  text-rendering: geometricPrecision;
+}
+
+/* 436-wide designs (and every compact design) */
+@container site-card (max-width: 435px) { .fit436, .fitWide, .fitMid { --s: 0.9; } }
+@container site-card (max-width: 391px) { .fit436, .fitWide, .fitMid { --s: 0.8; } }
+@container site-card (max-width: 348px) { .fit436, .fitWide, .fitMid { --s: 0.72; } }
+@container site-card (max-width: 313px) { .fit436, .fitWide, .fitMid { --s: 0.64; } }
+@container site-card (max-width: 278px) { .fit436, .fitWide, .fitMid { --s: 0.58; } }
+
+/* 764-wide design → compact at ≤599 */
+@container site-card (min-width: 600px) and (max-width: 763px) { .fitWide { --s: 0.9; } }
+@container site-card (min-width: 600px) and (max-width: 687px) { .fitWide { --s: 0.8; } }
+@container site-card (min-width: 600px) and (max-width: 610px) { .fitWide { --s: 0.78; } }
+@container site-card (max-width: 599px) {
+  .fitWide {
+    --stage-w: var(--stage-w-compact);
+    --stage-h: var(--stage-h-compact);
+  }
+}
+
+/* 545-wide design → compact at ≤519 */
+@container site-card (min-width: 520px) and (max-width: 544px) { .fitMid { --s: 0.9; } }
+@container site-card (max-width: 519px) {
+  .fitMid {
+    --stage-w: var(--stage-w-compact);
+    --stage-h: var(--stage-h-compact);
+  }
+}

@@ -1,0 +1,160 @@
+/* ==========================================================================
+   ZENBOARD SITE TOKENS — the public marketing site (zenboard.app)
+   --------------------------------------------------------------------------
+   The site has its own calm, light language (warm paper, hairline grid,
+   lavender feature tiles) — distinct from the app's dark B&G system. Values
+   were sampled from the live site; every site section applies `.site` on its
+   root and reads only these variables. Nothing below is used by the app.
+
+   Dark: set data-theme="dark" on the element carrying `.site`.
+   ========================================================================== */
+
+.site {
+  /* ── Surfaces ── */
+  --site-bg: #f7f7f5;            /* page + grid cell */
+  --site-grid: #ebece9;          /* hairline between cells */
+  --site-card: #ffffff;          /* raised illustration surface */
+  --site-card-subtle: #fbfbfa;   /* recessed panel (sidebars, wells) */
+  --site-fill: #f4f4f2;          /* input / url pill */
+  --site-fill-2: #efefec;        /* selected row */
+  --site-skeleton: #ececE8;      /* placeholder bars */
+  --site-line: #e6e6e3;          /* card border */
+  --site-line-soft: #f0f0ed;     /* inner divider */
+  --site-line-strong: #d4d4cf;   /* dashed / private boundary */
+  --site-dot: #dcdcd7;           /* stage dot texture */
+  --site-rail: #c4c4bf;          /* checkbox ring, quiet connector */
+  --site-hatch: rgba(47, 47, 43, 0.04); /* private-area hatching */
+
+  /* ── Ink ── */
+  --site-ink: #2f2f2b;           /* titles, primary text */
+  --site-ink-2: #565754;         /* body copy */
+  --site-ink-3: #6f6f6b;         /* secondary UI text */
+  --site-ink-4: #767672;         /* meta (4.5:1 on white) */
+  --site-on-ink: #ffffff;        /* text on solid ink */
+
+  /* ── Accent: lavender marks the client ── */
+  --site-accent-tile: #b8beee;   /* feature tile */
+  --site-accent-tile-ink: #34332a;
+  --site-accent-50: #f1f2fc;
+  --site-accent-100: #e3e5f9;
+  --site-accent-200: #dfe2f7;
+  --site-accent-400: #9aa1e6;
+  --site-accent-500: #7d85d8;
+  --site-accent-600: #5b62b9;
+  --site-accent-700: #4d54a8;
+  --site-on-accent: #ffffff;
+  --site-accent-glow: rgba(184, 190, 238, 0.36);
+
+  /* ── Status ── */
+  --site-success: #3f9a66;
+  --site-success-bg: #e7f3ec;
+  --site-success-ink: #2f7a4f;
+  --site-warning-bg: #f8efdd;
+  --site-warning-ink: #8a5a12;
+
+  /* ── Type ── */
+  --site-font: var(--font-geist-sans), "Geist", ui-sans-serif, -apple-system, "Segoe UI", sans-serif;
+  --site-font-mono: var(--font-geist-mono), "Geist Mono", ui-monospace, "SF Mono", monospace;
+  --site-text-display: clamp(30px, 3.4vw, 44px);
+  --site-text-display-lh: 1.14;
+  --site-text-title: 18px;
+  --site-text-title-lh: 26px;
+  --site-text-body: 15px;
+  --site-text-body-lh: 24px;
+  --site-text-lead: 16px;
+  --site-text-lead-lh: 26px;
+  --site-text-small: 14px;
+  --site-text-small-lh: 20px;
+  --site-tracking-display: -0.025em;
+  --site-tracking-title: -0.01em;
+
+  /* ── Radius ── */
+  --site-radius-sm: 6px;
+  --site-radius-md: 8px;
+  --site-radius-lg: 12px;
+  --site-radius-xl: 16px;
+  --site-radius-full: 999px;
+
+  /* ── Space (constitution scale) ── */
+  --site-space-1: 4px;
+  --site-space-2: 8px;
+  --site-space-3: 12px;
+  --site-space-4: 16px;
+  --site-space-5: 20px;
+  --site-space-6: 24px;
+  --site-space-8: 32px;
+  --site-space-10: 40px;
+  --site-space-12: 48px;
+  --site-space-16: 64px;
+  --site-space-20: 80px;
+  --site-space-24: 96px;
+
+  /* ── Shadows ── */
+  --site-shadow-sm: 0 1px 2px rgba(31, 31, 27, 0.04), 0 8px 24px -12px rgba(31, 31, 27, 0.12);
+  --site-shadow-float: 0 1px 2px rgba(31, 31, 27, 0.05), 0 18px 40px -14px rgba(31, 31, 27, 0.18);
+  --site-shadow-accent: 0 4px 12px -4px rgba(77, 84, 168, 0.45);
+
+  /* ── Motion ── */
+  --site-ease: cubic-bezier(0.2, 0, 0, 1);
+  --site-dur-fast: 120ms;
+  --site-dur: 180ms;
+
+  /* ── Layout ── */
+  --site-container: 1312px;
+  --site-gutter: 64px;
+
+  font-family: var(--site-font);
+  color: var(--site-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (max-width: 1100px) {
+  .site { --site-gutter: 32px; }
+}
+@media (max-width: 640px) {
+  .site { --site-gutter: 16px; }
+}
+
+.site[data-theme="dark"] {
+  --site-bg: #141413;
+  --site-grid: #262624;
+  --site-card: #1d1d1b;
+  --site-card-subtle: #191918;
+  --site-fill: #262624;
+  --site-fill-2: #2b2b29;
+  --site-skeleton: #2e2e2b;
+  --site-line: #30302d;
+  --site-line-soft: #282826;
+  --site-line-strong: #454541;
+  --site-dot: #33332f;
+  --site-rail: #5c5c57;
+  --site-hatch: rgba(242, 241, 235, 0.04);
+
+  --site-ink: #f2f1eb;
+  --site-ink-2: #c9c8c2;
+  --site-ink-3: #a8a8a3;
+  --site-ink-4: #9a9a95;
+  --site-on-ink: #141413;
+
+  --site-accent-tile: #3d4177;
+  --site-accent-tile-ink: #e3e5f9;
+  --site-accent-50: #1f2035;
+  --site-accent-100: #2a2c4a;
+  --site-accent-200: #34375c;
+  --site-accent-400: #6c73c4;
+  --site-accent-500: #8b92dd;
+  --site-accent-600: #a9aff0;
+  --site-accent-700: #c3c8f5;
+  --site-on-accent: #16172b;
+  --site-accent-glow: rgba(125, 133, 216, 0.22);
+
+  --site-success: #55a87c;
+  --site-success-bg: #1e2c24;
+  --site-success-ink: #8fc9a9;
+  --site-warning-bg: #2e2717;
+  --site-warning-ink: #e3c07e;
+
+  --site-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px -12px rgba(0, 0, 0, 0.5);
+  --site-shadow-float: 0 1px 2px rgba(0, 0, 0, 0.35), 0 18px 40px -14px rgba(0, 0, 0, 0.6);
+  --site-shadow-accent: 0 4px 12px -4px rgba(0, 0, 0, 0.5);
+}
