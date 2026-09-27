@@ -1,3 +1,24 @@
+# Zenboard launch film v4 (current)
+
+Source of truth: **FEEDBACK_V4.md** (directions D1–D16) and the approved storyboard in `storyboard/`
+(build with `python3 storyboard/build.py`; published as the "Zenboard Launch Storyboard" artifact).
+The film is the `FilmV4` composition, code in `src/v4/` (one file per scene, S1Juggling … S9One), 1:12 at 60fps, 120 BPM.
+
+- Visual language is ported 1:1 from the storyboard CSS (`src/v4/v4.css`, units in cqw: 1cqw = 19.2px).
+  Change the look in the storyboard first, then port.
+- Brand: Paper #FBFAF6, Ink #191919, Berry #C41C72 accent, flat field colours (see FIELD in src/v4/kit.tsx).
+  Geist for everything, Geist Mono only for data. Never full caps. Phosphor icons only (`scripts/extract-v4-icons.mjs`).
+- Motion: all from useCurrentFrame(); springs (`pop`, `soft`) and eased curves in src/v4/kit.tsx; no Math.random (use `rnd`).
+  Transitions are continuous (morphs, zoom-throughs, light flashes), never plain cuts or crossfades.
+- Every appearance has a sound cue (src/v4/sound.ts).
+- Preview a scene: `scripts/v4-contact.sh V4-<scene> <every-nth-frame>`.
+- Renders here need `--browser-executable=/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell`.
+
+The v3 notes below are history: the v3 banned list no longer applies to v4 where the storyboard says otherwise
+(for example the person at the centre of scene 1).
+
+---
+
 # Zenboard launch film v3 — "Everything → One"
 
 Source of truth: **DIRECTION_V3.md**. It replaces v1 and v2 completely (CREATIVE_DIRECTION.md,

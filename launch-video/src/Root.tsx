@@ -17,6 +17,9 @@ import { Film } from "./Film";
 import { ILLO, ResultIllustration, ResultIllustration4K } from "./illustration/ResultIllustration";
 import { SCENES } from "./scenes/film";
 import { FILM, FILM_FRAMES, FilmScene, len } from "./timeline/film";
+import { FilmV4 } from "./v4/FilmV4";
+import { SCENES_V4 } from "./v4/scenes";
+import { V4, V4Scene, V4_FRAMES, v4Len } from "./v4/timeline";
 
 const size = { width: 1920, height: 1080, fps: FPS };
 
@@ -38,6 +41,12 @@ export const STYLEFRAMES: { id: string; component: React.FC }[] = [
 
 export const RemotionRoot: React.FC = () => (
   <>
+    <Composition id="FilmV4" component={FilmV4} durationInFrames={V4_FRAMES} {...size} />
+    <Folder name="V4-Scenes">
+      {(Object.keys(V4) as V4Scene[]).filter((k) => SCENES_V4[k]).map((k) => (
+        <Composition key={k} id={`V4-${k}`} component={SCENES_V4[k]!} durationInFrames={v4Len(k)} {...size} />
+      ))}
+    </Folder>
     <Composition id="Film" component={Film} durationInFrames={FILM_FRAMES} {...size} defaultProps={{ score: true }} />
     <Folder name="Scenes">
       {(Object.keys(FILM) as FilmScene[]).map((s) => (

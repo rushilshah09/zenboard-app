@@ -1,0 +1,151 @@
+<title>Zenboard Final Storyboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --paper:#FBFAF6; --ink:#191919; --berry:#C41C72; --muted:#6B665E; --line:#E6E1D8; --card:#FFFFFF; --soft:#F3F0E9;
+  --petal:#EAB9CB; --apricot:#ECBF9B; --butter:#E5D494; --sage:#B7CEAB; --sky:#A6D1E0; --peri:#B8BDEE; --sand:#EEE7D9; --mist:#E7EAEC;
+  --shadow:0 1px 2px rgba(25,25,25,.05),0 8px 24px rgba(90,15,54,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --paper:#141213; --ink:#F2EEE7; --berry:#E0468F; --muted:#A39D94; --line:#2C282A; --card:#1C1A1B; --soft:#221F20;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --paper:#141213; --ink:#F2EEE7; --berry:#E0468F; --muted:#A39D94; --line:#2C282A; --card:#1C1A1B; --soft:#221F20;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:'Geist',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1320px;margin:0 auto;padding-inline:clamp(16px,4vw,48px);padding-block:40px 80px;display:flex;flex-direction:column;gap:48px}
+.mono{font-family:'Geist Mono',ui-monospace,SFMono-Regular,Menlo,monospace}
+
+/* intro */
+.intro{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:40px;align-items:end}
+.brand{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px;font-weight:500;margin-bottom:18px}
+.brand svg{width:22px;height:22px;flex:none}
+h1{font-size:clamp(34px,5vw,56px);line-height:1.02;letter-spacing:-.04em;font-weight:600;margin:0;text-wrap:balance}
+.lede{color:var(--muted);font-size:17px;max-width:60ch;margin:16px 0 0}
+.facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.facts div{background:var(--card);padding:14px 16px;display:flex;flex-direction:column;gap:2px}
+.facts dt{font-size:12px;color:var(--muted)}
+.facts dd{margin:0;font-weight:500;font-variant-numeric:tabular-nums}
+
+/* rhythm strip */
+.rhythm{display:flex;flex-direction:column;gap:10px}
+.rhythm h3,.lang h3{font-size:13px;font-weight:500;color:var(--muted);margin:0}
+.strip{display:flex;gap:3px;border-radius:12px;overflow:hidden}
+.seg{background:var(--f);color:#191919;text-decoration:none;padding:12px 12px 10px;min-width:0;display:flex;flex-direction:column;gap:2px;transition:filter .15s ease-out}
+.seg:hover{filter:brightness(.96)}
+.seg:focus-visible{outline:2px solid var(--berry);outline-offset:2px}
+.segn{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.segt{font-family:'Geist Mono',ui-monospace,monospace;font-size:11px;opacity:.7;white-space:nowrap}
+.beats{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.beats b{color:var(--ink);font-weight:500}
+
+/* motion language */
+.lang{display:flex;flex-direction:column;gap:12px}
+.rules{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.rule{border-top:2px solid var(--berry);padding-top:10px;display:flex;flex-direction:column;gap:4px}
+.rule b{font-weight:600;font-size:14px}
+.rule span{color:var(--muted);font-size:13px}
+
+/* movements */
+.mv{display:flex;flex-direction:column;gap:18px;scroll-margin-top:24px}
+.mvh{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:14px}
+.mvk{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.letter{width:30px;height:30px;border-radius:50%;background:var(--f);color:#191919;display:grid;place-items:center;font-weight:600;font-size:14px;align-self:center}
+h2{margin:0;font-size:28px;letter-spacing:-.03em;font-weight:600}
+.rng{font-family:'Geist Mono',ui-monospace,monospace;font-size:13px;color:var(--muted)}
+.rh{font-size:12px;padding:3px 10px;border-radius:99px;background:var(--soft);color:var(--muted)}
+.vo{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;text-align:right;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px}
+.fr{margin:0;display:flex;flex-direction:column;gap:10px}
+.shot{position:relative;border-radius:12px;overflow:hidden;box-shadow:var(--shadow);background:#EDE9E1;aspect-ratio:16/9}
+.shot img{display:block;width:100%;height:100%;object-fit:cover;max-width:100%}
+.tc{position:absolute;left:10px;top:10px;font-family:'Geist Mono',ui-monospace,monospace;font-size:11px;background:rgba(25,25,25,.78);color:#fff;padding:3px 8px;border-radius:99px;font-variant-numeric:tabular-nums}
+figcaption{display:flex;flex-direction:column;gap:2px}
+.what{margin:0;font-size:14px;line-height:1.45}
+.how{margin:0;font-size:12.5px;color:var(--berry);font-weight:500}
+
+/* notes */
+.notes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;border-top:1px solid var(--line);padding-top:28px}
+.notes h3{font-size:15px;margin:0 0 8px;font-weight:600}
+.notes ul{margin:0;padding-left:18px;color:var(--muted);font-size:14px;display:flex;flex-direction:column;gap:4px}
+
+@media (max-width:900px){
+  .intro{grid-template-columns:1fr}
+  .rules{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .notes{grid-template-columns:1fr}
+  .vo{text-align:left}
+  .segt{display:none}
+}
+@media (max-width:560px){
+  .strip{flex-wrap:wrap}
+  .seg{flex:1 1 30% !important}
+}
+@media (prefers-reduced-motion:reduce){.seg{transition:none}}
+</style>
+
+<div class="wrap">
+  <section class="intro">
+    <div>
+      <div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><path fill="#C41C72" d="M29.4762 13.0274L29.8244 12.6792C32.7252 9.77835 32.7252 5.07728 29.8244 2.17642L29.8213 2.17331C26.9206 -0.724438 22.2197 -0.724438 19.322 2.17331L18.9707 2.52465C17.3322 4.16318 14.6678 4.16318 13.0262 2.52465L12.678 2.17642C9.77722 -0.724437 5.07632 -0.724437 2.17556 2.17642C-0.725188 5.07728 -0.725188 9.77835 2.17556 12.6792L2.52378 13.0274C4.16225 14.6691 4.16225 17.3336 2.52378 18.9722L2.17556 19.3204C-0.725188 22.2213 -0.725188 26.9223 2.17556 29.8232C5.07632 32.724 9.77722 32.7272 12.678 29.8232L13.0262 29.475C14.6678 27.8333 17.3322 27.8333 18.9707 29.475L19.3189 29.8232C22.2197 32.724 26.9206 32.724 29.8213 29.8232H29.8244V29.8201C32.7252 26.9192 32.7252 22.2182 29.8244 19.3173L29.4762 18.9691C27.8346 17.3305 27.8346 14.666 29.4762 13.0243V13.0274ZM7.77498 24.2236C12.3173 19.6811 12.3173 12.3185 7.77498 7.77604C12.3173 12.3185 19.6827 12.3185 24.225 7.77604C19.6827 12.3185 19.6827 19.6811 24.225 24.2236C19.6827 19.6811 12.3173 19.6811 7.77498 24.2236Z"/></svg>Zenboard launch film · final storyboard</div>
+      <h1>One continuous film, from eight apps to one mark.</h1>
+      <p class="lede">Every frame below is taken from the actual render. There are no scene cuts: each moment is made from the element that ended the moment before it, and one camera and one motion system carry the whole film.</p>
+    </div>
+    <dl class="facts">
+      <div><dt>Length</dt><dd class="mono">1:10</dd></div>
+      <div><dt>Format</dt><dd>1920 × 1080 · 60 fps</dd></div>
+      <div><dt>Movements</dt><dd>8, no cuts</dd></div>
+      <div><dt>Frames shown</dt><dd>45</dd></div>
+      <div><dt>Voice</dt><dd>22 lines, Kokoro</dd></div>
+      <div><dt>Built with</dt><dd>HTML + GSAP, hand-animated</dd></div>
+    </dl>
+  </section>
+
+  <section class="rhythm" aria-label="Rhythm">
+    <h3>Rhythm across the film, drawn to scale</h3>
+    <nav class="strip">%%STRIP%%</nav>
+    <div class="beats"><span><b>Build</b> → accelerate</span><span>→ <b>reveal</b> → breathe</span><span>→ <b>build</b></span><span>→ <b>hero</b></span><span>→ <b>resolve</b></span></div>
+  </section>
+
+  <section class="lang" aria-label="Motion language">
+    <h3>One motion language for the whole film</h3>
+    <div class="rules">
+      <div class="rule"><b>Travel</b><span>Ease in and out. Accelerates softly, decelerates naturally. No linear moves.</span></div>
+      <div class="rule"><b>Arrive</b><span>Critically damped spring. Lands without bounce.</span></div>
+      <div class="rule"><b>Hero</b><span>Spring with about 1.5% overshoot, only on the portrait, the Berry circle, the mark and the app icon.</span></div>
+      <div class="rule"><b>Spin</b><span>Angular velocity eases between speeds, so every spin builds momentum and coasts.</span></div>
+      <div class="rule"><b>Depart</b><span>Exits accelerate away, faster than entrances.</span></div>
+    </div>
+  </section>
+
+  %%SECTIONS%%
+
+  <section class="notes">
+    <div><h3>Carried from the approved storyboard</h3><ul>
+      <li>Brand: Paper, Ink and one Berry accent; field colours only inside the UI</li>
+      <li>Geist everywhere, Geist Mono only for data; never full caps</li>
+      <li>Phosphor icons, filled; the real dashboard and feature cards</li>
+      <li>Real faces in the UI; the portrait at the centre of the orbit</li>
+    </ul></div>
+    <div><h3>What changed in this version</h3><ul>
+      <li>Rebuilt as one continuous animation instead of nine stitched scenes</li>
+      <li>Diagonal line from the top right opens the film and returns to align the mark</li>
+      <li>Circular motion runs from the orbit to the carousel to the mark</li>
+      <li>Logo reveal is earned: line, circles, alignment, mark, wordmark</li>
+    </ul></div>
+    <div><h3>Sound</h3><ul>
+      <li>Voice-over lands with its on-screen words</li>
+      <li>Ticks on each orbit launch and feature step; clicks on presses</li>
+      <li>Whoosh on travel, a chime when the mark forms</li>
+      <li>Score fades in over 1.5 s and out over the last 5 s</li>
+    </ul></div>
+  </section>
+</div>

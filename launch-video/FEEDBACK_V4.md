@@ -98,7 +98,60 @@ The product UI in the film should look like the green "Project Status" reference
   cut-out as the glyph motif (like Semantical's sparkle).
 - Motion rule for all three: step → spring settle → short hold → next step, on the beat.
 
-### D8+ — (more directions to come)
+### D8 — Icons and card language
+- Icons: **Phosphor** only (duotone for app tiles, fill/bold for buttons), read from `@phosphor-icons/react`.
+- Cards: warm cream surfaces, soft tinted squircle tiles, small mono meta labels, dark mono count badges,
+  avatars and the hero portrait masked in the Zenboard lobe shape, a faint dot grid on the stage
+  (refs: PXDX "UI Style" sheet, muted real-estate card collage, cream revenue cards).
+
+### D9 — Connector lines (never the same straight fan of equal white lines)
+- Many → one: each app sends a fan of fine hairlines in its own colour; all fans converge on one bright
+  point, then three dots lead into Zenboard (ref: "Bringing together").
+- One line: soft colour waves ripple along a line and settle into a single Berry line (ref: layered waves).
+
+### D10 — Camera movement (ref: Fostr AI / beliv8 product film)
+- Product UI floats as a 3D window: tilted back 12–18° with some yaw, slow dolly-in and rise, shallow depth
+  of field (far edge soft). Macro push along rows, then rotate flat to camera whenever it must be read.
+- Light-flash whip between shots: the frame overexposes to a white bloom for ~10 frames and resolves
+  into the next shot. Used for scene 3 → 4.
+- Every storyboard frame now carries a Camera note.
+
+### D11 — Outro: blueprint lockup (refs: Superhuman logo construction, Fiverr grid banner, blueprint sheets, Reformr grid)
+- Zenboard lockup large in the centre (SUPERHUMAN-style), crisp white, framed by hairline rails with corner handles.
+- Background: our Berry field (dark to light) with fine grain.
+- Behind it, subtle blueprint drawing in white hairlines and dotted lines: construction of the mark (32-unit box,
+  lobe circles, diagonals, star angle, dimension labels), Geist type specimen, outline component cards
+  (card, checkbox rows, Start focus button, pill), grid blocks, mono notes. Never harsh; Zenboard stays the hero.
+- 8.2 draws the blueprint on; 8.3 dims it to ~50% for the tagline and Available today.
+
+### D12 — Type rule
+- Never full caps, anywhere: labels, pills, mono notes and chips use sentence or title case.
+
+### D13 — Automation scene (ref: Google Workspace "Effortless automation")
+- New scene 6 "Zenboard does the work" (0:40–0:46); later scenes shift, film now 1:10.
+- 6.1: Automations feature logo (Berry circle, lightning) centred, big headline "Effortless automation",
+  real Zenboard pieces floating around at three depths (steps card, doc + Add to a doc, prompt card,
+  Q3 revenue chart, soft glowing mark, Money tile).
+- 6.2: Zenboard opens the work: cursor presses Create, the steps run by themselves (ticks, spinner),
+  a drafted reminder to Fernwood Hotels slides in, toast "Reminder sent".
+
+### D14 — Logo reveal (ref: Google Workspace with Gemini sequence)
+- Scene 2 ends with: Zenboard module icons in a square ring around the gradient Zenboard mark (2.3),
+  the ring absorbed into the mark, mark alone small and spinning (2.4), lockup + "with ✦ Ask" (2.5).
+- The Automations scene centre badge is the Zenboard logo (white mark on a Berry circle); one cohesive
+  Berry/petal light and a symmetric card layout.
+
+### D15 — Macro zoom on Create (ref: glass toggle close-up)
+- New 6.2: a 12× zoom-through from 6.1 into the Create button, then a macro close-up on the Berry field.
+  It shows a prompt-card corner, a glossy glass pill with an iridescent edge, the Zenboard mark in a frosted
+  knob, and grain. The cursor press squashes it, a glow pulses and the knob slides; reverse zoom out into 6.3.
+
+### D16 — End screen (ref: graphite terminal app icon)
+- Final frame 9.5, black and white only: pure black stage, the Zenboard mark as a chunky graphite app icon
+  (bevelled squircle, top-left light, mark engraved in a recessed keycap pill). Fade up, 2% settle, hold, fade out.
+  Film is now 1:12.
+
+### D17+ — (more directions to come)
 
 ## Brand note
 The Zenboard brand guidelines (Paper / Ink / single Berry accent, eight flat field colours, no gradients)
@@ -106,4 +159,4 @@ differ from the v3 film look (burgundy Ink stage, energy gradient). v4 follows t
 DIRECTION_V3 / CLAUDE.md stage and gradient rules get updated when work starts.
 
 ## Status
-Storyboard v4 drafted (`storyboard/`, built by `storyboard/build.py`): 8 scenes, 18 keyframes, awaiting frame-by-frame approval before any animation.
+Storyboard approved frame by frame; the full film is animated as the `FilmV4` composition (src/v4/), 1:12.

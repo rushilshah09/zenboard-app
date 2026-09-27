@@ -105,6 +105,43 @@ export const Trash = phosphor(Ph.Trash);
 export const Trash2 = phosphor(Ph.Trash);
 export const GripVertical = phosphor(Ph.DotsSixVertical);
 
+// ── Marketing site (zenboard.app) — fixed-weight Phosphor glyphs ─────────────
+// The public site's feature tiles and illustrations draw filled/bold glyphs at
+// one weight, never toggled by the app's `fill` shim. Prefixed `Site` so they
+// never collide with (or leak into) the app's regular-weight nav set.
+function phosphorAs(G: Ph.Icon, weight: Ph.IconWeight) {
+  return React.forwardRef<SVGSVGElement, AdapterProps>(function PhosphorFixed(
+    { strokeWidth: _strokeWidth, fill: _fill, ...rest },
+    ref,
+  ) {
+    return React.createElement(G, { ref, weight, ...rest });
+  });
+}
+export const SiteLink = phosphorAs(Ph.Link, "bold");               // "One link" tile
+export const SiteEye = phosphorAs(Ph.Eye, "fill");                 // visibility tile + client view
+export const SiteChat = phosphorAs(Ph.ChatCircleText, "fill");     // requests tile + request chip
+export const SiteSealCheck = phosphorAs(Ph.SealCheck, "fill");     // approvals tile
+export const SiteReceipt = phosphorAs(Ph.Receipt, "fill");         // invoices tile
+export const SiteUsersThree = phosphorAs(Ph.UsersThree, "fill");   // client portal eyebrow
+export const SiteLock = phosphorAs(Ph.LockSimple, "fill");         // private / internal
+export const SiteCheckCircle = phosphorAs(Ph.CheckCircle, "fill"); // done / paid / approved
+export const SiteCheck = phosphorAs(Ph.Check, "bold");             // copied / approved marks
+export const SiteFileText = phosphorAs(Ph.FileText, "regular");    // shared file row
+// Feature tiles of the "everything in one place" hub — one glyph per product area,
+// the same metaphors the app's nav uses (Home=SquaresFour, Inbox=Tray, …).
+export const SiteSquares = phosphorAs(Ph.SquaresFour, "fill");     // Home / everything
+export const SiteTray = phosphorAs(Ph.Tray, "fill");               // Inbox
+export const SiteTasks = phosphorAs(Ph.CheckSquare, "fill");       // Tasks
+export const SiteCalendar = phosphorAs(Ph.CalendarBlank, "fill");  // Calendar
+export const SiteTimer = phosphorAs(Ph.Timer, "fill");             // Focus
+export const SiteFire = phosphorAs(Ph.Fire, "fill");               // Habits
+export const SiteTarget = phosphorAs(Ph.Target, "fill");           // Goals
+export const SiteFolder = phosphorAs(Ph.FolderSimple, "fill");     // Projects
+export const SiteUsers = phosphorAs(Ph.Users, "fill");             // Clients
+export const SiteDoc = phosphorAs(Ph.FileText, "fill");            // Docs
+export const SiteForm = phosphorAs(Ph.ClipboardText, "fill");      // Forms
+export const SiteBank = phosphorAs(Ph.Bank, "fill");               // Finance
+
 // ── Remaining glyphs (Tabler) — screens not yet on the Figma pass ────────────
 export {
   IconActivity as Activity,
