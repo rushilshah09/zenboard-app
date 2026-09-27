@@ -1,0 +1,286 @@
+/* ==========================================================
+   ZENBOARD ILLUSTRATION TOKENS
+   Product illustrations (marketing tiles, onboarding, empty
+   states) are small, calm scenes built from the product's own
+   parts. They render in two tones:
+     · light (default) — the marketing surface
+     · dark            — the in-app B&G surface
+   Every value a scene uses comes from here. Scenes never pick
+   a color, radius, shadow or type size of their own.
+   Scope: any element with class .ill-scope (the board or a
+   single tile). Tone: data-ill-tone="light" | "dark".
+   ========================================================== */
+
+.ill-scope {
+  /* Surfaces */
+  --ill-page:       #F6F5F2;                    /* board background */
+  --ill-tile:       #FFFFFF;                    /* the tile that frames a scene */
+  --ill-stage:      #F2F1ED;                    /* inset stage the scene sits in */
+  --ill-surface:    #FFFFFF;                    /* windows, cards inside a scene */
+  --ill-surface-2:  #F8F7F4;                    /* section headers, quiet rows */
+  --ill-surface-3:  #EFEEEA;                    /* fills, keycaps, segmented well */
+  --ill-scrim:      rgb(246 245 242 / 0.72);    /* dims the app behind a palette */
+
+  /* Ink */
+  --ill-ink-1: #1E1C1A;                         /* titles */
+  --ill-ink-2: #4A4744;                         /* body */
+  --ill-ink-3: #7A7672;                         /* meta */
+  --ill-ink-4: #B3AFA9;                         /* placeholders, skeleton bars */
+  --ill-skeleton: #E9E7E2;                      /* skeleton text lines */
+
+  /* Lines */
+  --ill-line:        rgb(30 28 26 / 0.08);
+  --ill-line-strong: rgb(30 28 26 / 0.14);
+  --ill-dot:         rgb(30 28 26 / 0.09);      /* dotted stage grid */
+
+  /* Solid + brand */
+  --ill-solid:       #1E1C1A;
+  --ill-on-solid:    #FFFFFF;
+  --ill-accent:      var(--color-berry-500);
+  --ill-accent-soft: rgb(196 28 114 / 0.08);
+  --ill-accent-line: rgb(196 28 114 / 0.28);
+  --ill-success:     #3E9A6C;
+  --ill-success-soft: rgb(62 154 108 / 0.12);
+
+  /* Aura — the soft light behind each scene (brand berry, indigo, peach) */
+  --ill-aura-a: rgb(238 150 190 / 0.45);
+  --ill-aura-b: rgb(176 168 238 / 0.40);
+  --ill-aura-c: rgb(250 196 160 / 0.45);
+
+  /* Label colors used as user data inside scenes */
+  --ill-label-berry:  var(--color-berry-500);
+  --ill-label-indigo: #6D64C8;
+  --ill-label-moss:   #3E9A6C;
+  --ill-label-ochre:  #C4912B;
+  --ill-label-slate:  #4F82AE;
+  --ill-label-indigo-soft: rgb(109 100 200 / 0.12);
+  --ill-label-slate-soft:  rgb(79 130 174 / 0.12);
+  --ill-label-ochre-soft:  rgb(196 145 43 / 0.14);
+
+  /* Elevation */
+  --ill-shadow-1: 0 0 0 1px var(--ill-line), 0 1px 2px rgb(30 28 26 / 0.05);
+  --ill-shadow-2: 0 0 0 1px var(--ill-line), 0 1px 2px rgb(30 28 26 / 0.04), 0 8px 24px -8px rgb(30 28 26 / 0.14);
+  --ill-shadow-float: 0 0 0 1px var(--ill-line), 0 2px 4px rgb(30 28 26 / 0.04), 0 24px 48px -16px rgb(30 28 26 / 0.24);
+  --ill-shadow-key: inset 0 -2px 0 rgb(30 28 26 / 0.10), 0 0 0 1px var(--ill-line-strong), 0 1px 2px rgb(30 28 26 / 0.06);
+  --ill-shadow-key-down: inset 0 1px 0 rgb(30 28 26 / 0.08), 0 0 0 1px var(--ill-line-strong);
+
+  /* Motion — scenes breathe on hover; one loop length for every scene */
+  --ill-loop: 6s;
+
+  color: var(--ill-ink-2);
+  font-family: var(--font-sans);
+}
+
+.ill-scope[data-ill-tone="dark"] {
+  --ill-page:       var(--color-canvas);
+  --ill-tile:       var(--color-paper);
+  --ill-stage:      var(--color-paper-5);
+  --ill-surface:    var(--color-paper-2);
+  --ill-surface-2:  var(--color-paper-3);
+  --ill-surface-3:  var(--color-paper-4);
+  --ill-scrim:      rgb(0 0 0 / 0.55);
+
+  --ill-ink-1: var(--color-ink-900);
+  --ill-ink-2: var(--color-ink-700);
+  --ill-ink-3: var(--color-ink-500);
+  --ill-ink-4: var(--color-ink-300);
+  --ill-skeleton: var(--color-ink-200);
+
+  --ill-line:        rgb(242 241 235 / 0.08);
+  --ill-line-strong: rgb(242 241 235 / 0.14);
+  --ill-dot:         rgb(242 241 235 / 0.07);
+
+  --ill-solid:       var(--color-ink-900);
+  --ill-on-solid:    var(--color-paper);
+  --ill-accent:      var(--color-berry-400);
+  --ill-accent-soft: rgb(196 28 114 / 0.16);
+  --ill-accent-line: rgb(213 83 145 / 0.40);
+  --ill-success:     var(--color-success-500);
+  --ill-success-soft: var(--color-success-100);
+
+  --ill-aura-a: rgb(196 28 114 / 0.22);
+  --ill-aura-b: rgb(139 132 201 / 0.20);
+  --ill-aura-c: rgb(201 122 85 / 0.16);
+
+  --ill-label-berry:  var(--color-label-berry);
+  --ill-label-indigo: var(--color-label-indigo);
+  --ill-label-moss:   var(--color-label-moss);
+  --ill-label-ochre:  var(--color-label-ochre);
+  --ill-label-slate:  var(--color-label-slate);
+  --ill-label-indigo-soft: var(--color-label-indigo-fill);
+  --ill-label-slate-soft:  var(--color-label-slate-fill);
+  --ill-label-ochre-soft:  var(--color-label-ochre-fill);
+
+  --ill-shadow-1: 0 0 0 1px var(--ill-line), 0 1px 2px rgb(0 0 0 / 0.30);
+  --ill-shadow-2: 0 0 0 1px var(--ill-line), 0 1px 2px rgb(0 0 0 / 0.30), 0 8px 24px -8px rgb(0 0 0 / 0.50);
+  --ill-shadow-float: 0 0 0 1px var(--ill-line-strong), 0 2px 4px rgb(0 0 0 / 0.30), 0 24px 48px -16px rgb(0 0 0 / 0.70);
+  --ill-shadow-key: inset 0 -2px 0 rgb(0 0 0 / 0.40), 0 0 0 1px var(--ill-line-strong);
+  --ill-shadow-key-down: inset 0 1px 0 rgb(0 0 0 / 0.40), 0 0 0 1px var(--ill-line-strong);
+  color-scheme: dark;
+}
+
+/* Tailwind utilities for the tokens above (bg-ill-surface, text-ill-ink-1, …) */
+@theme inline {
+  --color-ill-page: var(--ill-page);
+  --color-ill-tile: var(--ill-tile);
+  --color-ill-stage: var(--ill-stage);
+  --color-ill-surface: var(--ill-surface);
+  --color-ill-surface-2: var(--ill-surface-2);
+  --color-ill-surface-3: var(--ill-surface-3);
+  --color-ill-scrim: var(--ill-scrim);
+  --color-ill-ink-1: var(--ill-ink-1);
+  --color-ill-ink-2: var(--ill-ink-2);
+  --color-ill-ink-3: var(--ill-ink-3);
+  --color-ill-ink-4: var(--ill-ink-4);
+  --color-ill-skeleton: var(--ill-skeleton);
+  --color-ill-line: var(--ill-line);
+  --color-ill-line-strong: var(--ill-line-strong);
+  --color-ill-solid: var(--ill-solid);
+  --color-ill-on-solid: var(--ill-on-solid);
+  --color-ill-accent: var(--ill-accent);
+  --color-ill-accent-soft: var(--ill-accent-soft);
+  --color-ill-accent-line: var(--ill-accent-line);
+  --color-ill-success: var(--ill-success);
+  --color-ill-success-soft: var(--ill-success-soft);
+  --shadow-ill-1: var(--ill-shadow-1);
+  --shadow-ill-2: var(--ill-shadow-2);
+  --shadow-ill-float: var(--ill-shadow-float);
+}
+
+/* ─── Type — illustration scale, built on the app's typography tokens.
+   In @layer components so text-* color utilities on a node still win. */
+@layer components {
+  .ill-t-display { font-size: var(--text-h1-size); line-height: var(--text-h1-lh); font-weight: 600; letter-spacing: var(--text-display-tracking); color: var(--ill-ink-1); }
+  .ill-t-title   { font-size: var(--text-h3-size); line-height: var(--text-h3-lh); font-weight: 600; letter-spacing: var(--text-h3-tracking); color: var(--ill-ink-1); }
+  .ill-t-h4      { font-size: var(--text-h4-size); line-height: var(--text-h4-lh); font-weight: 500; color: var(--ill-ink-1); }
+  .ill-t-body    { font-size: var(--text-body-size); line-height: var(--text-body-lh); letter-spacing: var(--text-body-tracking); }
+  .ill-t-small   { font-size: var(--text-small-size); line-height: var(--text-small-lh); }
+  .ill-t-caption { font-size: var(--text-caption-size); line-height: var(--text-caption-lh); }
+  .ill-t-label   { font-size: var(--text-label-size); line-height: var(--text-label-lh); font-weight: 500; letter-spacing: var(--text-label-tracking); text-transform: uppercase; }
+  .ill-t-micro   { font-size: var(--text-micro-size); line-height: var(--text-micro-lh); font-weight: 500; letter-spacing: var(--text-micro-tracking); }
+  .ill-t-stat    { font-size: var(--text-display-size); line-height: 1; font-weight: 600; letter-spacing: var(--text-display-tracking); color: var(--ill-ink-1); font-variant-numeric: tabular-nums; }
+  .ill-t-mono    { font-family: var(--font-mono); font-size: var(--text-code-size); line-height: var(--text-code-lh); }
+}
+
+/* ─── Stage — dotted grid + aura, the ground every scene stands on ─── */
+.ill-stage {
+  position: relative;
+  overflow: hidden;
+  background: var(--ill-stage);
+  isolation: isolate;
+}
+.ill-stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(60% 70% at 18% 20%, var(--ill-aura-c), transparent 70%),
+    radial-gradient(55% 65% at 85% 30%, var(--ill-aura-b), transparent 70%),
+    radial-gradient(60% 70% at 55% 100%, var(--ill-aura-a), transparent 70%);
+}
+.ill-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: radial-gradient(var(--ill-dot) 1px, transparent 1.2px);
+  background-size: var(--space-3) var(--space-3);
+  mask-image: radial-gradient(80% 80% at 50% 50%, #000 30%, transparent 85%);
+}
+.ill-stage[data-aura="quiet"]::before { opacity: 0.5; }
+
+/* ─── Tile — the framed card on the board ─── */
+.ill-tile {
+  transition: box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
+}
+.ill-tile:hover { box-shadow: var(--ill-shadow-2); }
+
+/* ─── Motion ────────────────────────────────────────────────
+   Scenes are drawn in their finished pose; a loop replays the
+   moment the scene is about. Loops run only while the tile is
+   hovered or focused (data-ill-motion="hover", the default) or
+   always (data-ill-motion="always"). Reduced motion: never. */
+.ill-anim {
+  animation-duration: var(--ill-loop);
+  animation-iteration-count: infinite;
+  animation-timing-function: var(--ease-inout);
+  animation-play-state: paused;
+}
+[data-ill-motion="always"] .ill-anim,
+.ill-tile:hover .ill-anim,
+.ill-tile:focus-within .ill-anim { animation-play-state: running; }
+@media (prefers-reduced-motion: reduce) {
+  .ill-anim { animation: none !important; }
+}
+
+/* A dot travelling along a connector (left → right) */
+@keyframes ill-travel { 0% { left: 0%; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { left: 100%; opacity: 0; } }
+.ill-travel { animation-name: ill-travel; animation-duration: 2.4s; animation-timing-function: var(--ease-standard); }
+
+/* A row arriving: finished pose at 0%, leaves, then re-enters */
+@keyframes ill-arrive {
+  0%, 55% { opacity: 1; transform: none; }
+  62%     { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  72%     { opacity: 0; transform: translateY(6px) scale(0.98); }
+  84%, 100% { opacity: 1; transform: none; }
+}
+.ill-arrive { animation-name: ill-arrive; }
+
+/* Spinner arc around the mark */
+@keyframes ill-orbit { to { transform: rotate(360deg); } }
+.ill-orbit { animation-name: ill-orbit; animation-duration: 8s; animation-timing-function: linear; }
+
+/* Caret */
+@keyframes ill-blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+.ill-blink { animation-name: ill-blink; animation-duration: 1.1s; animation-timing-function: steps(1, end); }
+
+/* Selection moving down a list (row height = --ill-row) */
+@keyframes ill-select {
+  0%, 22%   { transform: translateY(0); }
+  30%, 52%  { transform: translateY(var(--ill-row)); }
+  60%, 82%  { transform: translateY(calc(var(--ill-row) * 2)); }
+  90%, 100% { transform: translateY(0); }
+}
+.ill-select { animation-name: ill-select; }
+
+/* Cursor drifting between two points and clicking */
+@keyframes ill-drift {
+  0%, 100% { transform: translate(0, 0); }
+  40%, 60% { transform: translate(var(--ill-dx, -24px), var(--ill-dy, 12px)); }
+}
+.ill-drift { animation-name: ill-drift; }
+
+/* A keycap being pressed twice per loop */
+@keyframes ill-press {
+  0%, 18%, 32%, 68%, 82%, 100% { transform: translateY(0); box-shadow: var(--ill-shadow-key); }
+  22%, 28%, 72%, 78% { transform: translateY(1px); box-shadow: var(--ill-shadow-key-down); }
+}
+.ill-press { animation-name: ill-press; animation-timing-function: linear; }
+
+/* Toast rising above the keys */
+@keyframes ill-rise {
+  0%, 60%  { opacity: 1; transform: none; }
+  68%, 76% { opacity: 0; transform: translateY(6px); }
+  86%, 100% { opacity: 1; transform: none; }
+}
+.ill-rise { animation-name: ill-rise; }
+
+/* Timer ring sweeping (stroke-dashoffset on a pathLength=100 circle) */
+@keyframes ill-sweep { from { stroke-dashoffset: 32; } to { stroke-dashoffset: 26; } }
+.ill-sweep { animation-name: ill-sweep; animation-timing-function: linear; animation-direction: alternate; }
+
+/* Dragged card: lifted, drops into its slot, lifts again */
+@keyframes ill-drag {
+  0%, 30%   { transform: translate(0, 0) rotate(-2deg); }
+  55%, 80%  { transform: translate(var(--ill-dx, 0), var(--ill-dy, 0)) rotate(0deg); }
+  100%      { transform: translate(0, 0) rotate(-2deg); }
+}
+.ill-drag { animation-name: ill-drag; }
+
+/* A signal travelling along an SVG line (offset-path set inline) */
+@keyframes ill-offset { 0% { offset-distance: 0%; opacity: 0; } 15%, 85% { opacity: 1; } 100% { offset-distance: 100%; opacity: 0; } }
+
+/* Soft pulse for status dots / "connected" */
+@keyframes ill-pulse { 0%, 100% { box-shadow: 0 0 0 0 var(--ill-pulse, var(--ill-accent-line)); } 50% { box-shadow: 0 0 0 4px transparent; } }
+.ill-pulse { animation-name: ill-pulse; animation-duration: 2s; }

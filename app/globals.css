@@ -2,6 +2,7 @@
 @import "./tokens.generated.css"; /* GENERATED color layer — source: design-system/src/tokens/tokens.json */
 @import "./tokens.css";
 @import "./ds-theme.css"; /* additive shadcn design-system token/utility layer for @/components/ds */
+@import "./illustrations.css"; /* product illustration tokens + scene motion (.ill-scope) */
 
 /* ─────────────────────────────────────────────────────────────
    ZENBOARD APP TOKENS — extensions over the "Paper OS" system.
