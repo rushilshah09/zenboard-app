@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { notFound } from 'next/navigation';
 import { SegmentedControl } from '@/components/ds/ui/segmented';
 import { BrandMark } from '@/components/illustrations/primitives';
-import { ILLUSTRATIONS, type IllustrationEntry } from '@/components/illustrations/scenes';
+import { ILLUSTRATIONS } from '@/components/illustrations/scenes';
+import { FeatureGrid } from '@/components/illustrations/feature-grid';
 
 type Tone = 'light' | 'dark';
 type Motion = 'hover' | 'always';
@@ -19,7 +20,7 @@ export default function IllustrationsBoardPage() {
       <header className="sticky top-0 z-10 flex flex-wrap items-center gap-3 border-b border-line bg-paper px-4 py-3 md:px-10">
         <div className="mr-auto">
           <h1 className="text-h2 text-ink">Illustrations</h1>
-          <p className="text-caption text-ink-4">{ILLUSTRATIONS.length} scenes · hover a tile to play it</p>
+          <p className="text-caption text-ink-4">{ILLUSTRATIONS.length} scenes · hover a feature to play it</p>
         </div>
         <SegmentedControl
           aria-label="Tone"
@@ -36,7 +37,7 @@ export default function IllustrationsBoardPage() {
       </header>
 
       <main className="ill-scope bg-ill-page px-4 py-10 md:px-10 md:py-16" data-ill-tone={tone} data-ill-motion={motion}>
-        <div className="mx-auto max-w-[1200px]">
+        <div className="mx-auto max-w-[1440px]">
           <div className="mb-10 flex flex-col items-center gap-3 text-center md:mb-16">
             <span className="ill-t-caption inline-flex items-center gap-2 rounded-full bg-ill-accent-soft px-3 py-1 font-medium text-ill-accent">
               <BrandMark size={12} /> Product illustrations
@@ -46,32 +47,9 @@ export default function IllustrationsBoardPage() {
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 md:gap-5">
-            {ILLUSTRATIONS.map((entry) => (
-              <IllustrationTile key={entry.id} entry={entry} />
-            ))}
-          </div>
+          <FeatureGrid />
         </div>
       </main>
     </div>
-  );
-}
-
-function IllustrationTile({ entry }: { entry: IllustrationEntry }) {
-  const { Scene } = entry;
-  return (
-    <article
-      tabIndex={0}
-      aria-labelledby={`ill-${entry.id}`}
-      className={`ill-tile flex flex-col gap-3 rounded-2xl bg-ill-tile p-3 shadow-ill-1 ${entry.wide ? 'md:col-span-2 lg:col-span-3' : ''}`}
-    >
-      <div className="overflow-hidden rounded-xl">
-        <Scene />
-      </div>
-      <div className="px-2 pb-2">
-        <h3 id={`ill-${entry.id}`} className="ill-t-h4">{entry.title}</h3>
-        <p className="ill-t-small mt-1 text-ill-ink-3">{entry.description}</p>
-      </div>
-    </article>
   );
 }

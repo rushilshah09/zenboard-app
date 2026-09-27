@@ -9,6 +9,17 @@ import { Check } from "@/components/ds/icons";
 import { cn } from "@/lib/cn";
 
 // ─── Scene: fixed design canvas, scaled to fit its container ──────────────────
+// Two ways to size a stage:
+//  · "width" (default) — the stage takes the scene's aspect ratio, scene fills it.
+//  · "contain" — the stage is sized by its slot (a feature cell, a hero); the
+//    scene scales to fit inside it and sits centered. Set by <SceneFit>.
+type Fit = "width" | "contain";
+const SceneFitContext = React.createContext<Fit>("width");
+
+export function SceneFit({ fit, children }: { fit: Fit; children: React.ReactNode }) {
+  return <SceneFitContext.Provider value={fit}>{children}</SceneFitContext.Provider>;
+}
+
 export function Scene({
   width,
   height,
@@ -25,18 +36,25 @@ export function Scene({
   className?: string;
   children: React.ReactNode;
 }) {
+  const fit = React.useContext(SceneFitContext);
   const ref = React.useRef<HTMLDivElement>(null);
-  const [scale, setScale] = React.useState(1);
+  const [box, setBox] = React.useState({ s: 1, x: 0, y: 0 });
 
   React.useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const fit = () => setScale(el.clientWidth / width);
-    fit();
-    const ro = new ResizeObserver(fit);
+    const measure = () => {
+      const cw = el.clientWidth;
+      const ch = el.clientHeight;
+      if (fit === "width") return setBox({ s: cw / width, x: 0, y: 0 });
+      const s = Math.min(cw / width, ch / height);
+      setBox({ s, x: (cw - width * s) / 2, y: (ch - height * s) / 2 });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [width]);
+  }, [fit, width, height]);
 
   return (
     <div
@@ -44,13 +62,16 @@ export function Scene({
       role="img"
       aria-label={label}
       data-aura={aura}
-      className={cn("ill-stage w-full", className)}
-      style={{ aspectRatio: `${width} / ${height}` }}
+      data-fit={fit}
+      className={cn("ill-stage w-full", fit === "contain" && "h-full", className)}
+      style={fit === "width" ? { aspectRatio: `${width} / ${height}` } : undefined}
     >
       <div
         aria-hidden
+        data-w={width}
+        data-h={height}
         className="absolute left-0 top-0 origin-top-left"
-        style={{ width, height, transform: `scale(${scale})` }}
+        style={{ width, height, transform: `translate(${box.x}px, ${box.y}px) scale(${box.s})` }}
       >
         {children}
       </div>

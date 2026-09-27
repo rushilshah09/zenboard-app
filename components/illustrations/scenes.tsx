@@ -17,6 +17,7 @@ import {
   Folder,
   House,
   Inbox,
+  Keyboard,
   Landmark,
   List,
   Mail,
@@ -27,6 +28,7 @@ import {
   Plus,
   Search,
   Sparkles,
+  Sun,
   Star,
   Timer,
   Upload,
@@ -271,9 +273,9 @@ export function CommandScene() {
     { icon: FileText, label: "Go to Documents", keys: ["G", "D"] },
   ];
   return (
-    <Scene width={400} height={300} label="The command palette over the app: type a command, move with the arrow keys, press Enter.">
+    <Scene width={400} height={380} label="The command palette over the app: type a command, move with the arrow keys, press Enter.">
       {/* The app behind, dimmed */}
-      <At x={20} y={20} w={360} h={260}>
+      <At x={20} y={20} w={360} h={340}>
         <Window elevation="raised" className="flex h-full">
           <div className="flex w-20 flex-col gap-2 border-r border-ill-line bg-ill-surface-2 p-3">
             <BrandMark size={14} />
@@ -285,7 +287,7 @@ export function CommandScene() {
           </div>
           <div className="flex flex-1 flex-col gap-3 p-4">
             <Bar w={120} h={8} strong />
-            {[180, 150, 200, 130, 170, 110].map((w, i) => (
+            {[180, 150, 200, 130, 170, 110, 160, 190].map((w, i) => (
               <span key={i} className="flex items-center gap-2"><Tick size={10} /><Bar w={w} h={5} /></span>
             ))}
           </div>
@@ -293,7 +295,7 @@ export function CommandScene() {
         </Window>
       </At>
 
-      <At x={52} y={30} w={296} z={1}>
+      <At x={52} y={38} w={296} z={1}>
         <Window>
           <div className="flex items-center gap-2 border-b border-ill-line px-3 py-2.5">
             <Icon icon={Search} size={14} className="text-ill-ink-3" />
@@ -314,6 +316,17 @@ export function CommandScene() {
                 </div>
               ))}
             </div>
+            <div className="ill-t-micro px-2 pt-2 pb-1 text-ill-ink-3">Recent</div>
+            {[
+              { icon: Folder, label: "Ridgeline rebrand", meta: "Project" },
+              { icon: FileText, label: "Beacon Health scope", meta: "Doc" },
+            ].map((r) => (
+              <div key={r.label} className="flex items-center gap-2 px-2" style={{ height: PALETTE_ROW }}>
+                <Icon icon={r.icon} size={14} className="text-ill-ink-3" />
+                <span className="ill-t-small flex-1 text-ill-ink-1">{r.label}</span>
+                <span className="ill-t-micro text-ill-ink-3">{r.meta}</span>
+              </div>
+            ))}
             <div className="ill-t-micro px-2 pt-2 pb-1 text-ill-ink-3">Actions</div>
             <div className="flex items-center gap-2 px-2" style={{ height: PALETTE_ROW }}>
               <Icon icon={Plus} size={14} className="text-ill-ink-3" />
@@ -649,18 +662,20 @@ export interface IllustrationEntry {
   id: string;
   title: string;
   description: string;
+  /** Glyph for the feature cell's icon tile. */
+  icon: typeof Search;
   wide?: boolean;
   Scene: () => React.ReactElement;
 }
 
 export const ILLUSTRATIONS: IllustrationEntry[] = [
-  { id: "request-to-task", title: "A request, turned into a task", description: "A client asks in their portal. It lands on your day, with who asked and why.", wide: true, Scene: RequestToTaskScene },
-  { id: "today", title: "Your day, with one highlight", description: "One thing that matters most, then the plan. Done items stay, quietly.", Scene: TodayScene },
-  { id: "projects", title: "One plan, as a list or a board", description: "Phases, progress and dates for every project, in the view you think in.", Scene: ProjectScene },
-  { id: "command", title: "Everything is a few keys away", description: "Open the palette with ⌘K, type, move with the arrows, press Enter.", Scene: CommandScene },
-  { id: "shortcuts", title: "Shortcuts you learn once", description: "The keys follow the words: H highlights, E completes, G then P goes to Projects.", Scene: ShortcutsScene },
-  { id: "focus", title: "Focus mode", description: "One task on screen, a timer, and nothing else until you come back.", Scene: FocusScene },
-  { id: "calendar", title: "Your calendar, beside your tasks", description: "Connect Google Calendar and drag work onto the open time in your day.", Scene: CalendarScene },
-  { id: "digest", title: "Your day, in your inbox", description: "A short email each morning: the highlight, the plan, what’s waiting on others.", Scene: DigestScene },
-  { id: "integrations", title: "Bring your work with you", description: "Import from Notion. Connect an AI assistant through Zenboard’s MCP server.", Scene: IntegrationsScene },
+  { id: "request-to-task", icon: MessageCircle, title: "A request, turned into a task", description: "A client asks in their portal. It lands on your day, with who asked and why.", wide: true, Scene: RequestToTaskScene },
+  { id: "today", icon: Sun, title: "Your day, with one highlight", description: "One thing that matters most, then the plan. Done items stay, quietly.", Scene: TodayScene },
+  { id: "projects", icon: Folder, title: "One plan, as a list or a board", description: "Phases, progress and dates for every project, in the view you think in.", Scene: ProjectScene },
+  { id: "command", icon: Search, title: "Everything is a few keys away", description: "The command palette opens with ⌘K. Type, move with the arrow keys, press Enter.", Scene: CommandScene },
+  { id: "shortcuts", icon: Keyboard, title: "Shortcuts you learn once", description: "The keys follow the words: H highlights, E completes, G then P goes to Projects.", Scene: ShortcutsScene },
+  { id: "focus", icon: Timer, title: "Focus mode", description: "One task on screen, a timer, and nothing else until you come back.", Scene: FocusScene },
+  { id: "calendar", icon: Calendar, title: "Your calendar, beside your tasks", description: "Connect Google Calendar and your meetings sit on the same day as your plan.", Scene: CalendarScene },
+  { id: "digest", icon: Mail, title: "Your day, in your inbox", description: "A short email each morning: the highlight, the plan, and what is waiting on others.", Scene: DigestScene },
+  { id: "integrations", icon: Plug, title: "Bring your work with you", description: "Import your pages from Notion. Connect an AI assistant through Zenboard’s MCP server.", Scene: IntegrationsScene },
 ];

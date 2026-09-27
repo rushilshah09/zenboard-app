@@ -47,6 +47,10 @@
   --ill-aura-b: rgb(176 168 238 / 0.40);
   --ill-aura-c: rgb(250 196 160 / 0.45);
 
+  /* Feature cell — the icon tile beside each feature title */
+  --ill-feature-icon-bg:  #CDC9F4;
+  --ill-feature-icon-ink: #24214A;
+
   /* Label colors used as user data inside scenes */
   --ill-label-berry:  var(--color-berry-500);
   --ill-label-indigo: #6D64C8;
@@ -102,6 +106,9 @@
   --ill-aura-b: rgb(139 132 201 / 0.20);
   --ill-aura-c: rgb(201 122 85 / 0.16);
 
+  --ill-feature-icon-bg:  var(--color-label-indigo-fill);
+  --ill-feature-icon-ink: var(--color-label-indigo-text);
+
   --ill-label-berry:  var(--color-label-berry);
   --ill-label-indigo: var(--color-label-indigo);
   --ill-label-moss:   var(--color-label-moss);
@@ -142,6 +149,8 @@
   --color-ill-accent-line: var(--ill-accent-line);
   --color-ill-success: var(--ill-success);
   --color-ill-success-soft: var(--ill-success-soft);
+  --color-ill-feature-icon-bg: var(--ill-feature-icon-bg);
+  --color-ill-feature-icon-ink: var(--ill-feature-icon-ink);
   --shadow-ill-1: var(--ill-shadow-1);
   --shadow-ill-2: var(--ill-shadow-2);
   --shadow-ill-float: var(--ill-shadow-float);
@@ -153,6 +162,7 @@
   .ill-t-display { font-size: var(--text-h1-size); line-height: var(--text-h1-lh); font-weight: 600; letter-spacing: var(--text-display-tracking); color: var(--ill-ink-1); }
   .ill-t-title   { font-size: var(--text-h3-size); line-height: var(--text-h3-lh); font-weight: 600; letter-spacing: var(--text-h3-tracking); color: var(--ill-ink-1); }
   .ill-t-h4      { font-size: var(--text-h4-size); line-height: var(--text-h4-lh); font-weight: 500; color: var(--ill-ink-1); }
+  .ill-t-body-lg { font-size: var(--text-body-lg-size); line-height: var(--text-body-lg-lh); }
   .ill-t-body    { font-size: var(--text-body-size); line-height: var(--text-body-lh); letter-spacing: var(--text-body-tracking); }
   .ill-t-small   { font-size: var(--text-small-size); line-height: var(--text-small-lh); }
   .ill-t-caption { font-size: var(--text-caption-size); line-height: var(--text-caption-lh); }
@@ -195,6 +205,7 @@
   transition: box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
 }
 .ill-tile:hover { box-shadow: var(--ill-shadow-2); }
+.ill-tile.ill-cell:hover { box-shadow: none; }
 
 /* ─── Motion ────────────────────────────────────────────────
    Scenes are drawn in their finished pose; a loop replays the
