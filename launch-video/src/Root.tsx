@@ -14,6 +14,7 @@ import { OUTRO_FRAMES, Outro, OutroStyleframe } from "./scenes/Outro";
 import { MOSAIC_FRAMES, MosaicMorph } from "./scenes/MosaicMorph";
 import { AppTest } from "./dev/AppTest";
 import { Film } from "./Film";
+import { ILLO, ResultIllustration, ResultIllustration4K } from "./illustration/ResultIllustration";
 import { SCENES } from "./scenes/film";
 import { FILM, FILM_FRAMES, FilmScene, len } from "./timeline/film";
 
@@ -42,6 +43,10 @@ export const RemotionRoot: React.FC = () => (
       {(Object.keys(FILM) as FilmScene[]).map((s) => (
         <Composition key={s} id={`Scene-${s}`} component={SCENES[s]} durationInFrames={len(s)} {...size} />
       ))}
+    </Folder>
+    <Folder name="Illustrations">
+      <Composition id="Result-Illustration" component={ResultIllustration} durationInFrames={1} width={ILLO.w * 2} height={ILLO.h * 2} fps={60} />
+      <Composition id="Result-Illustration-4K" component={ResultIllustration4K} durationInFrames={1} width={Math.round(ILLO.w * 3.2)} height={Math.round(ILLO.h * 3.2)} fps={60} />
     </Folder>
     <Folder name="Styleframes">
       {STYLEFRAMES.map((s) => (
