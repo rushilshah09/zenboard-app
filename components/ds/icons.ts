@@ -127,6 +127,20 @@ export const SiteLock = phosphorAs(Ph.LockSimple, "fill");         // private / 
 export const SiteCheckCircle = phosphorAs(Ph.CheckCircle, "fill"); // done / paid / approved
 export const SiteCheck = phosphorAs(Ph.Check, "bold");             // copied / approved marks
 export const SiteFileText = phosphorAs(Ph.FileText, "regular");    // shared file row
+// Feature tiles of the "everything in one place" hub — one glyph per product area,
+// the same metaphors the app's nav uses (Home=SquaresFour, Inbox=Tray, …).
+export const SiteSquares = phosphorAs(Ph.SquaresFour, "fill");     // Home / everything
+export const SiteTray = phosphorAs(Ph.Tray, "fill");               // Inbox
+export const SiteTasks = phosphorAs(Ph.CheckSquare, "fill");       // Tasks
+export const SiteCalendar = phosphorAs(Ph.CalendarBlank, "fill");  // Calendar
+export const SiteTimer = phosphorAs(Ph.Timer, "fill");             // Focus
+export const SiteFire = phosphorAs(Ph.Fire, "fill");               // Habits
+export const SiteTarget = phosphorAs(Ph.Target, "fill");           // Goals
+export const SiteFolder = phosphorAs(Ph.FolderSimple, "fill");     // Projects
+export const SiteUsers = phosphorAs(Ph.Users, "fill");             // Clients
+export const SiteDoc = phosphorAs(Ph.FileText, "fill");            // Docs
+export const SiteForm = phosphorAs(Ph.ClipboardText, "fill");      // Forms
+export const SiteBank = phosphorAs(Ph.Bank, "fill");               // Finance
 
 // ── Remaining glyphs (Tabler) — screens not yet on the Figma pass ────────────
 export {

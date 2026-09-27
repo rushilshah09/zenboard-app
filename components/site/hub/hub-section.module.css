@@ -1,0 +1,221 @@
+/* ==========================================================================
+   "Everything in one calm place" — the Zenboard hub.
+   The mark sits at the center; every product area rides a line that fans out
+   from it. Drawn on a 1440 × 640 design canvas: positions are percentages,
+   sizes are container units of the canvas, so the whole thing scales as one
+   piece. Below 760px wide the canvas stops shrinking and crops to its center;
+   the full feature list then shows as chips underneath.
+   ========================================================================== */
+
+.section {
+  overflow-x: clip;
+}
+
+/* ── Intro ── */
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--site-space-5);
+  text-align: center;
+}
+
+.title {
+  max-width: 18ch;
+}
+
+.lead {
+  max-width: 520px;
+}
+
+/* ── Stage: full-bleed band, capped at 1600 ── */
+
+.stage {
+  --stage-w: min(100vw, 1600px);
+  width: var(--stage-w);
+  margin-inline: calc((100% - var(--stage-w)) / 2);
+  margin-top: var(--site-space-10);
+  overflow: hidden;
+}
+
+.canvas {
+  container: site-hub / inline-size;
+  position: relative;
+  width: max(100%, 760px);
+  left: 50%;
+  translate: -50% 0;
+  aspect-ratio: 1440 / 640;
+}
+
+.lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  /* Fade the fan out at every edge of the band (sides AND top/bottom). */
+  -webkit-mask-image:
+    linear-gradient(90deg, transparent 0%, #000 16%, #000 84%, transparent 100%),
+    linear-gradient(180deg, transparent 0%, #000 18%, #000 82%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(90deg, transparent 0%, #000 16%, #000 84%, transparent 100%),
+    linear-gradient(180deg, transparent 0%, #000 18%, #000 82%, transparent 100%);
+  mask-composite: intersect;
+}
+
+.line {
+  fill: none;
+  stroke: var(--site-accent-400);
+  stroke-opacity: 0.55;
+  stroke-width: 1;
+}
+
+.flow { fill: var(--site-accent-600); }
+
+@media (prefers-reduced-motion: reduce) {
+  .flow { display: none; }
+}
+
+/* ── Center ── */
+
+.glow {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 40cqw;
+  height: 26cqw;
+  translate: -50% -50%;
+  background: radial-gradient(closest-side, var(--site-accent-glow), transparent);
+  pointer-events: none;
+}
+
+.ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  border-radius: var(--site-radius-full);
+  border: 1px solid var(--site-line);
+  pointer-events: none;
+}
+.ringInner { width: 12.5cqw; height: 12.5cqw; }
+.ringOuter { width: 19.5cqw; height: 19.5cqw; border-style: dashed; opacity: 0.8; }
+
+.core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(64px, 7.2cqw);
+  height: max(64px, 7.2cqw);
+  translate: -50% -50%;
+  border-radius: 28%;
+  background: var(--site-ink);
+  color: var(--site-bg);
+  display: grid;
+  place-items: center;
+  box-shadow:
+    0 0 0 max(5px, 0.5cqw) var(--site-accent-100),
+    0 1px 2px rgba(31, 31, 27, 0.1),
+    0 24px 48px -16px rgba(31, 31, 27, 0.4);
+}
+
+.core svg {
+  width: 48%;
+  height: 48%;
+}
+
+/* ── Feature tiles ── */
+
+.tiles {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tile {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  translate: -50% -50%;
+  width: max(34px, var(--size));
+  height: max(34px, var(--size));
+}
+
+.tileFace {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  border-radius: 28%;
+  border: 1px solid var(--site-line);
+  background: color-mix(in srgb, var(--hue) 7%, var(--site-card));
+  color: var(--hue);
+  display: grid;
+  place-items: center;
+  box-shadow: var(--site-shadow-float);
+}
+
+.tileFace svg {
+  width: 44%;
+  height: 44%;
+}
+
+.tileLabel {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 8px);
+  translate: -50% 0;
+  padding: 1px 8px;
+  border-radius: var(--site-radius-full);
+  background: var(--site-bg);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 500;
+  color: var(--site-ink-2);
+  white-space: nowrap;
+}
+
+@container site-hub (max-width: 899px) {
+  .tileLabel { display: none; }
+}
+
+/* ── Accessible list: chips on narrow screens, screen-reader text on wide ── */
+
+.list {
+  list-style: none;
+  margin: var(--site-space-6) auto 0;
+  padding: 0;
+  max-width: 560px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--site-space-2);
+}
+
+.chip {
+  height: 32px;
+  box-sizing: border-box;
+  padding: 0 12px 0 10px;
+  border: 1px solid var(--site-line);
+  border-radius: var(--site-radius-full);
+  background: var(--site-card);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--site-text-small);
+  color: var(--site-ink);
+}
+.chip svg { color: var(--hue); }
+
+@media (min-width: 900px) {
+  .list {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}

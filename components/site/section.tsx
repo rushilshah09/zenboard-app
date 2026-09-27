@@ -16,11 +16,13 @@ export function SiteSection({
   id,
   labelledBy,
   theme = "light",
+  className,
   children,
 }: {
   id?: string;
   labelledBy: string;
   theme?: SiteTheme;
+  className?: string;
   children: ReactNode;
 }) {
   return (
@@ -28,7 +30,7 @@ export function SiteSection({
       id={id}
       aria-labelledby={labelledBy}
       data-theme={theme}
-      className={cx(tokens.site, s.section)}
+      className={cx(tokens.site, s.section, className)}
     >
       <div className={s.container}>{children}</div>
     </section>
@@ -37,6 +39,18 @@ export function SiteSection({
 
 export function FeatureGrid({ children }: { children: ReactNode }) {
   return <div className={s.grid}>{children}</div>;
+}
+
+/** Small lavender tile + label above a section title. */
+export function Eyebrow({ icon: Icon, children }: { icon: IconType; children: ReactNode }) {
+  return (
+    <div className={s.eyebrow}>
+      <span className={s.eyebrowTile} aria-hidden="true">
+        <Icon size={16} />
+      </span>
+      {children}
+    </div>
+  );
 }
 
 export function SectionHeader({
@@ -56,12 +70,7 @@ export function SectionHeader({
     <header className={s.header}>
       <div className={s.headerInner}>
         <div className={s.headerMain}>
-          <div className={s.eyebrow}>
-            <span className={s.eyebrowTile} aria-hidden="true">
-              <EyebrowIcon size={16} />
-            </span>
-            {eyebrow}
-          </div>
+          <Eyebrow icon={EyebrowIcon}>{eyebrow}</Eyebrow>
           <h2 id={id} className={s.title}>
             {title}
           </h2>

@@ -45,6 +45,18 @@
   --site-on-accent: #ffffff;
   --site-accent-glow: rgba(184, 190, 238, 0.36);
 
+  /* ── Feature hues — the app's label palette (tags, calendars), one per
+        product area in the hub illustration. Glyph color only. ── */
+  --site-hue-slate: #6e9cc0;
+  --site-hue-teal: #4fa8a4;
+  --site-hue-rust: #c97a55;
+  --site-hue-ochre: #c99e3f;
+  --site-hue-berry: #c41c72;
+  --site-hue-moss: #55a87c;
+  --site-hue-indigo: #8b84c9;
+  --site-hue-clay: #a98b77;
+  --site-hue-plum: #b07cb8;
+
   /* ── Status ── */
   --site-success: #3f9a66;
   --site-success-bg: #e7f3ec;
@@ -147,6 +159,16 @@
   --site-accent-700: #c3c8f5;
   --site-on-accent: #16172b;
   --site-accent-glow: rgba(125, 133, 216, 0.22);
+
+  --site-hue-slate: #a3c2db;
+  --site-hue-teal: #85c7c4;
+  --site-hue-rust: #dba588;
+  --site-hue-ochre: #ddbe7a;
+  --site-hue-berry: #e896bd;
+  --site-hue-moss: #8fc9a9;
+  --site-hue-indigo: #b4aedd;
+  --site-hue-clay: #c8ae9d;
+  --site-hue-plum: #d0a8d6;
 
   --site-success: #55a87c;
   --site-success-bg: #1e2c24;
