@@ -55,7 +55,7 @@ export function FeatureCell({ entry, className }: { entry: IllustrationEntry; cl
           <p className="ill-t-body-lg max-w-[560px] text-ill-ink-2">{entry.description}</p>
         </div>
       </header>
-      <div className={cn("overflow-hidden rounded-xl", layout.stage)}>
+      <div className={layout.stage}>
         <SceneFit fit="contain">
           <Scene />
         </SceneFit>

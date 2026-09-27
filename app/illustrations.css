@@ -199,6 +199,12 @@
   mask-image: radial-gradient(80% 80% at 50% 50%, #000 30%, transparent 85%);
 }
 .ill-stage[data-aura="quiet"]::before { opacity: 0.5; }
+/* Inside a feature cell the cell is the ground: no stage panel of its own. */
+.ill-cell .ill-stage { background: transparent; overflow: visible; }
+.ill-cell .ill-stage::before, .ill-cell .ill-stage::after { content: none; }
+/* …and windows drop their frosted outer frame: one card, not a card in a frame. */
+.ill-cell .ill-glass { padding: 0; background: none !important; box-shadow: none !important; backdrop-filter: none !important; }
+.ill-cell .ill-glass > div { box-shadow: var(--ill-shadow-2); }
 
 /* ─── Tile — the framed card on the board ─── */
 .ill-tile {

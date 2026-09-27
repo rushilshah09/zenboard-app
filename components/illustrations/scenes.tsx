@@ -77,11 +77,11 @@ export function RequestToTaskScene() {
         </Window>
       </At>
 
-      {/* Flow: request → Zenboard → task */}
-      <At x={456} y={190}>
-        <Connector width={96} />
+      {/* Flow: request → Zenboard → task. Symmetric about the scene's center (x 600). */}
+      <At x={440} y={190}>
+        <Connector width={112} />
       </At>
-      <At x={488} y={176} z={2}>
+      <At x={440} y={176} w={112} z={2} className="flex justify-center">
         <Chip icon={<Icon icon={MessageCircle} size={12} />}>Request</Chip>
       </At>
 
@@ -89,7 +89,8 @@ export function RequestToTaskScene() {
         <span className="relative grid size-24 place-items-center">
           <svg width="96" height="96" className="ill-anim ill-orbit absolute inset-0">
             <circle cx="48" cy="48" r="46" fill="none" stroke="var(--ill-line-strong)" strokeDasharray="2 4" />
-            <circle cx="48" cy="48" r="46" fill="none" stroke="var(--ill-accent)" strokeWidth="1.5" strokeLinecap="round" pathLength={100} strokeDasharray="22 78" />
+            {/* 22% arc centered on 12 o'clock at rest */}
+            <circle cx="48" cy="48" r="46" fill="none" stroke="var(--ill-accent)" strokeWidth="1.5" strokeLinecap="round" pathLength={100} strokeDasharray="22 78" strokeDashoffset={-64} />
           </svg>
           <span className="grid size-16 place-items-center rounded-full bg-ill-surface shadow-ill-float">
             <BrandMark size={28} />
@@ -99,14 +100,14 @@ export function RequestToTaskScene() {
       </At>
 
       <At x={648} y={190}>
-        <Connector width={104} delay={1.2} />
+        <Connector width={112} delay={1.2} />
       </At>
-      <At x={660} y={176} z={2}>
+      <At x={648} y={176} w={112} z={2} className="flex justify-center">
         <Chip icon={<Tick done size={12} />}>New task</Chip>
       </At>
 
       {/* Your day */}
-      <At x={768} y={52} w={344}>
+      <At x={760} y={52} w={344}>
         <Window glass>
           <div className="flex items-center gap-2 px-5 pt-5 pb-3">
             <BrandMark size={18} />
@@ -130,7 +131,7 @@ export function RequestToTaskScene() {
           <TaskRow title="Weekly review" meta="9:40" done />
         </Window>
       </At>
-      <Cursor name="You" style={{ left: 1098, top: 200 }} />
+      <Cursor name="You" style={{ left: 1090, top: 200 }} />
     </Scene>
   );
 }

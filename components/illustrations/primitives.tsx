@@ -130,7 +130,7 @@ export function Window({
   if (!glass) return body;
   return (
     <div
-      className={cn("rounded-2xl p-2", className)}
+      className={cn("ill-glass rounded-2xl p-2", className)}
       style={{
         background: "color-mix(in srgb, var(--ill-surface) 55%, transparent)",
         boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--ill-surface) 70%, transparent), var(--ill-shadow-2)",
