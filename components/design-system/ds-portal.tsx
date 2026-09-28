@@ -17,6 +17,7 @@ import {
   Skeleton, Breadcrumbs,
 } from '@/components/ds/ui';
 import { Panel, PanelHeader, PanelBody, FigmaTag } from '@/components/ui/panels';
+import { SOLID_GLYPHS } from '@/components/ds/solid-glyphs';
 import { DS_USAGE } from './usage.generated';
 
 /* ── Registry ────────────────────────────────────────────────────────────── */
@@ -92,6 +93,32 @@ function SelectDemo() {
   );
 }
 
+function IconCanvas() {
+  const [size, setSize] = useState('24');
+  return (
+    <div className="flex flex-col gap-4">
+      <SegmentedControl
+        aria-label="Glyph size"
+        options={['16', '20', '24', '32'].map((v) => ({ value: v, label: `${v}px` }))}
+        value={size}
+        onValueChange={setSize}
+      />
+      <ul aria-label="Zen Solid glyphs" className="grid grid-cols-4 gap-2 sm:grid-cols-7">
+        {SOLID_GLYPHS.map(({ name, Glyph }) => (
+          <li
+            key={name}
+            className="flex aspect-square flex-col items-center justify-center gap-2 rounded-lg p-2"
+            style={{ background: 'var(--color-paper)', color: 'var(--color-ink-900)' }}
+          >
+            <Glyph size={Number(size)} title={name} />
+            <span className="w-full truncate text-center text-[11px]" style={{ color: 'var(--color-ink-500)' }}>{name}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 const GROUPS: Group[] = [
   {
     label: 'Foundations',
@@ -136,6 +163,10 @@ const GROUPS: Group[] = [
             <span className="text-[14px] tabular-nums" style={{ color: 'var(--color-ink-800)' }}>0123456789 · tabular-nums</span>
           </div>
         ),
+      },
+      {
+        name: 'Iconography', keys: [], desc: 'Zen Solid — 28 filled glyphs on a 24px grid. Solid silhouettes in currentColor, details knocked out (never a second color), soft 2–5 radii, 1.5px gaps between overlaps. Source: components/ds/solid-glyphs.tsx.',
+        render: () => <IconCanvas />,
       },
       {
         name: 'Brand', keys: ['Mark', 'Logo'], desc: 'Mark + wordmark render in ink (B&G). Berry survives only as the notification dot.',
