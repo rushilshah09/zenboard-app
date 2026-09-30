@@ -19,7 +19,7 @@ export type Tone =
   // Zen Shape (flat geometric, Zenboard palette: base · Dk shade · Lt tint)
   | 'sBerry' | 'sBerryDk' | 'sBerryLt' | 'sPink' | 'sLav' | 'sLavDk' | 'sLavLt' | 'sIndigo' | 'sIndigoDk'
   | 'sBlue' | 'sBlueDk' | 'sTeal' | 'sTealDk' | 'sGreen' | 'sGreenDk' | 'sAmber' | 'sAmberDk' | 'sAmberLt'
-  | 'sCoral' | 'sCoralDk' | 'sInk' | 'sPaper' | 'sBone' | 'sBar' | 'sBlushLt';
+  | 'sCoral' | 'sCoralDk' | 'sInk' | 'sPaper' | 'sBone' | 'sBar' | 'sBlushLt' | 'sGold';
 
 const TONE_VAR: Record<Tone, string> = {
   ink: 'var(--ill-ink)', paper: 'var(--ill-paper)', cream: 'var(--ill-cream)',
@@ -39,7 +39,7 @@ const TONE_VAR: Record<Tone, string> = {
   sBlue: 'var(--zs-blue)', sBlueDk: 'var(--zs-blue-dk)', sTeal: 'var(--zs-teal)', sTealDk: 'var(--zs-teal-dk)',
   sGreen: 'var(--zs-green)', sGreenDk: 'var(--zs-green-dk)', sAmber: 'var(--zs-amber)', sAmberDk: 'var(--zs-amber-dk)', sAmberLt: 'var(--zs-amber-lt)',
   sCoral: 'var(--zs-coral)', sCoralDk: 'var(--zs-coral-dk)', sInk: 'var(--zs-ink)', sPaper: 'var(--zs-paper)',
-  sBone: 'var(--zs-bone)', sBar: 'var(--zs-bar)', sBlushLt: 'var(--zs-blush-lt)',
+  sBone: 'var(--zs-bone)', sBar: 'var(--zs-bar)', sBlushLt: 'var(--zs-blush-lt)', sGold: 'var(--zs-gold)',
 };
 
 export type Part = {

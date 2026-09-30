@@ -45,6 +45,7 @@ const done = (cx: number, cy: number, r: number): Part[] => [...ball(cx, cy, r, 
 const zmark = (x: number, y: number, size: number, tone: Tone = 'sPaper'): Part => ({ ...mark(x, y, size, tone), line: false });
 const dot = (cx: number, cy: number, r: number, tone: Tone = 'sCoral'): Part => fill(circle(cx, cy, r), tone);
 const star = (cx: number, cy: number, r: number, tone: Tone = 'sPaper'): Part => fill(sparkle(cx, cy, r), tone);
+const GOLD: Tone = 'sGold';
 /** A person as one shape: ball + head and shoulders in paper. No face. */
 const person = (cx: number, cy: number, r: number, base: Tone = 'sIndigo', dk: Tone = 'sIndigoDk'): Part[] => {
   const d = circle(cx, cy, r);
@@ -56,27 +57,41 @@ const person = (cx: number, cy: number, r: number, base: Tone = 'sIndigo', dk: T
 };
 const rotate = (parts: Part[], deg: number, cx: number, cy: number): Part[] =>
   parts.map((p) => ({ ...p, t: `rotate(${deg} ${cx} ${cy})${p.t ? ` ${p.t}` : ''}` }));
-const chain = (x: number, y: number, s = 1, tone: Tone = 'sBerry'): Part[] => [
-  fill(rect(x, y, 26 * s, 16 * s, 8 * s) + rect(x + 5 * s, y + 5 * s, 16 * s, 6 * s, 3 * s), tone, { evenOdd: true }),
-  fill(rect(x + 17 * s, y, 26 * s, 16 * s, 8 * s) + rect(x + 22 * s, y + 5 * s, 16 * s, 6 * s, 3 * s), tone, { evenOdd: true }),
-];
+/** The link symbol: two rings interlocked on a diagonal. */
+const chain = (x: number, y: number, s = 1, tone: Tone = 'sBerry'): Part[] => {
+  const ring = (rx: number, ry: number) => fill(rect(rx, ry, 24 * s, 14 * s, 7 * s) + rect(rx + 5 * s, ry + 4.5 * s, 14 * s, 5 * s, 2.5 * s), tone, { evenOdd: true });
+  const cx = x + 20 * s;
+  const cy = y + 8 * s;
+  return rotate([ring(x, y + 1 * s), ring(x + 16 * s, y + 1 * s)], -40, cx, cy);
+};
 const lock = (x: number, y: number, open: boolean): Part[] => [
   { d: open ? `M${x + 6} ${y}V${y - 9}Q${x + 6} ${y - 17} ${x + 14} ${y - 17}Q${x + 22} ${y - 17} ${x + 22} ${y - 11}` : `M${x + 6} ${y}V${y - 7}Q${x + 6} ${y - 15} ${x + 14} ${y - 15}Q${x + 22} ${y - 15} ${x + 22} ${y - 7}V${y}`, line: 'sAmberDk', w: 1.6 },
   ...block(x, y, 28, 22, 7, 'sAmber', 'sAmberDk'),
   fill(circle(x + 14, y + 10, 3), 'sAmberDk'),
 ];
-const docShape = (x: number, y: number, w: number, h: number) =>
-  `M${x} ${y + 12}Q${x} ${y} ${x + 12} ${y}H${x + w - 26}L${x + w} ${y + 26}V${y + h - 12}Q${x + w} ${y + h} ${x + w - 12} ${y + h}H${x + 12}Q${x} ${y + h} ${x} ${y + h - 12}Z`;
-const doc = (x: number, y: number, w: number, h: number): Part[] => [
-  fill(docShape(x, y, w, h), 'sPaper'),
-  fill(poly(x + w - 26, y, x + w, y + 26, x + w - 26, y + 26), 'sLavLt'),
-];
+/** Page corner fold scales with the page (≈18% of its width, capped), so small pages aren't over-folded. */
+const foldOf = (w: number) => Math.min(24, w * 0.18);
+const docShape = (x: number, y: number, w: number, h: number) => {
+  const f = foldOf(w);
+  const r = Math.min(12, w * 0.14);
+  return `M${x} ${y + r}Q${x} ${y} ${x + r} ${y}H${x + w - f}L${x + w} ${y + f}V${y + h - r}Q${x + w} ${y + h} ${x + w - r} ${y + h}H${x + r}Q${x} ${y + h} ${x} ${y + h - r}Z`;
+};
+const doc = (x: number, y: number, w: number, h: number): Part[] => {
+  const f = foldOf(w);
+  return [fill(docShape(x, y, w, h), 'sPaper'), fill(poly(x + w - f, y, x + w, y + f, x + w - f, y + f), 'sLavLt')];
+};
 const receipt = (x: number, y: number, w: number, h: number): Part => {
   const n = Math.floor(w / 14);
   const teeth = Array.from({ length: n }, (_, i) => `L${x + w - (i + 0.5) * (w / n)} ${y + h - 8}L${x + w - (i + 1) * (w / n)} ${y + h}`).join('');
   return fill(`M${x + 12} ${y}H${x + w - 12}Q${x + w} ${y} ${x + w} ${y + 12}V${y + h}${teeth}L${x} ${y + h}V${y + 12}Q${x} ${y} ${x + 12} ${y}Z`, 'sPaper');
 };
-const coin = (cx: number, cy: number, r: number): Part[] => [...ball(cx, cy, r, 'sAmber', 'sAmberDk'), fill(circle(cx - r * 0.1, cy - r * 0.1, r * 0.55), 'sAmberLt', { opacity: 0.45 })];
+/** A coin: its edge (thickness) behind, a flat face, a raised rim ring and the embossed mark. */
+const coin = (cx: number, cy: number, r: number): Part[] => [
+  fill(circle(cx + r * 0.16, cy + r * 0.1, r), 'sAmberDk'),
+  fill(circle(cx, cy, r), 'sAmber'),
+  fill(circle(cx, cy, r * 0.8) + circle(cx, cy, r * 0.66), 'sAmberDk', { evenOdd: true }),
+  zmark(cx - r * 0.38, cy - r * 0.38, r * 0.76, 'sAmberDk'),
+];
 const phone = (x: number, y: number, w: number, h: number): Part[] => [
   card(x, y, w, h, 22, 'sInk'),
   card(x + 7, y + 7, w - 14, h - 14, 16),
@@ -107,7 +122,7 @@ export const hub = S(400, 300, [
   dot(310, 230, 3.4, 'sGreen'), dot(324, 230, 3.4, 'sGreen'), dot(338, 230, 3.4, 'sGreen'),
   // the one thing waiting on you
   ...done(328, 100, 24), dot(348, 80, 8),
-  star(150, 54, 13, 'sAmber'), star(362, 164, 8), star(46, 120, 8),
+  star(150, 54, 13, GOLD), star(362, 164, 8), star(46, 120, 8),
 ]);
 
 // ── Feature scenes (360×240) ────────────────────────────────────────────────
@@ -129,20 +144,18 @@ const home = S(360, 240, [
 /** Inbox — everything lands in one place, then is sorted in one pass. */
 const inbox = S(360, 240, [
   field('sBerryLt'),
-  shadow(180, 204, 118, 'sBerryDk'),
-  ...rotate(block(106, 50, 52, 52, 12, 'sAmber', 'sAmberDk'), -12, 132, 76),
-  card(126, 46, 84, 60, 12), fill(poly(120, 46, 168, 84, 216, 46), 'sLavLt', { clip: rect(126, 46, 84, 60, 12) }),
-  fill(rect(96, 100, 110, 18, 9), 'sBerryDk'),
-  ...block(80, 106, 142, 92, 24, 'sBerry', 'sBerryDk'),
-  zmark(129, 130, 44),
-  dot(214, 106, 11),
-  // sorted, lined up beside it
-  fill(rect(236, 56, 26, 12, 5), 'sAmberDk'),
-  ...block(232, 62, 60, 42, 12, 'sAmber', 'sAmberDk'),
-  ...block(232, 110, 60, 42, 12, 'sBlue', 'sBlueDk'),
-  fill(rect(232, 110, 60, 12), 'sBlueDk', { clip: rect(232, 110, 60, 42, 12) }),
-  ...[0, 1, 2].flatMap((c) => [0, 1].map((r): Part => fill(rect(241 + c * 15, 127 + r * 11, 11, 7, 2.5), r === 1 && c === 2 ? 'sBerry' : 'sPaper'))),
-  ...done(262, 178, 21),
+  shadow(180, 212, 124, 'sBerryDk'),
+  ...rotate(block(106, 50, 56, 56, 12, 'sAmber', 'sAmberDk'), -14, 134, 78),
+  ...rotate([
+    ...block(198, 50, 62, 54, 12, 'sBlue', 'sBlueDk'),
+    fill(rect(198, 50, 62, 14), 'sBlueDk', { clip: rect(198, 50, 62, 54, 12) }),
+    ...[0, 1, 2].flatMap((c) => [0, 1].map((r): Part => fill(rect(207 + c * 16, 72 + r * 13, 11, 8, 2.5), r === 1 && c === 2 ? 'sBerry' : 'sPaper'))),
+  ], 12, 229, 77),
+  card(138, 36, 86, 64, 12), fill(poly(132, 36, 181, 74, 230, 36), 'sLavLt', { clip: rect(138, 36, 86, 64, 12) }),
+  fill(rect(100, 102, 160, 18, 9), 'sBerryDk'),
+  ...block(92, 108, 176, 96, 26, 'sBerry', 'sBerryDk'),
+  zmark(157, 133, 46),
+  ...done(266, 110, 19),
 ]);
 
 /** Projects — work moves across the board; the card goes to Done. */
@@ -178,49 +191,51 @@ const clientPortal = S(360, 240, [
 /** Docs — a line in the brief becomes a task, and the brief lives in its project. */
 const docs = S(360, 240, [
   field('sLav'),
-  shadow(196, 208, 118),
-  fill(rect(174, 106, 44, 22, 8), 'sAmberDk'),
-  ...block(168, 116, 128, 88, 18, 'sAmber', 'sAmberDk'),
-  ...doc(76, 30, 128, 170),
-  zmark(92, 48, 24, 'sBerry'), bar(124, 55, 44),
-  bar(92, 88, 94), bar(92, 104, 80),
-  fill(rect(86, 122, 110, 20, 10), 'sBerryLt'),
-  bar(92, 158, 94), bar(92, 174, 64),
-  shadow(260, 148, 58),
-  card(178, 118, 136, 26, 13), fill(rect(178, 118, 136, 26, 13), 'sBerry'),
-  ...done(196, 131, 8), bar(212, 127, 80, 'sBerryLt', 8),
+  shadow(176, 212, 118),
+  fill(rect(86, 70, 52, 22, 8), 'sAmberDk'),
+  fill(rect(78, 82, 192, 120, 20), 'sAmberDk'),
+  ...doc(104, 32, 124, 150),
+  bar(120, 56, 56), bar(120, 74, 88),
+  fill(rect(114, 90, 104, 20, 10), 'sBerryLt'),
+  shadow(262, 128, 58),
+  ...block(198, 84, 124, 36, 18, 'sBerry', 'sBerryDk'),
+  ...done(217, 102, 9), bar(234, 98, 66, 'sBerryLt', 8),
+  ...block(70, 124, 208, 84, 22, 'sAmber', 'sAmberDk'),
+  zmark(156, 146, 38),
 ]);
 
 /** Finance — tracked time becomes an invoice, and the payment lands. */
 const finance = S(360, 240, [
   field('sAmberLt'),
-  shadow(186, 212, 120, 'sAmberDk'),
-  receipt(126, 28, 118, 180),
-  zmark(142, 44, 22, 'sBerry'), bar(172, 51, 52),
-  bar(142, 84, 60), bar(142, 100, 74), bar(142, 116, 52),
-  fill(rect(138, 138, 94, 26, 13), 'sBerryLt'), bar(148, 147, 36, 'sBerry', 8),
-  ...ball(112, 170, 32, 'sIndigo', 'sIndigoDk'),
-  fill(rect(105, 130, 14, 10, 4), 'sIndigoDk'),
-  fill(circle(112, 170, 22), 'sPaper'), { d: 'M112 170L123 158', line: 'sBerry', w: 1.6 }, fill(circle(112, 170, 3.5), 'sInk'),
-  ...block(206, 132, 112, 70, 16, 'sGreen', 'sGreenDk'),
-  fill(rect(220, 146, 22, 16, 5), 'sAmber'), bar(220, 180, 60, 'sPaper', 8),
-  ...coin(292, 124, 20),
-  ...done(316, 196, 15),
+  shadow(180, 212, 124, 'sAmberDk'),
+  receipt(116, 26, 124, 176),
+  zmark(132, 42, 22, 'sBerry'), bar(162, 49, 56),
+  bar(172, 84, 52), bar(172, 100, 44),
+  fill(rect(128, 130, 100, 26, 13), 'sBerryLt'), bar(138, 139, 40, 'sBerry', 8),
+  ...ball(116, 102, 30, 'sIndigo', 'sIndigoDk'),
+  fill(rect(109, 64, 14, 10, 4), 'sIndigoDk'),
+  fill(circle(116, 102, 21), 'sPaper'), { d: 'M116 102L126 91', line: 'sBerry', w: 1.5 }, fill(circle(116, 102, 3.2), 'sInk'),
+  shadow(270, 206, 64, 'sAmberDk'),
+  ...block(206, 142, 120, 64, 16, 'sGreen', 'sGreenDk'),
+  fill(rect(220, 156, 22, 16, 5), 'sAmber'), bar(220, 186, 64, 'sPaper', 8),
+  ...coin(290, 128, 21),
+  ...coin(274, 112, 21),
 ]);
 
 /** One link, no login — your link opens the project on your client's phone. No password. */
 const shareLink = S(360, 240, [
   field('sLav'),
-  shadow(180, 206, 128),
-  ...block(52, 84, 88, 88, 24, 'sBerry', 'sBerryDk'),
-  zmark(70, 102, 52),
-  card(124, 108, 116, 40, 20), ...chain(140, 120, 1),
-  bar(192, 124, 34, 'sLavLt', 8),
-  ...phone(222, 30, 94, 168),
-  bar(240, 64, 46), bar(240, 80, 32),
-  fill(circle(269, 118, 20), 'sLavLt'),
-  { d: 'M269 98A20 20 0 1 1 251 127', line: 'sBerry', w: 1.8 },
-  ...lock(255, 168, true),
+  shadow(180, 212, 120),
+  ...block(64, 44, 88, 88, 24, 'sBerry', 'sBerryDk'),
+  zmark(82, 62, 52),
+  shadow(150, 176, 56),
+  ...phone(182, 24, 104, 186),
+  bar(202, 58, 50), bar(202, 74, 34),
+  fill(circle(246, 112, 20), 'sLavLt'),
+  { d: 'M246 92A20 20 0 1 1 228 121', line: 'sBerry', w: 1.8 },
+  ...lock(232, 166, true),
+  card(96, 132, 112, 40, 20), ...chain(110, 144, 1),
+  bar(158, 148, 30, 'sLavLt', 8),
 ]);
 
 /** You choose what they see — your switches decide what reaches your client. */
@@ -299,7 +314,13 @@ export type ShapeSceneName = keyof typeof SHAPE_SCENES;
 const icon = (bg: Tone, parts: Part[]): Art => S(96, 96, [fill(circle(48, 48, 46), bg), ...parts]);
 
 export const SHAPE_ICONS = {
-  home: icon('sLav', [...block(20, 33, 56, 30, 15, 'sBerry', 'sBerryDk'), zmark(27, 40, 16), fill(circle(62, 48, 8.5), 'sPaper'), fill(poly(59.5, 43.5, 59.5, 52.5, 66.5, 48), 'sBerry'), card(26, 67, 44, 9, 4.5)]),
+  home: icon('sLav', [
+    ...ball(68, 28, 8, GOLD, 'sAmber'),
+    fill(rect(56, 30, 8, 14, 2), 'sBerryDk'),
+    ...block(28, 46, 40, 28, 5, 'sBerry', 'sBerryDk'),
+    fill('M20 50Q18.5 48 20.5 46.3L45.5 25.6Q48 23.6 50.5 25.6L75.5 46.3Q77.5 48 76 50Q75 51.4 73 51.4H23Q21 51.4 20 50Z', 'sBerryDk'),
+    fill(rect(42, 56, 12, 18, 6), 'sPaper'),
+  ]),
   inbox: icon('sBerryLt', [
     card(32, 24, 32, 22, 5), fill(poly(28, 24, 48, 39, 68, 24), 'sLavLt', { clip: rect(32, 24, 32, 22, 5) }),
     fill(rect(28, 44, 40, 8, 4), 'sBerryDk'), ...block(24, 48, 48, 26, 9, 'sBerry', 'sBerryDk'), dot(68, 48, 6),
@@ -351,7 +372,7 @@ export const SHAPE_ICONS = {
   invoices: icon('sLav', [...block(22, 32, 52, 36, 8, 'sBerry', 'sBerryDk'), fill(poly(18, 32, 48, 55, 78, 32), 'sPink', { clip: rect(22, 32, 52, 36, 8) }), fill(circle(48, 52, 7), 'sPaper')]),
   ai: icon('sBerryLt', [
     ...block(22, 26, 52, 38, 13, 'sBerry', 'sBerryDk'), fill(poly(32, 62, 29, 74, 44, 62), 'sBerryDk'),
-    star(46, 45, 11, 'sAmber'), star(62, 34, 4.5),
+    star(46, 45, 11, GOLD), star(62, 34, 4.5),
   ]),
 } satisfies Record<string, Art>;
 export type ShapeIconName = keyof typeof SHAPE_ICONS;
