@@ -19,8 +19,8 @@ import {
 import { Panel, PanelHeader, PanelBody, FigmaTag } from '@/components/ui/panels';
 import { DS_USAGE } from './usage.generated';
 import {
-  Spot, Scene, IconBadge, BoldScene, SiteIllustration, SITE, SITE_ICONS, SCENES, BADGES, BOLD_SCENES,
-  type SceneName, type BadgeName, type BoldSceneName, type SiteIllustrationName,
+  Spot, Scene, IconBadge, BoldScene, SiteIllustration, ShapeScene, ShapeIcon, ShapeHero, SITE, SITE_ICONS, SCENES, BADGES, BOLD_SCENES, SHAPE_SCENES, SHAPE_ICONS,
+  type ShapeSceneName, type ShapeIconName, type SceneName, type BadgeName, type BoldSceneName, type SiteIllustrationName,
 } from '@/components/illustrations/ink';
 
 /* ── Registry ────────────────────────────────────────────────────────────── */
@@ -159,6 +159,20 @@ const GROUPS: Group[] = [
   {
     label: 'Illustrations',
     items: [
+      {
+        name: 'Zen Shape', keys: [], desc: 'Flat geometric direction in Zenboard colors: no outlines, one tonal fold per colored shape, flat white UI panels, the Zenboard mark as the hero shape. No faces. Hub hero, 11 feature stories, 18 icons.',
+        render: () => (
+          <div className="flex flex-col gap-4">
+            <ShapeHero size={420} title="Hub" style={{ width: '100%', height: 'auto' }} />
+            <div className="flex flex-wrap gap-3">
+              {(Object.keys(SHAPE_ICONS) as ShapeIconName[]).map((n) => <ShapeIcon key={n} name={n} size={56} title={n} />)}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {(Object.keys(SHAPE_SCENES) as ShapeSceneName[]).map((n) => <ShapeScene key={n} name={n} size={330} title={n} style={{ width: '100%', height: 'auto' }} />)}
+            </div>
+          </div>
+        ),
+      },
       {
         name: 'Zen Ink · Website', keys: [], desc: 'zenboard.life: hand-inked, watercolor feature illustrations and icons in the brand palette (berry, the lavender client accent, the feature hues). Wrap in .ill-brand. Full canvas: /dev-preview/illustrations.',
         render: () => (
