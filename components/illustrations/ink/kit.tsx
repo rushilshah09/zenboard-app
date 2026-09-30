@@ -9,8 +9,13 @@
 import { useId, type CSSProperties } from 'react';
 
 export type Tone =
+  // Zen Ink (watercolor)
   | 'ink' | 'paper' | 'cream' | 'teal' | 'tealDeep' | 'lilac' | 'violet'
-  | 'marigold' | 'orange' | 'tomato' | 'brick' | 'periwinkle' | 'shadow';
+  | 'marigold' | 'orange' | 'tomato' | 'brick' | 'periwinkle' | 'shadow'
+  // Zen Bold (flat, Zenboard palette)
+  | 'night' | 'bone' | 'white' | 'berry' | 'blush' | 'plum' | 'gold' | 'amber'
+  | 'green' | 'sage' | 'meadow' | 'blue' | 'sky' | 'purple' | 'lavender'
+  | 'coral' | 'clay' | 'skin' | 'stone';
 
 const TONE_VAR: Record<Tone, string> = {
   ink: 'var(--ill-ink)', paper: 'var(--ill-paper)', cream: 'var(--ill-cream)',
@@ -18,6 +23,13 @@ const TONE_VAR: Record<Tone, string> = {
   violet: 'var(--ill-violet)', marigold: 'var(--ill-marigold)', orange: 'var(--ill-orange)',
   tomato: 'var(--ill-tomato)', brick: 'var(--ill-brick)', periwinkle: 'var(--ill-periwinkle)',
   shadow: 'var(--ill-shadow)',
+  night: 'var(--zb-ill-night)', bone: 'var(--zb-ill-bone)', white: 'var(--zb-ill-white)',
+  berry: 'var(--zb-ill-berry)', blush: 'var(--zb-ill-blush)', plum: 'var(--zb-ill-plum)',
+  gold: 'var(--zb-ill-gold)', amber: 'var(--zb-ill-amber)', green: 'var(--zb-ill-green)',
+  sage: 'var(--zb-ill-sage)', meadow: 'var(--zb-ill-meadow)', blue: 'var(--zb-ill-blue)',
+  sky: 'var(--zb-ill-sky)', purple: 'var(--zb-ill-purple)', lavender: 'var(--zb-ill-lavender)',
+  coral: 'var(--zb-ill-coral)', clay: 'var(--zb-ill-clay)', skin: 'var(--zb-ill-skin)',
+  stone: 'var(--zb-ill-stone)',
 };
 
 export type Part = {
@@ -33,11 +45,16 @@ export type Part = {
   evenOdd?: boolean;
   /** Ground shadow: flat wash, no misregistration, no line. */
   ground?: boolean;
+  /** Backdrop (a scene's color field): drawn clean, outside the hand wobble. */
+  backdrop?: boolean;
 };
 
-export type Art = { w: number; h: number; parts: Part[] };
+/** `ink` = watercolor wash, off-register (Zen Ink). `bold` = flat pigment,
+ *  heavier line, hard cast shadows (Zen Bold). */
+export type Look = 'ink' | 'bold';
+export type Art = { w: number; h: number; parts: Part[]; look?: Look };
 
-const LINE = 1.85; // house line weight, in viewBox units at 1×
+const LINE = { ink: 1.85, bold: 2.5 }; // house line weight, viewBox units at 1×
 
 // ── Shape helpers → path data ────────────────────────────────────────────────
 export function rect(x: number, y: number, w: number, h: number, r = 0): string {
@@ -78,6 +95,39 @@ export const ground = (cx: number, cy: number, rx: number, ry = rx * 0.16): Part
 
 /** Place an illustration's parts inside another (scenes). Keeps line weight
  *  visually constant under scale. */
+/** A hard cast shadow: the silhouette, in ink, nudged down-left (Zen Bold). */
+export const cast = (d: string, dx = -5, dy = 4): Part => ({ d, fill: 'night', line: false, ground: true, t: `translate(${dx} ${dy})` });
+
+// ── Isometric helpers (Zen Bold scenes) ─────────────────────────────────────
+export type Iso = (x: number, y: number, z: number) => [number, number];
+/** Projection: +x runs right-down, +y runs left-down, +z runs up. */
+export const isoAt = (ox: number, oy: number, s = 1): Iso => (x, y, z) =>
+  [+(ox + (x - y) * 0.866 * s).toFixed(2), +(oy + (x + y) * 0.5 * s - z * s).toFixed(2)];
+const pts = (p: Iso, ...q: [number, number, number][]) => poly(...q.flatMap(([x, y, z]) => p(x, y, z)));
+/** Visible faces of an axis-aligned box: top, front (y = y+d) and side (x = x+w). */
+export function isoBox(p: Iso, x: number, y: number, z: number, w: number, d: number, h: number) {
+  const x1 = x + w, y1 = y + d, z1 = z + h;
+  return {
+    top: pts(p, [x, y, z1], [x1, y, z1], [x1, y1, z1], [x, y1, z1]),
+    front: pts(p, [x, y1, z1], [x1, y1, z1], [x1, y1, z], [x, y1, z]),
+    side: pts(p, [x1, y, z1], [x1, y1, z1], [x1, y1, z], [x1, y, z]),
+  };
+}
+/** Ground shadow of a box footprint thrown along (dx, dy) in plan. */
+export function isoShadow(p: Iso, x: number, y: number, w: number, d: number, dx: number, dy: number): string {
+  const c: [number, number][] = [[x, y], [x + w, y], [x + w, y + d], [x, y + d]];
+  const all = [...c, ...c.map(([a, b]) => [a + dx, b + dy] as [number, number])].map(([a, b]) => p(a, b, 0));
+  return poly(...hull(all).flat());
+}
+function hull(points: [number, number][]): [number, number][] {
+  const s = [...points].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (o: number[], a: number[], b: number[]) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo: [number, number][] = [], up: [number, number][] = [];
+  for (const q of s) { while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+  for (const q of [...s].reverse()) { while (up.length >= 2 && cross(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
+  return [...lo.slice(0, -1), ...up.slice(0, -1)];
+}
+
 export function place(art: Art, x: number, y: number, s = 1, opts: { ground?: boolean } = {}): Part[] {
   return art.parts
     .filter((p) => opts.ground !== false || !p.ground)
@@ -100,6 +150,8 @@ export function Ink({ art, size, title, className, style }: InkProps) {
   const wash = `ink-wash-${uid}`;
   const hand = `ink-hand-${uid}`;
   const width = size ?? art.w;
+  const bold = art.look === 'bold';
+  const defaultLine: Tone = bold ? 'night' : 'ink';
   return (
     <svg
       viewBox={`0 0 ${art.w} ${art.h}`}
@@ -124,12 +176,16 @@ export function Ink({ art, size, title, className, style }: InkProps) {
         {/* Hand: a gentle wobble so no line is ruler-straight. */}
         <filter id={hand} x="-4%" y="-4%" width="108%" height="108%">
           <feTurbulence type="turbulence" baseFrequency="0.045" numOctaves="2" seed="11" result="t" />
-          <feDisplacementMap in="SourceGraphic" in2="t" scale="1.6" xChannelSelector="R" yChannelSelector="G" />
+           <feDisplacementMap in="SourceGraphic" in2="t" scale={bold ? 1.1 : 1.6} xChannelSelector="R" yChannelSelector="G" />
         </filter>
       </defs>
+      {art.parts.filter((p) => p.backdrop).map((p, i) => (
+        <path key={`b${i}`} d={p.d} fill={p.fill ? TONE_VAR[p.fill] : 'none'} />
+      ))}
       <g filter={`url(#${hand})`}>
         {art.parts.map((p, i) => {
-          const lineTone = p.line === false ? null : p.line === true || p.line === undefined ? 'ink' : p.line;
+          if (p.backdrop) return null;
+          const lineTone = p.line === false ? null : p.line === true || p.line === undefined ? defaultLine : p.line;
           return (
             <g key={i} transform={p.t}>
               {p.fill && (
@@ -137,9 +193,9 @@ export function Ink({ art, size, title, className, style }: InkProps) {
                   d={p.d}
                   fill={TONE_VAR[p.fill]}
                   fillRule={p.evenOdd ? 'evenodd' : undefined}
-                  filter={`url(#${wash})`}
-                  transform={p.ground ? undefined : 'translate(-1.8 1.6)'}
-                  opacity={p.ground ? 0.8 : undefined}
+                  filter={bold ? undefined : `url(#${wash})`}
+                  transform={p.ground || bold ? undefined : 'translate(-1.8 1.6)'}
+                  opacity={p.ground && !bold ? 0.8 : undefined}
                 />
               )}
               {lineTone && !p.ground && (
@@ -148,7 +204,7 @@ export function Ink({ art, size, title, className, style }: InkProps) {
                   fill="none"
                   fillRule={p.evenOdd ? 'evenodd' : undefined}
                   stroke={TONE_VAR[lineTone]}
-                  strokeWidth={LINE * (p.w ?? 1)}
+                  strokeWidth={LINE[bold ? 'bold' : 'ink'] * (p.w ?? 1)}
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />

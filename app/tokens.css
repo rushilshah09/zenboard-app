@@ -182,6 +182,31 @@
   --ill-periwinkle: #8FA5F2;
   --ill-shadow: #A6B6F6;
 }
+/* Zen Bold — the flat, editorial illustration look (thick ink, flat pigment,
+   hard black cast shadows), drawn from the Zenboard palette: berry brand
+   accent, B&G ink/bone, and the label hues (blue, green, amber, purple, pink,
+   coral, clay). */
+:root {
+  --zb-ill-night: #121212;
+  --zb-ill-bone: #F2F1EB;
+  --zb-ill-white: #FFFDF8;
+  --zb-ill-berry: #C41C72;
+  --zb-ill-blush: #F4B9D6;
+  --zb-ill-plum: #7E1A5E;
+  --zb-ill-gold: #F2C14E;
+  --zb-ill-amber: #DBA45A;
+  --zb-ill-green: #6FB35F;
+  --zb-ill-sage: #7B8B5F;
+  --zb-ill-meadow: #CBD48C;
+  --zb-ill-blue: #5E92DE;
+  --zb-ill-sky: #B9D3F5;
+  --zb-ill-purple: #B173C4;
+  --zb-ill-lavender: #DACDF1;
+  --zb-ill-coral: #FF6B66;
+  --zb-ill-clay: #C08A5E;
+  --zb-ill-skin: #EACDAE;
+  --zb-ill-stone: #D8D5CD;
+}
 .ill-on-dark {
   --ill-ink: #F1EBDF;
   --ill-paper: #2A2724;
