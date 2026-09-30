@@ -9,7 +9,7 @@
 //  4. At most two thick, tinted bars on a card. No grey placeholder text.
 //  5. The Zenboard mark appears once, on the hero object. No faces.
 //  6. Icons: one object in a 48px live area, centered on a 96px round field.
-import { type Art, type Part, type Tone, rect, circle, ellipse, poly, sparkle, gear, mark } from './kit';
+import { type Art, type Part, type Tone, rect, circle, ellipse, poly, sparkle, mark } from './kit';
 
 const S = (w: number, h: number, parts: Part[]): Art => ({ w, h, parts, look: 'shape' });
 
@@ -22,12 +22,20 @@ const shadow = (cx: number, cy: number, rx: number, tone: Tone = 'sIndigoDk'): P
 const block = (x: number, y: number, w: number, h: number, r: number, base: Tone, dk: Tone): Part[] => {
   const d = rect(x, y, w, h, r);
   const R = 0.84 * Math.hypot(w * 0.7, h * 0.8);
-  return [fill(d, dk), fill(circle(x + w * 0.3, y + h * 0.2, R), base, { clip: d })];
+  return [fill(d, base), fill(d + circle(x + w * 0.3, y + h * 0.2, R), dk, { clip: d, evenOdd: true })];
 };
 const ball = (cx: number, cy: number, r: number, base: Tone, dk: Tone): Part[] => {
   const d = circle(cx, cy, r);
-  return [fill(d, dk), fill(circle(cx - r * 0.14, cy - r * 0.14, r), base, { clip: d })];
+  return [fill(d, base), fill(d + circle(cx - r * 0.14, cy - r * 0.14, r), dk, { clip: d, evenOdd: true })];
 };
+/** A seal: soft scalloped rosette behind a ball. */
+const rosette = (cx: number, cy: number, r: number, tone: Tone): Part[] => [
+  fill(circle(cx, cy, r * 0.86), tone),
+  ...Array.from({ length: 16 }, (_, i): Part => {
+    const a = (i / 16) * Math.PI * 2;
+    return fill(circle(cx + r * 0.84 * Math.cos(a), cy + r * 0.84 * Math.sin(a), r * 0.2), tone);
+  }),
+];
 /** White UI surface: flat. */
 const card = (x: number, y: number, w: number, h: number, r: number, tone: Tone = 'sPaper'): Part => fill(rect(x, y, w, h, r), tone);
 const bar = (x: number, y: number, w: number, tone: Tone = 'sLavLt', h = 8): Part => fill(rect(x, y, w, h, h / 2), tone);
@@ -38,7 +46,7 @@ const zmark = (x: number, y: number, size: number, tone: Tone = 'sPaper'): Part 
 const dot = (cx: number, cy: number, r: number, tone: Tone = 'sCoral'): Part => fill(circle(cx, cy, r), tone);
 const star = (cx: number, cy: number, r: number, tone: Tone = 'sPaper'): Part => fill(sparkle(cx, cy, r), tone);
 /** A person as one shape: ball + head and shoulders in paper. No face. */
-const person = (cx: number, cy: number, r: number, base: Tone = 'sLav', dk: Tone = 'sLavDk'): Part[] => {
+const person = (cx: number, cy: number, r: number, base: Tone = 'sIndigo', dk: Tone = 'sIndigoDk'): Part[] => {
   const d = circle(cx, cy, r);
   return [
     ...ball(cx, cy, r, base, dk),
@@ -123,7 +131,7 @@ const inbox = S(360, 240, [
   field('sBerryLt'),
   shadow(180, 204, 118, 'sBerryDk'),
   ...rotate(block(106, 50, 52, 52, 12, 'sAmber', 'sAmberDk'), -12, 132, 76),
-  card(126, 46, 84, 60, 12), fill(poly(126, 50, 168, 82, 210, 50), 'sLavLt'),
+  card(126, 46, 84, 60, 12), fill(poly(120, 46, 168, 84, 216, 46), 'sLavLt', { clip: rect(126, 46, 84, 60, 12) }),
   fill(rect(96, 100, 110, 18, 9), 'sBerryDk'),
   ...block(80, 106, 142, 92, 24, 'sBerry', 'sBerryDk'),
   zmark(129, 130, 44),
@@ -259,7 +267,8 @@ const approvals = S(360, 240, [
     bar(114, 110, 104), bar(114, 126, 90), bar(114, 142, 70),
     { d: 'M116 176Q124 164 132 176T148 174Q156 168 162 178', line: 'sIndigo', w: 1.2 },
   ], -6, 168, 118),
-  fill(gear(250, 164, 48, 42, 18), 'sGreenDk'),
+  ...rosette(250, 164, 48, 'sGreenDk'),
+  fill(circle(250, 164, 39.5), 'sPaper'),
   ...ball(250, 164, 36, 'sGreen', 'sGreenDk'),
   tick(250, 164, 30),
   ...person(294, 64, 22),
@@ -272,7 +281,7 @@ const invoices = S(360, 240, [
   receipt(132, 26, 96, 110),
   zmark(146, 40, 18, 'sBerry'), bar(170, 45, 42), bar(146, 70, 66), bar(146, 86, 50),
   ...block(96, 92, 168, 104, 20, 'sBerry', 'sBerryDk'),
-  fill(poly(96, 96, 180, 156, 264, 96), 'sPink'),
+  fill(poly(90, 92, 180, 158, 270, 92), 'sPink', { clip: rect(96, 92, 168, 104, 20) }),
   fill(circle(180, 150, 17), 'sPaper'), zmark(170, 140, 20, 'sBerry'),
   shadow(282, 196, 44, 'sBerryDk'),
   card(236, 150, 94, 38, 19), ...done(256, 169, 11), bar(274, 165, 42, 'sLavLt', 8),
@@ -290,9 +299,9 @@ export type ShapeSceneName = keyof typeof SHAPE_SCENES;
 const icon = (bg: Tone, parts: Part[]): Art => S(96, 96, [fill(circle(48, 48, 46), bg), ...parts]);
 
 export const SHAPE_ICONS = {
-  home: icon('sLav', [...ball(62, 34, 11, 'sAmber', 'sAmberDk'), ...block(22, 42, 52, 30, 15, 'sBerry', 'sBerryDk'), zmark(29, 49, 16)]),
+  home: icon('sLav', [...block(20, 33, 56, 30, 15, 'sBerry', 'sBerryDk'), zmark(27, 40, 16), fill(circle(62, 48, 8.5), 'sPaper'), fill(poly(59.5, 43.5, 59.5, 52.5, 66.5, 48), 'sBerry'), card(26, 67, 44, 9, 4.5)]),
   inbox: icon('sBerryLt', [
-    card(32, 24, 32, 22, 5), fill(poly(32, 26, 48, 38, 64, 26), 'sLavLt'),
+    card(32, 24, 32, 22, 5), fill(poly(28, 24, 48, 39, 68, 24), 'sLavLt', { clip: rect(32, 24, 32, 22, 5) }),
     fill(rect(28, 44, 40, 8, 4), 'sBerryDk'), ...block(24, 48, 48, 26, 9, 'sBerry', 'sBerryDk'), dot(68, 48, 6),
   ]),
   tasks: icon('sLav', [...block(26, 26, 44, 44, 13, 'sGreen', 'sGreenDk'), tick(48, 48, 20)]),
@@ -338,8 +347,8 @@ export const SHAPE_ICONS = {
     card(22, 26, 46, 20, 10), fill(circle(33, 36, 5), 'sLav'), dot(66, 28, 5),
     ...block(28, 50, 46, 20, 10, 'sBerry', 'sBerryDk'), fill(circle(39, 60, 4.5), 'sPaper'),
   ]),
-  approvals: icon('sBerryLt', [fill(gear(48, 48, 26, 22, 14), 'sGreenDk'), ...ball(48, 48, 19, 'sGreen', 'sGreenDk'), tick(48, 48, 16)]),
-  invoices: icon('sLav', [...block(22, 32, 52, 36, 8, 'sBerry', 'sBerryDk'), fill(poly(22, 34, 48, 54, 74, 34), 'sPink'), fill(circle(48, 52, 7), 'sPaper')]),
+  approvals: icon('sBerryLt', [...rosette(48, 48, 27, 'sGreenDk'), fill(circle(48, 48, 21.5), 'sPaper'), ...ball(48, 48, 19, 'sGreen', 'sGreenDk'), tick(48, 48, 16)]),
+  invoices: icon('sLav', [...block(22, 32, 52, 36, 8, 'sBerry', 'sBerryDk'), fill(poly(18, 32, 48, 55, 78, 32), 'sPink', { clip: rect(22, 32, 52, 36, 8) }), fill(circle(48, 52, 7), 'sPaper')]),
   ai: icon('sBerryLt', [
     ...block(22, 26, 52, 38, 13, 'sBerry', 'sBerryDk'), fill(poly(32, 62, 29, 74, 44, 62), 'sBerryDk'),
     star(46, 45, 11, 'sAmber'), star(62, 34, 4.5),
