@@ -163,6 +163,32 @@
   /* ─── LAYER 2 · SEMANTIC — GENERATED, see tokens.generated.css ── */
 }
 
+/* ---------- Zen Ink illustration palette ----------
+   Hand-inked, watercolor-filled illustrations (components/illustrations/ink).
+   Ink outline + a warm, limited pigment set + the periwinkle ground shadow.
+   `.ill-on-dark` flips only the ink (and paper whites) for dark surfaces. */
+:root {
+  --ill-ink: #1E1C1A;
+  --ill-paper: #FFFDF8;
+  --ill-cream: #F6EEDC;
+  --ill-teal: #55C2A8;
+  --ill-teal-deep: #1F6F62;
+  --ill-lilac: #EDB8F4;
+  --ill-violet: #B877DD;
+  --ill-marigold: #F6BE45;
+  --ill-orange: #E98B30;
+  --ill-tomato: #EA4B3D;
+  --ill-brick: #B5573C;
+  --ill-periwinkle: #8FA5F2;
+  --ill-shadow: #A6B6F6;
+}
+.ill-on-dark {
+  --ill-ink: #F1EBDF;
+  --ill-paper: #2A2724;
+  --ill-cream: #37322C;
+  --ill-shadow: #4B5794;
+}
+
 /* ---------- B&G is a single dark theme ----------
    The old "Slate Desk" dark block is gone: :root above already carries the
    dark system. data-theme="dark" stays a harmless no-op. */
