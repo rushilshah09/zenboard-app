@@ -15,7 +15,11 @@ export type Tone =
   // Zen Bold (flat, Zenboard palette)
   | 'night' | 'bone' | 'white' | 'berry' | 'blush' | 'plum' | 'gold' | 'amber'
   | 'green' | 'sage' | 'meadow' | 'blue' | 'sky' | 'purple' | 'lavender'
-  | 'coral' | 'clay' | 'skin' | 'stone';
+  | 'coral' | 'clay' | 'skin' | 'stone'
+  // Zen Shape (flat geometric, Zenboard palette: base · Dk shade · Lt tint)
+  | 'sBerry' | 'sBerryDk' | 'sBerryLt' | 'sPink' | 'sLav' | 'sLavDk' | 'sLavLt' | 'sIndigo' | 'sIndigoDk'
+  | 'sBlue' | 'sBlueDk' | 'sTeal' | 'sTealDk' | 'sGreen' | 'sGreenDk' | 'sAmber' | 'sAmberDk' | 'sAmberLt'
+  | 'sCoral' | 'sCoralDk' | 'sInk' | 'sPaper' | 'sBone' | 'sBar' | 'sBlushLt';
 
 const TONE_VAR: Record<Tone, string> = {
   ink: 'var(--ill-ink)', paper: 'var(--ill-paper)', cream: 'var(--ill-cream)',
@@ -30,6 +34,12 @@ const TONE_VAR: Record<Tone, string> = {
   sky: 'var(--zb-ill-sky)', purple: 'var(--zb-ill-purple)', lavender: 'var(--zb-ill-lavender)',
   coral: 'var(--zb-ill-coral)', clay: 'var(--zb-ill-clay)', skin: 'var(--zb-ill-skin)',
   stone: 'var(--zb-ill-stone)',
+  sBerry: 'var(--zs-berry)', sBerryDk: 'var(--zs-berry-dk)', sBerryLt: 'var(--zs-berry-lt)', sPink: 'var(--zs-pink)',
+  sLav: 'var(--zs-lav)', sLavDk: 'var(--zs-lav-dk)', sLavLt: 'var(--zs-lav-lt)', sIndigo: 'var(--zs-indigo)', sIndigoDk: 'var(--zs-indigo-dk)',
+  sBlue: 'var(--zs-blue)', sBlueDk: 'var(--zs-blue-dk)', sTeal: 'var(--zs-teal)', sTealDk: 'var(--zs-teal-dk)',
+  sGreen: 'var(--zs-green)', sGreenDk: 'var(--zs-green-dk)', sAmber: 'var(--zs-amber)', sAmberDk: 'var(--zs-amber-dk)', sAmberLt: 'var(--zs-amber-lt)',
+  sCoral: 'var(--zs-coral)', sCoralDk: 'var(--zs-coral-dk)', sInk: 'var(--zs-ink)', sPaper: 'var(--zs-paper)',
+  sBone: 'var(--zs-bone)', sBar: 'var(--zs-bar)', sBlushLt: 'var(--zs-blush-lt)',
 };
 
 export type Part = {
@@ -47,14 +57,18 @@ export type Part = {
   ground?: boolean;
   /** Backdrop (a scene's color field): drawn clean, outside the hand wobble. */
   backdrop?: boolean;
+  /** Clip the pigment to this path (Zen Shape tonal folds). */
+  clip?: string;
+  opacity?: number;
 };
 
 /** `ink` = watercolor wash, off-register (Zen Ink). `bold` = flat pigment,
- *  heavier line, hard cast shadows (Zen Bold). */
-export type Look = 'ink' | 'bold';
+ *  heavier line, hard cast shadows (Zen Bold). `shape` = flat geometric, no
+ *  outlines, one tonal fold per shape, soft tonal shadows (Zen Shape). */
+export type Look = 'ink' | 'bold' | 'shape';
 export type Art = { w: number; h: number; parts: Part[]; look?: Look };
 
-const LINE = { ink: 1.85, bold: 2.5 }; // house line weight, viewBox units at 1×
+const LINE = { ink: 1.85, bold: 2.5, shape: 2.4 }; // house line weight, viewBox units at 1×
 
 // ── Shape helpers → path data ────────────────────────────────────────────────
 export function rect(x: number, y: number, w: number, h: number, r = 0): string {
@@ -185,7 +199,9 @@ export function Ink({ art, size, title, className, style }: InkProps) {
   const hand = `ink-hand-${uid}`;
   const width = size ?? art.w;
   const bold = art.look === 'bold';
-  const defaultLine: Tone = bold ? 'night' : 'ink';
+  const flatShape = art.look === 'shape';
+  const flatFill = bold || flatShape;
+  const defaultLine: Tone | null = flatShape ? null : bold ? 'night' : 'ink';
   return (
     <svg
       viewBox={`0 0 ${art.w} ${art.h}`}
@@ -216,20 +232,23 @@ export function Ink({ art, size, title, className, style }: InkProps) {
       {art.parts.filter((p) => p.backdrop).map((p, i) => (
         <path key={`b${i}`} d={p.d} fill={p.fill ? TONE_VAR[p.fill] : 'none'} />
       ))}
-      <g filter={`url(#${hand})`}>
+      <g filter={flatShape ? undefined : `url(#${hand})`}>
         {art.parts.map((p, i) => {
           if (p.backdrop) return null;
           const lineTone = p.line === false ? null : p.line === true || p.line === undefined ? defaultLine : p.line;
+          const clipId = p.clip ? `${uid}c${i}` : undefined;
           return (
-            <g key={i} transform={p.t}>
+            <g key={i} transform={p.t} opacity={p.opacity}>
+              {clipId && <clipPath id={clipId}><path d={p.clip} /></clipPath>}
               {p.fill && (
                 <path
                   d={p.d}
                   fill={TONE_VAR[p.fill]}
                   fillRule={p.evenOdd ? 'evenodd' : undefined}
-                  filter={bold ? undefined : `url(#${wash})`}
-                  transform={p.ground || bold ? undefined : 'translate(-1.8 1.6)'}
-                  opacity={p.ground && !bold ? 0.8 : undefined}
+                  clipPath={clipId ? `url(#${clipId})` : undefined}
+                  filter={flatFill ? undefined : `url(#${wash})`}
+                  transform={p.ground || flatFill ? undefined : 'translate(-1.8 1.6)'}
+                  opacity={p.ground && !flatFill ? 0.8 : undefined}
                 />
               )}
               {lineTone && !p.ground && (
@@ -238,7 +257,7 @@ export function Ink({ art, size, title, className, style }: InkProps) {
                   fill="none"
                   fillRule={p.evenOdd ? 'evenodd' : undefined}
                   stroke={TONE_VAR[lineTone]}
-                  strokeWidth={LINE[bold ? 'bold' : 'ink'] * (p.w ?? 1)}
+                  strokeWidth={LINE[flatShape ? 'shape' : bold ? 'bold' : 'ink'] * (p.w ?? 1)}
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />

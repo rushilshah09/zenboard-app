@@ -8,12 +8,14 @@ import { SPOTS, type SpotName } from './spots';
 import { SCENES, type SceneName } from './scenes';
 import { BADGES, BOLD_SCENES, type BadgeName, type BoldSceneName } from './bold';
 import { SITE, type SiteIllustrationName } from './site';
+import { SHAPE_HERO, SHAPE_SCENES, SHAPE_ICONS, type ShapeSceneName, type ShapeIconName } from './shape';
 
 export { Ink, type Art, type Part, type Tone } from './kit';
 export { SPOTS, type SpotName } from './spots';
 export { SCENES, type SceneName } from './scenes';
 export { BADGES, BOLD_SCENES, type BadgeName, type BoldSceneName } from './bold';
 export { SITE, type SiteIllustrationName } from './site';
+export { SHAPE_HERO, SHAPE_SCENES, SHAPE_ICONS, type ShapeSceneName, type ShapeIconName } from './shape';
 
 type Common = Omit<InkProps, 'art'>;
 
@@ -47,3 +49,14 @@ export const SITE_ICONS: { label: string; spot: SpotName }[] = [
   { label: 'Finance', spot: 'finance' }, { label: 'What they see', spot: 'eye' }, { label: 'Requests', spot: 'ai' },
   { label: 'Approvals', spot: 'shield' }, { label: 'Invoices', spot: 'invoice' }, { label: 'Zenboard AI', spot: 'ai' },
 ];
+
+/** Zen Shape: flat geometric feature illustrations, icons and the hub hero. */
+export function ShapeScene({ name, size = 360, ...rest }: Common & { name: ShapeSceneName }) {
+  return <Ink art={SHAPE_SCENES[name]} size={size} {...rest} />;
+}
+export function ShapeIcon({ name, size = 96, ...rest }: Common & { name: ShapeIconName }) {
+  return <Ink art={SHAPE_ICONS[name]} size={size} {...rest} />;
+}
+export function ShapeHero({ size = 400, ...rest }: Common) {
+  return <Ink art={SHAPE_HERO.hub} size={size} {...rest} />;
+}

@@ -3,7 +3,8 @@
 // light paper ground and on a dark surface. 404s in prod.
 import { notFound } from 'next/navigation';
 import {
-  Spot, Scene, IconBadge, BoldScene, SiteIllustration, SPOTS, SCENES, BADGES, BOLD_SCENES, SITE, SITE_ICONS,
+  Spot, Scene, IconBadge, BoldScene, SiteIllustration, ShapeScene, ShapeIcon, ShapeHero, SHAPE_SCENES, SHAPE_ICONS,
+  type ShapeSceneName, type ShapeIconName, SPOTS, SCENES, BADGES, BOLD_SCENES, SITE, SITE_ICONS,
   type SpotName, type SceneName, type BadgeName, type BoldSceneName, type SiteIllustrationName,
 } from '@/components/illustrations/ink';
 
@@ -37,6 +38,34 @@ function Board({ dark }: { dark?: boolean }) {
           </div>
         </>
       )}
+    </section>
+  );
+}
+
+function ShapeBoard() {
+  const label = { margin: '0 0 24px', font: '600 14px/1 var(--font-ui)', letterSpacing: '0.02em', opacity: 0.6 } as const;
+  return (
+    <section style={{ background: '#FFFFFF', color: '#2F2F2B', padding: 48, borderRadius: 16 }}>
+      <h2 style={label}>Zen Shape · hub hero</h2>
+      <ShapeHero size={480} />
+      <h2 style={{ ...label, margin: '48px 0 24px' }}>Zen Shape · icons</h2>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))', gap: 24 }}>
+        {(Object.keys(SHAPE_ICONS) as ShapeIconName[]).map((n) => (
+          <figure key={n} style={{ margin: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+            <ShapeIcon name={n} size={80} />
+            <figcaption style={{ font: '12px var(--font-ui)', opacity: 0.55 }}>{n}</figcaption>
+          </figure>
+        ))}
+      </div>
+      <h2 style={{ ...label, margin: '48px 0 24px' }}>Zen Shape · feature illustrations</h2>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
+        {(Object.keys(SHAPE_SCENES) as ShapeSceneName[]).map((n) => (
+          <figure key={n} style={{ margin: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+            <ShapeScene name={n} size={340} />
+            <figcaption style={{ font: '12px var(--font-ui)', opacity: 0.55 }}>{n}</figcaption>
+          </figure>
+        ))}
+      </div>
     </section>
   );
 }
@@ -96,6 +125,7 @@ export default function IllustrationsPreview() {
   if (process.env.NODE_ENV === 'production') notFound();
   return (
     <main style={{ minHeight: '100dvh', background: '#EDEAE3', padding: 32, display: 'flex', flexDirection: 'column', gap: 32 }}>
+      <ShapeBoard />
       <SiteBoard />
       <BoldBoard />
       <Board />

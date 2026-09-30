@@ -225,6 +225,17 @@
   --zb-ill-skin: #EACDAE;
   --zb-ill-stone: #D8D5CD;
 }
+/* Zen Shape — flat geometric illustration (no outlines, one tonal fold per
+   shape, soft tonal shadows), built only from Zenboard's palette: berry brand,
+   the site's lavender/indigo client accent, and the label hues. Each hue has a
+   base, a -dk fold shade and a -lt tint. */
+:root {
+  --zs-berry: #C41C72; --zs-berry-dk: #A3165F; --zs-berry-lt: #F4C3DC; --zs-pink: #E06FB3; --zs-blush-lt: #FBE7F1;
+  --zs-lav: #B8BEEE; --zs-lav-dk: #9AA1E6; --zs-lav-lt: #E3E5F9; --zs-indigo: #5B62B9; --zs-indigo-dk: #4D54A8;
+  --zs-blue: #5E92DE; --zs-blue-dk: #4A7BC6; --zs-teal: #4FA8A4; --zs-teal-dk: #3E8C88;
+  --zs-green: #6FB35F; --zs-green-dk: #5A9A4B; --zs-amber: #DBA45A; --zs-amber-dk: #C38B40; --zs-amber-lt: #F3DDB6;
+  --zs-coral: #FF6B66; --zs-coral-dk: #E55650; --zs-ink: #121212; --zs-paper: #FFFFFF; --zs-bone: #F2F1EB; --zs-bar: #E6E6E3;
+}
 .ill-on-dark {
   --ill-ink: #F1EBDF;
   --ill-paper: #2A2724;
