@@ -1,6 +1,6 @@
 // Zen Ink spot illustrations — one object per Zenboard surface, 96×96, drawn in
 // the house style (see kit.tsx). Use for empty states, feature tiles, menus.
-import { type Art, type Part, rect, circle, poly, polyline, sparkle, gear, ground } from './kit';
+import { type Art, type Part, rect, circle, poly, polyline, sparkle, gear, ground, mark } from './kit';
 
 const art = (parts: Part[]): Art => ({ w: 96, h: 96, parts });
 const detail = (d: string, w = 0.75): Part => ({ d, w });
@@ -46,7 +46,7 @@ export const folder = art([
   { d: rect(24, 21, 44, 30, 2), fill: 'paper' },
   detail('M30 28H56'), detail('M30 34H49'),
   { d: 'M13 42Q13 39 16 39H80Q83 39 83 42L79 72Q79 75 76 75H20Q17 75 17 72Z', fill: 'marigold' },
-  detail('M24 48H38', 0.9),
+  mark(22, 45, 12, 'paper'),
 ]);
 
 export const clients = art([
@@ -76,7 +76,7 @@ export const docs = art([
   ground(50, 88, 26),
   { d: 'M24 16H55L68 29V76Q68 79 65 79H27Q24 79 24 76Z', fill: 'lilac' },
   { d: poly(55, 16, 68, 29, 55, 29), fill: 'paper' },
-  detail('M31 38H60'), detail('M31 46H60'), detail('M31 54H50'),
+  mark(31, 32, 10), detail('M45 37H60', 1), detail('M31 48H60'), detail('M31 56H50'),
   { d: poly(76, 44, 82, 50, 84.5, 47.5, 78.5, 41.5), fill: 'lilac' },
   { d: poly(56, 78, 50, 72, 76, 44, 82, 50), fill: 'tomato' },
   { d: poly(50, 72, 56, 78, 45, 83), fill: 'cream' },
@@ -103,7 +103,8 @@ export const finance = art([
 export const invoice = art([
   ground(50, 87, 28),
   { d: rect(30, 18, 36, 30, 2), fill: 'teal' },
-  { d: circle(48, 32, 7), fill: 'paper', w: 0.8 },
+  { d: circle(48, 32, 8), fill: 'paper', w: 0.8 },
+  mark(43, 27, 10),
   { d: rect(18, 38, 60, 40, 2), fill: 'cream' },
   { d: rect(78, 40, 4, 38, 1.5), fill: 'lilac' },
   { d: 'M18 42L48 62L78 42V76Q78 78 76 78H20Q18 78 18 76Z', fill: 'paper' },

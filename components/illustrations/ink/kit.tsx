@@ -89,6 +89,40 @@ export function gear(cx: number, cy: number, ro: number, ri: number, teeth: numb
   }
   return poly(...pts);
 }
+/** The Zenboard mark (components/ds/ui/icon.tsx Mark), 20×20 source. */
+const ZB_MARK = 'M18.4226 8.14215L18.6403 7.92451C20.4532 6.11147 20.4532 3.1733 18.6403 1.36026L18.6383 1.35832C16.8254 -0.452773 13.8873 -0.452773 12.0763 1.35832L11.8567 1.57791C10.8326 2.60199 9.16736 2.60199 8.14137 1.57791L7.92373 1.36026C6.11076 -0.452773 3.1727 -0.452773 1.35973 1.36026C-0.453243 3.1733 -0.453243 6.11147 1.35973 7.92451L1.57736 8.14215C2.60141 9.16818 2.60141 10.8335 1.57736 11.8576L1.35973 12.0753C-0.453243 13.8883 -0.453243 16.8265 1.35973 18.6395C3.1727 20.4525 6.11076 20.4545 7.92373 18.6395L8.14137 18.4219C9.16736 17.3958 10.8326 17.3958 11.8567 18.4219L12.0743 18.6395C13.8873 20.4525 16.8254 20.4525 18.6383 18.6395H18.6403V18.6376C20.4532 16.8245 20.4532 13.8863 18.6403 12.0733L18.4226 11.8557C17.3966 10.8316 17.3966 9.16623 18.4226 8.1402V8.14215ZM4.85936 15.1397C7.69832 12.3007 7.69832 7.69909 4.85936 4.86003C7.69832 7.69909 12.3017 7.69909 15.1406 4.86003C12.3017 7.69909 12.3017 12.3007 15.1406 15.1397C12.3017 12.3007 7.69832 12.3007 4.85936 15.1397Z';
+/** The Zenboard mark as a drawn part: pigment + ink, `size` px wide, top-left at (x, y). */
+export const mark = (x: number, y: number, size: number, fill: Tone = 'violet'): Part =>
+  ({ d: ZB_MARK, fill, t: `translate(${x} ${y}) scale(${size / 20})`, w: (0.55 * 20) / size });
+
+/** A dashed stroke along a quadratic curve (flow lines, "moves to"). */
+export function dashed(x1: number, y1: number, cx: number, cy: number, x2: number, y2: number, dash = 5, gap = 4): string {
+  const n = 60;
+  const at = (t: number) => [
+    (1 - t) ** 2 * x1 + 2 * (1 - t) * t * cx + t ** 2 * x2,
+    (1 - t) ** 2 * y1 + 2 * (1 - t) * t * cy + t ** 2 * y2,
+  ];
+  let d = '';
+  let run = 0;
+  let on = true;
+  let [px, py] = at(0);
+  if (on) d += `M${px.toFixed(1)} ${py.toFixed(1)}`;
+  for (let i = 1; i <= n; i++) {
+    const [x, y] = at(i / n);
+    run += Math.hypot(x - px, y - py);
+    if (on) d += `L${x.toFixed(1)} ${y.toFixed(1)}`;
+    if (run >= (on ? dash : gap)) { run = 0; on = !on; if (on) d += `M${x.toFixed(1)} ${y.toFixed(1)}`; }
+    [px, py] = [x, y];
+  }
+  return d;
+}
+/** A small open arrowhead at (x, y) pointing along `deg`. */
+export function arrowHead(x: number, y: number, deg: number, len = 7): string {
+  const a = (deg * Math.PI) / 180;
+  const p = (da: number) => `${(x - len * Math.cos(a + da)).toFixed(1)} ${(y - len * Math.sin(a + da)).toFixed(1)}`;
+  return `M${p(0.5)}L${x} ${y}L${p(-0.5)}`;
+}
+
 /** The ground shadow every object rests on. */
 export const ground = (cx: number, cy: number, rx: number, ry = rx * 0.16): Part =>
   ({ d: ellipse(cx, cy, rx, ry), fill: 'shadow', ground: true, line: false });
