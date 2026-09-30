@@ -16,6 +16,12 @@ const S = (w: number, h: number, parts: Part[]): Art => ({ w, h, parts, look: 's
 // ── Construction ────────────────────────────────────────────────────────────
 const fill = (d: string, tone: Tone, extra: Partial<Part> = {}): Part => ({ d, fill: tone, line: false, ...extra });
 const field = (tone: Tone): Part => ({ d: rect(0, 0, 360, 240, 24), fill: tone, line: false, backdrop: true });
+/** A soft stage behind the cluster: one big circle in a deeper tint of the field. */
+const STAGE: Partial<Record<Tone, [Tone, number]>> = { sLav: ['sLavDk', 0.35], sBerryLt: ['sPink', 0.18], sAmberLt: ['sAmber', 0.22] };
+const stage = (fieldTone: Tone, cx = 180, cy = 124, r = 104): Part => {
+  const [tone, opacity] = STAGE[fieldTone] ?? ['sLavDk', 0.3];
+  return fill(circle(cx, cy, r), tone, { opacity });
+};
 const shadow = (cx: number, cy: number, rx: number, tone: Tone = 'sIndigoDk'): Part =>
   fill(ellipse(cx, cy, rx, Math.max(4, rx * 0.09)), tone, { opacity: 0.2 });
 /** A colored block: deep shade underneath, base lit from the top left → an even crescent fold at the lower right. */
@@ -130,6 +136,7 @@ export const hub = S(400, 300, [
 /** Home — Zenboard lifts the one task that matters first out of the day. */
 const home = S(360, 240, [
   field('sLav'),
+  stage('sLav'),
   ...ball(270, 70, 30, 'sAmber', 'sAmberDk'),
   shadow(180, 196, 112),
   ...rotate([card(112, 50, 156, 46, 23), bar(160, 68, 60)], 5, 190, 73),
@@ -144,6 +151,7 @@ const home = S(360, 240, [
 /** Inbox — everything lands in one place, then is sorted in one pass. */
 const inbox = S(360, 240, [
   field('sBerryLt'),
+  stage('sBerryLt'),
   shadow(180, 212, 124, 'sBerryDk'),
   ...rotate(block(106, 50, 56, 56, 12, 'sAmber', 'sAmberDk'), -14, 134, 78),
   ...rotate([
@@ -156,41 +164,50 @@ const inbox = S(360, 240, [
   ...block(92, 108, 176, 96, 26, 'sBerry', 'sBerryDk'),
   zmark(157, 133, 46),
   ...done(266, 110, 19),
+  star(62, 58, 9, GOLD), star(300, 196, 6),
 ]);
 
 /** Projects — work moves across the board; the card goes to Done. */
 const projects = S(360, 240, [
   field('sLav'),
-  shadow(180, 204, 128),
-  ...[0, 1, 2].map((i): Part => card(58 + i * 84, 44, 76, 152, 18)),
-  dot(74, 62, 5, 'sLav'), bar(84, 58, 34), dot(158, 62, 5, 'sAmber'), bar(168, 58, 34), dot(242, 62, 5, 'sGreen'), bar(252, 58, 34),
-  card(66, 78, 60, 34, 10, 'sLavLt'), card(66, 118, 60, 34, 10, 'sLavLt'),
-  card(150, 78, 60, 34, 10, 'sLavLt'),
-  card(234, 78, 60, 34, 10, 'sLavLt'), ...done(250, 95, 9),
-  shadow(222, 178, 52),
-  ...rotate([...block(170, 126, 96, 44, 14, 'sBerry', 'sBerryDk'), zmark(182, 136, 24), bar(214, 139, 40, 'sBerryLt', 8)], -7, 218, 148),
+  stage('sLav'),
+  shadow(180, 210, 132),
+  card(46, 34, 268, 172, 22),
+  ...[0, 1, 2].map((i): Part => fill(rect(58 + i * 84, 46, 76, 148, 14), 'sLavLt')),
+  dot(70, 60, 4.5, 'sLavDk'), bar(80, 56, 32, 'sLav'), dot(154, 60, 4.5, 'sAmber'), bar(164, 56, 32, 'sLav'), dot(238, 60, 4.5, 'sGreen'), bar(248, 56, 32, 'sLav'),
+  card(66, 76, 60, 38, 10), bar(72, 84, 22, 'sAmber', 6), bar(72, 98, 42, 'sLavLt', 6),
+  card(66, 120, 60, 38, 10), bar(72, 128, 22, 'sBlue', 6), bar(72, 142, 36, 'sLavLt', 6),
+  card(150, 76, 60, 38, 10), bar(156, 84, 22, 'sIndigo', 6), bar(156, 98, 40, 'sLavLt', 6),
+  fill(rect(150, 120, 60, 38, 10), 'sLav', { opacity: 0.35 }),
+  card(234, 76, 60, 38, 10), ...done(248, 95, 8), bar(260, 91, 28, 'sLavLt', 6),
+  shadow(226, 186, 54),
+  ...rotate([...block(174, 130, 100, 46, 14, 'sBerry', 'sBerryDk'), zmark(186, 141, 24), bar(218, 144, 42, 'sBerryLt', 8)], -7, 224, 153),
+  star(40, 46, 9, GOLD), star(326, 196, 7),
 ]);
 
 /** Client portal — the project opens on your client's phone, with what needs them on top. */
 const clientPortal = S(360, 240, [
   field('sBerryLt'),
+  stage('sBerryLt'),
   shadow(186, 210, 90, 'sBerryDk'),
   ...phone(136, 22, 112, 190),
   zmark(152, 44, 22, 'sBerry'), bar(182, 50, 48),
-  fill(rect(152, 80, 80, 10, 5), 'sLavLt'), fill(rect(152, 80, 54, 10, 5), 'sBerry'),
-  ...block(150, 104, 84, 58, 14, 'sBerry', 'sBerryDk'),
-  bar(162, 116, 46, 'sBerryLt', 8), fill(rect(162, 134, 58, 18, 9), 'sPaper'),
+  fill(rect(152, 80, 80, 10, 5), 'sLavLt'), fill(rect(152, 80, 54, 10, 5), 'sIndigo'),
+  ...block(150, 104, 84, 58, 14, 'sIndigo', 'sIndigoDk'),
+  bar(162, 116, 46, 'sLav', 8), fill(rect(162, 134, 58, 18, 9), 'sPaper'),
   ...done(162, 182, 8), bar(176, 178, 48),
   // the link you sent
   shadow(104, 150, 50, 'sBerryDk'),
   card(52, 106, 104, 40, 20), ...chain(66, 118, 1),
   // your client
   ...person(256, 52, 26),
+  star(56, 60, 9, GOLD), star(300, 196, 6),
 ]);
 
 /** Docs — a line in the brief becomes a task, and the brief lives in its project. */
 const docs = S(360, 240, [
   field('sLav'),
+  stage('sLav'),
   shadow(176, 212, 118),
   fill(rect(86, 70, 52, 22, 8), 'sAmberDk'),
   fill(rect(78, 82, 192, 120, 20), 'sAmberDk'),
@@ -202,11 +219,13 @@ const docs = S(360, 240, [
   ...done(217, 102, 9), bar(234, 98, 66, 'sBerryLt', 8),
   ...block(70, 124, 208, 84, 22, 'sAmber', 'sAmberDk'),
   zmark(156, 146, 38),
+  star(52, 52, 9, GOLD), star(316, 190, 6),
 ]);
 
 /** Finance — tracked time becomes an invoice, and the payment lands. */
 const finance = S(360, 240, [
   field('sAmberLt'),
+  stage('sAmberLt'),
   shadow(180, 212, 124, 'sAmberDk'),
   receipt(116, 26, 124, 176),
   zmark(132, 42, 22, 'sBerry'), bar(162, 49, 56),
@@ -220,11 +239,13 @@ const finance = S(360, 240, [
   fill(rect(220, 156, 22, 16, 5), 'sAmber'), bar(220, 186, 64, 'sPaper', 8),
   ...coin(290, 128, 21),
   ...coin(274, 112, 21),
+  star(58, 56, 9, GOLD), star(318, 86, 6),
 ]);
 
 /** One link, no login — your link opens the project on your client's phone. No password. */
 const shareLink = S(360, 240, [
   field('sLav'),
+  stage('sLav'),
   shadow(180, 212, 120),
   ...block(64, 44, 88, 88, 24, 'sBerry', 'sBerryDk'),
   zmark(82, 62, 52),
@@ -232,7 +253,7 @@ const shareLink = S(360, 240, [
   ...phone(182, 24, 104, 186),
   bar(202, 58, 50), bar(202, 74, 34),
   fill(circle(246, 112, 20), 'sLavLt'),
-  { d: 'M246 92A20 20 0 1 1 228 121', line: 'sBerry', w: 1.8 },
+  { d: 'M246 92A20 20 0 1 1 228 121', line: 'sIndigo', w: 1.8 },
   ...lock(232, 166, true),
   card(96, 132, 112, 40, 20), ...chain(110, 144, 1),
   bar(158, 148, 30, 'sLavLt', 8),
@@ -241,6 +262,7 @@ const shareLink = S(360, 240, [
 /** You choose what they see — your switches decide what reaches your client. */
 const visibility = S(360, 240, [
   field('sBerryLt'),
+  stage('sBerryLt'),
   shadow(180, 208, 124, 'sBerryDk'),
   card(58, 32, 150, 170, 20),
   zmark(74, 48, 22, 'sBerry'), bar(104, 55, 60),
@@ -254,11 +276,13 @@ const visibility = S(360, 240, [
   ...done(216, 108, 9), bar(232, 104, 62),
   ...done(216, 138, 9), bar(232, 134, 48),
   ...person(302, 70, 22),
+  star(40, 52, 9, GOLD), star(330, 190, 6),
 ]);
 
 /** Requests become tasks — your client's request lands in your tasks, ready to accept. */
 const requests = S(360, 240, [
   field('sLav'),
+  stage('sLav'),
   shadow(180, 206, 132),
   ...person(80, 148, 38),
   card(80, 44, 124, 52, 26), fill(poly(106, 92, 100, 112, 124, 92), 'sPaper'),
@@ -269,11 +293,13 @@ const requests = S(360, 240, [
   ...block(160, 138, 150, 34, 17, 'sBerry', 'sBerryDk'),
   fill(circle(178, 155, 9), 'sPaper'), bar(194, 151, 58, 'sBerryLt', 8), fill(rect(262, 146, 40, 18, 9), 'sPaper'),
   ...done(178, 188, 8), bar(194, 184, 70),
+  star(40, 52, 9, GOLD), star(330, 72, 6),
 ]);
 
 /** Approvals, on the record — your client's approval is stamped onto the plan. */
 const approvals = S(360, 240, [
   field('sLav'),
+  stage('sLav'),
   shadow(180, 210, 110),
   ...rotate([
     ...doc(98, 30, 140, 176),
@@ -287,11 +313,13 @@ const approvals = S(360, 240, [
   ...ball(250, 164, 36, 'sGreen', 'sGreenDk'),
   tick(250, 164, 30),
   ...person(294, 64, 22),
+  star(58, 56, 9, GOLD), star(318, 196, 6),
 ]);
 
 /** Invoices, next to the work — sent, and paid. */
 const invoices = S(360, 240, [
   field('sBerryLt'),
+  stage('sBerryLt'),
   shadow(180, 208, 118, 'sBerryDk'),
   receipt(132, 26, 96, 110),
   zmark(146, 40, 18, 'sBerry'), bar(170, 45, 42), bar(146, 70, 66), bar(146, 86, 50),
@@ -301,6 +329,7 @@ const invoices = S(360, 240, [
   shadow(282, 196, 44, 'sBerryDk'),
   card(236, 150, 94, 38, 19), ...done(256, 169, 11), bar(274, 165, 42, 'sLavLt', 8),
   ...coin(96, 190, 18),
+  star(64, 60, 9, GOLD), star(318, 110, 6),
 ]);
 
 export const SHAPE_HERO = { hub } satisfies Record<string, Art>;
