@@ -277,6 +277,15 @@ export {
   IconRipple as Waves,
   IconTextWrap as WrapText,
   IconTool as Wrench,
+  // AI chat (Zenboard AI): message actions, composer, header.
+  IconThumbUp as ThumbsUp,
+  IconThumbDown as ThumbsDown,
+  IconMicrophone as Mic,
+  IconPin as Pin,
+  IconPinFilled as PinFilled,
+  IconPlayerStopFilled as StopFilled,
+  IconMessagePlus as MessagePlus,
+  IconChecklist as Checklist,
 } from "@tabler/icons-react";
 
 // Structural icon-component type — both Tabler and adapted Phosphor glyphs

@@ -242,6 +242,18 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['payments']['Insert']>;
         Relationships: [];
       };
+      ai_conversations: {
+        Row: { id: string; user_id: string; title: string | null; pinned: boolean; created_at: string; updated_at: string };
+        Insert: { id?: string; user_id: string; title?: string | null; pinned?: boolean; updated_at?: string };
+        Update: Partial<Database['public']['Tables']['ai_conversations']['Insert']>;
+        Relationships: [];
+      };
+      ai_messages: {
+        Row: { id: string; conversation_id: string; role: 'user' | 'assistant'; content: string; rating: -1 | 1 | null; meta: Record<string, unknown> | null; created_at: string };
+        Insert: { id?: string; conversation_id: string; role: 'user' | 'assistant'; content: string; rating?: -1 | 1 | null; meta?: Record<string, unknown> | null };
+        Update: Partial<Database['public']['Tables']['ai_messages']['Insert']>;
+        Relationships: [];
+      };
       notifications: {
         Row: { id: string; user_id: string; kind: string; title: string; body: string | null; link: Record<string, unknown> | null; read: boolean; created_at: string };
         Insert: { id?: string; user_id: string; kind: string; title: string; body?: string | null; link?: Record<string, unknown> | null; read?: boolean };
