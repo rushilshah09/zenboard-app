@@ -212,8 +212,35 @@ export const key = art([
   { d: circle(30, 60, 5), fill: 'paper' },
 ]);
 
+export const sun = art([
+  ground(48, 84, 24),
+  ...Array.from({ length: 8 }, (_, i): Part => {
+    const a = (i / 8) * Math.PI * 2;
+    const [x1, y1, x2, y2] = [48 + 24 * Math.cos(a), 40 + 24 * Math.sin(a), 48 + 31 * Math.cos(a), 40 + 31 * Math.sin(a)].map((v) => +v.toFixed(1));
+    return detail(`M${x1} ${y1}L${x2} ${y2}`, 1);
+  }),
+  { d: circle(48, 40, 18), fill: 'marigold' },
+  { d: 'M40 66Q40 58 48 58Q50 52 57 53Q64 52 66 59Q74 59 74 66Q74 70 70 70H44Q40 70 40 66Z', fill: 'paper' },
+]);
+
+export const link = art([
+  ground(48, 84, 26),
+  { d: rect(12, 38, 44, 22, 11) + rect(20, 44, 28, 10, 5), fill: 'violet', evenOdd: true, t: 'rotate(-30 34 49)' },
+  { d: rect(40, 36, 44, 22, 11) + rect(48, 42, 28, 10, 5), fill: 'periwinkle', evenOdd: true, t: 'rotate(-30 62 47)' },
+  detail('M20 26L24 32', 0.9), detail('M14 34L20 36', 0.9), detail('M76 62L82 66', 0.9), detail('M72 70L74 76', 0.9),
+]);
+
+export const eye = art([
+  ground(48, 82, 26),
+  { d: 'M10 48Q48 12 86 48Q48 84 10 48Z', fill: 'paper' },
+  { d: circle(48, 48, 15), fill: 'violet' },
+  { d: circle(48, 48, 6.5), fill: 'ink', w: 0.5 },
+  { d: circle(44, 44, 2.4), fill: 'paper', line: false },
+  detail('M20 36L15 29', 0.9), detail('M34 27L32 19', 0.9), detail('M48 24V16', 0.9), detail('M62 27L64 19', 0.9), detail('M76 36L81 29', 0.9),
+]);
+
 export const SPOTS = {
   inbox, tasks, calendar, folder, clients, forms, docs, finance, invoice,
-  goals, habits, focus, ai, bell, shield, moon, settings, key,
+  goals, habits, focus, ai, bell, shield, moon, settings, key, sun, link, eye,
 } satisfies Record<string, Art>;
 export type SpotName = keyof typeof SPOTS;

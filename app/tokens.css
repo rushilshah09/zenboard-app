@@ -182,6 +182,24 @@
   --ill-periwinkle: #8FA5F2;
   --ill-shadow: #A6B6F6;
 }
+/* Zen Ink · Brand — the watercolor look remapped to the zenboard.life palette:
+   berry (brand), the site's lavender client accent, and its feature hues.
+   Put `.ill-brand` on any ancestor of a Zen Ink illustration. */
+.ill-brand {
+  --ill-paper: #FFFFFF;
+  --ill-cream: #F4F2EC;
+  --ill-teal: #72BDB8;
+  --ill-teal-deep: #2F7C78;
+  --ill-lilac: #F4C3DC;
+  --ill-violet: #C41C72;
+  --ill-marigold: #E6B955;
+  --ill-orange: #C97A55;
+  --ill-tomato: #A3165F;
+  --ill-brick: #A98B77;
+  --ill-periwinkle: #B8BEEE;
+  --ill-shadow: #C9CDF4;
+}
+
 /* Zen Bold — the flat, editorial illustration look (thick ink, flat pigment,
    hard black cast shadows), drawn from the Zenboard palette: berry brand
    accent, B&G ink/bone, and the label hues (blue, green, amber, purple, pink,

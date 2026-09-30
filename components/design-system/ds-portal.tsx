@@ -18,6 +18,10 @@ import {
 } from '@/components/ds/ui';
 import { Panel, PanelHeader, PanelBody, FigmaTag } from '@/components/ui/panels';
 import { DS_USAGE } from './usage.generated';
+import {
+  Spot, Scene, IconBadge, BoldScene, SiteIllustration, SITE, SITE_ICONS, SCENES, BADGES, BOLD_SCENES,
+  type SceneName, type BadgeName, type BoldSceneName, type SiteIllustrationName,
+} from '@/components/illustrations/ink';
 
 /* ── Registry ────────────────────────────────────────────────────────────── */
 
@@ -147,6 +151,54 @@ const GROUPS: Group[] = [
               <Icon icon={Star} size={18} />
               <span className="absolute -top-1 -right-1 size-2.5 rounded-full border" style={{ background: 'var(--color-berry-500)', borderColor: 'var(--paper)' }} />
             </span>
+          </div>
+        ),
+      },
+    ],
+  },
+  {
+    label: 'Illustrations',
+    items: [
+      {
+        name: 'Zen Ink · Website', keys: [], desc: 'zenboard.life: hand-inked, watercolor feature illustrations and icons in the brand palette (berry, the lavender client accent, the feature hues). Wrap in .ill-brand. Full canvas: /dev-preview/illustrations.',
+        render: () => (
+          <div className="ill-brand flex flex-col gap-4 rounded-lg p-5" style={{ background: 'var(--zb-ill-bone)' }}>
+            <div className="flex flex-wrap gap-3">
+              {SITE_ICONS.map((i) => <Spot key={i.label} name={i.spot} size={56} title={i.label} />)}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {(Object.keys(SITE) as SiteIllustrationName[]).map((n) => (
+                <div key={n} className="rounded-md" style={{ background: 'var(--zb-ill-white)' }}>
+                  <SiteIllustration name={n} size={330} title={n} style={{ width: '100%', height: 'auto' }} />
+                </div>
+              ))}
+            </div>
+          </div>
+        ),
+      },
+      {
+        name: 'Zen Ink · App', keys: [], desc: 'In-app spots and scenes: ink outline, off-register watercolor wash, periwinkle ground shadow. .ill-on-dark flips ink for dark surfaces.',
+        render: () => (
+          <div className="ill-on-dark flex flex-col gap-4">
+            <div className="flex flex-wrap gap-3">
+              {(['inbox', 'tasks', 'calendar', 'folder', 'clients', 'forms', 'docs', 'finance', 'goals', 'habits', 'focus', 'ai'] as const).map((n) => <Spot key={n} name={n} size={64} title={n} />)}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {(Object.keys(SCENES) as SceneName[]).map((n) => <Scene key={n} name={n} size={330} title={n} style={{ width: '100%', height: 'auto' }} />)}
+            </div>
+          </div>
+        ),
+      },
+      {
+        name: 'Zen Bold', keys: [], desc: 'Flat editorial look in Zenboard colors: thick ink, flat pigment, hard black cast shadows. Icon badges and color-field scenes.',
+        render: () => (
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-wrap gap-3">
+              {(Object.keys(BADGES) as BadgeName[]).map((n) => <IconBadge key={n} name={n} size={64} title={n} />)}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {(Object.keys(BOLD_SCENES) as BoldSceneName[]).map((n) => <BoldScene key={n} name={n} size={330} title={n} style={{ width: '100%', height: 'auto' }} />)}
+            </div>
           </div>
         ),
       },
