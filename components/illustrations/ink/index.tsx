@@ -8,14 +8,14 @@ import { SPOTS, type SpotName } from './spots';
 import { SCENES, type SceneName } from './scenes';
 import { BADGES, BOLD_SCENES, type BadgeName, type BoldSceneName } from './bold';
 import { SITE, type SiteIllustrationName } from './site';
-import { SHAPE_HERO, SHAPE_SCENES, SHAPE_ICONS, type ShapeSceneName, type ShapeIconName } from './shape';
+import { SHAPE_HERO, SHAPE_SCENES, SHAPE_ICONS, SHAPE_TILES, type ShapeSceneName, type ShapeIconName, type ShapeTileName } from './shape';
 
 export { Ink, type Art, type Part, type Tone } from './kit';
 export { SPOTS, type SpotName } from './spots';
 export { SCENES, type SceneName } from './scenes';
 export { BADGES, BOLD_SCENES, type BadgeName, type BoldSceneName } from './bold';
 export { SITE, type SiteIllustrationName } from './site';
-export { SHAPE_HERO, SHAPE_SCENES, SHAPE_ICONS, type ShapeSceneName, type ShapeIconName } from './shape';
+export { SHAPE_HERO, SHAPE_SCENES, SHAPE_ICONS, SHAPE_TILES, type ShapeSceneName, type ShapeIconName, type ShapeTileName } from './shape';
 
 type Common = Omit<InkProps, 'art'>;
 
@@ -59,4 +59,9 @@ export function ShapeIcon({ name, size = 96, ...rest }: Common & { name: ShapeIc
 }
 export function ShapeHero({ size = 400, ...rest }: Common) {
   return <Ink art={SHAPE_HERO.hub} size={size} {...rest} />;
+}
+
+/** Website icon tile (rounded square). Fills its box unless `size` is given. */
+export function ShapeTile({ name, size, style, ...rest }: Common & { name: ShapeTileName }) {
+  return <Ink art={SHAPE_TILES[name]} size={size ?? 64} style={size ? style : { width: '100%', height: '100%', ...style }} {...rest} />;
 }

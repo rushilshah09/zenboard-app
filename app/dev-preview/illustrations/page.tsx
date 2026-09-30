@@ -3,8 +3,8 @@
 // light paper ground and on a dark surface. 404s in prod.
 import { notFound } from 'next/navigation';
 import {
-  Spot, Scene, IconBadge, BoldScene, SiteIllustration, ShapeScene, ShapeIcon, ShapeHero, SHAPE_SCENES, SHAPE_ICONS,
-  type ShapeSceneName, type ShapeIconName, SPOTS, SCENES, BADGES, BOLD_SCENES, SITE, SITE_ICONS,
+  Spot, Scene, IconBadge, BoldScene, SiteIllustration, ShapeScene, ShapeIcon, ShapeHero, ShapeTile, SHAPE_SCENES, SHAPE_ICONS, SHAPE_TILES,
+  type ShapeSceneName, type ShapeIconName, type ShapeTileName, SPOTS, SCENES, BADGES, BOLD_SCENES, SITE, SITE_ICONS,
   type SpotName, type SceneName, type BadgeName, type BoldSceneName, type SiteIllustrationName,
 } from '@/components/illustrations/ink';
 
@@ -53,6 +53,15 @@ function ShapeBoard() {
         {(Object.keys(SHAPE_ICONS) as ShapeIconName[]).map((n) => (
           <figure key={n} style={{ margin: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
             <ShapeIcon name={n} size={80} />
+            <figcaption style={{ font: '12px var(--font-ui)', opacity: 0.55 }}>{n}</figcaption>
+          </figure>
+        ))}
+      </div>
+      <h2 style={{ ...label, margin: '48px 0 24px' }}>Zen Shape · website tiles</h2>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(88px, 1fr))', gap: 20 }}>
+        {(Object.keys(SHAPE_TILES) as ShapeTileName[]).map((n) => (
+          <figure key={n} style={{ margin: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+            <ShapeTile name={n} size={56} />
             <figcaption style={{ font: '12px var(--font-ui)', opacity: 0.55 }}>{n}</figcaption>
           </figure>
         ))}

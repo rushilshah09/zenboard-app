@@ -147,18 +147,16 @@
   width: 100%;
   height: 100%;
   box-sizing: border-box;
-  border-radius: 28%;
-  border: 1px solid var(--site-line);
-  background: color-mix(in srgb, var(--hue) 7%, var(--site-card));
-  color: var(--hue);
+  border-radius: 25%;
+  overflow: hidden;
   display: grid;
   place-items: center;
   box-shadow: var(--site-shadow-float);
 }
 
 .tileFace svg {
-  width: 44%;
-  height: 44%;
+  width: 100%;
+  height: 100%;
 }
 
 .tileLabel {

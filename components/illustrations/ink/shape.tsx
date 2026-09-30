@@ -376,3 +376,50 @@ export const SHAPE_ICONS = {
   ]),
 } satisfies Record<string, Art>;
 export type ShapeIconName = keyof typeof SHAPE_ICONS;
+
+// ── Website tiles: the same icons on a rounded-square field (64×64) ────────
+// The site sets icons on rounded-square tiles, so the tile IS the icon: the
+// field, the object and its fold, drawn together. Objects are the icon art
+// above, scaled 75% and centered so every tile has the same margin. Extra site-only subjects
+// (link, receipt, team, everything, streak) are drawn in the same grid.
+const extraIcons = {
+  link: icon('sLav', [...chain(25, 40, 1.15)]),
+  receipt: icon('sLav', [
+    receipt(28, 20, 40, 54), bar(34, 30, 18, 'sLavLt', 6), bar(34, 42, 26, 'sLavLt', 6), fill(rect(34, 52, 26, 8, 4), 'sBerry'),
+    ...done(66, 64, 11),
+  ]),
+  team: icon('sLav', [...person(34, 52, 14, 'sAmber', 'sAmberDk'), ...person(62, 52, 14, 'sGreen', 'sGreenDk'), ...person(48, 44, 16)]),
+  everything: icon('sBerryLt', [
+    ...block(24, 24, 22, 22, 7, 'sBerry', 'sBerryDk'), ...block(50, 24, 22, 22, 7, 'sBlue', 'sBlueDk'),
+    ...block(24, 50, 22, 22, 7, 'sAmber', 'sAmberDk'), ...block(50, 50, 22, 22, 7, 'sGreen', 'sGreenDk'),
+    zmark(28.5, 28.5, 13),
+  ]),
+  streak: icon('sAmberLt', [
+    fill('M48 20Q64 34 63 50Q62 68 48 72Q34 68 33 52Q33 41 42 34Q42 44 48 46Q45 32 48 20Z', 'sCoral'),
+    fill('M48 20Q64 34 63 50Q62 68 48 72Q34 68 33 52Q33 41 42 34Q42 44 48 46Q45 32 48 20Z' + circle(38, 36, 40), 'sCoralDk', { clip: 'M48 20Q64 34 63 50Q62 68 48 72Q34 68 33 52Q33 41 42 34Q42 44 48 46Q45 32 48 20Z', evenOdd: true }),
+    fill('M48 46Q57 54 55 62Q53 70 48 70Q42 69 41 62Q41 54 48 46Z', 'sGold'),
+  ]),
+} satisfies Record<string, Art>;
+
+const TILE_FIELD: Record<string, Tone> = {
+  home: 'sLavLt', inbox: 'sBlushLt', tasks: 'sLavLt', calendar: 'sLavLt', focus: 'sLavLt', goals: 'sAmberLt',
+  habits: 'sAmberLt', projects: 'sAmberLt', docs: 'sLav', clientPortal: 'sLavLt', clients: 'sLavLt', forms: 'sAmberLt',
+  finance: 'sAmberLt', visibility: 'sLav', requests: 'sLavLt', approvals: 'sLavLt', invoices: 'sBlushLt', ai: 'sBlushLt',
+  link: 'sBlushLt', receipt: 'sLav', team: 'sLavLt', everything: 'sBlushLt', streak: 'sAmberLt',
+};
+
+const ALL_ICONS = { ...SHAPE_ICONS, ...extraIcons };
+export type ShapeTileName = keyof typeof ALL_ICONS;
+
+/** Square tile version of an icon: field + the icon's object (its round field dropped). */
+function tileOf(name: ShapeTileName): Art {
+  const [, ...object] = ALL_ICONS[name].parts;
+  return S(64, 64, [
+    { d: rect(0, 0, 64, 64, 16), fill: TILE_FIELD[name] ?? 'sLavLt', line: false },
+    ...object.map((p) => ({ ...p, t: `translate(-4 -4) scale(0.75)${p.t ? ` ${p.t}` : ''}` })),
+  ]);
+}
+
+export const SHAPE_TILES = Object.fromEntries(
+  (Object.keys(ALL_ICONS) as ShapeTileName[]).map((n) => [n, tileOf(n)]),
+) as Record<ShapeTileName, Art>;

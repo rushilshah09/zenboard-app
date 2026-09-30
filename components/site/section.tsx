@@ -46,7 +46,7 @@ export function Eyebrow({ icon: Icon, children }: { icon: IconType; children: Re
   return (
     <div className={s.eyebrow}>
       <span className={s.eyebrowTile} aria-hidden="true">
-        <Icon size={16} />
+        <Icon size={28} />
       </span>
       {children}
     </div>
@@ -104,7 +104,7 @@ export function FeatureCard({
       <div className={s.cardInner}>
         <div className={s.cardHead}>
           <span className={s.tile} aria-hidden="true">
-            <Icon size={22} />
+            <Icon size={44} />
           </span>
           <div className={s.cardText}>
             <h3 className={s.cardTitle}>{title}</h3>

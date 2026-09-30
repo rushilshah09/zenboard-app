@@ -3,22 +3,11 @@
 // Client component: the icon seam (components/ds/icons) is client-only, like
 // every other icon call site in the app. It still server-renders as HTML.
 import type { CSSProperties } from "react";
+import type { IconType } from "@/components/ds/icons";
 import {
-  SiteBank,
-  SiteCalendar,
-  SiteDoc,
-  SiteFire,
-  SiteFolder,
-  SiteForm,
-  SiteLink,
-  SiteSquares,
-  SiteTarget,
-  SiteTasks,
-  SiteTimer,
-  SiteTray,
-  SiteUsers,
-  type IconType,
-} from "@/components/ds/icons";
+  TileCalendar, TileClients, TileDocs, TileEverything, TileFinance, TileFocus, TileForms,
+  TileGoals, TileHabits, TileInbox, TilePortal, TileProjects, TileTasks,
+} from "../site-tiles";
 import { Mark } from "@/components/ds/ui/icon";
 import { Eyebrow, SiteSection, type SiteTheme } from "../section";
 import s from "../section.module.css";
@@ -39,19 +28,19 @@ type Feature = { label: string; icon: IconType; hue: Hue; x: number; y: number; 
 
 const FEATURES: Feature[] = [
   // My day — left
-  { label: "Inbox", icon: SiteTray, hue: "slate", x: 275.9, y: 72.9, size: 56 },
-  { label: "Tasks", icon: SiteTasks, hue: "teal", x: 425.1, y: 253.5, size: 64 },
-  { label: "Calendar", icon: SiteCalendar, hue: "rust", x: 425.1, y: 386.5, size: 64 },
-  { label: "Focus", icon: SiteTimer, hue: "ochre", x: 289.8, y: 556.6, size: 56 },
-  { label: "Goals", icon: SiteTarget, hue: "moss", x: 119.9, y: 274.9, size: 52 },
-  { label: "Habits", icon: SiteFire, hue: "berry", x: 84, y: 431.2, size: 52 },
+  { label: "Inbox", icon: TileInbox, hue: "slate", x: 275.9, y: 72.9, size: 56 },
+  { label: "Tasks", icon: TileTasks, hue: "teal", x: 425.1, y: 253.5, size: 64 },
+  { label: "Calendar", icon: TileCalendar, hue: "rust", x: 425.1, y: 386.5, size: 64 },
+  { label: "Focus", icon: TileFocus, hue: "ochre", x: 289.8, y: 556.6, size: 56 },
+  { label: "Goals", icon: TileGoals, hue: "moss", x: 119.9, y: 274.9, size: 52 },
+  { label: "Habits", icon: TileHabits, hue: "berry", x: 84, y: 431.2, size: 52 },
   // Work — right
-  { label: "Docs", icon: SiteDoc, hue: "slate", x: 1178.3, y: 125.1, size: 56 },
-  { label: "Projects", icon: SiteFolder, hue: "indigo", x: 1021, y: 221.4, size: 64 },
-  { label: "Client portal", icon: SiteLink, hue: "accent", x: 1033.4, y: 365.3, size: 64 },
-  { label: "Finance", icon: SiteBank, hue: "moss", x: 1150.2, y: 499.2, size: 56 },
-  { label: "Clients", icon: SiteUsers, hue: "clay", x: 1337.8, y: 274, size: 52 },
-  { label: "Forms", icon: SiteForm, hue: "plum", x: 1269.5, y: 557.4, size: 52 },
+  { label: "Docs", icon: TileDocs, hue: "slate", x: 1178.3, y: 125.1, size: 56 },
+  { label: "Projects", icon: TileProjects, hue: "indigo", x: 1021, y: 221.4, size: 64 },
+  { label: "Client portal", icon: TilePortal, hue: "accent", x: 1033.4, y: 365.3, size: 64 },
+  { label: "Finance", icon: TileFinance, hue: "moss", x: 1150.2, y: 499.2, size: 56 },
+  { label: "Clients", icon: TileClients, hue: "clay", x: 1337.8, y: 274, size: 52 },
+  { label: "Forms", icon: TileForms, hue: "plum", x: 1269.5, y: 557.4, size: 52 },
 ];
 
 const hueVar = (hue: Hue) => (hue === "accent" ? "var(--site-accent-600)" : `var(--site-hue-${hue})`);
@@ -89,7 +78,7 @@ export function HubSection({ theme = "light" }: { theme?: SiteTheme }) {
   return (
     <SiteSection id="everything" labelledBy="hub-title" theme={theme} className={h.section}>
       <div className={h.intro}>
-        <Eyebrow icon={SiteSquares}>Everything in Zenboard</Eyebrow>
+        <Eyebrow icon={TileEverything}>Everything in Zenboard</Eyebrow>
         <h2 id="hub-title" className={cx(s.title, h.title)}>
           Everything you run, in one calm place.
         </h2>
@@ -160,7 +149,7 @@ export function HubSection({ theme = "light" }: { theme?: SiteTheme }) {
           const Icon = f.icon;
           return (
             <li key={f.label} className={h.chip} style={{ "--hue": hueVar(f.hue) } as CSSProperties}>
-              <Icon size={14} aria-hidden="true" />
+              <Icon size={20} aria-hidden="true" />
               {f.label}
             </li>
           );
