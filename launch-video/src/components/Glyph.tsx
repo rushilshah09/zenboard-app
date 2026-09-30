@@ -55,15 +55,16 @@ export const Glyph: React.FC<{ category: Category; size: number; colourProgress?
   );
 };
 
-/** A plain line icon from the same family (regular weight), recoloured per state. */
-export const Icon: React.FC<{ name: GlyphName; size: number; tint?: string; style?: React.CSSProperties }> = ({
+/** An icon from the same family: regular (line) weight, or `fill` for the solid weight. */
+export const Icon: React.FC<{ name: GlyphName; size: number; tint?: string; fill?: boolean; style?: React.CSSProperties }> = ({
   name,
   size,
   tint = colour.ink,
+  fill = false,
   style,
 }) => (
   <svg width={size} height={size} viewBox="0 0 256 256" style={{ flexShrink: 0, ...style }}>
-    {GLYPHS[name].regular.map((d, i) => (
+    {(fill ? GLYPHS[name].solid : GLYPHS[name].regular).map((d, i) => (
       <path key={i} d={d} fill={tint} />
     ))}
   </svg>

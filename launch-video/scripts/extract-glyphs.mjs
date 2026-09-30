@@ -10,6 +10,7 @@ const ROOT = new URL("../node_modules/@phosphor-icons/core/assets/", import.meta
 const NAMES = [
   "list-checks", "kanban", "file-text", "notepad", "calendar-blank", "receipt", "users", "sun-horizon",
   "key", "check", "lightbulb", "clock", "paper-plane-tilt", "command", "arrow-right",
+  "calendar-dots", "target", "flame", "timer", "chart-line-up", "chat-circle", "folder", "bell", "lightning", "credit-card", "repeat", "sparkle",
 ];
 
 const paths = (svg) => [...svg.matchAll(/<path d="([^"]+)"( opacity="0.2")?\/>/g)];

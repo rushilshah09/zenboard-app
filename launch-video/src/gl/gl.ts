@@ -1,5 +1,5 @@
 /**
- * Minimal WebGL2 helpers for the film's GPU layers (aurora, particle flow).
+ * Minimal WebGL2 helpers for the film's GPU layers (swarm, orb, network, orbit, particle flow).
  * Everything is drawn synchronously from the current frame, so renders are
  * deterministic: no clocks, no randomness outside seeded hashes.
  */
