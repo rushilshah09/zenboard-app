@@ -8,14 +8,14 @@ import { SPOTS, type SpotName } from './spots';
 import { SCENES, type SceneName } from './scenes';
 import { BADGES, BOLD_SCENES, type BadgeName, type BoldSceneName } from './bold';
 import { SITE, type SiteIllustrationName } from './site';
-import { SHAPE_HERO, SHAPE_SCENES, SHAPE_ICONS, SHAPE_TILES, type ShapeSceneName, type ShapeIconName, type ShapeTileName } from './shape';
+import { SHAPE_HERO, SHAPE_SCENES, SHAPE_ICONS, SHAPE_TILES, EMPTY, type ShapeSceneName, type ShapeIconName, type ShapeTileName, type EmptyName } from './shape';
 
 export { Ink, type Art, type Part, type Tone } from './kit';
 export { SPOTS, type SpotName } from './spots';
 export { SCENES, type SceneName } from './scenes';
 export { BADGES, BOLD_SCENES, type BadgeName, type BoldSceneName } from './bold';
 export { SITE, type SiteIllustrationName } from './site';
-export { SHAPE_HERO, SHAPE_SCENES, SHAPE_ICONS, SHAPE_TILES, type ShapeSceneName, type ShapeIconName, type ShapeTileName } from './shape';
+export { SHAPE_HERO, SHAPE_SCENES, SHAPE_ICONS, SHAPE_TILES, EMPTY, type ShapeSceneName, type ShapeIconName, type ShapeTileName, type EmptyName } from './shape';
 
 type Common = Omit<InkProps, 'art'>;
 
@@ -64,4 +64,9 @@ export function ShapeHero({ size = 400, ...rest }: Common) {
 /** Website icon tile (rounded square). Fills its box unless `size` is given. */
 export function ShapeTile({ name, size, style, ...rest }: Common & { name: ShapeTileName }) {
   return <Ink art={SHAPE_TILES[name]} size={size ?? 64} style={size ? style : { width: '100%', height: '100%', ...style }} {...rest} />;
+}
+
+/** In-app empty/error state illustration (Zen Shape, transparent). */
+export function EmptyArt({ name, size = 176, ...rest }: Common & { name: EmptyName }) {
+  return <Ink art={EMPTY[name]} size={size} {...rest} />;
 }

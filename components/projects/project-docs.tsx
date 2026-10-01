@@ -16,6 +16,7 @@ import { BlockEditor } from '@/components/documents/block-editor';
 import { type Block, toBlocks, serialize } from '@/lib/blocks';
 import { cn } from '@/lib/cn';
 import type { PDoc } from '@/components/projects/projects-workspace';
+import { ShapeIcon } from '@/components/illustrations/ink';
 
 const ago = (iso: string) => {
   const d = (Date.now() - new Date(iso).getTime()) / 1000;
@@ -75,7 +76,7 @@ export function ProjectDocs({
         <div className="rounded-lg border border-dashed border-line-strong">
           <EmptyState
             size="inline"
-            illustration={<Icon icon={FileText} size={20} />}
+            illustration={<ShapeIcon name="docs" size={56} />}
             title="No docs yet"
             description="Briefs, scopes, notes — add one and optionally share it in the portal."
           />

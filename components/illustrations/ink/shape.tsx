@@ -9,7 +9,7 @@
 //  4. At most two thick, tinted bars on a card. No grey placeholder text.
 //  5. The Zenboard mark appears once, on the hero object. No faces.
 //  6. Icons: one object in a 48px live area, centered on a 96px round field.
-import { type Art, type Part, type Tone, rect, circle, ellipse, poly, sparkle, mark } from './kit';
+import { type Art, type Part, type Tone, rect, circle, ellipse, poly, sparkle, mark, dashed } from './kit';
 
 const S = (w: number, h: number, parts: Part[]): Art => ({ w, h, parts, look: 'shape' });
 
@@ -333,10 +333,36 @@ const invoices = S(360, 240, [
 ]);
 
 export const SHAPE_HERO = { hub } satisfies Record<string, Art>;
-export const SHAPE_SCENES = {
+/** Move (and optionally scale) every part except the fixed ones as one group. */
+const reframe = (art: Art, [dx, dy, k = 1]: [number, number, number?], fixed: (p: Part, i: number) => boolean): Art => {
+  const t = `translate(${dx} ${dy})${k === 1 ? '' : ` scale(${k})`}`;
+  return { ...art, parts: art.parts.map((p, i) => (fixed(p, i) ? p : { ...p, t: p.t ? `${t} ${p.t}` : t })) };
+};
+// Every scene opens with field(), stage(): those two stay put.
+const isStage = (_p: Part, i: number) => i <= 1;
+
+// Optical framing for the scenes. Clusters were pixel-measured (stage, shadow
+// and field excluded): [cx, cy, width]. Each is re-centered on the stage
+// (180, 119) and anything wider than 280 is scaled down, so every card has the
+// same breathing room at its edges.
+const SCENE_BOUNDS: Record<string, [number, number, number]> = {
+  home: [180.5, 115.4, 251], inbox: [180, 119.6, 252], projects: [182.1, 119.6, 301],
+  clientPortal: [176.3, 115.9, 257], docs: [183.7, 120.7, 278], finance: [188.5, 116.5, 275],
+  shareLink: [171, 116.5, 215], visibility: [184.2, 116.5, 303], requests: [184.2, 120.2, 303],
+  approvals: [186.4, 120.2, 273], invoices: [193.2, 118.6, 274],
+};
+const frameScene = (name: string, art: Art): Art => {
+  const [cx, cy, w] = SCENE_BOUNDS[name];
+  const k = Math.min(1, 280 / w);
+  return reframe(art, [+(180 - k * cx).toFixed(2), +(119 - k * cy).toFixed(2), +k.toFixed(3)], isStage);
+};
+const SCENES_RAW = {
   home, inbox, projects, clientPortal, docs, finance,
   shareLink, visibility, requests, approvals, invoices,
 } satisfies Record<string, Art>;
+export const SHAPE_SCENES = Object.fromEntries(
+  Object.entries(SCENES_RAW).map(([n, a]) => [n, frameScene(n, a)]),
+) as Record<keyof typeof SCENES_RAW, Art>;
 export type ShapeSceneName = keyof typeof SHAPE_SCENES;
 
 // ── Icons: one object, 48px live area (24→72), on a 96px round field ───────
@@ -367,14 +393,23 @@ export const SHAPE_ICONS = {
     fill(rect(24, 56, 16, 16, 4), 'sLav'), fill(rect(40, 46, 16, 26, 4), 'sAmber'), ...block(56, 36, 16, 36, 4, 'sBerry', 'sBerryDk'),
     { d: 'M64 36V22', line: 'sInk', w: 0.9 }, fill('M64 22H76L72 26.5L76 31H64Z', 'sGreen'),
   ]),
-  habits: icon('sLav', [
-    { d: 'M48 72V52', line: 'sGreenDk', w: 1.3 }, fill('M47 66Q36 66 32 58Q42 55 47 62Z', 'sGreen'), fill('M49 62Q60 62 64 54Q54 51 49 58Z', 'sGreen'),
-    ...Array.from({ length: 5 }, (_, i): Part => {
-      const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
-      return fill(circle(48 + 10 * Math.cos(a), 38 + 10 * Math.sin(a), 8), 'sPink');
-    }),
-    fill(circle(48, 38, 6), 'sAmber'),
+  habits: icon('sAmberLt', [
+    fill('M48 20Q64 34 63 50Q62 68 48 72Q34 68 33 52Q33 41 42 34Q42 44 48 46Q45 32 48 20Z', 'sCoral'),
+    fill('M48 20Q64 34 63 50Q62 68 48 72Q34 68 33 52Q33 41 42 34Q42 44 48 46Q45 32 48 20Z' + circle(38, 36, 40), 'sCoralDk', { clip: 'M48 20Q64 34 63 50Q62 68 48 72Q34 68 33 52Q33 41 42 34Q42 44 48 46Q45 32 48 20Z', evenOdd: true }),
+    fill('M48 46Q57 54 55 62Q53 70 48 70Q42 69 41 62Q41 54 48 46Z', 'sGold'),
   ]),
+  priority: icon('sLav', (() => {
+    const pts = Array.from({ length: 10 }, (_, i) => {
+      const a = -Math.PI / 2 + (i * Math.PI) / 5;
+      const r = i % 2 ? 11 : 25;
+      return [+(48 + r * Math.cos(a)).toFixed(1), +(50 + r * Math.sin(a)).toFixed(1)];
+    }).flat();
+    const d = poly(...pts);
+    return [
+      { ...fill(d, 'sGold'), line: 'sGold', w: 2.2 } as Part,
+      { ...fill(d + circle(42, 42, 30), 'sAmber', { clip: d, evenOdd: true }) } as Part,
+    ];
+  })()),
   projects: icon('sLav', [
     fill(rect(28, 28, 20, 10, 4), 'sAmberDk'), card(31, 31, 36, 12, 3),
     ...block(24, 36, 48, 36, 10, 'sAmber', 'sAmberDk'),
@@ -452,3 +487,117 @@ function tileOf(name: ShapeTileName): Art {
 export const SHAPE_TILES = Object.fromEntries(
   (Object.keys(ALL_ICONS) as ShapeTileName[]).map((n) => [n, tileOf(n)]),
 ) as Record<ShapeTileName, Art>;
+
+// ── In-app empty states (200×140, transparent) ─────────────────────────────
+// For the app's own surfaces (dark or light): no field, a faint stage, one hero
+// object and one cue: a berry plus = "create your first", a green check =
+// "all clear". Same construction, palette and light as the scenes above.
+const E = (parts: Part[]): Art => S(200, 140, [fill(circle(100, 66, 60), 'sLav', { opacity: 0.3 }), ...parts]);
+const eShadow = (rx = 62): Part => fill(ellipse(100, 121, rx, 5.5), 'sInk', { opacity: 0.22 });
+/** "Create your first": a berry plus badge. */
+const plusBadge = (cx: number, cy: number, r = 13): Part[] => [
+  ...ball(cx, cy, r, 'sBerry', 'sBerryDk'),
+  { d: `M${cx} ${cy - r * 0.45}V${cy + r * 0.45}M${cx - r * 0.45} ${cy}H${cx + r * 0.45}`, line: 'sPaper', w: r / 7.5 },
+];
+const flameAt = (cx: number, cy: number, s: number): Part[] => {
+  const d = `M${cx} ${cy - 30 * s}Q${cx + 18 * s} ${cy - 14 * s} ${cx + 17 * s} ${cy + 3 * s}Q${cx + 16 * s} ${cy + 22 * s} ${cx} ${cy + 26 * s}Q${cx - 16 * s} ${cy + 22 * s} ${cx - 17 * s} ${cy + 5 * s}Q${cx - 17 * s} ${cy - 7 * s} ${cx - 7 * s} ${cy - 15 * s}Q${cx - 7 * s} ${cy - 4 * s} ${cx} ${cy - 2 * s}Q${cx - 3 * s} ${cy - 16 * s} ${cx} ${cy - 30 * s}Z`;
+  return [
+    fill(d, 'sCoral'),
+    fill(d + circle(cx - 8 * s, cy - 12 * s, 40 * s), 'sCoralDk', { clip: d, evenOdd: true }),
+    fill(`M${cx} ${cy - 2 * s}Q${cx + 10 * s} ${cy + 7 * s} ${cx + 8 * s} ${cy + 15 * s}Q${cx + 6 * s} ${cy + 24 * s} ${cx} ${cy + 24 * s}Q${cx - 7 * s} ${cy + 23 * s} ${cx - 8 * s} ${cy + 15 * s}Q${cx - 8 * s} ${cy + 7 * s} ${cx} ${cy - 2 * s}Z`, GOLD),
+  ];
+};
+const tray = (x: number, y: number, w: number, h: number): Part[] => [
+  fill(rect(x + 8, y - 6, w - 16, 14, 7), 'sBerryDk'),
+  ...block(x, y, w, h, 18, 'sBerry', 'sBerryDk'),
+];
+
+const EMPTY_RAW = {
+  /** Inbox: triaged to zero. */
+  inboxZero: E([eShadow(58), ...tray(50, 62, 100, 56), zmark(86, 75, 28), ...done(146, 50, 15), star(54, 38, 7, GOLD)]),
+  /** Tasks · Inbox: capture now, plan later. */
+  inboxCapture: E([eShadow(58), ...rotate(block(82, 26, 36, 36, 9, 'sAmber', 'sAmberDk'), -12, 100, 44), ...tray(50, 62, 100, 56), zmark(86, 75, 28), star(150, 40, 7, GOLD)]),
+  /** Tasks · Today, Home: all clear for today. */
+  dayClear: E([eShadow(60), ...ball(132, 46, 22, 'sAmber', 'sAmberDk'), card(46, 54, 108, 46, 23), ...done(70, 77, 11), bar(88, 70, 50, 'sLavLt', 8), bar(88, 84, 30, 'sLavLt', 6)]),
+  /** Tasks · Upcoming, schedule. */
+  upcoming: E([
+    eShadow(52), ...block(58, 30, 84, 80, 16, 'sBlue', 'sBlueDk'), fill(rect(58, 30, 84, 20), 'sBlueDk', { clip: rect(58, 30, 84, 80, 16) }),
+    ...[0, 1, 2].flatMap((c) => [0, 1].map((r): Part => fill(rect(70 + c * 22, 62 + r * 20, 16, 13, 4), r === 0 && c === 2 ? 'sBerry' : 'sPaper'))),
+    star(150, 36, 7, GOLD),
+  ]),
+  /** Tasks · Completed: your quiet record of progress. */
+  completed: E([eShadow(52), ...rotate([card(58, 34, 84, 66, 14)], -8, 100, 67), card(62, 38, 84, 66, 14), bar(76, 54, 46, 'sLavLt', 8), bar(76, 68, 30, 'sLavLt', 6), ...done(136, 92, 20)]),
+  /** Projects: none yet. */
+  projects: E([eShadow(60), fill(rect(58, 36, 36, 16, 6), 'sAmberDk'), card(64, 42, 72, 30, 4), ...block(50, 50, 100, 66, 16, 'sAmber', 'sAmberDk'), zmark(86, 69, 28), ...plusBadge(148, 50)]),
+  /** Clients: none yet. */
+  clients: E([eShadow(56), ...person(82, 74, 30), ...person(124, 80, 24, 'sAmber', 'sAmberDk'), ...plusBadge(146, 48)]),
+  /** Finance: no invoices yet. */
+  invoices: E([
+    eShadow(52), receipt(64, 24, 72, 94), zmark(74, 34, 14, 'sBerry'), bar(94, 38, 30), bar(74, 58, 44), bar(74, 72, 34),
+    fill(rect(72, 88, 56, 14, 7), 'sBerryLt'), bar(78, 92, 22, 'sBerry', 6), ...coin(138, 100, 15), ...plusBadge(140, 36, 12),
+  ]),
+  /** Forms: none yet. */
+  forms: E([
+    eShadow(48), ...block(66, 30, 68, 88, 12, 'sAmber', 'sAmberDk'), card(74, 40, 52, 70, 6), fill(rect(88, 23, 24, 13, 6.5), 'sBerry'),
+    ...done(84, 56, 5.5), bar(94, 53, 24, 'sLavLt', 6), fill(circle(84, 74, 5.5), 'sLavLt'), bar(94, 71, 20, 'sLavLt', 6), fill(circle(84, 92, 5.5), 'sLavLt'), bar(94, 89, 22, 'sLavLt', 6),
+    ...plusBadge(140, 42, 12),
+  ]),
+  /** Form responses: waiting for answers. */
+  responses: E([
+    eShadow(58), ...block(44, 34, 60, 80, 11, 'sAmber', 'sAmberDk'), card(51, 43, 46, 64, 5), bar(58, 54, 30, 'sLavLt', 6), bar(58, 68, 24, 'sLavLt', 6), bar(58, 82, 28, 'sLavLt', 6),
+    ...block(100, 46, 62, 40, 15, 'sIndigo', 'sIndigoDk'), fill(poly(112, 84, 108, 98, 126, 84), 'sIndigoDk'),
+    dot(118, 66, 4, 'sPaper'), dot(131, 66, 4, 'sPaper'), dot(144, 66, 4, 'sPaper'),
+  ]),
+  /** Habits: build a rhythm. */
+  habits: E([
+    eShadow(54), ...flameAt(100, 62, 1.25),
+    ...[0, 1, 2, 3, 4].map((i): Part => fill(rect(56 + i * 18, 104, 14, 8, 4), i < 2 ? 'sCoral' : 'sLavLt')),
+    ...plusBadge(146, 42, 12),
+  ]),
+  /** Goals: name an outcome. */
+  goals: E([
+    eShadow(54), fill(rect(56, 80, 26, 34, 6), 'sLav'), fill(rect(84, 64, 26, 50, 6), 'sAmber'), ...block(112, 46, 26, 68, 6, 'sBerry', 'sBerryDk'),
+    { d: 'M125 46V18', line: 'sInk', w: 0.9 }, fill('M125 18H145L139 25L145 32H125Z', 'sGreen'),
+    star(60, 46, 7, GOLD),
+  ]),
+  /** Feedback board: log what customers ask for. */
+  feedback: E([
+    eShadow(60), card(42, 36, 84, 40, 20), fill(poly(60, 72, 56, 86, 74, 72), 'sPaper'), bar(58, 48, 48, 'sLavLt', 7), bar(58, 60, 30, 'sLavLt', 6),
+    ...block(80, 70, 80, 40, 20, 'sIndigo', 'sIndigoDk'), dot(104, 90, 4, 'sPaper'), dot(118, 90, 4, 'sPaper'), dot(132, 90, 4, 'sPaper'),
+    ...block(138, 30, 26, 26, 9, 'sBerry', 'sBerryDk'), { d: 'M145 46L151 39L157 46', line: 'sPaper', w: 1.2 },
+  ]),
+  /** 404: this page isn't here. */
+  notFound: E([
+    eShadow(62),
+    ...rotate([card(44, 30, 112, 82, 14), fill(rect(80, 30, 2, 82), 'sLavLt'), fill(rect(118, 30, 2, 82), 'sLavLt'),
+      { d: dashed(58, 96, 84, 64, 122, 62, 6, 5), line: 'sLavDk', w: 1 }], -4, 100, 71),
+    fill(`M128 74Q116 62 116 52a12 12 0 1 1 24 0Q140 62 128 74Z`, 'sBerry'),
+    fill(circle(128, 52, 6), 'sPaper'),
+    star(52, 34, 7, GOLD),
+  ]),
+  /** Something broke: blocks knocked over. */
+  error: E([
+    eShadow(56), ...block(56, 78, 40, 38, 8, 'sIndigo', 'sIndigoDk'), ...block(98, 78, 40, 38, 8, 'sBlue', 'sBlueDk'),
+    ...rotate(block(78, 42, 38, 34, 8, 'sAmber', 'sAmberDk'), 22, 97, 59),
+    dot(148, 44, 12), fill(rect(146.5, 36, 3, 10, 1.5), 'sPaper'), fill(circle(148, 50.5, 1.8), 'sPaper'),
+  ]),
+} satisfies Record<string, Art>;
+
+// Optical framing. Each cluster (badges and sparkles included, stage and shadow
+// excluded) was pixel-measured and nudged so its center sits on the stage at
+// (100, 70) and nothing sinks below the ground line (y 117). Stage + shadow stay
+// put; everything else moves together, so one composition rule holds for all.
+const FRAME: Partial<Record<keyof typeof EMPTY_RAW, [number, number]>> = {
+  inboxZero: [-4.5, -4], inboxCapture: [-3, 0], dayClear: [0, 8.5], upcoming: [-8, 1],
+  completed: [-5, 0], projects: [-6, -5.5], clients: [-5, 1], invoices: [-10.5, 0],
+  forms: [-9.5, 0], responses: [-2.5, -3.5], habits: [-7.5, 2.5], goals: [1.5, 4.5],
+  feedback: [-3.5, 0], error: [-7.5, -3.5],
+};
+const isEmptyFixed = (p: Part, i: number) => i === 0 || (p.fill === 'sInk' && (p.opacity ?? 1) < 0.5);
+export const EMPTY = Object.fromEntries(
+  Object.entries(EMPTY_RAW).map(([n, art]) => {
+    const f = FRAME[n as keyof typeof EMPTY_RAW];
+    return [n, f ? reframe(art, f, isEmptyFixed) : art];
+  }),
+) as Record<keyof typeof EMPTY_RAW, Art>;
+export type EmptyName = keyof typeof EMPTY;

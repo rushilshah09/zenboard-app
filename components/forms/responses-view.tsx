@@ -15,6 +15,7 @@ import {
 import { deleteResponse, makeTaskFromResponse, signFormUpload } from '@/lib/actions/forms';
 import { answerToText, isField, type FormBlock } from '@/lib/form-schema';
 import type { FormRecord, ResponseRecord } from '@/lib/forms';
+import { EmptyArt } from '@/components/illustrations/ink';
 
 type Filter = 'complete' | 'partial' | 'all';
 
@@ -214,7 +215,7 @@ export function ResponsesView({ form, responses: initial, backHref, demo = false
 
         {rows.length === 0 ? (
           <EmptyState
-            illustration={<Icon icon={FileText} size={20} />}
+            illustration={<EmptyArt name="responses" />}
             title={filter === 'partial' ? 'Nothing in progress.' : 'No responses yet.'}
             description={form.status === 'live' ? 'Share the link and answers will land here.' : 'Publish the form to start collecting.'}
           />

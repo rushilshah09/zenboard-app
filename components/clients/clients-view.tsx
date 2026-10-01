@@ -12,7 +12,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Plus, Mail, Check, ArrowRight, ChevronRight, ChevronLeft, ChevronDown,
-  Kanban, Users, MessageSquare, Circle, Activity, User, Calendar, Landmark, type IconType,
+  Kanban, MessageSquare, Circle, Activity, User, Calendar, Landmark, type IconType,
 } from "@/components/ds/icons";
 import {
   Icon, Avatar, Badge, Button, SegmentedControl, EmptyState,
@@ -31,6 +31,7 @@ import type { FormSummary } from '@/lib/forms';
 import { addTask } from '@/lib/actions/tasks';
 import { addProject } from '@/lib/actions/projects';
 import { useViewWidth } from '@/components/shell/view-width';
+import { EmptyArt } from '@/components/illustrations/ink';
 
 // ── Types ──────────────────────────────────────────────────────────────
 export type ClientNote = { id: string; client_id: string; body: string; created_at: string };
@@ -648,7 +649,7 @@ export function ClientsView({ initialClients, initialLeads, initialFeedback = []
           ) : (
             <div className="grid h-full place-items-center">
               <EmptyState
-                illustration={<Icon icon={Users} size={20} />}
+                illustration={<EmptyArt name="clients" />}
                 title="No clients yet"
                 description="Add one to track health, next steps, projects, and notes."
                 primary={<Button variant="primary" icon={<Icon icon={Plus} size={16} />} onClick={() => setShowAddClient(true)}>New client</Button>}

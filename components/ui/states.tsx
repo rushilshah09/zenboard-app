@@ -33,6 +33,7 @@ export function SkeletonRows({ rows = 4, className }: { rows?: number; className
 // `compact` fits inside a card/panel; default fills a full surface.
 export function EmptyState({
   icon,
+  illustration,
   title,
   hint,
   action,
@@ -42,6 +43,8 @@ export function EmptyState({
   className,
 }: {
   icon?: IconType;
+  // Zen Shape art (EmptyArt / ShapeIcon). Takes precedence over `icon`.
+  illustration?: React.ReactNode;
   title: React.ReactNode;
   hint?: React.ReactNode;
   action?: { label: string; onClick: () => void; icon?: IconType };
@@ -52,7 +55,9 @@ export function EmptyState({
 }) {
   return (
     <div className={cx('flex flex-col items-center justify-center text-center', compact ? 'gap-2.5 py-9 px-6' : 'gap-3 py-20 px-10', className)}>
-      {icon && (
+      {illustration ? (
+        <span className="inline-grid place-items-center" aria-hidden>{illustration}</span>
+      ) : icon && (
         <span className={cx('inline-grid place-items-center', tone === 'accent' ? 'text-accent-text' : 'text-ink-4')}>
           <Icon icon={icon} size={compact ? 20 : 24} />
         </span>

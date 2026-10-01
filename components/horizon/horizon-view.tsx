@@ -10,6 +10,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/primitives';
 import { Icon, SegmentedControl } from "@/components/ds/ui";
 import { EmptyState } from '@/components/ui/states';
+import { EmptyArt } from '@/components/illustrations/ink';
 import { addGoal, updateGoal, addMilestone, toggleMilestone } from '@/lib/actions/goals';
 
 type Milestone = { id: string; title: string; done: boolean };
@@ -206,7 +207,7 @@ export function HorizonView({ initialGoals, projects }: { initialGoals: Goal[]; 
       {list.length === 0 ? (
         <EmptyState
           className="border border-line rounded-xl bg-paper-2"
-          icon={Target}
+          illustration={<EmptyArt name="goals" />}
           title={`No ${active} goals yet`}
           hint={`Name an outcome that matters this ${active} and track it through to done.`}
           action={{ label: 'New goal', icon: Plus, onClick: () => setAdding(true) }}

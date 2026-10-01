@@ -13,6 +13,7 @@ import { ViewContainer } from '@/components/ui/view-container';
 import { addHabit, setHabitStatus } from '@/lib/actions/habits';
 import type { HabitsBoard, BoardHabit, TimeOfDay, HabitStatus } from '@/lib/habits-data';
 import { cn } from '@/lib/cn';
+import { EmptyArt } from '@/components/illustrations/ink';
 
 const GROUPS: { key: TimeOfDay; label: string; icon: IconType }[] = [
   { key: 'morning', label: 'Morning', icon: Sun },
@@ -97,7 +98,7 @@ export function HabitsJournal({ board }: { board: HabitsBoard }) {
         <div className="py-2 text-ui text-danger-600">Couldn’t load your habits. Try refreshing.</div>
       ) : habits.length === 0 ? (
         <EmptyState
-          illustration={<Icon icon={Flame} size={20} />}
+          illustration={<EmptyArt name="habits" />}
           title="No habits yet"
           description="Build a rhythm — small things, done daily. Group them by time of day and keep the streak going."
           primary={<Button variant="primary" icon={<Icon icon={Plus} size={16} />} onClick={() => setAddOpen(true)}>New habit</Button>}

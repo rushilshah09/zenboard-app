@@ -12,7 +12,7 @@
 // computed geometry (timeline bar left/width, dnd transforms).
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Plus, Pencil, Share2, Eye, Kanban, Timer, Star, Landmark, Circle, Target, Calendar, User, Clock, FileText, Ellipsis, Trash, Activity, type IconType } from "@/components/ds/icons";
+import { Plus, Pencil, Share2, Eye, Timer, Star, Landmark, Circle, Target, Calendar, User, Clock, FileText, Ellipsis, Trash, Activity, type IconType } from "@/components/ds/icons";
 import {
   Icon, Button, IconButton, Badge, Stat, Tabs, SegmentedControl, Checkbox, PriorityBadge, Tag,
   EmptyState, Progress, ActivityFeed as DSActivityFeed, Modal, Field, TextInput, Textarea, DatePicker,
@@ -41,6 +41,7 @@ import { FormsPanel } from '@/components/forms/forms-panel';
 import { useViewWidth } from '@/components/shell/view-width';
 import { cn } from '@/lib/cn';
 import type { RequestDecision } from '@/lib/request-status';
+import { EmptyArt, ShapeIcon } from '@/components/illustrations/ink';
 
 export type PProject = {
   id: string; name: string; color: string | null; status: string; client_id: string | null; created_at: string; updated_at: string;
@@ -300,7 +301,7 @@ export function ProjectsWorkspace({ projects: initProjects, tasks: initTasks, ti
     return (
       <div className="flex h-full animate-ds-fadein flex-col items-center justify-center">
         <EmptyState
-          illustration={<Icon icon={Kanban} size={20} />}
+          illustration={<EmptyArt name="projects" />}
           title="No projects yet"
           description="Create one to group tasks, time, docs, and activity."
           primary={<Button variant="primary" icon={<Icon icon={Plus} size={16} />} onClick={() => setNewOpen(true)}>New project</Button>}
@@ -1014,7 +1015,7 @@ function ApprovalsSection({ approvals: initial, docs }: { approvals: PApproval[]
 
       {approvals.length === 0 ? (
         <div className="rounded-lg border border-dashed border-line-strong">
-          <EmptyState size="inline" illustration={<Icon icon={Circle} size={20} />} title="No approvals yet"
+          <EmptyState size="inline" illustration={<ShapeIcon name="approvals" size={56} />} title="No approvals yet"
             description={docs.length === 0 ? 'Add a document to this project, then send it to the client for sign-off.' : 'Send a document to the client for sign-off — you’ll see their decision here.'} />
         </div>
       ) : (

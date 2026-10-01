@@ -30,6 +30,7 @@ import { parseTask } from '@/lib/task-parse';
 import { createSavedView, deleteSavedView } from '@/lib/actions/saved-views';
 import { signalTaskToggle } from '@/lib/sound';
 import { cn } from '@/lib/cn';
+import { EmptyArt, type EmptyName } from '@/components/illustrations/ink';
 
 export type TaskItem = {
   id: string; title: string; done: boolean;
@@ -776,8 +777,10 @@ function EmptyState({ view, listName, onAdd, onImport }: { view: View; listName?
   // Coming from another app? Offer the CSV import on the Inbox empty state (§7U:
   // "Importers offered on the Tasks empty state, not the first run").
   const showImport = view === 'inbox' && !listName;
+  const art: Record<View, EmptyName> = { inbox: 'inboxCapture', today: 'dayClear', upcoming: 'upcoming', completed: 'completed' };
   return (
     <EmptyStateBase
+      illustration={<EmptyArt name={listName ? 'inboxCapture' : art[view]} />}
       title={c.h}
       description={c.sub}
       primary={view !== 'completed'

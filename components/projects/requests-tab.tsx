@@ -9,7 +9,7 @@
 // DS-built: §4.7 Badge, §5.1 Button, §4.14 Textarea, §4.18 Switch, §4.45
 // EmptyState. Reads from RLS-scoped tables; portal inserts come from the server.
 import { useEffect, useState } from 'react';
-import { Inbox, Check, X, MessageSquare, RotateCcw, ArrowUpRight, ChevronDown, ChevronRight, Send } from "@/components/ds/icons";
+import { Check, X, MessageSquare, RotateCcw, ArrowUpRight, ChevronDown, ChevronRight, Send } from "@/components/ds/icons";
 import { Icon, Button, Badge, EmptyState, Textarea, Switch, type BadgeStatus } from '@/components/ds/ui';
 import {
   approveRequest, declineRequest, requestMoreInfo, reopenRequest, postRequestMessage,
@@ -18,6 +18,7 @@ import { clientRequestLabel, CLIENT_LABEL_TONE } from '@/lib/request-status';
 import { RequestThread, type ThreadMessage } from '@/components/portal/request-thread';
 import { cn } from '@/lib/cn';
 import type { PRequest, PRequestMessage } from '@/components/projects/projects-workspace';
+import { ShapeIcon } from '@/components/illustrations/ink';
 
 const relTime = (iso: string) => {
   const diff = Date.now() - new Date(iso).getTime();
@@ -248,7 +249,7 @@ function RequestCard({
 function Empty({ title, line }: { title: string; line: string }) {
   return (
     <div className="rounded-lg border border-dashed border-line-strong">
-      <EmptyState size="inline" illustration={<Icon icon={Inbox} size={20} />} title={title} description={line} />
+      <EmptyState size="inline" illustration={<ShapeIcon name="requests" size={56} />} title={title} description={line} />
     </div>
   );
 }

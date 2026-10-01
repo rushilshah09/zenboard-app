@@ -12,6 +12,7 @@ import { Panel, PanelHeader, PanelBody } from '@/components/ui/panels';
 import { toggleHabit, addHabit, renameHabit, deleteHabit } from '@/lib/actions/habits';
 import { cn } from '@/lib/cn';
 import type { TodayHabit } from '@/components/today/today-view';
+import { ShapeIcon } from '@/components/illustrations/ink';
 
 export function HabitsSection({ initialHabits, error }: { initialHabits: TodayHabit[]; error: boolean }) {
   const [habits, setHabits] = useState<TodayHabit[]>(initialHabits);
@@ -106,7 +107,7 @@ export function HabitsSection({ initialHabits, error }: { initialHabits: TodayHa
         ) : habits.length === 0 ? (
           <EmptyState
             size="inline"
-            illustration={<Icon icon={Flame} size={20} />}
+            illustration={<ShapeIcon name="habits" size={56} />}
             title="No habits yet"
             description="Build a rhythm — small things, done daily."
             primary={adding ? undefined : <Button variant="secondary" size="sm" icon={<Icon icon={Plus} size={16} />} onClick={() => setAdding(true)}>Add a habit</Button>}

@@ -15,6 +15,7 @@ import { Icon, Button, Checkbox, EmptyState, IconButton, InlineConfirm } from '@
 import { Panel, PanelHeader, PanelBody } from '@/components/ui/panels';
 import { addEvent, updateEvent, deleteEvent } from '@/lib/actions/events';
 import type { TodayEvent } from '@/components/today/today-view';
+import { ShapeIcon } from '@/components/illustrations/ink';
 
 // "9:00 – 9:30pm" — meridiem only on the end (or start when no end), like the HiFi.
 function fmtClock(d: Date, withMeridiem: boolean) {
@@ -194,7 +195,7 @@ export function ScheduleSection({ initialEvents, error }: { initialEvents: Today
             {sorted.length === 0 ? (
               <EmptyState
                 size="inline"
-                illustration={<Icon icon={CalendarDays} size={20} />}
+                illustration={<ShapeIcon name="calendar" size={56} />}
                 title="Nothing scheduled"
                 description="A clear calendar is a feature. Add an event when you need one."
                 primary={adding ? undefined : <Button variant="secondary" size="sm" icon={<Icon icon={Plus} size={16} />} onClick={() => setAdding(true)}>Add an event</Button>}

@@ -6,13 +6,14 @@
 // a feedback item into a task (the work) and advances it — closing the
 // talk → feedback → ship → close-deal loop. One filled-accent button per view.
 import { useMemo, useState } from 'react';
-import { MessageSquare, Plus, Rocket, Check, ArrowRight } from '@/components/ds/icons';
+import { Plus, Rocket, Check, ArrowRight } from '@/components/ds/icons';
 import {
   Icon, Button, EmptyState, Modal, Field, TextInput,
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
   type BadgeStatus,
 } from '@/components/ds/ui';
 import { cn } from '@/lib/cn';
+import { EmptyArt } from '@/components/illustrations/ink';
 
 export type FeedbackStatus = 'open' | 'planned' | 'in_progress' | 'shipped' | 'declined';
 
@@ -178,7 +179,7 @@ export function FeedbackBoard({ items, deals, onNew, onSetStatus, onShip }: {
       {live.length === 0 ? (
         <div className="grid flex-1 place-items-center">
           <EmptyState
-            illustration={<Icon icon={MessageSquare} size={20} />}
+            illustration={<EmptyArt name="feedback" />}
             title="No feedback yet"
             description="Log what customers ask for. Link the deals that want it, then ship the ones worth the most."
             primary={<Button variant="primary" icon={<Icon icon={Plus} size={16} />} onClick={() => setShowAdd(true)}>Log feedback</Button>}

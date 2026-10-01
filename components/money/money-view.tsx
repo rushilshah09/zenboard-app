@@ -18,6 +18,7 @@ import {
 import { cn } from '@/lib/cn';
 import { addInvoice } from '@/lib/actions/money';
 import { useViewWidth } from '@/components/shell/view-width';
+import { EmptyArt } from '@/components/illustrations/ink';
 
 export type ClientLite = { id: string; name: string };
 export type Invoice = { id: string; number: string; client_id: string | null; project_id: string | null; status: string; due_date: string | null; notes: string | null; created_at: string; total: number; itemCount: number; paid: number };
@@ -170,7 +171,7 @@ export function MoneyView({ invoices: initInvoices, clients, unbilled, payments,
       {invoices.length === 0 ? (
         <div className="rounded-lg border border-line bg-surface-raised">
           <EmptyState
-            illustration={<Icon icon={Landmark} size={20} />}
+            illustration={<EmptyArt name="invoices" />}
             title="No invoices yet"
             description="Create one to bill a client and track what you're owed."
             primary={<Button variant="primary" icon={<Icon icon={Plus} size={16} />} onClick={() => setComposing(true)}>New invoice</Button>}

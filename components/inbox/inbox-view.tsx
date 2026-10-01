@@ -8,7 +8,7 @@
 // only budgeted moment of delight (§1.4).
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Inbox as InboxIcon, Plus, Sun, Trash2, Check, Kanban, Calendar, ListChecks, ArrowUpDown,
+  Inbox as InboxIcon, Plus, Sun, Trash2, Kanban, Calendar, ListChecks, ArrowUpDown,
 } from "@/components/ds/icons";
 import {
   Icon, Button, IconButton, Checkbox, PriorityBars, Kbd, Toaster, toast, EmptyState,
@@ -22,6 +22,7 @@ import { addTask, toggleTask, rescheduleTask, moveTaskToProject, deleteTask, ret
 import { setTaskLabel } from '@/lib/actions/labels';
 import { createClient } from '@/lib/supabase/client';
 import { signalTaskToggle } from '@/lib/sound';
+import { EmptyArt } from '@/components/illustrations/ink';
 
 export type InboxTask = { id: string; title: string; priority: 'low' | 'med' | 'high'; done: boolean; is_inbox: boolean; created_at: string; project_id: string | null };
 export type InboxProject = { id: string; name: string; color: string | null };
@@ -152,7 +153,7 @@ export function InboxView({ initialTasks, projects, initialLabels }: { initialTa
 
       {tasks.length === 0 ? (
         <EmptyState
-          illustration={<Icon icon={Check} size={20} />}
+          illustration={<EmptyArt name="inboxZero" />}
           title="Inbox zero"
           description="Nothing to triage. Press C anywhere to capture a thought."
         />

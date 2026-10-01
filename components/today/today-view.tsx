@@ -24,6 +24,7 @@ import { TaskRow, fmtDur } from '@/components/tasks/task-row';
 import { HabitsSection } from '@/components/today/habits-section';
 import { ScheduleSection } from '@/components/today/schedule-section';
 import { useViewWidth } from '@/components/shell/view-width';
+import { ShapeIcon } from '@/components/illustrations/ink';
 
 export type TodayTask = {
   id: string; title: string; done: boolean;
@@ -217,7 +218,7 @@ export function TodayView({
             {!topHighlight ? (
               <EmptyState
                 size="inline"
-                illustration={<Icon icon={Star} size={20} />}
+                illustration={<ShapeIcon name="priority" size={56} />}
                 title="No priority set"
                 description="Star a task to make it today’s focus — it’ll surface here to tackle first."
                 primary={<Button variant="secondary" size="sm" onClick={() => router.push('/tasks')}>Browse tasks</Button>}
@@ -315,7 +316,7 @@ export function TodayView({
               {open.length === 0 ? (
                 <EmptyState
                   size="inline"
-                  illustration={<Icon icon={Sun} size={20} />}
+                  illustration={<ShapeIcon name="home" size={56} />}
                   title="Nothing on the plate"
                   description="Capture a task above to start shaping your day."
                 />

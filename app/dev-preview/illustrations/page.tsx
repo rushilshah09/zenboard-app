@@ -3,8 +3,8 @@
 // light paper ground and on a dark surface. 404s in prod.
 import { notFound } from 'next/navigation';
 import {
-  Spot, Scene, IconBadge, BoldScene, SiteIllustration, ShapeScene, ShapeIcon, ShapeHero, ShapeTile, SHAPE_SCENES, SHAPE_ICONS, SHAPE_TILES,
-  type ShapeSceneName, type ShapeIconName, type ShapeTileName, SPOTS, SCENES, BADGES, BOLD_SCENES, SITE, SITE_ICONS,
+  Spot, Scene, IconBadge, BoldScene, SiteIllustration, ShapeScene, ShapeIcon, ShapeHero, ShapeTile, EmptyArt, SHAPE_SCENES, SHAPE_ICONS, SHAPE_TILES, EMPTY,
+  type ShapeSceneName, type ShapeIconName, type ShapeTileName, type EmptyName, SPOTS, SCENES, BADGES, BOLD_SCENES, SITE, SITE_ICONS,
   type SpotName, type SceneName, type BadgeName, type BoldSceneName, type SiteIllustrationName,
 } from '@/components/illustrations/ink';
 
@@ -38,6 +38,22 @@ function Board({ dark }: { dark?: boolean }) {
           </div>
         </>
       )}
+    </section>
+  );
+}
+
+function EmptyBoard({ dark }: { dark?: boolean }) {
+  return (
+    <section style={{ background: dark ? '#121212' : '#FFFFFF', color: dark ? '#F2F1EB' : '#2F2F2B', padding: 40, borderRadius: 16 }}>
+      <h2 style={{ margin: '0 0 20px', font: '600 14px/1 var(--font-ui)', letterSpacing: '0.02em', opacity: 0.6 }}>In-app empty states · {dark ? 'dark' : 'light'}</h2>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+        {(Object.keys(EMPTY) as EmptyName[]).map((n) => (
+          <figure key={n} style={{ margin: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <EmptyArt name={n} size={200} />
+            <figcaption style={{ font: '12px var(--font-ui)', opacity: 0.55 }}>{n}</figcaption>
+          </figure>
+        ))}
+      </div>
     </section>
   );
 }
@@ -134,6 +150,8 @@ export default function IllustrationsPreview() {
   if (process.env.NODE_ENV === 'production') notFound();
   return (
     <main style={{ minHeight: '100dvh', background: '#EDEAE3', padding: 32, display: 'flex', flexDirection: 'column', gap: 32 }}>
+      <EmptyBoard dark />
+      <EmptyBoard />
       <ShapeBoard />
       <SiteBoard />
       <BoldBoard />

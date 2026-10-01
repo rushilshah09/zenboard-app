@@ -16,6 +16,7 @@ import { ViewContainer } from '@/components/ui/view-container';
 import { createForm, deleteForm, duplicateForm, setFormHome } from '@/lib/actions/forms';
 import { FORM_TEMPLATES } from '@/lib/form-templates';
 import type { FormHubItem } from '@/lib/forms';
+import { EmptyArt } from '@/components/illustrations/ink';
 
 const STATUS_TONE: Record<string, BadgeStatus> = { draft: 'neutral', live: 'success', closed: 'neutral' };
 const STATUS_LABEL: Record<string, string> = { draft: 'Draft', live: 'Live', closed: 'Closed' };
@@ -77,7 +78,7 @@ export function FormsHub({ items, projects, clients }: { items: FormHubItem[]; p
 
       {items.length === 0 ? (
         <EmptyState
-          illustration={<Icon icon={FormsIcon} size={20} />}
+          illustration={<EmptyArt name="forms" />}
           title="No forms yet"
           description="Collect a brief, feedback, or a testimonial — people fill it in without an account. Start one in Drafts and attach it to a client or project whenever you like."
           primary={<Button variant="primary" icon={<Icon icon={Plus} size={16} />} onClick={() => setNewOpen(true)}>New form</Button>}
