@@ -11,10 +11,10 @@
 //  6. Icons: one object in a 48px live area, centered on a 96px round field.
 import { type Art, type Part, type Tone, rect, circle, ellipse, poly, sparkle, mark, dashed } from './kit';
 
-const S = (w: number, h: number, parts: Part[]): Art => ({ w, h, parts, look: 'shape' });
+export const S = (w: number, h: number, parts: Part[]): Art => ({ w, h, parts, look: 'shape' });
 
 // ── Construction ────────────────────────────────────────────────────────────
-const fill = (d: string, tone: Tone, extra: Partial<Part> = {}): Part => ({ d, fill: tone, line: false, ...extra });
+export const fill = (d: string, tone: Tone, extra: Partial<Part> = {}): Part => ({ d, fill: tone, line: false, ...extra });
 const field = (tone: Tone): Part => ({ d: rect(0, 0, 360, 240, 24), fill: tone, line: false, backdrop: true });
 /** A soft stage behind the cluster: one big circle in a deeper tint of the field. */
 const STAGE: Partial<Record<Tone, [Tone, number]>> = { sLav: ['sLavDk', 0.35], sBerryLt: ['sPink', 0.18], sAmberLt: ['sAmber', 0.22] };
@@ -22,15 +22,15 @@ const stage = (fieldTone: Tone, cx = 180, cy = 124, r = 104): Part => {
   const [tone, opacity] = STAGE[fieldTone] ?? ['sLavDk', 0.3];
   return fill(circle(cx, cy, r), tone, { opacity });
 };
-const shadow = (cx: number, cy: number, rx: number, tone: Tone = 'sIndigoDk'): Part =>
+export const shadow = (cx: number, cy: number, rx: number, tone: Tone = 'sIndigoDk'): Part =>
   fill(ellipse(cx, cy, rx, Math.max(4, rx * 0.09)), tone, { opacity: 0.2 });
 /** A colored block: deep shade underneath, base lit from the top left → an even crescent fold at the lower right. */
-const block = (x: number, y: number, w: number, h: number, r: number, base: Tone, dk: Tone): Part[] => {
+export const block = (x: number, y: number, w: number, h: number, r: number, base: Tone, dk: Tone): Part[] => {
   const d = rect(x, y, w, h, r);
   const R = 0.84 * Math.hypot(w * 0.7, h * 0.8);
   return [fill(d, base), fill(d + circle(x + w * 0.3, y + h * 0.2, R), dk, { clip: d, evenOdd: true })];
 };
-const ball = (cx: number, cy: number, r: number, base: Tone, dk: Tone): Part[] => {
+export const ball = (cx: number, cy: number, r: number, base: Tone, dk: Tone): Part[] => {
   const d = circle(cx, cy, r);
   return [fill(d, base), fill(d + circle(cx - r * 0.14, cy - r * 0.14, r), dk, { clip: d, evenOdd: true })];
 };
@@ -43,17 +43,17 @@ const rosette = (cx: number, cy: number, r: number, tone: Tone): Part[] => [
   }),
 ];
 /** White UI surface: flat. */
-const card = (x: number, y: number, w: number, h: number, r: number, tone: Tone = 'sPaper'): Part => fill(rect(x, y, w, h, r), tone);
-const bar = (x: number, y: number, w: number, tone: Tone = 'sLavLt', h = 8): Part => fill(rect(x, y, w, h, h / 2), tone);
-const tick = (cx: number, cy: number, r: number, tone: Tone = 'sPaper'): Part =>
+export const card = (x: number, y: number, w: number, h: number, r: number, tone: Tone = 'sPaper'): Part => fill(rect(x, y, w, h, r), tone);
+export const bar = (x: number, y: number, w: number, tone: Tone = 'sLavLt', h = 8): Part => fill(rect(x, y, w, h, h / 2), tone);
+export const tick = (cx: number, cy: number, r: number, tone: Tone = 'sPaper'): Part =>
   ({ d: `M${cx - r * 0.42} ${cy + r * 0.02}L${cx - r * 0.1} ${cy + r * 0.32}L${cx + r * 0.44} ${cy - r * 0.3}`, line: tone, w: r / 6.5 });
-const done = (cx: number, cy: number, r: number): Part[] => [...ball(cx, cy, r, 'sGreen', 'sGreenDk'), tick(cx, cy, r)];
-const zmark = (x: number, y: number, size: number, tone: Tone = 'sPaper'): Part => ({ ...mark(x, y, size, tone), line: false });
-const dot = (cx: number, cy: number, r: number, tone: Tone = 'sCoral'): Part => fill(circle(cx, cy, r), tone);
-const star = (cx: number, cy: number, r: number, tone: Tone = 'sPaper'): Part => fill(sparkle(cx, cy, r), tone);
-const GOLD: Tone = 'sGold';
+export const done = (cx: number, cy: number, r: number): Part[] => [...ball(cx, cy, r, 'sGreen', 'sGreenDk'), tick(cx, cy, r)];
+export const zmark = (x: number, y: number, size: number, tone: Tone = 'sPaper'): Part => ({ ...mark(x, y, size, tone), line: false });
+export const dot = (cx: number, cy: number, r: number, tone: Tone = 'sCoral'): Part => fill(circle(cx, cy, r), tone);
+export const star = (cx: number, cy: number, r: number, tone: Tone = 'sPaper'): Part => fill(sparkle(cx, cy, r), tone);
+export const GOLD: Tone = 'sGold';
 /** A person as one shape: ball + head and shoulders in paper. No face. */
-const person = (cx: number, cy: number, r: number, base: Tone = 'sIndigo', dk: Tone = 'sIndigoDk'): Part[] => {
+export const person = (cx: number, cy: number, r: number, base: Tone = 'sIndigo', dk: Tone = 'sIndigoDk'): Part[] => {
   const d = circle(cx, cy, r);
   return [
     ...ball(cx, cy, r, base, dk),
@@ -61,10 +61,10 @@ const person = (cx: number, cy: number, r: number, base: Tone = 'sIndigo', dk: T
     fill(ellipse(cx, cy + r * 0.84, r * 0.62, r * 0.5), 'sPaper', { clip: d }),
   ];
 };
-const rotate = (parts: Part[], deg: number, cx: number, cy: number): Part[] =>
+export const rotate = (parts: Part[], deg: number, cx: number, cy: number): Part[] =>
   parts.map((p) => ({ ...p, t: `rotate(${deg} ${cx} ${cy})${p.t ? ` ${p.t}` : ''}` }));
 /** The link symbol: two rings interlocked on a diagonal. */
-const chain = (x: number, y: number, s = 1, tone: Tone = 'sBerry'): Part[] => {
+export const chain = (x: number, y: number, s = 1, tone: Tone = 'sBerry'): Part[] => {
   const ring = (rx: number, ry: number) => fill(rect(rx, ry, 24 * s, 14 * s, 7 * s) + rect(rx + 5 * s, ry + 4.5 * s, 14 * s, 5 * s, 2.5 * s), tone, { evenOdd: true });
   const cx = x + 20 * s;
   const cy = y + 8 * s;
@@ -82,17 +82,17 @@ const docShape = (x: number, y: number, w: number, h: number) => {
   const r = Math.min(12, w * 0.14);
   return `M${x} ${y + r}Q${x} ${y} ${x + r} ${y}H${x + w - f}L${x + w} ${y + f}V${y + h - r}Q${x + w} ${y + h} ${x + w - r} ${y + h}H${x + r}Q${x} ${y + h} ${x} ${y + h - r}Z`;
 };
-const doc = (x: number, y: number, w: number, h: number): Part[] => {
+export const doc = (x: number, y: number, w: number, h: number): Part[] => {
   const f = foldOf(w);
   return [fill(docShape(x, y, w, h), 'sPaper'), fill(poly(x + w - f, y, x + w, y + f, x + w - f, y + f), 'sLavLt')];
 };
-const receipt = (x: number, y: number, w: number, h: number): Part => {
+export const receipt = (x: number, y: number, w: number, h: number): Part => {
   const n = Math.floor(w / 14);
   const teeth = Array.from({ length: n }, (_, i) => `L${x + w - (i + 0.5) * (w / n)} ${y + h - 8}L${x + w - (i + 1) * (w / n)} ${y + h}`).join('');
   return fill(`M${x + 12} ${y}H${x + w - 12}Q${x + w} ${y} ${x + w} ${y + 12}V${y + h}${teeth}L${x} ${y + h}V${y + 12}Q${x} ${y} ${x + 12} ${y}Z`, 'sPaper');
 };
 /** A coin: its edge (thickness) behind, a flat face, a raised rim ring and the embossed mark. */
-const coin = (cx: number, cy: number, r: number): Part[] => [
+export const coin = (cx: number, cy: number, r: number): Part[] => [
   fill(circle(cx + r * 0.16, cy + r * 0.1, r), 'sAmberDk'),
   fill(circle(cx, cy, r), 'sAmber'),
   fill(circle(cx, cy, r * 0.8) + circle(cx, cy, r * 0.66), 'sAmberDk', { evenOdd: true }),

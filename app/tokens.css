@@ -235,6 +235,9 @@
   --zs-blue: #5E92DE; --zs-blue-dk: #4A7BC6; --zs-teal: #4FA8A4; --zs-teal-dk: #3E8C88;
   --zs-green: #6FB35F; --zs-green-dk: #5A9A4B; --zs-amber: #DBA45A; --zs-amber-dk: #C38B40; --zs-amber-lt: #F3DDB6;
   --zs-coral: #FF6B66; --zs-coral-dk: #E55650; --zs-gold: #F2C14E; --zs-ink: #121212; --zs-paper: #FFFFFF; --zs-bone: #F2F1EB; --zs-bar: #E6E6E3;
+  /* People: four skin tones, each with its fold shade, and one hair tone. */
+  --zs-skin-1: #F4CDB0; --zs-skin-1-dk: #E2B08E; --zs-skin-2: #DDA27A; --zs-skin-2-dk: #C5875F;
+  --zs-skin-3: #B0744E; --zs-skin-3-dk: #965E3B; --zs-skin-4: #73472F; --zs-skin-4-dk: #5C3622; --zs-hair: #2B2230;
 }
 .ill-on-dark {
   --ill-ink: #F1EBDF;

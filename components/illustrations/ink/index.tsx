@@ -9,13 +9,15 @@ import { SCENES, type SceneName } from './scenes';
 import { BADGES, BOLD_SCENES, type BadgeName, type BoldSceneName } from './bold';
 import { SITE, type SiteIllustrationName } from './site';
 import { SHAPE_HERO, SHAPE_SCENES, SHAPE_ICONS, SHAPE_TILES, EMPTY, type ShapeSceneName, type ShapeIconName, type ShapeTileName, type EmptyName } from './shape';
+import { PEOPLE, SOCIAL, type CastName, type SocialName } from './people';
 
-export { Ink, type Art, type Part, type Tone } from './kit';
+export { Ink, ZB_MARK, type Art, type Part, type Tone } from './kit';
 export { SPOTS, type SpotName } from './spots';
 export { SCENES, type SceneName } from './scenes';
 export { BADGES, BOLD_SCENES, type BadgeName, type BoldSceneName } from './bold';
 export { SITE, type SiteIllustrationName } from './site';
 export { SHAPE_HERO, SHAPE_SCENES, SHAPE_ICONS, SHAPE_TILES, EMPTY, type ShapeSceneName, type ShapeIconName, type ShapeTileName, type EmptyName } from './shape';
+export { PEOPLE, SOCIAL, CAST, type CastName, type SocialName } from './people';
 
 type Common = Omit<InkProps, 'art'>;
 
@@ -69,4 +71,14 @@ export function ShapeTile({ name, size, style, ...rest }: Common & { name: Shape
 /** In-app empty/error state illustration (Zen Shape, transparent). */
 export function EmptyArt({ name, size = 176, ...rest }: Common & { name: EmptyName }) {
   return <Ink art={EMPTY[name]} size={size} {...rest} />;
+}
+
+/** A member of the Zenboard cast, standing (Zen Shape). */
+export function Person({ name, size = 120, ...rest }: Common & { name: CastName }) {
+  return <Ink art={PEOPLE[name]} size={size} {...rest} />;
+}
+
+/** Social post artwork, 4:5 (headline is set over it in HTML). */
+export function SocialArt({ name, size = 432, ...rest }: Common & { name: SocialName }) {
+  return <Ink art={SOCIAL[name]} size={size} {...rest} />;
 }
