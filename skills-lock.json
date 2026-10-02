@@ -25,6 +25,12 @@
       "skillPath": ".agents/skills/impeccable/SKILL.md",
       "computedHash": "84ef59fcf8a4c0e4822325a0f756a3e3c762f14e9061518dd4c7d79f3ff503c2"
     },
+    "product-launch-video": {
+      "source": "heygen-com/hyperframes",
+      "sourceType": "github",
+      "skillPath": "skills/product-launch-video/SKILL.md",
+      "computedHash": "cf049323ca3017209760b12bc4e37dbe0dc484ef899e493eff5b000183055d1b"
+    },
     "shadcn": {
       "source": "shadcn/ui",
       "sourceType": "github",

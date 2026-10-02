@@ -16,6 +16,8 @@ const eslintConfig = defineConfig([
     // bundled vendor code) and it dominated the report: 1134 of 1231 errors and
     // most of the runtime came from files nobody edits.
     ".open-next/**",
+    // Standalone Remotion project with its own toolchain.
+    "launch-video/**",
   ]),
 ]);
 

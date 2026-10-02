@@ -1,0 +1,136 @@
+{
+ "voice": "af_heart",
+ "speed": 0.95,
+ "lines": [
+  {
+   "text": "You started a business to do the work you love.",
+   "start": 0.35,
+   "end": 2.765
+  },
+  {
+   "text": "Instead, you're running it across eight different apps.",
+   "start": 3.215,
+   "end": 5.967
+  },
+  {
+   "text": "Re-typing the same client.",
+   "start": 6.317,
+   "end": 7.961
+  },
+  {
+   "text": "Chasing the same invoice.",
+   "start": 8.211,
+   "end": 9.712
+  },
+  {
+   "text": "Switching.",
+   "start": 9.962,
+   "end": 10.704
+  },
+  {
+   "text": "Again.",
+   "start": 11.053,
+   "end": 11.672
+  },
+  {
+   "text": "What if it all connected?",
+   "start": 13.572,
+   "end": 15.009
+  },
+  {
+   "text": "Meet, Zenboard.",
+   "start": 15.909,
+   "end": 17.035
+  },
+  {
+   "text": "One connected workspace for your work, your business, and your life.",
+   "start": 17.585,
+   "end": 21.19
+  },
+  {
+   "text": "It starts with a task.",
+   "start": 21.89,
+   "end": 23.227
+  },
+  {
+   "text": "That becomes part of a project.",
+   "start": 24.227,
+   "end": 26.031
+  },
+  {
+   "text": "It finds its place on your calendar.",
+   "start": 27.031,
+   "end": 28.851
+  },
+  {
+   "text": "Your docs live right next to the work.",
+   "start": 29.851,
+   "end": 31.789
+  },
+  {
+   "text": "Your clients see progress.",
+   "start": 32.789,
+   "end": 34.287
+  },
+  {
+   "text": "And the hours become an invoice.",
+   "start": 35.287,
+   "end": 37.069
+  },
+  {
+   "text": "In one click.",
+   "start": 37.369,
+   "end": 38.292
+  },
+  {
+   "text": "Create.",
+   "start": 38.992,
+   "end": 39.694
+  },
+  {
+   "text": "Plan.",
+   "start": 40.944,
+   "end": 41.539
+  },
+  {
+   "text": "Write.",
+   "start": 42.789,
+   "end": 43.394
+  },
+  {
+   "text": "Send.",
+   "start": 44.644,
+   "end": 45.267
+  },
+  {
+   "text": "Done.",
+   "start": 46.517,
+   "end": 47.055
+  },
+  {
+   "text": "Everything you run,",
+   "start": 47.955,
+   "end": 49.06
+  },
+  {
+   "text": "connected.",
+   "start": 49.61,
+   "end": 50.361
+  },
+  {
+   "text": "In one place.",
+   "start": 51.161,
+   "end": 52.134
+  },
+  {
+   "text": "Zenboard.",
+   "start": 55.134,
+   "end": 55.912
+  },
+  {
+   "text": "The single platform to manage work, life, and business.",
+   "start": 56.512,
+   "end": 59.77
+  }
+ ]
+}
