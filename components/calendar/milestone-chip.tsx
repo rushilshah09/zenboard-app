@@ -28,6 +28,7 @@ import { Icon } from '@/components/ds/ui';
 import { ICON_SIZE } from '@/components/ds/ui/icon';
 import { cn } from '@/lib/cn';
 import { milestoneState, type CalendarMilestone } from '@/lib/milestones';
+import { scopeFill } from '@/lib/entity-color';
 
 export function MilestoneChip({
   milestone, onOpen, compact = false,
@@ -46,7 +47,7 @@ export function MilestoneChip({
       type="button"
       onPointerDown={(e) => e.stopPropagation()}   // never start the grid's create-drag
       onClick={(e) => { e.stopPropagation(); onOpen(milestone.projectId); }}
-      title={`${milestone.title} — ${milestone.projectName}`}
+      title={`${milestone.title}, ${milestone.projectName}`}
       // The whole sentence, because the visible text is only the checkpoint's
       // name and a screen reader user should not have to guess whose it is.
       aria-label={`Milestone: ${milestone.title}, ${milestone.projectName}${milestone.done ? ', done' : overdue ? ', overdue' : ''}`}
@@ -63,9 +64,14 @@ export function MilestoneChip({
       <Icon icon={milestone.done ? Check : Flag} size={ICON_SIZE.xs} className="shrink-0" aria-hidden />
       {/* The project's colour as a dot, never as a fill: it identifies without
           competing with the event blocks below. Omitted when the project has no
-          colour rather than substituting a default nobody chose. */}
+          colour rather than substituting a default nobody chose.
+          THEME-AWARE, not the stored value (2026-09-30): this painted
+          `milestone.projectColor` straight onto the page, and measured on the calendar
+          harness it rendered rgb(154,27,111) — --scope-plum's LIGHT value — which stays
+          put when the theme flips. scopeFill() snaps a stored hex OR name to the nearest
+          scope and hands back `var(--scope-*)`. */}
       {milestone.projectColor && !compact && (
-        <span aria-hidden className="size-1 shrink-0 rounded-full" style={{ background: milestone.projectColor }} />
+        <span aria-hidden className="size-1 shrink-0 rounded-full" style={{ background: scopeFill(milestone.projectColor) }} />
       )}
       <span className={cn('truncate', milestone.done && 'line-through')}>{milestone.title}</span>
     </button>

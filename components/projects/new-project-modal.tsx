@@ -100,7 +100,7 @@ export function NewProjectModal({ open, onOpenChange, deadlineSupported = false 
           <div className="flex items-center gap-1.5 pr-1" role="radiogroup" aria-label="Project color">
             {COLORS.map((c) => (
               <button key={c} type="button" role="radio" aria-checked={color === c} aria-label={`Colour ${c}`} onClick={() => setColor(c)}
-                className={cn('focus-ring size-5 rounded-[5px] border-2 transition-colors duration-fast', color === c ? 'border-ink-900' : 'border-transparent')}
+                className={cn('focus-ring size-5 rounded-xs border-2 transition-colors duration-fast', color === c ? 'border-ink-900' : 'border-transparent')}
                 /* The token, never the stored value — see projects-workspace. */
                 style={{ background: scopeFill(c) }} />
             ))}

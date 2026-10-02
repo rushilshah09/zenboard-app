@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  SECTIONS,
   docTrail, siblingsOf, childrenOf, folderChain, pageChain, sectionOf,
   pagesInSection, siblingsHeading, pageLabel,
   type NavSource, type NavPage, type NavNode,
@@ -123,7 +124,7 @@ describe('docTrail', () => {
   });
 
   it('names the section a homeless page lives in', () => {
-    expect(labels(docTrail(src, { kind: 'page', id: 'loose' }))).toEqual(['Draft', 'Untitled']);
+    expect(labels(docTrail(src, { kind: 'page', id: 'loose' }))).toEqual(['Unfiled', 'Untitled']);
     expect(labels(docTrail(src, { kind: 'page', id: 'tpl' }))).toEqual(['Templates', 'Kickoff']);
   });
 
@@ -158,10 +159,10 @@ describe('siblingsHeading — what a crumb menu says it is listing', () => {
   // a menu of siblings reads as a list of somewhere, which is why hovering a
   // crumb felt like opening a random menu.
   it('a page lists the pages beside it, named by what holds them', () => {
-    expect(siblingsHeading(src, { id: 'ae', kind: 'page', label: 'After Effects' })).toBe('Pages in Motion');
-    expect(siblingsHeading(src, { id: 'keyframes', kind: 'page', label: 'Keyframes' })).toBe('Pages in After Effects');
-    expect(siblingsHeading(src, { id: 'loose', kind: 'page', label: 'Untitled' })).toBe('Pages in Draft');
-    expect(siblingsHeading(src, { id: 'db', kind: 'database', label: 'Reading list' })).toBe('Pages in Learning');
+    expect(siblingsHeading(src, { id: 'ae', kind: 'page', label: 'After Effects' })).toBe('Docs in Motion');
+    expect(siblingsHeading(src, { id: 'keyframes', kind: 'page', label: 'Keyframes' })).toBe('Docs in After Effects');
+    expect(siblingsHeading(src, { id: 'loose', kind: 'page', label: 'Untitled' })).toBe('Unfiled docs');
+    expect(siblingsHeading(src, { id: 'db', kind: 'database', label: 'Reading list' })).toBe('Docs in Learning');
   });
 
   it('a folder lists the folders beside it', () => {
@@ -170,7 +171,7 @@ describe('siblingsHeading — what a crumb menu says it is listing', () => {
   });
 
   it('the sections need no heading — they are the Docs rail itself', () => {
-    expect(siblingsHeading(src, { id: 'draft', kind: 'section', label: 'Draft' })).toBeUndefined();
+    expect(siblingsHeading(src, { id: 'draft', kind: 'section', label: 'Unfiled' })).toBeUndefined();
   });
 });
 
@@ -206,7 +207,7 @@ describe('siblingsOf — one rule at every level', () => {
   it('section → all six, current checked', () => {
     const rows = siblingsOf(src, { id: 'templates', kind: 'section', label: 'Templates' });
     // Collections joined the sections on 2026-09-16 (COLLECTION_PLAN X1) — the Index, beside All documents.
-    expect(labels(rows)).toEqual(['Draft', 'All documents', 'Collections', 'Shared', 'Templates', 'Trash']);
+    expect(labels(rows)).toEqual(['All documents', 'Unfiled', 'Collections', 'Shared', 'Templates', 'Trash']);
     expect(rows.find((r) => r.current)?.id).toBe('templates');
   });
 });
@@ -246,7 +247,21 @@ describe('a Collection is its own kind of page', () => {
   });
 
   it('names what holds it, as any page does', () => {
-    expect(siblingsHeading(withCollection, { id: 'refs', kind: 'collection', label: 'Brand references' })).toBe('Pages in Learning');
+    expect(siblingsHeading(withCollection, { id: 'refs', kind: 'collection', label: 'Brand references' })).toBe('Docs in Learning');
     expect(siblingsOf(withCollection, { id: 'refs', kind: 'collection', label: 'Brand references' }).some((n) => n.id === 'refs' && n.current)).toBe(true);
   });
 });
+
+describe('the breadcrumb and the rail say the same names', () => {
+  // 2026-09-30: the rail's "Draft" was renamed Unfiled and moved below All documents, and this
+  // list was missed — a crumb read "Draft / Case studies" beside a rail that no longer said Draft.
+  // The comment on SECTIONS already said "the RAIL's labels, verbatim"; now something checks it.
+  it('lists the rail\'s sections in the rail\'s order', async () => {
+    const { readFileSync } = await import('node:fs');
+    const rail = readFileSync('components/documents/documents-view.tsx', 'utf8');
+    const railLabels = [...rail.matchAll(/<RailItem icon=\{\w+\} label="([^"]+)"/g)].map((m) => m[1]);
+    expect(railLabels.length, 'found the rail').toBeGreaterThan(4);
+    expect(railLabels).toEqual(SECTIONS.map((x) => x.label));
+  });
+});
+

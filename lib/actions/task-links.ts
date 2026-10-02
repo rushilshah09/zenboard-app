@@ -6,6 +6,7 @@
 // `taskLinksSupported()` reports false, every action here returns a clean "not
 // available yet", and the UI hides the affordance. The app is correct before
 // and after.
+import { notReady } from '@/lib/not-ready';
 import { createClient } from '@/lib/supabase/server';
 import { checkLink, REFUSAL_TEXT, type TaskLink } from '@/lib/task-links';
 import { requireSession } from '@/lib/auth';
@@ -28,7 +29,7 @@ export async function taskLinksSupported(db?: DB): Promise<boolean> {
   }
 }
 
-const NOT_READY = { error: 'Dependencies need migration 0032.' } as const;
+const NOT_READY = () => notReady('Dependencies aren’t available yet.', '0032');
 
 /**
  * Make `taskId` wait for `blockerId`.
@@ -41,7 +42,7 @@ const NOT_READY = { error: 'Dependencies need migration 0032.' } as const;
  */
 export async function addBlocker(taskId: string, blockerId: string): Promise<{ error: string } | { ok: true }> {
   const { supabase, user } = await requireSession();
-  if (!(await taskLinksSupported(supabase))) return NOT_READY;
+  if (!(await taskLinksSupported(supabase))) return NOT_READY();
 
   const { data, error: readErr } = await supabase.from('task_links').select('task_id, blocked_by_task_id');
   if (readErr) return { error: readErr.message };
@@ -62,7 +63,7 @@ export async function addBlocker(taskId: string, blockerId: string): Promise<{ e
 /** Stop `taskId` waiting for `blockerId`. Idempotent. */
 export async function removeBlocker(taskId: string, blockerId: string): Promise<{ error: string } | { ok: true }> {
   const { supabase } = await requireSession();
-  if (!(await taskLinksSupported(supabase))) return NOT_READY;
+  if (!(await taskLinksSupported(supabase))) return NOT_READY();
   const { error } = await supabase.from('task_links')
     .delete()
     .eq('task_id', taskId)

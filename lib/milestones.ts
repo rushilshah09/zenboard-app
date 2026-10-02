@@ -85,7 +85,7 @@ export function milestoneProgress(list: Milestone[]): { done: number; total: num
 /**
  * A milestone as the calendar needs it: its own fields plus the project it
  * belongs to, because on a calendar a checkpoint with no project is an orphan
- * date — "Design sign-off" means nothing without "Balluji rebrand" beside it.
+ * date — "Design sign-off" means nothing without "Ridgeline rebrand" beside it.
  */
 export type CalendarMilestone = Milestone & {
   /** Always present here: `milestonesForCalendar` drops undated ones. */

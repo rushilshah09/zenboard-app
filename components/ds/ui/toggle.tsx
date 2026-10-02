@@ -23,6 +23,15 @@ const toggleVariants = cva(
         // app/tokens-light.css.
         outline:
           "border border-line-strong bg-transparent hover:border-line-control hover:bg-surface-hover hover:text-ink-900",
+        // CHIP — a small pressable label in a row of them: pick a role, turn a
+        // ritual on. It carries its state in its EDGE and its ink rather than a
+        // fill, so a row of chips with one on does not read as a row of
+        // buttons with one broken. The accent edge is the same answer the
+        // RadioCard gives, at chip scale.
+        chip:
+          "rounded-md border border-line-strong bg-transparent text-ink-800 " +
+          "hover:border-line-control hover:text-ink-900 " +
+          "data-[state=on]:border-[var(--accent)] data-[state=on]:text-accent-text",
       },
       size: {
         default: "h-8 min-w-8 px-2",

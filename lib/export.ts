@@ -98,7 +98,7 @@ function mdTask(t: ExportProjectTask, depth: number): string[] {
 }
 
 export function projectsToMarkdown(projects: ExportProject[], exportedOnISO: string): string {
-  const out: string[] = [`# Zenboard projects — exported ${exportedOnISO}`, ''];
+  const out: string[] = [`# Zenboard projects, exported ${exportedOnISO}`, ''];
   for (const p of projects) {
     out.push(`## ${p.name}`);
     const meta = [

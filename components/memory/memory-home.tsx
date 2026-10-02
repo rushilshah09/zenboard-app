@@ -67,7 +67,7 @@ function Group({ group, history, onAdd }: {
       </div>
 
       {items.length === 0 && !adding && onAdd && (
-        <EmptyLine>Nothing yet — the things you keep re-deriving about yourself go here.</EmptyLine>
+        <EmptyLine>Nothing yet: the things you keep re-deriving about yourself go here.</EmptyLine>
       )}
 
       <ul className="divide-y divide-line-soft">
@@ -236,9 +236,11 @@ export function MemoryHome({ data, proposals = [] }: { data: HomeData; proposals
           </div>
         )}
         {!data.supported ? (
+          // Said to the person READING it. This was "Run migration 0029 to switch it on", an
+          // instruction nobody but the developer can follow, shown to everybody (2026-09-30).
           <EmptyState
-            title="Memory isn’t switched on yet"
-            description="Run migration 0029 to switch it on."
+            title="Memory isn’t available yet"
+            description="Everything else in Zenboard works as usual."
           />
         ) : (
           <>

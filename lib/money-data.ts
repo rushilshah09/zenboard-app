@@ -46,7 +46,7 @@ export async function loadMoneyData() {
 
   const recentPayments: PaymentRow[] = pays.slice(0, 8).map((p) => {
     const inv = invs.find((i) => i.id === p.invoice_id);
-    return { ...p, number: inv?.number ?? '—', client_id: inv?.client_id ?? null };
+    return { ...p, number: inv?.number ?? '–', client_id: inv?.client_id ?? null };
   });
 
   return { invoices: invs, clients: (clients as ClientLite[]) ?? [], unbilled, payments: recentPayments, monthStart: monthStartISO(), rate };

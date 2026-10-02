@@ -39,6 +39,18 @@ export interface DrawerProps {
   /** Auto-save stamp, e.g. "Saved just now" — shown when there's no footer. */
   savedStamp?: string;
   resizable?: boolean;
+  /**
+   * A COMPANION works alongside whatever is open rather than over it — Ask's panel, which is
+   * usually asked about the page beneath it. A modal layer beneath (a full-page PageView) does two
+   * things to anything outside it, and both are wrong for a companion:
+   *   · a press inside it reads as a press OUTSIDE the layer, which dismisses the layer. PageView
+   *     exempts `[data-companion]` for that, as it exempts toasts;
+   *   · its scroll lock cancels every wheel and touch-move outside the layer (react-remove-scroll,
+   *     which has no opt-out), so the companion could not scroll. A companion's own wheel and
+   *     touch-moves stop at its edge instead, before the document listener that cancels them —
+   *     and the browser scrolls it natively, as it would anywhere else.
+   */
+  companion?: boolean;
   children: React.ReactNode;
 }
 
@@ -52,10 +64,27 @@ export function Drawer({
   footer,
   savedStamp,
   resizable = true,
+  companion = false,
   children,
 }: DrawerProps) {
   const [width, setWidth] = React.useState<number>(WIDTH[size]);
   const headingRef = React.useRef<HTMLHeadingElement>(null);
+  // The content element as STATE, not a ref: it mounts through a portal a render after `open`
+  // flips, so an effect reading a ref ran while it was still null and never ran again — the
+  // companion's listener was simply never attached (found by the must-fail control, 2026-09-29).
+  const [content, setContent] = React.useState<HTMLDivElement | null>(null);
+
+  // See `companion`. Passive: only propagation is stopped, never the scroll itself.
+  React.useEffect(() => {
+    if (!companion || !content) return;
+    const stop = (e: Event) => e.stopPropagation();
+    content.addEventListener("wheel", stop, { passive: true });
+    content.addEventListener("touchmove", stop, { passive: true });
+    return () => {
+      content.removeEventListener("wheel", stop);
+      content.removeEventListener("touchmove", stop);
+    };
+  }, [companion, content]);
 
   if (useChanged(size)) setWidth(WIDTH[size]);
 
@@ -66,6 +95,8 @@ export function Drawer({
           <RDlg.Overlay className="fixed inset-0 z-overlay bg-[var(--color-scrim)] backdrop-blur-[2px] zb-enter data-[state=open]:animate-fadein data-[state=closed]:animate-fadeout" />
         )}
         <RDlg.Content
+          ref={setContent}
+          data-companion={companion ? "" : undefined}
           onOpenAutoFocus={(e) => {
             // Non-modal drawers move focus to the heading, not trap (§4.37).
             e.preventDefault();

@@ -4,7 +4,8 @@ export { ButtonGroup, SplitButton, DoubleActionButton, type SplitButtonProps, ty
 export { IconButton, type IconButtonProps } from "./icon-button";
 export { Count } from "./count";
 export { InlineConfirm, type InlineConfirmProps } from "./inline-confirm";
-export { Icon, Mark, Logo, type IconProps } from "./icon";
+export { Icon, Mark, MarkThinking, Logo, type IconProps } from "./icon";
+export { Wordmark, type WordmarkProps } from "./wordmark";
 export { Link, type LinkProps } from "./link";
 export { Kbd } from "./kbd";
 export { Avatar, AvatarGroup, type AvatarProps, type AvatarSize, type AvatarStatus } from "./avatar";
@@ -17,9 +18,10 @@ export { ScrollArea, type ScrollAreaProps } from "./scroll-area";
 
 // GROUP B — Forms (§4.12–4.26)
 export { Field, useField, useFieldProps, type FieldProps } from "./field";
-export { TextInput, useValidation, inlineEdit, inlineEditProps, type TextInputProps } from "./input";
+export { TextInput, useValidation, inlineEdit, inlineEditProps, GrowText, type TextInputProps, type GrowTextProps } from "./input";
 export { AddLine, addLine, type AddLineProps } from "./add-line";
 export { Textarea, type TextareaProps } from "./textarea";
+export { MessageComposer, type MessageComposerProps, type ComposerCheck } from "./message-composer";
 export { Select, type SelectProps, type SelectGroup, type SelectOption } from "./select";
 export { Combobox, type ComboboxProps, type MultiComboboxProps, type ComboOption } from "./combobox";
 export { RailToggle } from "./rail-toggle";
@@ -51,7 +53,7 @@ export {
 } from "./breadcrumbs";
 export { Tabs, TabPanel, type TabsProps, type TabItem } from "./tabs";
 export { LoadMore, Pagination, type LoadMoreProps, type PaginationProps } from "./pagination";
-export { StepIndicator, type Step, type StepState } from "./steps";
+export { StepIndicator, StepDots, type Step, type StepState } from "./steps";
 export {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -87,18 +89,22 @@ export { CommandMenu, useCommandMenu, type CommandItem, type CommandMenuProps } 
 // GROUP E — Feedback (§4.39–4.46)
 export { Alert, Banner, type AlertProps, type AlertVariant, type BannerProps } from "./alert";
 export { Toaster, toast, toastReverted, dismissToast, type ToastData } from "./toast";
+export { Spinner, type SpinnerProps } from "./spinner";
 export { Progress, SegmentedProgress, CircularProgress, type ProgressProps, type SegmentedProgressProps, type SegmentColor } from "./progress";
 export { Skeleton, SkeletonText, SkeletonRow } from "./skeleton";
 export { EmptyState, EmptyLine, ErrorState, SuccessState, type EmptyStateProps, type ErrorStateProps } from "./states";
 export { Illustration, ILLUSTRATIONS, type IllustrationName, type IllustrationField } from "./illustration";
-export { NotificationsBell, type Notification, type NotificationsBellProps } from "./notifications";
 export { NavigationMenu, NavigationMenuList, NavigationMenuItem, NavigationMenuTrigger, NavigationMenuContent, NavigationMenuLink } from "./navigation-menu";
+export { NotificationsBell, type Notification, type NotificationsBellProps } from "./notifications";
 export { ActivityFeed, type ActivityEntry } from "./activity-feed";
 
 // GROUP F — Data & display (§4.47–4.58)
 export { Card, CardGrid, cardClass, cardInteractiveClass, CARD_CLASS, CARD_INTERACTIVE_CLASS, type CardProps } from "./card";
 export { Panel, PanelHeader, PanelBody, type PanelProps } from "./panel";
 export { ListRow, List, type ListRowProps } from "./list-row";
+export { SuggestionRow, type SuggestionRowProps } from "./suggestion";
+export { QuoteRow, type QuoteRowProps } from "./quote-row";
+export { AnchorRow, type AnchorRowProps } from "./anchor-row";
 export { SettingsPaneHeader, SettingsSection, SettingsRow, type SettingsSectionProps, type SettingsRowProps } from "./settings";
 export { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "./accordion";
 export { Stat, type StatProps } from "./stat";
@@ -115,4 +121,4 @@ export { MenuSelect, type MenuSelectProps, type MenuSelectOption } from "./menu-
 export { PropertyRow, RecordHeader, RecordColorMark, PROPERTY_ROW } from './record-header';
 export { LinkCard, type LinkCardProps } from './link-card';
 export { LinkMark, ChannelMark, markFor, type LinkMarkProps, type MarkSize } from './link-mark';
-export { Appear, Presence, Move, IconSwap, MOTION, EXIT_ROW } from './motion';
+export { Appear, Presence, Move, IconSwap, ViewSwap, MOTION, EXIT_ROW } from './motion';

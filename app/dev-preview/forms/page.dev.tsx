@@ -16,21 +16,28 @@ import type { FormBlock } from '@/lib/form-schema';
 const iso = (n: number) => new Date(Date.now() - n * 86400000).toISOString();
 
 const BLOCKS: FormBlock[] = [
-  { id: 'f1', type: 'short_text', label: 'Your name', required: true },
-  { id: 'f2', type: 'email', label: 'Email', required: true },
+  { id: 'f0', type: 'hidden', label: '', param: 'source' },
+  { id: 'f1', type: 'short_text', label: 'Your name', required: true, param: 'name' },
+  { id: 'f2', type: 'email', label: 'Email', required: true, param: 'email' },
   { id: 'f3', type: 'heading', label: 'About the project' },
-  { id: 'f4', type: 'long_text', label: 'What are we making?', help: 'A sentence or two is plenty.', required: true },
-  { id: 'f5', type: 'select', label: 'What kind of work is it?', options: ['Brand identity', 'Website', 'Product design', 'Something else'], required: true },
-  { id: 'f6', type: 'multi_select', label: 'What do you need from us?', options: ['Strategy', 'Design', 'Copywriting', 'Build'] },
+  { id: 'f4', type: 'long_text', label: 'What are we making?', help: 'A sentence or two is plenty.', required: true, min: 20 },
+  { id: 'f5', type: 'select', label: 'What kind of work is it?', options: ['Brand identity', 'Website', 'Product design'], required: true, other: true },
+  { id: 'f6', type: 'multi_select', label: 'What do you need from us?', options: ['Strategy', 'Design', 'Copywriting', 'Build'], max: 3 },
+  // ── logic: these two only appear on the branches that need them
+  { id: 'f13', type: 'long_text', label: 'How many pages, roughly?', showWhen: { fieldId: 'f5', op: 'is', value: 'Website' } },
+  { id: 'f16', type: 'url', label: 'Your current website' },
+  { id: 'pb1', type: 'page_break', label: '' },
   { id: 'f7', type: 'dropdown', label: 'Budget range', options: ['Under $5k', '$5–15k', '$15–40k', '$40k+'] },
   { id: 'f8', type: 'date', label: 'When do you need it live?' },
+  { id: 'f17', type: 'time', label: 'A good time for a call?' },
   { id: 'f9', type: 'rating', label: 'How urgent is this?' },
+  { id: 'f18', type: 'ranking', label: 'Put these in order of importance', options: ['Speed', 'Quality', 'Budget'], shuffle: true },
   { id: 'f10', type: 'yes_no', label: 'Have we worked together before?' },
-  // ── logic: these two only appear on the branches that need them
   { id: 'f12', type: 'short_text', label: 'Which project was that?', showWhen: { fieldId: 'f10', op: 'is', value: 'Yes' } },
-  { id: 'f13', type: 'long_text', label: 'How many pages, roughly?', showWhen: { fieldId: 'f5', op: 'is', value: 'Website' } },
-  { id: 'f14', type: 'file', label: 'Anything to share?', help: 'A brief, moodboard or PDF — optional.' },
+  { id: 'f19', type: 'scale', label: 'How likely are you to recommend us?', min: 0, max: 10, minLabel: 'Not likely', maxLabel: 'Very likely' },
+  { id: 'f14', type: 'file', label: 'Anything to share?', help: 'A brief, moodboard or PDF.' },
   { id: 'f11', type: 'phone', label: 'Phone' },
+  { id: 'f20', type: 'checkbox', label: 'I agree to be contacted about this project', required: true },
 ];
 
 const FORM: FormRecord = {
@@ -39,7 +46,7 @@ const FORM: FormRecord = {
   description: 'A few questions so we can start with a clear picture. Takes about three minutes.',
   status: 'live',
   blocks: BLOCKS,
-  settings: { mode: 'page', collectIdentity: false, thanks: 'We’ll come back to you within two working days.', limit: null, closeAt: null },
+  settings: { mode: 'page', collectIdentity: false, thanksTitle: 'Thank you, that’s everything.', thanks: 'We’ll come back to you within two working days.', submitLabel: 'Send the brief', limit: null, closeAt: null },
   version: 2,
   shareToken: 'demoTokenForPreview123',
   clientId: 'c1',
@@ -59,19 +66,19 @@ const SUMMARIES: FormSummary[] = [
 const RESPONSES: ResponseRecord[] = [
   {
     id: 'r1', status: 'complete', formVersion: 2, createdAt: iso(1),
-    answers: { f1: 'Dana Okafor', f2: 'dana@northstar.co', f4: 'A full rebrand for our B2B analytics product — new mark, type system, and a site refresh.', f5: 'Brand identity', f6: ['Strategy', 'Design'], f7: '$15–40k', f8: '2026-10-01', f9: 4, f10: 'No', f11: '+1 415 555 0134', f14: 'demo-form/9f8e7d6c5b4a-brand-brief.pdf' },
+    answers: { f0: 'newsletter', f16: 'northstar.co', f17: '10:30', f18: ['Quality', 'Speed', 'Budget'], f19: 9, f20: true, f1: 'Dana Okafor', f2: 'dana@northstar.co', f4: 'A full rebrand for our B2B analytics product — new mark, type system, and a site refresh.', f5: 'Brand identity', f6: ['Strategy', 'Design'], f7: '$15–40k', f8: '2026-10-01', f9: 4, f10: 'No', f11: '+1 415 555 0134', f14: 'demo-form/9f8e7d6c5b4a-brand-brief.pdf' },
     respondent: { name: 'Dana Okafor', email: 'dana@northstar.co' },
     meta: { source: 'link', duration_s: 214, started_at: iso(1), completed_at: iso(1) }, taskId: 'task-1',
   },
   {
     id: 'r2', status: 'complete', formVersion: 2, createdAt: iso(3),
-    answers: { f1: 'Marco Lind', f2: 'marco@fieldnotes.io', f4: 'Marketing site redesign, five pages, plus a simple CMS so we can publish ourselves.', f5: 'Website', f6: ['Design', 'Build'], f7: '$5–15k', f9: 3, f10: 'Yes' },
+    answers: { f0: 'referral', f17: '16:00', f18: ['Budget', 'Speed', 'Quality'], f19: 7, f20: true, f1: 'Marco Lind', f2: 'marco@fieldnotes.io', f4: 'Marketing site redesign, five pages, plus a simple CMS so we can publish ourselves.', f5: 'Website', f6: ['Design', 'Build'], f7: '$5–15k', f9: 3, f10: 'Yes' },
     respondent: { name: 'Marco Lind', email: 'marco@fieldnotes.io' },
     meta: { source: 'portal', duration_s: 168, started_at: iso(3), completed_at: iso(3) }, taskId: null,
   },
   {
     id: 'r3', status: 'complete', formVersion: 1, createdAt: iso(8),
-    answers: { f1: 'Priya Raman', f2: 'priya@lumen.design', f4: 'Design system audit and component library cleanup.', f5: 'Product design', f6: ['Design'], f7: 'Under $5k', f9: 5, f10: 'No' },
+    answers: { f0: 'newsletter', f18: ['Quality', 'Budget', 'Speed'], f19: 10, f20: true, f1: 'Priya Raman', f2: 'priya@lumen.design', f4: 'Design system audit and component library cleanup.', f5: 'Product design', f6: ['Design'], f7: 'Under $5k', f9: 5, f10: 'No' },
     respondent: null,
     meta: { source: 'link', duration_s: 96, started_at: iso(8), completed_at: iso(8) }, taskId: null,
   },
@@ -140,8 +147,8 @@ function Harness() {
           </div>
         </div>
       )}
-      {view === 'builder' && <FormBuilder form={FORM} studio={FORM.studio} demo />}
-      {view === 'fill' && <FormRenderer form={PUBLIC_FORM} preview />}
+      {view === 'builder' && <div className="h-[calc(100dvh-49px)]"><FormBuilder form={FORM} studio={FORM.studio} demo /></div>}
+      {view === 'fill' && <FormRenderer form={PUBLIC_FORM} preview seed={7} params={{ source: 'newsletter', email: 'dana@northstar.co' }} />}
       {view === 'focus' && <FormRenderer form={{ ...PUBLIC_FORM, settings: { ...PUBLIC_FORM.settings, mode: 'focus' } }} preview />}
       {view === 'share' && <ShareView form={FORM} demo />}
       {view === 'insights' && <InsightsView form={FORM} responses={RESPONSES} />}

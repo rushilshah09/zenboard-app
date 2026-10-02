@@ -6,6 +6,7 @@
 // document saved it. And the one failure a person can fix themselves, the tables
 // not being there yet, says how; every other failure offers to try again, because
 // what usually causes one (no connection, a new deployment) passes.
+import { warnNotReady } from '@/lib/not-ready';
 import { FAILURE_COPY } from '@/lib/action-failure';
 
 export type DbFailure = {
@@ -34,11 +35,9 @@ const TITLE = {
 /** `create` — making one failed · `load` — one exists but would not load · `list` — the linked-view picker. */
 export function describeDbFailure(message: string, when: keyof typeof TITLE): DbFailure {
   if (UNMIGRATED.test(message)) {
-    return {
-      title: 'Databases aren’t set up yet',
-      detail: 'Paste migration 0013_databases.sql into the Supabase SQL editor to turn them on.',
-      retry: false,
-    };
+    // The SQL-editor instruction went to every user; it belongs to the developer, in the console.
+    warnNotReady('Databases', '0013');
+    return { title: 'Databases aren’t available yet', retry: false };
   }
   const title = TITLE[when];
   return HUMAN.has(message) ? { title, detail: message, retry: true } : { title, retry: true };

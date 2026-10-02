@@ -154,7 +154,7 @@ function Unsigned({ terms, onChange, onAccept }: Pick<AcceptBlockProps, 'terms' 
       {onChange && (
         <p className="mt-2.5 mb-0 text-meta leading-normal text-ink-500">
           Your client signs this from the portal. Their name, the time and their address are
-          recorded — enough to show agreement, not a qualified e-signature.
+          recorded, which is enough to show agreement but not a qualified e-signature.
         </p>
       )}
     </div>

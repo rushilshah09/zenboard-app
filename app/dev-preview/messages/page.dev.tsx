@@ -47,9 +47,9 @@ const names = { team: 'Rushil Shah', client: 'Meridian Studio' };
 const VIEWS: Record<string, ChannelView> = {
   // Read up to just before the client's last two messages, so the "New" line sits above them.
   // hasMore on the busiest channel, so scrolling to the top exercises loading older history.
-  p1: { messages: brand, lastReadAt: ago(60), names, hasMore: true },
-  p2: { messages: site, lastReadAt: ago(0), names, hasMore: false },
-  p3: { messages: [], lastReadAt: null, names: { team: 'Rushil Shah', client: 'Atlas Coffee' }, hasMore: false },
+  p1: { messages: brand, lastReadAt: ago(60), names, hasMore: true, reactions: true },
+  p2: { messages: site, lastReadAt: ago(0), names, hasMore: false, reactions: true },
+  p3: { messages: [], lastReadAt: null, names: { team: 'Rushil Shah', client: 'Atlas Coffee' }, hasMore: false, reactions: true },
 };
 
 export default function MessagesHarness() {

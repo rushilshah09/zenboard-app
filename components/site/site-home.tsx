@@ -1,8 +1,9 @@
 // ── ZENBOARD.COM — THE HOME PAGE ────────────────────────────────────────────
 //
-// The website says what the product says to itself (PRODUCT_THINKING.md): "Open Zenboard. Know what
-// matters. Do the work." It is the operating system for a creative business, and its measure is how
-// much work it takes off the day.
+// The website says one thing (the website and SEO plan, 2026-09-27): ONE CALM WORKSPACE TO RUN YOUR
+// BUSINESS. You should not need five apps to run it; Zenboard brings the work and the business side of
+// it into one place, and its measure is how much switching it takes out of the day. (It said "for a
+// creative business" until the plan widened it to everyone who runs a business and does the work.)
 //
 // Its look comes from the product, not from another website:
 //   · THE MARK IS THE GRID. The page is one lattice of rounded cells, the line showing between them,
@@ -26,25 +27,27 @@
 import Link from 'next/link';
 import * as React from 'react';
 import { ArrowRight, Check, CursorClick, Keyboard, Question, Receipt } from '@/components/ds/icons';
-import { Avatar, Icon, Mark, Toaster, button, cardClass } from '@/components/ds/ui';
+import { Avatar, Icon, Mark, button, cardClass } from '@/components/ds/ui';
 import { cn } from '@/lib/cn';
-import { DayArea, MoneyArea, PortalArea, ProjectsArea } from './areas';
-import { siteLoaderScript } from '@/lib/site-loader';
+import { DayArea, MoneyArea, ProjectsArea } from './areas';
+import { HubSection } from './hub-section';
+import { PortalSection } from './portal-section';
 import { Bento } from './bento';
-import { CookieConsent } from './cookie-consent';
-import { BackToTop } from './back-to-top';
-import { GuestFocus } from './guest-focus';
 import { Halftone } from './halftone';
-import { AppDemo } from './app-demo';
+import { AppWindow } from './app-window';
 import { Loop } from './loop';
 import { People } from './people';
-import { SiteLoader } from './site-loader';
-import { SiteMotion } from './site-motion';
-import { Questions, SIGN_UP, SiteFooter, SiteNav } from './site-chrome';
-import { MEASURE } from './measure';
+import { Questions, SIGN_UP, SIGN_UP_LABEL } from './site-chrome';
+import { SiteShell } from './site-shell';
+import { WaitlistSection } from './waitlist/waitlist-section';
 import { FACES } from './faces';
-import { Cell, Eyebrow, Grid, Mesh, Row } from './visual';
-import { Words } from './words';
+import { Cell, Eyebrow, Mesh, Row } from './visual';
+import { Title, Words } from './words';
+import { FAQ } from './faq-data';
+import { faqPage, organization, softwareApplication, website } from '@/lib/structured-data';
+
+/** The app in one line, as its structured data describes it. */
+const APP_LINE = 'One calm workspace to run your business: tasks, projects, calendar, documents, clients and invoices in one place.';
 
 function Hero() {
   const step = (n: number) => ({ '--rise-step': n }) as React.CSSProperties;
@@ -63,30 +66,41 @@ function Hero() {
             where the visitor points. */}
         <Halftone mark={{ x: 0.92, y: 0.5, size: 1.12 }} fade="start" />
         <div className="relative max-w-[42rem]">
-          <p className="site-rise zb-enter flex items-center gap-2 text-ui font-medium text-ink-800">
-            <Mark size={16} tone="brand" />
-            For people who run a creative business
+          {/* Two lines on a phone: balanced so no word is left alone, the mark on the first line. */}
+          <p className="site-rise zb-enter flex items-start gap-2 text-balance text-ui font-medium text-ink-800">
+            <Mark size={16} tone="brand" className="mt-0.5" />
+            For freelancers, founders and small businesses
           </p>
-          {/* One sentence to a line: the three steps of a day, read as three steps. On a phone the longest
-              wraps inside itself, and never runs on into the next ("matters. Do the / work."). It
-              arrives a word at a time; the words are counted on across the lines. */}
-          <h1 id="hero-title" className="site-rise-words zb-enter mt-6 font-editorial text-headline text-ink-900 sm:text-hero" style={step(1)}>
-            <span className="block"><Words>Open Zenboard.</Words> </span>
-            <span className="block"><Words from={2}>Know what matters.</Words> </span>
-            <span className="block"><Words from={5}>Do the work.</Words></span>
+          {/* THE ONE LINE (the plan's positioning), split where the sentence breaks: what it is, then what it
+              is for. On a phone each half wraps inside itself and never runs on into the next. It arrives
+              a word at a time; the words are counted on across the lines. */}
+          <h1 id="hero-title" className="site-rise-words zb-enter mt-6 font-editorial text-hero-sm text-ink-900 sm:text-hero" style={step(1)}>
+            <span className="block"><Words>One calm workspace</Words> </span>
+            <span className="block"><Words from={3}>to run your business.</Words></span>
           </h1>
-          {/* After the heading's last words have started (its eight words take up six steps). */}
-          <p className="site-rise zb-enter mt-6 max-w-[50ch] text-body-lg text-ink-600" style={step(5)}>
-            Your day, your clients, your documents and your money in one calm workspace. It’s all connected,
-            so the work around the work gets out of your way.
+          {/* The problem in the reader's words, then the promise. After the heading's last words have started. */}
+          <p className="site-rise zb-enter mt-6 max-w-[540px] text-lead leading-6 text-ink-600" style={step(5)}>
+            You shouldn’t need five apps to run your business. Zenboard brings your tasks, projects, calendar,
+            documents, clients and money together, so you spend less time switching and more time on the work.
           </p>
           <div className="site-rise zb-enter mt-8 flex flex-wrap items-center gap-3" style={step(6)}>
-            <Link href={SIGN_UP} className={button({ variant: 'primary', size: 'lg' })}>Start free</Link>
+            <Link href={SIGN_UP} className={button({ variant: 'primary', size: 'lg' })}>{SIGN_UP_LABEL}</Link>
             <a href="#how" className={cn(button({ variant: 'ghost', size: 'lg' }), 'group')}>
               See how it works
-              <Icon icon={ArrowRight} size={16} className="transition-transform duration-fast ease-out-quiet group-hover:translate-x-0.5" />
+              <Icon icon={ArrowRight} size={16} nudge="end" />
             </a>
           </div>
+          {/* RISK REVERSAL, and only what the page already commits to. "Start free" said what to do
+              and never what it costs you, which is the friction a marketing page is supposed to
+              remove (user, 2026-09-28: "every section should … build trust, and move users toward
+              conversion"). Both facts are ones the site already states — the button's own word, and
+              the setting-up answer in the FAQ that the footer repeats — so this promises nothing
+              new. It deliberately does NOT say "no credit card": the site makes no pricing claim
+              anywhere, and inventing one on a landing page is the kind of trust you only spend
+              once. */}
+          <p className="site-rise zb-enter mt-4 text-ui text-ink-500" style={step(7)}>
+            Free to start. Setting up takes about two minutes.
+          </p>
         </div>
       </Cell>
     </Row>
@@ -110,8 +124,10 @@ function Resting({ className, drift = 0, step, children }: { className?: string;
   );
 }
 
-/** THE PRODUCT, WHOLE: Home as it opens every morning, sidebar and all, working, on a picture in three
-    layers (the hero's gradient, the mark printed over it in light, the app on top). It lies flat as you
+/** THE PRODUCT, WHOLE: the app itself in a window (app-window.tsx), the product's own views on a sample
+    studio's day, walled off so nothing a visitor does leaves their browser (user, 2026-09-28: "like
+    Notion, a real dashboard application demo, not a fake one"). It stands on the one picture recipe
+    (the brand's rose warming into the day, the mark printed over it in light). It lies flat as you
     scroll to it, and three pieces of the product rest on its edges, the way they arrive in the day.
     It is an ordinary cell (2026-09-26): it was briefly the page's one full-bleed band, and the user's
     answer was to take the frame off the WHOLE page instead ("don't extend this section … I want extend
@@ -119,18 +135,18 @@ function Resting({ className, drift = 0, step, children }: { className?: string;
     gradient starts on the same column every other section's words do. */
 function Showcase() {
   return (
-    <Row aria-label="Zenboard’s Home, working">
+    <Row id="product" aria-label="Zenboard’s Home, working">
     <Cell className="site-field site-field-hero site-pad overflow-hidden pb-6 pt-8 sm:pb-12 sm:pt-12 lg:pb-16 lg:pt-16">
       <Mesh />
-      <Halftone mark={{ x: 0.5, y: 0.56, size: 1.9 }} />
+      <Halftone mark={{ x: 0.5, y: 0.56, size: 1.9 }} pitch={7} className="site-screen" />
       {/* Part of the first screen, so it arrives with it: after the hero's buttons, the app itself. */}
       <p className="site-rise zb-enter relative mx-auto mb-4 flex w-full max-w-[1180px] items-center gap-1.5 text-caption text-ink-700" style={{ '--rise-step': 8 } as React.CSSProperties}>
-        <Icon icon={CursorClick} size={14} />Try it: tick a task, open any place in the sidebar, or press Start focus.
+        <Icon icon={CursorClick} size={14} />This is Zenboard itself, on a sample studio’s day. Try anything: nothing you do here is saved.
       </p>
       <div className="site-rise-lift zb-enter relative mx-auto w-full max-w-[1180px]" style={{ '--rise-step': 9 } as React.CSSProperties}>
         <div className="site-tilt">
           <div className="site-glass rounded-xl">
-            <AppDemo />
+            <AppWindow />
           </div>
         </div>
         <Resting className="-start-16 -bottom-7" drift={0} step={14}>
@@ -157,13 +173,13 @@ function Showcase() {
 function Details() {
   return (
     <Row id="details" aria-labelledby="details-title">
-      <Cell pad className="py-14 sm:py-16 lg:py-20">
+      <Cell pad className="site-head">
         <div data-reveal-group className="grid gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-end lg:gap-16">
           <div>
-            <Eyebrow hue="periwinkle" icon={Keyboard} data-reveal="rise">The details</Eyebrow>
-            <h2 id="details-title" data-reveal="words" className="mt-6 text-balance font-editorial text-h1 text-ink-900 sm:text-headline"><Words>Small things, done properly.</Words></h2>
+            <Eyebrow hue="petal" icon={Keyboard} data-reveal="rise">The details</Eyebrow>
+            <h2 id="details-title" data-reveal="words" className="mt-6 text-balance font-editorial text-headline-sm text-ink-900 sm:text-headline"><Title then="done properly.">Small things,</Title></h2>
           </div>
-          <p data-reveal="rise" className="max-w-[44ch] text-body-lg text-ink-600">The parts you use a hundred times a day, made to be quick and to stay out of the way.</p>
+          <p data-reveal="rise" className="max-w-[416px] text-lead leading-6 text-ink-600">The parts you use a hundred times a day, made to be quick and to stay out of the way.</p>
         </div>
       </Cell>
       <Bento />
@@ -175,10 +191,10 @@ function Faq() {
   return (
     <Row id="faq" aria-labelledby="faq-title">
       {/* The heading on the left, as tall as all the questions beside it (one grid row each). */}
-      <Cell pad className="py-14 sm:py-16 lg:col-span-4 lg:row-span-6 lg:py-20">
+      <Cell pad className="site-head lg:col-span-4 lg:row-span-6">
         <div data-reveal-group>
-          <Eyebrow hue="sky" icon={Question} data-reveal="rise">Questions</Eyebrow>
-          <h2 id="faq-title" data-reveal="words" className="mt-6 text-balance font-editorial text-h1 text-ink-900 sm:text-headline"><Words>The things people ask first.</Words></h2>
+          <Eyebrow hue="neutral" icon={Question} data-reveal="rise">Questions</Eyebrow>
+          <h2 id="faq-title" data-reveal="words" className="mt-6 text-balance font-editorial text-headline-sm text-ink-900 sm:text-headline"><Title then="people ask first.">The things</Title></h2>
         </div>
       </Cell>
       {/* Each question a card of its own on the right, joined by the grid's star (site-chrome.tsx). */}
@@ -189,37 +205,23 @@ function Faq() {
 
 export function SiteHome() {
   return (
-    // `isolate`: the lines that run past the sections are drawn behind them, and this is the ground
-    // they are drawn on.
-    <div className="relative isolate min-h-dvh overflow-x-clip bg-background">
-      {/* The grid's two outer rules, the height of the page: above the grid and below it, past the
-          navigation and the footer, they are the page's only lines. */}
-      {/* Decided before anything below it paints: plays the loader on an open, at most every 4 hours. */}
-      <script dangerouslySetInnerHTML={{ __html: siteLoaderScript }} />
-      <SiteLoader />
-      <SiteMotion />
-      <div aria-hidden className="site-guides"><div className={cn(MEASURE, 'h-full')}><div className="h-full border-x border-line" /></div></div>
-      <SiteNav />
-      <main className={MEASURE}>
-        <Grid>
-          <Hero />
-          <Showcase />
-          <Loop />
-          <People />
-          <DayArea />
-          <ProjectsArea />
-          <PortalArea />
-          <MoneyArea />
-          <Details />
-          <Faq />
-        </Grid>
-      </main>
-      <SiteFooter />
-      <CookieConsent />
-      {/* The focus session anyone can start from the logo, and the one place the site says "done". */}
-      <GuestFocus />
-      <BackToTop />
-      <Toaster />
-    </div>
+    // What search engines read: who makes it, the app and its free offer, and the questions below.
+    <SiteShell jsonLd={[organization(), website(), softwareApplication(APP_LINE), faqPage(FAQ)]}>
+      <Hero />
+      <Showcase />
+      <HubSection />
+      <Loop />
+      <People />
+      <DayArea />
+      <ProjectsArea />
+      <PortalSection />
+      <MoneyArea />
+      <Details />
+      {/* The conversion moment, after the product has been shown and before the questions that
+          follow it: someone who has read this far is deciding, and the questions below are the
+          objections they are deciding against. */}
+      <WaitlistSection source="hero" />
+      <Faq />
+    </SiteShell>
   );
 }

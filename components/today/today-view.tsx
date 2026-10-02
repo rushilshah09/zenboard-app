@@ -12,13 +12,18 @@
 import { useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Plus, Moon, Sunrise, Check, Play, ChevronRight, X, Sun, Flame, type IconType, Highlight } from "@/components/ds/icons";
-import { Button, Icon, IconButton, Mark, EmptyState, TooltipProvider, addLine, toastReverted } from '@/components/ds/ui';
+import { AnchorRow, Button, Icon, IconButton, Mark, TooltipProvider, addLine, toastReverted } from '@/components/ds/ui';
 import { cn } from '@/lib/cn';
 import { Panel, PanelHeader, PanelBody } from '@/components/ui/panels';
 import { HOME_SECTION } from '@/components/today/home-rows';
 import { ParsedChips } from '@/components/ui/parsed-chips';
 import { PageLayout } from '@/components/ui/page-layout';
-import { formatDayWithWeekday, todayISO } from '@/lib/date';
+import { HubLayout } from '@/components/ui/hub-layout';
+import { ViewSwap } from '@/components/ds/ui';
+import { AskHistoryRail } from '@/components/ask/ask-history-rail';
+import { useAskHistory } from '@/components/ask/use-ask-history';
+import { useModeParam } from '@/lib/hub-url';
+import { formatDayWithWeekday, isoDateIn, todayISO } from '@/lib/date';
 import { capacity, DEFAULT_WORK_HOURS, type Span, type WorkHours } from '@/lib/capacity';
 import { CapacityLine } from '@/components/capacity/capacity-line';
 import { parseTask, type ChipKind } from '@/lib/task-parse';
@@ -38,6 +43,17 @@ import type { CalendarEntry } from '@/lib/content';
 import { useServerState } from '@/lib/use-server-state';
 import { tempId } from '@/lib/temp-id';
 import { taskOpenHref } from '@/lib/task-address';
+import { AskHome } from '@/components/ask/ask-home';
+import { LayoutGrid, MessageSquare } from '@/components/ds/icons';
+import { SegmentedControl } from '@/components/ds/ui';
+
+/**
+ * Home's two modes, as one list — `useModeParam` validates the URL against it and the toggle below
+ * is built from the same two values, so a hand-edited `?view=` can never select a mode the control
+ * cannot show.
+ */
+const HOME_MODES = ['dashboard', 'ask'] as const;
+type HomeMode = (typeof HOME_MODES)[number];
 
 export type TodayTask = {
   id: string; title: string; done: boolean;
@@ -155,6 +171,22 @@ export function TodayView({
 
   const h = nowHour ?? new Date().getHours();
   const greeting = h < 5 ? 'Still up' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+
+  // ── HOME'S TWO MODES (user wireframe, 2026-09-29) ─────────────────────────
+  // The dashboard, or the conversation.
+  //
+  // IT IS IN THE URL, AND IT USED TO BE `useState`. The note here read: "a URL for it would be a
+  // second address for the same page". That was right while Ask was one conversation that ended on
+  // reload — and it stopped being right the moment chats were KEPT. A conversation is now a record
+  // with an id in the address bar (`?chat=`, components/ask/use-ask-history.ts), and a link to a
+  // conversation has to LAND in the conversation: with the mode held in a component, `?chat=x`
+  // opened the dashboard and quietly ignored the thing the link was about.
+  //
+  // `useModeParam` is the app's own answer rather than a new one (lib/hub-url.ts): every hub in
+  // Zenboard keeps "which mode am I in" in the URL, a MODE pushes history so Back returns you to
+  // the dashboard you came from, and the default carries no param at all — so `/today` is still
+  // the one address for Home, which is what the old note was protecting.
+  const [mode, setMode] = useModeParam<HomeMode>('view', 'dashboard', HOME_MODES);
   const topHighlight = highlights[0] ?? null;
 
   // ── The day's stage (§7V) ────────────────────────────────────────────────
@@ -250,19 +282,39 @@ export function TodayView({
   // morning, Rushil" but never which day, and Home is Today staged by time of
   // day (§7V). Same shape Habits already uses for the same job. No title
   // duplication: the H1 below is the greeting, not the date.
-  return (
-    <TooltipProvider>
-      <PageLayout
-        title={formatDayWithWeekday(new Date()) ?? ''}
-        subtitle={dayTasks.length > 0 ? `${done.length} of ${dayTasks.length} done` : undefined}
-      >
-        {/* ── Greeting ── the mark, who and when, what the day holds, how full it is. */}
-        <header className="px-[var(--panel-px)]">
+  // The rail's list loads on FIRST ENTRY to Ask, never on Home's own render — Home's loader is one
+  // wave of queries and a conversation list nobody asked for does not belong in front of it.
+  const history = useAskHistory({ active: mode === 'ask' });
+
+  // ── ONE PAGE, TWO ARCHETYPES ───────────────────────────────────────────────────────────────
+  // Dashboard is a single column you read downward — `PageLayout`, the app's first archetype.
+  // Ask, once it remembers its conversations, is a RAIL BESIDE A DETAIL, which is the second
+  // archetype and already exists: `HubLayout` owns the two-pane geometry, the responsive stack
+  // below `md`, both scroll regions, the rail's landmark — and the COLLAPSE the user asked for
+  // by name ("left side of history chat collessable"). Drawing a collapsible column inside Home
+  // would have been a third answer to a question the app has already answered twice.
+  //
+  // The toggle keeps its meaning: Ask is still a way of using Home rather than a different place,
+  // which is why the greeting and the Dashboard/Ask control travel INTO the detail pane rather
+  // than the page becoming somewhere else when you press it.
+  const body = (
+    <>
+        {/* ── Greeting ── the mark, who and when, what the day holds, how full it is.
+               CENTRED, on the toggle's axis (user, 2026-09-29). The toggle below has always been
+               centred in the content column and the greeting has always sat on its left edge, so
+               the page opened with two competing alignments and the control read as a thing that
+               had drifted loose. One axis makes the two a HERO — the mark, the sentence and the
+               two ways of using the day, stacked — and the cards below keep the left edge, which
+               is where a left edge belongs: on rows you read down.
+               `max-w-[58ch]`, because a centred line is read from BOTH ends: the greeting's
+               sentence runs to 866px on a wide window, and a centred measure that long makes the
+               eye hunt for the start of the next line. */}
+        <header className="flex flex-col items-center px-[var(--panel-px)] text-center">
           <div className="mb-2 flex items-center gap-1.5">
             <Mark size={24} />
             <h1 className="font-editorial text-title-2 leading-none font-medium text-balance text-ink-800">{greeting}, {name}.</h1>
           </div>
-          <p className="text-ui text-ink-500">
+          <p className="max-w-[58ch] text-ui text-balance text-ink-500">
             {open.length === 0 ? <>Nothing planned for today yet.</> : <>
             You’ve committed to{' '}
             <b className="font-medium text-ink-800">{open.length} {open.length === 1 ? 'task' : 'tasks'}</b>.</>}
@@ -278,8 +330,38 @@ export function TodayView({
           </p>
           {/* Capacity line (§7C): the day's load, in the same words and against the same day as the morning ritual
               and the Week board. Prose here rather than the bar — Home is a glance, the ritual is where you act. */}
-          {open.length > 0 && <CapacityLine c={cap} className="mt-2" />}
+          {open.length > 0 && <CapacityLine c={cap} className="mt-2 items-center" />}
         </header>
+
+        {/* ── Home's two modes ── the dashboard, or the conversation (user wireframe, 2026-09-29).
+               `<SegmentedControl>` because this is a VIEW TOGGLE and that is what every view toggle
+               in this product is — the same control as Month/Quarter/Year and List/Board/Calendar,
+               so the gesture is already learned. It is NOT a nav item: Ask is a way of using Home,
+               not a different place, and the greeting above stays the page's one title. */}
+        <div className="flex justify-center px-[var(--panel-px)] pt-5">
+          <SegmentedControl
+            aria-label="Home view"
+            size="lg"
+            value={mode}
+            onValueChange={(v) => setMode(v === 'ask' ? 'ask' : 'dashboard')}
+            fit="content"
+            options={[
+              { value: 'dashboard', label: <span className="inline-flex items-center gap-1.5"><Icon icon={LayoutGrid} size={16} />Dashboard</span> },
+              { value: 'ask', label: <span className="inline-flex items-center gap-1.5"><Icon icon={MessageSquare} size={16} />Ask</span> },
+            ]}
+          />
+        </div>
+
+        {/* ── THE PANE CHANGES, IT DOES NOT TELEPORT (user, 2026-09-30) ──────────────────────────
+               This was a bare ternary: the toggle's thumb slid over 150ms and the entire page
+               under it was replaced on the next frame. One half of the interaction animated, so
+               the other half's absence was the thing you noticed.
+               `<ViewSwap>` is the seam's primitive for it. `direction` is +1 going to Ask and -1
+               coming back, because Ask is the RIGHT segment: the pane travels the way the thumb
+               just travelled, which is Apple's spatial consistency and its "hint in the direction"
+               in one — 8px, a hint rather than a journey, on a control pressed many times a day. */}
+        <ViewSwap swapKey={mode} direction={mode === 'ask' ? 1 : -1} className="flex min-h-0 flex-1 flex-col">
+        {mode === 'ask' ? <AskHome /> : <>
 
         {/* ── The day's prompt (§7V) ── only before the plan ritual in the morning, only in the evening for the
                shutdown; the rest of the day Home shows the plan and gets out of the way. */}
@@ -309,12 +391,23 @@ export function TodayView({
             />
             <PanelBody>
               {!topHighlight ? (
-                <EmptyState
-                  size="inline"
-                  illustration={<Icon icon={Highlight} size={20} />}
-                  title="No highlight yet"
-                  description="Highlight a task to make it today’s focus — it surfaces here to tackle first."
-                  primary={<Button variant="secondary" size="sm" onClick={() => router.push('/tasks')}>Browse tasks</Button>}
+                // `<EmptyLine>`, not `<EmptyState>` — the DS says which, in states.tsx: nothing on
+                // the screen → EmptyState; something on the screen but THIS PART of it is empty →
+                // EmptyLine. Home is four sections, and every one of them used the page-sized
+                // state, which is budgeted at 180px each. On a fresh account that is four
+                // billboards saying nothing, stacked, instead of the plan the page is for.
+                // The header's own "View all tasks" is the action; a Browse button here was the
+                // same journey offered twice in one card.
+                // An empty CARD still needs a body. One grey sentence in 60px of white is the
+                // wireframe look (user, 2026-09-29: "this looks so empty… like a wireframe") — and
+                // it is the 2026-09-22 note's own warning, that a card must have weight even when
+                // nearly empty. `<AnchorRow>` is the references' row: a glyph to start at, a title,
+                // and a line saying what will appear here. Weight at 64px, not at 180.
+                <AnchorRow
+                  className="px-[var(--panel-px)] py-3.5"
+                  icon={<Icon icon={Highlight} size={16} />}
+                  title="Nothing highlighted"
+                  description="Highlight a task to make it today’s focus, and it surfaces here to tackle first."
                 />
               ) : (() => {
                 const t = topHighlight;
@@ -330,7 +423,13 @@ export function TodayView({
                         estimate={t.estimate_minutes} blocked={blockedIds.has(t.id)} />
                     </div>
                     <div className="flex w-full flex-wrap items-center gap-2 border-t border-line-soft px-[var(--panel-px)] py-3">
-                      <Button variant="secondary" size="sm" icon={<Icon icon={Play} size={16} />} onClick={() => router.push('/focus')}>Start focus</Button>
+                      {/* HOME'S ONE BRAND ACTION (2026-09-30). The card above it says "Do this
+                          first"; the button that does it was `secondary`, so the screen stated a
+                          priority and then drew it in the same grey as "Details". The view's only
+                          `primary` was the composer's Add below, which appears only while you are
+                          typing — so Home's single spot of colour was transient and its hero action
+                          had none. One filled accent per view, and on Home this is it. */}
+                      <Button variant="primary" size="sm" icon={<Icon icon={Play} size={16} />} onClick={() => router.push('/focus')}>Start focus</Button>
                       <Button variant="ghost" size="sm" icon={<Icon icon={Check} size={16} />} onClick={() => toggle(t.id)}>Mark done</Button>
                       <Button variant="ghost" size="sm" iconRight={<Icon icon={ChevronRight} size={16} />} onClick={() => openTask(t.id)}>Details</Button>
                     </div>
@@ -366,14 +465,17 @@ export function TodayView({
                       onChange={(e) => setVal(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter') add(); }}
                       data-chromeless
-                      placeholder='Add to today — try "Call Sam #acme !high 30m"'
+                      placeholder='Add to today. Try "Call Sam #acme !high 30m"'
                       aria-label="Add a task to today"
                       autoComplete="off"
                       data-1p-ignore
                       data-lpignore="true"
                       className="min-w-0 flex-1 bg-transparent text-ui text-ink-800 outline-none placeholder:text-ink-500"
                     />
-                    {parsed.title && <Button variant="primary" size="sm" onClick={add}>Add</Button>}
+                    {/* SECONDARY, not primary: the filled accent is spent on Start focus above.
+                        A composer's submit is a fallback affordance — Enter already adds — so it
+                        does not need to outrank the action the screen calls "do this first". */}
+                    {parsed.title && <Button variant="secondary" size="sm" onClick={add}>Add</Button>}
                   </label>
                   {/* Parsed chips — the confirmation layer (§7A). One shared surface. */}
                   {parsed.chips.length > 0 && (
@@ -382,9 +484,10 @@ export function TodayView({
                     </div>
                   )}
                   {plan.length === 0 && done.length === 0 ? (
-                    <EmptyState
-                      size="inline"
-                      illustration={<Icon icon={Sun} size={20} />}
+                    // The add line is directly above this, so the invitation is already on screen.
+                    <AnchorRow
+                      className="px-[var(--panel-px)] py-3.5"
+                      icon={<Icon icon={Sun} size={16} />}
                       title="Nothing on the plate"
                       description="Capture a task above to start shaping your day."
                     />
@@ -425,7 +528,55 @@ export function TodayView({
 
         {/* ── Habits ── */}
         <HabitsSection initialHabits={initialHabits} error={errors.habits} />
-      </PageLayout>
+        </>}
+        </ViewSwap>
+    </>
+  );
+
+  return (
+    <TooltipProvider>
+      {mode === 'ask' ? (
+        <HubLayout
+          // ── IN ASK MODE THE HEADER NAMES THE CHAT, NOT THE DAY ──────────────────────────────
+          // Both references head the pane with the conversation's own name ("New chat", or the
+          // first thing you said). The day is Dashboard's scope and means nothing to a chat you
+          // opened from Tuesday's group in the rail — and CLAUDE.md allows the page ONE title, so
+          // it has to be the one that describes what you are looking at.
+          title={history.conversations.find((c) => c.id === history.selectedId)?.title ?? 'New chat'}
+          subtitle={undefined}
+          railLabel="Chats"
+          rail={
+            <AskHistoryRail
+              conversations={history.conversations}
+              selectedId={history.selectedId}
+              today={todayISO()}
+              dayOf={(iso) => isoDateIn(iso) ?? null}
+              onSelect={(id) => { void history.select(id); }}
+              onNew={history.start}
+              onRename={(id, title) => { void history.rename(id, title); }}
+              onPin={(id, pinned) => { void history.pin(id, pinned); }}
+              onDelete={(id) => { void history.remove(id); }}
+              busy={history.busy}
+            />
+          }
+          railPadding={false}
+          bleed
+        >
+          {/* The detail pane owns its own geometry (`bleed`), so the fold height and the column
+              come from here rather than from the hub's reading column — the same
+              `--page-fill` column Ask had before it gained a rail. */}
+          <div className="mx-auto flex min-h-[var(--page-fill)] w-full max-w-[var(--view-maxw)] flex-col px-[var(--view-px)] pt-[var(--view-pt)] pb-[var(--view-pb)]">
+            {body}
+          </div>
+        </HubLayout>
+      ) : (
+        <PageLayout
+          title={formatDayWithWeekday(new Date()) ?? ''}
+          subtitle={dayTasks.length > 0 ? `${done.length} of ${dayTasks.length} done` : undefined}
+        >
+          {body}
+        </PageLayout>
+      )}
     </TooltipProvider>
   );
 }

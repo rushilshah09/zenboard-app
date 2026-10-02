@@ -73,7 +73,7 @@ export function Modal({ open, onOpenChange, size = "md", title, description, dir
             }}
             className={cn(
               "fixed left-1/2 top-1/2 z-modal flex max-h-[calc(100vh-96px)] -translate-x-1/2 -translate-y-1/2 flex-col",
-              "rounded-xl border border-line bg-surface-raised shadow-lift-3",
+              "rounded-lg border border-line bg-surface-raised shadow-lift-3",
               "zb-enter data-[state=open]:animate-rise data-[state=closed]:animate-exit",
               // Never wider than the viewport — the fixed SIZE widths (up to 720px)
               // otherwise overflow small screens off both edges.
@@ -100,7 +100,7 @@ export function Modal({ open, onOpenChange, size = "md", title, description, dir
               {children}
             </div>
             {footer && (
-              <footer className="flex flex-col-reverse gap-2 rounded-b-xl border-t border-line-soft bg-paper-2 px-5 py-4 sm:flex-row sm:justify-end">
+              <footer className="flex flex-col-reverse gap-2 rounded-b-lg border-t border-line-soft bg-paper-2 px-5 py-4 sm:flex-row sm:justify-end">
                 {footer}
               </footer>
             )}
@@ -158,7 +158,7 @@ export function ConfirmModal({ open, onOpenChange, tone = "danger", title, body,
           }}
           className={cn(
             "fixed left-1/2 top-1/2 z-modal w-[400px] -translate-x-1/2 -translate-y-1/2 outline-none",
-            "rounded-xl border border-line bg-surface-raised p-5 shadow-lift-3",
+            "rounded-lg border border-line bg-surface-raised p-5 shadow-lift-3",
             "zb-enter data-[state=open]:animate-rise data-[state=closed]:animate-exit",
           )}
           tabIndex={-1}

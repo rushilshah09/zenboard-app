@@ -109,15 +109,14 @@ const HEADER_KEYS = ['title', 'icon', 'subtitle', 'count', 'lead', 'tabs', 'acti
  * than one card.
  */
 export const HUB_RAIL_CLASS =
-  // `scrollbar-gutter: stable` (from `scroll-region`) reserves the gutter on ONE
-  // side, so a full-bleed child inside a rail is flush against the left edge and
-  // stops 7px short of the right — measured: a 230px rail with 223px section
-  // dividers, leaving a notch where the horizontal rule should meet the rail's
-  // vertical border. `both-edges` makes the reservation symmetric, so the rules
-  // sit an equal hairline in from both sides and read as a deliberate inset
-  // rather than as one that failed to reach. `auto` would let them touch
-  // exactly, but then the whole list jumps 7px the moment a scrollbar appears.
-  'scroll-region [scrollbar-gutter:stable_both-edges] flex w-full shrink-0 flex-col border-b border-line-soft max-h-[42vh] ' +
+  // A RAIL'S RULES MEET ITS EDGES (2026-10-02, user: "divider lines should connect properly to the
+  // edges … instead of looking randomly inset"). `scroll-region` reserves a scrollbar gutter, and on
+  // any machine with classic scrollbars that reservation inset every full-bleed divider: first a
+  // notch on one side (`stable`), then an equal 6px hairline on both (`stable both-edges`) — still a
+  // rule that stops short of the rail's own border. No gutter is reserved now, and the bar is thin:
+  // a rail rarely overflows, and when it does the list narrows by a thin bar's width rather than
+  // every rule in every rail living 6px from its edge.
+  'scroll-region [scrollbar-gutter:auto] [scrollbar-width:thin] flex w-full shrink-0 flex-col border-b border-line-soft max-h-[42vh] ' +
   'md:h-full md:max-h-none md:w-[var(--rail-w)] md:border-b-0 md:border-r';
 
 export function HubLayout({

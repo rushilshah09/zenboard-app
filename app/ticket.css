@@ -1,0 +1,210 @@
+/* ── THE GOLDEN TICKET (components/site/waitlist/golden-ticket.tsx) ────────────────────────────
+   The user's own artwork, from Figma (2026-09-30: "i want this same to same"). The drawing itself
+   is `public/site/ticket.svg` — the export, cropped to the ticket and with two changes:
+
+     · THE NUMBER WAS TAKEN OUT, because it is the one part that differs per person. It is drawn
+       over the art here, positioned from the export's own coordinates so it lands exactly where
+       Figma put it (88.23% / 82.75% of the cropped box, 45.5 units of its 2000-unit width).
+     · THE BRUSHED TEXTURE IS PROCEDURAL. Figma embedded it as a 1024px noise PNG — 1.5 MB of the
+       export's 2.1 MB, for uniform grey grain. `feTurbulence` makes the same grain for nothing,
+       which is how the Paper skin draws its stock too (theme-paper.css: "a theme never waits on a
+       network request"). The whole file is 76 KB now instead of 2,164 KB.
+
+   So this stylesheet no longer paints gold — the artwork does. What is left here is the FRAME the
+   artwork sits in, the number over it, and the light that moves across it. The two gold values
+   below are the number's own, lifted from the export's `paint27` stop colours, and they are the
+   ONE declared exception to the site's palette (site.test.ts forbids a raw colour in a component,
+   which is why they live here and not there). */
+
+.zb-ticket {
+  /* The number's gold, from the export's own gradient (#F8E7B9 → #C19754). */
+  --t-number: #f2dea8;
+  --t-number-shadow: #55391300;
+
+  position: relative;
+  display: block;
+  width: 100%;
+  /* The export's cropped box: 2000 × 1296.322. Not a rounded-off 1.58 — at 420px wide that error
+     is two pixels of black showing under the art. */
+  aspect-ratio: 2000 / 1296.322;
+  /* The ticket sizes its own contents, so the number is a share of THE TICKET, never of the page. */
+  container-type: inline-size;
+}
+
+/* ── THE TWO LAYERS ────────────────────────────────────────────────────────────────────────
+   The holder fills the box. The card sits inside it at the inset Figma drew it at, and is the thing
+   that MOVES: clicking draws it up out of the box (user, 2026-09-30). Everything printed on the card
+   — the name, the number, the travelling light — lives inside this layer, so it all goes with it. */
+.zb-ticket-holder {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.zb-ticket-card {
+  position: absolute;
+  left: 4.707%;
+  top: 6.983%;
+  width: 90.525%;
+  height: 86.127%;
+  /* The card sizes its OWN print: the number is a share of the card, not of the holder around it. */
+  container-type: inline-size;
+  /* Drawn out, and back in. The exit is quicker than the return, the way a thing being taken out of
+     a sleeve leaves faster than it is put back (Emil: an exit is quicker than its entrance). */
+  transition: transform calc(var(--duration-slow) * 2) var(--ease-drawer);
+  will-change: transform;
+}
+.zb-ticket[data-out='true'] .zb-ticket-card {
+  /* Up and slightly forward. 62% of its own height leaves the bottom third still in the box, which
+     is what says "drawn out" rather than "floating beside". */
+  transform: translateY(-62%) scale(1.02);
+  transition-duration: calc(var(--duration-slow) * 1.4);
+}
+.zb-ticket-face {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* The number and the name, where Figma put them — as shares of the CARD's own box. */
+.zb-ticket-number,
+.zb-ticket-name {
+  position: absolute;
+  font-size: 2.513cqw;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  color: var(--t-number);
+  pointer-events: none;
+}
+.zb-ticket-number {
+  right: 7.74%;              /* 100% − 92.26% */
+  top: 87.98%;               /* the measured position is a BASELINE, not a box edge */
+  transform: translateY(-88%);
+}
+.zb-ticket-name {
+  left: 7.83%;
+  top: 12.06%;               /* mirrored from the address at the bottom, so the two are a pair */
+  transform: translateY(-88%);
+  max-width: 46%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* ── THE LIGHT THAT TRAVELS ─────────────────────────────────────────────────────────────────
+   The artwork's highlight is fixed, because it is a drawing. This is the one thing a drawing
+   cannot do: catch the light as it arrives, and again when a hand passes over it. Never on a
+   loop — a ticket that glitters forever is a casino, and this page is asking for an email. */
+.zb-ticket-sheen {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  /* The artwork's own corner radius, as a share of the cropped box (130.356 / 1296.322). */
+  border-radius: 4.0cqw;
+}
+.zb-ticket-sheen::after {
+  content: '';
+  position: absolute;
+  inset-block: -60%;
+  inset-inline-start: -40%;
+  width: 26%;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.30), transparent);
+  transform: translateX(-140%) rotate(11deg);
+  animation: zb-ticket-sweep calc(var(--duration-slow) * 6) var(--ease-out-quiet) 1 both;
+  animation-delay: var(--duration-base);
+}
+/* A SECOND KEYFRAME NAME, and that is the whole trick. Re-applying the SAME animation on hover
+   does nothing — it has already run and the engine has no reason to start it again. Naming the
+   hover sweep differently makes it a different animation, so it plays on every entry. */
+.zb-ticket:hover .zb-ticket-sheen::after {
+  animation: zb-ticket-sweep-again calc(var(--duration-slow) * 4) var(--ease-standard) 1 both;
+}
+/* Both end OFF the face and invisible: a band parked inside the right edge sits there as a pale
+   rectangle for the life of the page. */
+@keyframes zb-ticket-sweep {
+  from { transform: translateX(-140%) rotate(11deg); opacity: 1; }
+  to   { transform: translateX(760%) rotate(11deg); opacity: 0; }
+}
+@keyframes zb-ticket-sweep-again {
+  from { transform: translateX(-140%) rotate(11deg); opacity: 1; }
+  to   { transform: translateX(760%) rotate(11deg); opacity: 0; }
+}
+
+/* It is not a button, so it does not press — but when it is the thing a person has just earned,
+   it arrives. One rise, on the site's own reveal curve. */
+@keyframes zb-ticket-arrive {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+}
+.zb-ticket[data-arrive='true'] { animation: zb-ticket-arrive var(--duration-slow) var(--ease-out-quiet) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .zb-ticket-sheen::after,
+  .zb-ticket:hover .zb-ticket-sheen::after { animation: none; opacity: 0; }
+  .zb-ticket[data-arrive='true'] { animation: none; }
+}
+
+/* ── YOU'RE ON THE WAITLIST (components/site/waitlist/waitlist-success.tsx) ────────────────────
+   The white page gives way to black the moment someone joins. A TAKEOVER: fixed, its own scroll,
+   above everything — the task is finished, so the form they just used should not still be there
+   under it. The black arrives first, then the card leaves its box, then the words rise: all three
+   at once is a flash, and in that order it is a reveal. */
+.zb-joined {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal, 50);
+  background: #0a0908;
+  animation: zb-joined-in calc(var(--duration-slow) * 2) var(--ease-out-quiet) both;
+}
+.zb-joined-scroll {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+@keyframes zb-joined-in { from { opacity: 0; } }
+
+/* The words and the actions, a beat behind the card. */
+.zb-joined-body {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity calc(var(--duration-slow) * 2) var(--ease-out-quiet),
+    transform calc(var(--duration-slow) * 2) var(--ease-out-quiet);
+}
+.zb-joined-body[data-shown='true'] { opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .zb-joined { animation: none; }
+  .zb-joined-body { opacity: 1; transform: none; transition: none; }
+}
+
+/* The card catching the light where your hand is (components/site/waitlist/ticket-sheen.tsx).
+   `soft-light` so it LIFTS the gold that is already painted there rather than laying a white
+   streak over it, and it only exists while a pointer is on the card. */
+.zb-ticket-gleam {
+  position: absolute;
+  inset-block: -30%;
+  inset-inline-start: -60%;
+  width: 26%;
+  border-radius: 50%;
+  background: linear-gradient(90deg, transparent, rgb(255 253 240 / 0.95), transparent);
+  mix-blend-mode: soft-light;
+  filter: blur(9px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-slow) var(--ease-hover);
+}
+.zb-ticket:hover .zb-ticket-gleam { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .zb-ticket-gleam { display: none; } }
+
+/* THE SMALL PRINT IS STRUCK IN, like everything else on the card (user, 2026-09-30: "write number
+   and name like website embossed"). Two shadows and no more: a dark one below-right where the
+   stamp's wall casts, and a pale one above-left where the light catches its lip. Rendered as HTML
+   over the artwork, plain text reads as a label someone stuck on; this makes it part of the metal. */
+.zb-ticket-number,
+.zb-ticket-name {
+  color: color-mix(in oklab, var(--t-number) 88%, #6b4f12);
+  text-shadow:
+    0 0.085cqw 0.04cqw rgb(255 250 226 / 0.55),
+    0 -0.07cqw 0.05cqw rgb(92 66 14 / 0.65);
+}

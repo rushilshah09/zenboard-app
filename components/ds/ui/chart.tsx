@@ -61,7 +61,7 @@ export function Chart({ type, labels, series, format = String, title, height = 1
         </table>
       ) : (
         <>
-          <svg viewBox={`0 0 ${W} ${height}`} className="w-full" role="img" aria-label={`${title} — use "View as table" for the data`}>
+          <svg viewBox={`0 0 ${W} ${height}`} className="w-full" role="img" aria-label={`${title}. Use "View as table" for the data`}>
             {/* horizontal gridlines only (§4.55) */}
             {[0.25, 0.5, 0.75, 1].map((f) => (
               <line key={f} x1={0} x2={W} y1={height - f * (height - 20)} y2={height - f * (height - 20)} stroke="var(--color-ink-050)" strokeWidth={1} />

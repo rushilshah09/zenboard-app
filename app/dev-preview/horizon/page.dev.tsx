@@ -10,7 +10,7 @@ import { Toaster } from '@/components/ds/ui';
 import { ActionFailureNet } from '@/components/shell/action-failure-net';
 
 const projects: Record<string, GoalProject> = {
-  p1: { id: 'p1', name: 'Balluji rebrand', color: '#B4166B' },
+  p1: { id: 'p1', name: 'Ridgeline rebrand', color: '#B4166B' },
 };
 
 const GOALS: Goal[] = [

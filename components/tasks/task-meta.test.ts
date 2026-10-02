@@ -19,7 +19,7 @@ const text = (markup: string) => markup.replace(/<[^>]+>/g, ' ').replace(/\s+/g,
 
 const FULL: TaskFacts = {
   blocked: true,
-  project: { name: 'Balluji rebrand', color: 'plum' },
+  project: { name: 'Ridgeline rebrand', color: 'plum' },
   list: { name: 'Errands', color: 'amber' },
   labels: [{ name: 'Waiting', color: 'orange' }],
   priority: 'high',
@@ -38,7 +38,7 @@ describe('TaskMeta — the facts of a task, drawn one way', () => {
 
   it('draws each fact once, in one order, on every surface', () => {
     const t = text(html(FULL));
-    const order = ['Blocked', 'Balluji rebrand', 'Errands', 'Waiting', 'High', '2/5', '4 Mar 2031', '30m'];
+    const order = ['Blocked', 'Ridgeline rebrand', 'Errands', 'Waiting', 'High', '2/5', '4 Mar 2031', '30m'];
     const at = order.map((w) => t.indexOf(w));
     expect(at.every((i) => i >= 0), `missing a fact in: ${t}`).toBe(true);
     expect([...at].sort((a, b) => a - b)).toEqual(at);
@@ -62,7 +62,7 @@ describe('TaskMeta — the facts of a task, drawn one way', () => {
     // gives up its word; the estimate stays whole.
     const m = html({ project: FULL.project, list: FULL.list, labels: FULL.labels, priority: 'med', estimate: 20 });
     const facts = [...m.matchAll(/<span title="([^"]+)" class="([^"]+)"/g)].map(([, title, cls]) => ({ title, narrowGone: cls.includes('@max-md:sr-only') }));
-    expect(facts.filter((f) => f.narrowGone).map((f) => f.title)).toEqual(['Balluji rebrand', 'Errands', 'Waiting']);
+    expect(facts.filter((f) => f.narrowGone).map((f) => f.title)).toEqual(['Ridgeline rebrand', 'Errands', 'Waiting']);
     // Priority: the word is the narrow-hidden part, the glyph is outside it.
     expect(m).toMatch(/<svg[^>]*>[\s\S]*?<\/svg><span data-fact-word="true" class="@max-md:sr-only">Medium<\/span>/);
     // The estimate never hides.

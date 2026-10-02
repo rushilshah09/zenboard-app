@@ -10,7 +10,7 @@ import { Skeleton } from "./skeleton";
 // Direction is not sentiment: the caller passes `sentiment` explicitly.
 export interface StatProps {
   label: string;
-  /** Formatted value. null = no data → "—" in ink-300 (never "0"). */
+  /** Formatted value. null = no data → "–" in ink-300 (never "0"). */
   value: string | null;
   delta?: { text: string; direction: "up" | "down"; sentiment: "positive" | "negative" | "neutral" };
   /** 0–1 normalised sparkline points. */
@@ -26,7 +26,7 @@ export function Stat({ label, value, delta, sparkline, loading, className }: Sta
       {loading ? (
         <Skeleton shape="line" className="h-8 w-32" />
       ) : value === null ? (
-        <span className="text-title-1 text-ink-300">—</span>
+        <span className="text-title-1 text-ink-300">–</span>
       ) : (
         <span className="text-title-1 tabular-nums text-ink-900" data-numeric>
           {value}

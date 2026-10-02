@@ -821,7 +821,7 @@ function NeedsYouStrip({ items, onOpen }: { items: NeedsYou[]; onOpen: (id: stri
             {/* `items-start`, because the line beside the badge is allowed TWO
                 lines. When the reason is "changes" that line is the client's
                 own note — the actual work — and one truncated line of it read
-                "Love it — can we cut the intro to 1…", which is a notification
+                "Love it, can we cut the intro to 1…", which is a notification
                 rather than an instruction. */}
             <div className="flex min-w-0 items-start gap-2 text-meta text-ink-500">
               {n.reason === 'changes'
@@ -923,7 +923,7 @@ function PipelineBoard({ pieces, todayISO, onOpen, onAdd, onMove, name, onRename
       {/* `DraggableBoard`, not `Board`: dnd-kit stays out of the DS barrel
           (`property-block.test.ts` — "the DS draws shapes; features bring the
           drag"), so the feature wraps the DS kanban in the behaviour. */}
-      <DraggableBoard columns={columns} onOpen={onOpen} addLabel="New idea" emptyLabel="Nothing here yet"
+      <DraggableBoard columns={columns} onOpen={onOpen} addLabel="New idea" emptyLabel="Drag an idea here"
         // Bleed the scroller to the page edge and pad INSIDE it. It sat inside the
         // region's 16px padding, so a board scrolled sideways cut its columns off
         // at a line 16px in from the edge, with blank page beside the cut —
@@ -1397,7 +1397,7 @@ function ContentCalendar({ pieces, todayISO, onOpen, onShoot }: {
                               calendar reads as two copies of one thing. */}
                           <Icon icon={e.kind === 'shoot' ? Video : CalendarIcon} size={12}
                             className={cn('shrink-0', e.kind === 'shoot' ? 'text-ink-500' : late ? 'text-danger' : 'text-info-600')} />
-                          {/* `text-caption`, 12px — it was `text-micro`, 10px, a size below
+                          {/* `text-caption`, 12px: it was `text-micro`, 10px, a size below
                               the type scale's own 11px floor, used for the ONE thing on
                               this surface a person actually reads. */}
                           <span className={cn('min-w-0 flex-1 truncate text-caption leading-tight', late ? 'text-danger' : 'text-ink-800')}>
@@ -1619,7 +1619,7 @@ function ShootDayView({ iso, pieces, onClose, onOpenPiece, demoScripts }: {
                 // No shot list is a real answer, not an error: plenty of pieces
                 // are filmed straight off the script. Say what would change it.
                 <p className="text-ui text-ink-500">
-                  No shots yet — a to-do line in the script is a shot.
+                  No shots yet. A to-do line in the script is a shot.
                 </p>
               ) : (
                 <ul className="flex flex-col">
@@ -1875,7 +1875,7 @@ function PieceEditor({ piece, projects, siblings, demo, stageTitle, onClose, onM
           label: stageTitle(meta.stage),
           // A picker, not a place: its menu MOVES the piece, so it wears a caret.
           caret: true,
-          menuLabel: `${stageTitle(meta.stage)} — move to another stage`,
+          menuLabel: `${stageTitle(meta.stage)}, move to another stage`,
           menu: () => [{
             items: offeredStages.map((s) => ({
               id: s,
@@ -1974,7 +1974,7 @@ function PieceEditor({ piece, projects, siblings, demo, stageTitle, onClose, onM
             real job — "what makes this worth watching" is the first thing you
             lose and the last thing you can reconstruct. */}
         <input data-chromeless value={meta.hook ?? ''} onChange={(e) => set({ hook: e.target.value })}
-          placeholder="The hook — why anyone would stop scrolling" aria-label="Hook"
+          placeholder="The hook, why anyone would stop scrolling" aria-label="Hook"
           autoComplete="off" data-1p-ignore data-lpignore="true"
           className="mb-4 w-full border-0 bg-transparent text-body text-ink-600 outline-none placeholder:text-ink-500" />
 

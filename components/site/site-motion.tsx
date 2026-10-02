@@ -55,6 +55,15 @@ function settle(part: HTMLElement) {
   part.addEventListener('transitionend', done);
 }
 
+/** A section's loops start from their first frame when it is first seen (user, 2026-09-28: "all
+    animation start when they appear in viewport"). The gate in globals.css holds them at the start
+    until then; this takes back the moment they ran before this script woke. Transitions are left
+    alone: they are the arrival itself. */
+function rewind(part: HTMLElement) {
+  if (typeof part.getAnimations !== 'function' || typeof CSSAnimation === 'undefined') return;
+  for (const a of part.getAnimations({ subtree: true })) if (a instanceof CSSAnimation) a.currentTime = 0;
+}
+
 export function arrivals(doc: Document): () => void {
   const win = doc.defaultView;
   if (!win || typeof win.IntersectionObserver !== 'function') return () => {};
@@ -85,6 +94,7 @@ export function arrivals(doc: Document): () => void {
         }
         part.style.setProperty('--reveal-i', String(Math.min(step, MAX_STEPS)));
         settle(part);
+        if (part.dataset.reveal === 'rule') rewind(part);
         part.setAttribute('data-shown', 'true');
         step += weight(part);
       }

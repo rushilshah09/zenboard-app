@@ -38,6 +38,26 @@ import { cn } from '@/lib/cn';
  *  A full-bleed row is not one of them; see `rowSurface` below. */
 export const ROW_RADIUS = 'rounded-md';
 
+/**
+ * How far the wash is inset from the card's side edges, in px.
+ *
+ * USER DIRECTION 2026-09-29, with a screenshot of a hover running into the card's left edge:
+ * *"on hover i want space from 4 sides, right and left it touches, not looks good."* The row had a
+ * vertical inset and no horizontal one, so a hovered row lit up as a band welded to both walls of
+ * the card instead of a pill lying inside it.
+ *
+ * **The old objection was real and is answered rather than ignored.** Insetting used to mean
+ * pushing every row's text out of line with the panel header above it — so the wash GIVES THE
+ * PADDING BACK: the outer pads by this, the wash pads by `--panel-px` MINUS this, and the first
+ * glyph still lands exactly `--panel-px` from the card edge. The same trick the vertical inset
+ * already used ("the padding lost to the inset is the padding the wash gives back").
+ *
+ * That also restores the radius. It was dropped because a rounded rectangle touching both edges
+ * has nothing to be inset FROM and shows four corner notches; now it has 6px on each side, which
+ * is what a corner needs in order to read as a corner.
+ */
+export const ROW_INSET_PX = 6;
+
 export type RowSurface = {
   /** The element that owns the divider, the ref and the group. */
   outer: string;
@@ -96,17 +116,14 @@ export function rowSurface({ selected = false, last = false, padding, heightClas
     // construction rather than by luck.
     // The height goes on the OUTER, so the declared number is what the list steps
     // by. Tailwind is border-box, so the divider is included rather than added.
-    outer: cn('group relative py-0.5', heightClass, !last && ROW_DIVIDER),
+    // The horizontal inset lives here with the vertical one, as padding, for the same reason:
+    // padding on the parent cannot collapse, so all four gaps are equal by construction.
+    outer: cn('group relative px-1.5 py-0.5', heightClass, !last && ROW_DIVIDER),
     wash: cn(
-      // NO RADIUS. The wash is full width — it has to be, because its padding
-      // is what aligns a row's text with the panel header above it
-      // (`--panel-px`), so insetting it horizontally would push every row 4px
-      // out of line. A rounded rectangle that touches both edges is a shape
-      // with nothing to be inset FROM: you get four corner notches showing the
-      // card behind them and no impression of a floating pill. Rounding was
-      // added to stop the fill colliding with the hairline; the vertical inset
-      // is what actually does that, and it does it without the notches.
-      'flex', ROW_TRANSITION,
+      // A PILL INSIDE THE CARD, not a band welded to its walls — see ROW_INSET_PX. The radius is
+      // the shared one, and the horizontal padding is `--panel-px` LESS the inset, so a row's first
+      // glyph still lines up with the panel header above it to the pixel.
+      'flex', ROW_RADIUS, 'px-[calc(var(--panel-px)-6px)]', ROW_TRANSITION,
       // h-full fills whatever the outer declared; without a height the wash is
       // sized by its padding and content exactly as before.
       heightClass && 'h-full',

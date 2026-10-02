@@ -96,7 +96,12 @@ export function eventsToIcs(
   for (const e of events) {
     if (!e.starts_at) continue;
     lines.push('BEGIN:VEVENT');
-    lines.push(`UID:${e.id}@zenboard.app`); // RFC 5545 requires a globally-unique UID
+    // RFC 5545 requires a globally-unique UID, and the convention is a domain you CONTROL —
+    // which `zenboard.app` never was. Moved to zenboard.life with the rest (2026-09-28).
+    // KNOWN CONSEQUENCE: a UID is an event's identity to a calendar client, so anyone already
+    // subscribed to a feed sees these as new events once rather than as edits. Pre-launch that is
+    // near-nobody, and shipping a UID on a domain we do not own is the worse of the two.
+    lines.push(`UID:${e.id}@zenboard.life`);
     lines.push(`DTSTAMP:${stamp}`);
     if (e.all_day) {
       const start = dateStamp(e.starts_at);

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { pageMetadata, SITE_PAGES } from '@/lib/site-pages';
 import { ContactEmail, DocLink, Effective, Items, LegalShell, Part, type Toc } from '@/components/site/legal';
 import { LEGAL } from '@/lib/legal';
 
@@ -6,10 +7,7 @@ import { LEGAL } from '@/lib/legal';
 // one: what it does today (free to use, no card payments taken, AI features, a client portal) and
 // nothing it does not. Have them reviewed by a lawyer before relying on them.
 
-export const metadata: Metadata = {
-  title: 'Terms of service · Zenboard',
-  description: 'The agreement between you and Zenboard when you use the Zenboard website and app.',
-};
+export const metadata: Metadata = pageMetadata(SITE_PAGES.terms);
 
 const TOC: Toc = [
   { id: 'agreement', title: 'This agreement' },
@@ -34,7 +32,7 @@ const TOC: Toc = [
 export default function TermsPage() {
   const { product, entity, governingState } = LEGAL;
   return (
-    <LegalShell
+    <LegalShell page={SITE_PAGES.terms}
       title="Terms of service"
       lede={<>The agreement between you and {entity} when you use {product}.</>}
       toc={TOC}

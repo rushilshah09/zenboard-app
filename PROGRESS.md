@@ -1,3 +1,949 @@
+## 2026-10-01 · The design program: hierarchy, one tone, a product that adapts, and a Documents index worth opening
+
+The user's brief: the product "looks default, no character … rethink from the ground up, not surface
+polish." Every finding below was MEASURED on the rendered page before it was changed.
+
+**Shipped**
+- **Card headings stopped being quieter than their content.** `PanelHeader` drew every card title at
+  14px/500 in the META ink (6.1:1) over body text at 7–12.26:1. Now `text-h2 text-ink-900` — the DS's
+  own declared card-title role, which the component wasn't consuming.
+- **The accent works again.** `primary` was `bg-ink-900` under a B&G rule that kept the brand out of the
+  workspace, contradicting CLAUDE.md's "ONE filled-accent (primary) button per view". Primary is the
+  brand fill now (user decision: one brand action per view), and every module's populated header got
+  the action its EmptyState already had — Zenboard used to show colour only when it had no data.
+- **The product adapts to the person** (`lib/nav-modules.ts`). Onboarding's role was written and never
+  read; it now seeds the rail (freelancer 7 · founder 8 · individual 6, against 12 for everyone).
+  Settings → Sidebar is the full control (behaviour, sets with Undo, every module described), sharing
+  one context with the rail and its popover. Unset preference = all modules: no migration, nobody loses
+  anything.
+- **One warm tone in light** (`--tint`). Every wash and hairline was the ink at a few percent, which
+  composites to CHROMA ZERO on a white card — the grey half of "two tones". Measured after: 0 grey
+  pixels across nine screens. Default/gray/stone tag rungs and `-on` glyphs moved onto the axis at
+  preserved lightness (9.41→9.43, 6.98→7.00).
+- **No gradient on product progress**; a full bar is now `complete` without the caller having to say so.
+- **The product stopped talking to users about its plumbing**: 24 places showed a migration number
+  ("Apply migration 0025…"). `lib/not-ready.ts` gives the person a sentence and the developer the
+  number in the console. Goals also misdiagnosed EVERY failed month goal as a missing migration.
+- **Documents index redesigned** (`components/documents/doc-index.tsx`): opens on All documents (it
+  opened on "Draft", which was really Unfiled, so filing a doc hid it); list is the primary view,
+  grouped by calendar recency in the person's zone (`lib/doc-recency.ts`); the gallery draws each page
+  as a miniature (`components/ds/ui/drawn.tsx`, the kit the slash menu already used); no create card;
+  titles truncated 0 of 32 (they truncated at ~16 characters).
+
+**Verified** — 3,461 tests; every change measured in light and dark in the browser; guards added for
+each rule (accent primary, raw entity colours, one tone composited as the browser does, plumbing copy,
+recency grouping, the tile/list surfaces re-anchored with measured ratios).
+
+**Owed** — Messages redesign (next); empty-state illustrations in the site's drawn style; dark mode's
+own chroma-0 rungs (`#272727`, the `paper-5` gallery ground `#0C0C0C`), left alone because the brief
+was light mode; populated Trash rows not staged in the harness (no archived docs, server action).
+
+## 2026-09-30 · Ask's history rail, wired — and the list stops disagreeing with the chat
+
+The rail, the grouping, the write path and the migration were all in place. What was not in place was
+the wiring between them, and every fault below was found by opening it rather than by reading it.
+
+**The rail could not see the conversation you were in.** `useAskHistory` exported a `bump(id, title)`
+for the send path to call when a conversation was created. **Nothing ever called it.** So asking your
+first question filed a conversation, selected it, put its id in the store — and left the rail reading
+"Your chats will appear here" while you sat in the chat it was describing. The list only agreed with
+the store after a reload, which is the one moment nobody checks.
+
+It is reconciled now, not pushed to: `withLive` (lib/ask-history.ts) folds what the browser knows into
+what the server listed, from an effect that watches the store. There is no call to omit, and a chat
+started in the SIDE PANEL turns up in Home's rail for free, because both surfaces share one store.
+
+- **The first version of that fix was a derived overlay, and the browser caught it too.** Start a chat,
+  open Tuesday's from the rail, and the one you had just started VANISHED — an overlay only ever
+  describes the CURRENT conversation. Folding it into the list makes the rail cumulative, which is what
+  it is. `withLive` returns the array it was handed when nothing changed, so the effect cannot loop.
+
+**A conversation is in the URL, which the rail had been promising in a comment for a day.** `?chat=<id>`
+by `useRecordParam` — `replaceState`, because choosing a conversation is choosing a record — and the URL
+follows the STORE rather than the rail's clicks, so it is right when the side panel changes the
+conversation with Home behind it. Home's mode went with it (`?view=ask`, `useModeParam`, pushState):
+that reverses a written decision ("a URL for it would be a second address for the same page"), which was
+right while Ask was one conversation that ended on reload and stopped being right the moment chats were
+kept — a link to a conversation has to LAND in the conversation.
+
+- **The restore raced the reflect.** The "have we restored yet" flag was a ref, which flips before the
+  round trip it starts, so the effect that keeps the URL in step ran in the same commit, saw an empty
+  store against a `?chat=` that had not loaded, and STRIPPED the link it was opening. The conversation
+  still arrived; the address bar was left saying nothing. A restore is not over when it begins.
+
+**Rename opened a field and immediately abandoned it.** A closing Radix menu hands focus back to its
+trigger, which pulled the caret out of the field that had just mounted — and the field COMMITS ON BLUR,
+so the rename ended the instant it began, with the old name, silently. The two-line answer already
+existed in `components/projects/workstream-controls.tsx`; a flag set by the Rename item and read by
+`onCloseAutoFocus`, so Pin and Delete still hand focus back the way a keyboard expects.
+
+**The transcript's stamp failed at the only case it was built for.** `Ask · 14:30` is the right header
+for a conversation you are having now and a lie about one from last week — and reopening a chat from
+the rail is the whole reason the stamp exists. `conversationWhen` names the day when it is not today
+("Ask · Yesterday at 17:15"), and `loadAskConversation` now returns the `created_at` it was already
+ordering on and throwing away.
+
+**Two migrations were numbered 0044.** Chat's reactions (09-25) and Ask's history (09-29). Nothing
+breaks — that is the danger. This project has no migration runner; the user applies DDL by hand, in
+order, by pasting, so the directory is a numbered list of INSTRUCTIONS and two 0044s is an ambiguous one.
+The failure is somebody running one file, recording "0044 applied", and the other never being run. Ask's
+is 0049. `supabase/migrations.test.ts` now fails on a duplicate number and on a gap (a gap is how the
+next collision starts), with rollbacks exempt because they share their migration's number on purpose.
+
+**Smaller, and still real.** The rail declared a `busy` guard — "nothing that would abandon an answer in
+flight can be pressed" — and was never passed the value, so New chat could be pressed mid-answer. The
+panel's reset said "New conversation" while the rail, the empty line and the URL all called the thing a
+chat. The rail's recency sort compared ISO strings, which is only valid while every string shares one
+format and one offset; it mixes Postgres's `+00:00` and the browser's `Z` the moment a live row is
+folded in, so it parses now (honestly: at `+00:00` the two agree on everything a person could see — the
+point is that the ordering should not depend on that).
+
+**Verified in the browser**, which is where all of the above came from: the Home harness stages Ask's
+history (`/dev-preview/home?view=ask`, `?chats=0` for the empty rail), so the rail is the real one, in
+the real HubLayout, with only its four server actions scripted. New chat appears in Today as you type ·
+it stays when you open another · `?chat=` survives a cold load · Back returns to the dashboard · the
+rail collapses · rename holds its focus. Suite: **3,410 passing, 0 failing**.
+
+## 2026-09-30 · The waitlist is the front door, and the admin can finally read it
+
+**The shape.** `/waitlist` replaces "Start free" everywhere: `SIGN_UP` in `components/site/site-chrome.tsx`
+carries the address and `SIGN_UP_LABEL` the words, so no two buttons can disagree about what the front
+door is. Somebody leaves an email, claims a handle, and gets back a numbered golden ticket — the user's
+own Figma artwork (`public/site/ticket.svg`, 76 KB after the embedded 1024px noise PNG became
+`feTurbulence`), served as an `<img>` and never inlined, because Figma's generated ids
+(`paint5_linear_2_2`) collide the moment two tickets share a page and every instance silently resolves
+to the first one's defs.
+
+**One number feeds two readings.** `WAITLIST_SEED = 80` in `lib/waitlist.ts`, and the sequence in
+`0048_waitlist.sql` starts at `SEED + 1`. The count on the page is `SEED + rows`; a person's number is
+their sequence value. Move one without the other and what somebody is told stops agreeing with the
+ticket they are handed a second later, so `lib/waitlist.test.ts` asserts the SQL and the constant
+together.
+
+**Sign-up is closed at the ROUTE, not on the screen.** `SIGNUPS_OPEN = false` gates
+`app/api/auth/signup/route.ts` with a 403. Hiding the form is the courtesy; the route is the door.
+
+### The admin list could not see what it had asked people for
+
+The handle is claimed IN THE JOIN INSERT (user: "username use when they fill"), which removed the whole
+second step and with it the bearer capability the browser used to be handed. It has been stored since.
+It was never SHOWN: `listWaitlist()` selected five columns and `username` was not one of them, so
+`@rushil` existed in the database and nowhere a human could reach it. A handle is collected at the door
+and **held until launch** — that is a promise only the person who runs the platform can keep, and they
+cannot keep a promise they cannot read. Now on the row, in the table, in the CSV, and searchable with or
+without the `@`.
+
+**Three things went with it.**
+- **A dead endpoint, deleted.** `claimUsername(id, raw)` was the old second step's action. Its only
+  caller had been gone for hours; the function had not. Every export of a `'use server'` module is a
+  PUBLIC ENDPOINT, so an unreachable function is still reachable by anyone who is not using the form —
+  dead code there is not merely dead, it is a door left open onto a table with no RLS policies at all.
+  The file's own header claimed it exported "exactly one function" while exporting three; it exports two
+  now and says so, and `lib/waitlist-flow.test.ts` asserts the list rather than inventorying it.
+- **The export filename was the UTC date.** `toISOString().slice(0, 10)` — the exact call the day-ids
+  rule exists to forbid — so in IST every export taken between midnight and 05:30 was filed under
+  yesterday. `todayISO()` with no zone: client code, and the browser already knows which day the person
+  downloading it is standing in.
+- **The admin table has a dev-preview.** It sits behind a password and renders real people's email
+  addresses, which makes it a bad thing to open in order to check a column width. `app/dev-preview/waitlist`
+  now renders it from three invented rows covering what actually differs: a claimed handle, an unclaimed
+  one (an en dash, not a hole that reads as a rendering fault), and a name with a comma that would shift
+  every later CSV column if `csvField` stopped quoting it.
+
+**A guard that failed on its own prose, again.** The assertion that `claimUsername` was gone matched the
+banner explaining why it was gone. Strip the comments before scanning — the third time this repo has
+learnt it.
+
+### Two bugs the first ship put live
+
+**`head: true` swallows the error, so the probe lied.** `waitlistReady()` asked with
+`.select('id', { head: true, count: 'exact' })`. A HEAD response has no body **by definition**, so
+PostgREST's 404 for a missing table came back with **zero bytes**, supabase-js had nothing to parse and
+returned `error: null` — and the probe answered "ready" for a table that did not exist. The live site
+showed a working-looking form that would have failed on submit. Measured against the deployed project:
+`HEAD …/waitlist` → 404, 0 bytes; `GET` → 404, 166 bytes carrying `PGRST205`. **A capability probe must
+ask a question whose answer can physically come back.** Found by probing REST directly against a
+must-fail control (`zzz_not_a_table`), which is what proved `PGRST205` means "missing" and not
+"forbidden".
+
+**The missing-table code is `PGRST205`, not `42P01`.** Everything reaches Postgres THROUGH PostgREST,
+which answers a missing relation from its own schema cache; `42P01` only surfaces when a relation
+vanishes under a prepared statement. Checking `42P01` alone turned "the migration isn't applied" into
+"Something went wrong."
+
+### Where it stands
+
+Migration 0048 is applied and the list is real: the site reads **82 already joined** (80 seeded + 2), and
+the next ticket is #083. `ADMIN_PASSWORD` is set on the live deployment — probed with a deliberately
+wrong password, which answered "That password is not right" rather than "No admin password is set on this
+deployment", so the gate at `https://zenboard.life/admin/waitlist` opens today. `ADMIN_EMAILS` is unset,
+which is the safe direction: a missing variable must never mean "let everyone in", and the password door
+is the one in use.
+
+**Owed:** the domain still serves the build from before the handle moved into the join form — the live
+form has no username field and the live admin list has no username column. The tree is green (tsc clean,
+3,400 tests) but `wrangler` has no credentials in this environment, so the deploy is the user's:
+`npm run ship`.
+
+## 2026-09-29 · zenboard.life live · founder banners
+
+**The domain.** The .life registry has delegated to Cloudflare since 2026-09-28 11:12 UTC. The zone
+had imported Hostinger's parking records (`A zenboard.life → 2.57.91.91`, `CNAME www`), which the
+Workers custom-domain API will not replace (`code: 100117`, "delete them first"), so they were deleted
+in the Cloudflare DNS tab and `npx wrangler triggers deploy` attached `zenboard.life` and
+`www.zenboard.life` to the live version without uploading code. `wrangler.jsonc` now spells out
+`"workers_dev": true`: wrangler turns workers.dev on by default only when there are NO routes, so the
+two routes alone would have switched that address off, and calendar feeds, MCP clients, links in sent
+emails and the ship smoke all live on it. `.env.local` sets `NEXT_PUBLIC_SITE_URL=https://zenboard.life`
+for email links (baked in at build). Verified live: `/` 200, `/login` 200, `/today` 307 → `/login`, a
+Let's Encrypt certificate for zenboard.life, workers.dev still 200.
+**Owed:** the domain serves version `0b60e462` (2026-09-27). The tree is red on three source-scan tests
+from the in-flight homepage and SEO restructure (`site-home.tsx`, `lib/site-pages.ts`), so the newer site
+ships when that goes green, or when the user runs `SHIP_ORIGIN=https://zenboard.life npm run ship -- --skip-gate`.
+
+**Founder banners.** `app/dev-preview/social/page.dev.tsx` composes the LinkedIn (1584×396) and X
+(1500×500) banners from the website's own parts: the ground and its hairline, the drawn `Logo`, the
+hero's line in its two tones, the showcase picture with its print, and the live `AppWindow` cut by the
+frame. The words start to the right of where each network lays the profile photo (`&safe=1` draws it).
+`scripts/verify/capture-social.mjs` exports both at DPR 2 into `brand/social/` over CDP, because
+Chrome's one-shot `--screenshot` never settles on a `next dev` page (its virtual time waits on the
+live-reload socket). Tried and dropped: the hero's half mark on the plain ground beside the words; its
+recognisable part lands under the photo and the rest reads as grey noise.
+
+## 2026-09-29 · Ask: one sentence becomes one performed act (A1 of ASK_PLAN.md)
+
+**Brief:** three new modules (Mail · Chat · Meetings), whose Chat section asks for the app's chat to
+become *"the natural-language command center for Zenboard … Do not make users navigate through
+multiple screens for simple actions that can be completed through Chat."* Build order chosen with
+the user: the command spine first, because Mail and Meetings each register their verbs into it
+rather than growing a second assistant. Then, mid-sprint: *"i want claude type functionality like
+this wireframe chat feature, i want toggle"* (Home gets Dashboard | Ask), *"this design looks
+basic"*, and *"take chat model inspiration from this"* (Zenboard's own task composer).
+
+**What shipped.**
+- **`lib/ask.ts` — the rules, pure and fully tested** (29 cases, no model, no database). Three of
+  them carry the design: a model CHOOSES from a fixed list and never writes; it hands back the
+  PHRASE a person used, never an id, and an ambiguous match is a question rather than a guess; and
+  it never computes a date, it repeats the person's own time words, which chrono reads against a
+  known instant in their zone. `forwardDate` is on, so "monday" said on a Wednesday is the Monday
+  ahead and not the one two days behind — a task quietly moved into the past looks like it worked.
+- **The line between run and offer is not "is it a write"** — almost everything is. It is whether
+  the command touches a record that ALREADY EXISTS, because that is where this goes wrong: the part
+  a model gets wrong is WHICH ONE, and that is exactly what a person can check at a glance when
+  shown the title. Creations run and say what they did; `complete_task`, `reschedule_task` and
+  `create_reminder` are offered through `<SuggestionRow>`, the house's proposal row, whose receipt
+  slot holds the sentence that produced them. `TOUCHES_EXISTING` is the rule and a test proves no
+  command escapes the classification.
+- **`lib/actions/ask.ts` writes through the same server actions the buttons call** — `addTask` here
+  is Home's `addTask`. So the space, the recurrence, the Google push and the RLS scope are enforced
+  for a typed sentence too, because there is no second path to enforce them on. A confirmed
+  proposal is assumed forged and is safe for a stated reason: every action opens an RLS-scoped
+  client for the caller and filters `.eq('id', …)` on top, so a tampered id selects zero rows.
+- **Two surfaces, ONE conversation** (`lib/ask-store.ts`, a module store like the recorder's):
+  Home's Ask mode (a `<SegmentedControl>` under the greeting, from the user's wireframe) and the
+  side panel mounted once in the shell, reachable by `A`, the top bar, or ⌘K's fall-through row.
+  Verified in the browser: asked on Home, the panel opens holding the same turn.
+- **An answer draws the app's own components.** "Show me today's tasks" renders real `<TaskRow>`s —
+  the checkbox works, the title opens the drawer, the project chip and estimate read as they do
+  everywhere. PRODUCT_CONTEXT's "one object, many views" taken literally: a conversation is another
+  view, so it uses the view's component.
+- **⌘K hands over rather than competing.** An always-last "Ask …" row carries what you typed into
+  the panel, so nobody learns which box to use. The palette's private `GROUPS` lost its glyph and
+  hub half to **`components/ds/record-face.ts`** — its own comment already said "a record has one
+  face in this product" while being the only copy of it.
+- **The chat composer became `MessageComposer` in the DS**, with chat binding its own body check.
+  A second copy would have been a second answer to "what does Enter do".
+
+**The design pass (user: "this design looks basic"), against `emil-design-eng` and `better-ui`.**
+The first pass shipped the DRAWER'S composer on a whole page: one hairline line, 32px tall, in the
+middle of nothing. The faults were structural, not taste. A bordered field inside a bordered card is
+two boxes — so the composer became the SURFACE (`size="roomy"`), carrying the border, the elevation
+and the footer, with the field inside it chromeless via a new declared `chromeless` tier on the DS
+`Textarea`. And the anatomy is **Zenboard's own task composer**, not a chat widget: card, chromeless
+field at lead size, full-bleed sunken footer band with a quiet left end and the action at the right.
+Its left end says what Ask can SEE — the open record — which is this product's honest answer to a
+chat app's model picker. Four identical centred pills became four rows at the card's own inset, on
+the 32px rung, with the arrow revealed on hover. The entrance is `<Appear index>`, the DS's own
+stagger, which is still for reduced motion and for anything a key opened.
+**No focus ring on the composer card**, and that is the house's answer rather than a lapse: the task
+composer has none either, a 2px accent ring around a 500px card is a frame rather than an
+affordance, and the field is focused the moment the mode opens, so it would be the resting state.
+
+**What the guards caught, all of it real.** chrono-node statically imported (`lib/natural-date.ts`
+is THE importer, and a static one puts ~78 KB on every screen with a date field) · em dashes in
+copy, twice · `bg-surface`, a class the theme never declares, so it compiled to nothing ·
+`hover:bg-*` on top of `zb-press`, which already washes on hover — one state applied twice ·
+setState inside an effect. Each was fixed at the rule, not the symptom.
+
+**And what the LIVE model caught** (`lib/ai/ask.live.test.ts`, the brief's own sentences against
+Groq, 8/8 in ~5s): *"Find my emails from Alex"* came back as `find`, which would have searched
+Zenboard and reported "nothing" — telling somebody their inbox is empty on the strength of a table
+that has never seen an email. The prompt now states what `find` searches and what this app does not
+hold. **A model bending a request into the nearest available verb is the failure mode worth testing
+for**, not whether it picks the right verb when one exists.
+
+**The card is DUAL-TONE, and I broke that before fixing it.** Measuring Home's cards found a real
+thing: page L 96.29 → header band L 94.20 → body L 100, so a card's own header is darker than the
+ground it lies on, and four stacked bands read as stripes. I concluded the card did not need two
+tones and flattened `Panel` to `bg-paper`. **Wrong, and the user caught it in one screenshot pair** —
+light beside dark: *"like dark mode i want 2 colour in white mode, single white looks like
+wireframe"*, then pointing at Ask's composer, which is the same white-body-plus-sunken-band recipe.
+Flattening produced exactly the failure [[zenboard-home-cards]] already records: a card must have
+weight even when nearly empty, and one white rectangle with a grey line in it has none. Reverted.
+**The measurement was right and the conclusion was not**: light has no rung between the page (0.968)
+and the card (1.0) for a band to use, so the band reaches past the ground for the nearest step
+(`--muted`). Adding that rung is owed; deleting the tone was not the answer.
+
+**The Focus switch: the track is sized BY the thumb now.** User screenshot, "Focus" spilling out
+past the pill. The track was a two-column grid sized by its two SHORT words while the thumb had to
+hold a third, longer one at `calc(50% - 4px)` — **two widths with no relationship between them**, so
+any name wider than "Off"/"on" overflowed, and nothing caught it because no guard asserted that the
+pill fits. An invisible copy of the thumb's own content now sets the first column and the travel is
+the second, so the track is by construction thumb + travel, in any language, with nothing measured
+at runtime (the hidden-mirror trick the DS Textarea already uses to grow).
+
+The labels also stopped fading. Per the user's spec — *"Off and On remain fixed in the background,
+while the Focus pill slides horizontally between them… partially covering them as it moves"* — they
+are fixed and the pill occludes them, which says the same thing without asking the eye to track two
+opacities at once, and makes a half-drag read as half. One number, `TRAVEL_PX = 34`, is shared by
+the CSS transform and the pointer handler, so the thumb cannot land somewhere the transform does not
+put it. MEASURED in the browser at three positions — inside the track's ends by 3/37, 20/20, 37/3 px,
+with "Off" and "on" uncovered by 0/34, 17/17, 34/0 — symmetric, never overflowing, half at half.
+The two source-text guards that described the old crossfade and the old percentage transform now
+assert the new invariants, plus the one that was missing: that the pill fits its track.
+
+**The row hover is a pill inside the card, not a band welded to its walls.** User, with a crop of a
+hover meeting the card's left edge: *"on hover i want space from 4 sides, right and left it
+touches, not looks good."* `rowSurface` had a 2px vertical inset and no horizontal one. The
+standing objection to insetting was real — the wash's padding is what aligns a row's text with the
+panel header above it, so insetting would push every list in the app out of line — and it is
+ANSWERED rather than overruled: the outer pads by `ROW_INSET_PX` (6) and the wash pads by
+`--panel-px` LESS the same 6, so the padding lost to the inset is the padding the wash gives back.
+That is the same trick the vertical inset already used. With 6px on each side the radius has
+something to be inset from, so `rounded-md` returns; it had been dropped because a rounded
+rectangle touching both walls shows four corner notches. MEASURED after, on a Waiting row: gap left
+6px, gap right 6px, radius 8px, **first glyph 16px from the card edge and the header label 16px** —
+the alignment the objection was protecting, intact. The guard that asserted "not rounded, because
+it is full width" now asserts the new invariant instead, including the two numbers that must move
+together or every list goes quietly out of line with its own header.
+
+**Empty sections got a BODY instead of a sentence.** `<AnchorRow>` (new, `components/ds/ui/`) is the
+row all nine of the user's Granola/Linear references are built from: a 32px glyph well, a title, a
+line under it, and a control on the trailing edge. It was already inside `SettingsRow`, named for
+its first consumer; it is extracted now and `SettingsRow` binds to it. Its well is `surface-fill`,
+a WASH — it had been `bg-paper-3`, which resolves to `--popover`, i.e. pure white, so on a white
+card the well was invisible and on a settings pane it only worked because the pane behind it was
+not white. Home's four empty sections use it: ~64px with an anchor and a sentence, where they had
+been 180px centred billboards and then, briefly and worse, one floating grey line.
+
+**Home's dashboard, same sprint (user: "fix this", pointing at an empty account).** Four sections,
+four `<EmptyState size="inline">`, and the DS's own `states.tsx` already says that is the wrong
+component: *nothing on the screen → `EmptyState`; something on the screen but THIS PART of it is
+empty → `EmptyLine`*. Every one of them is budgeted at 180px, so a fresh account opened on four
+stacked billboards saying nothing where the plan should be — which is also CLAUDE.md's own "design
+the populated state as the primary design", failed four times in one page. All four now use
+`<EmptyLine>` (Highlight, Plan, Schedule, Habits), and two duplicate actions went with them: the
+highlight's "Browse tasks" and the schedule's add were each already in their panel header. Habits
+keeps its action, inline in the sentence, because it starts something that exists nowhere else on
+the page. Measured after: Highlight + Plan together ~120px where they had been ~400px.
+`app/identity.test.ts` then caught the replacement copy saying "star a task" — the action is called
+**highlight**, and the glossary owns that word.
+
+**Verified.** 29 pure tests · 8 live against a real provider · `tsc` and `eslint` clean on every
+file touched · both surfaces driven in the browser through every answer kind (created, offered,
+accepted, "which one?", tasks, agenda, search, refusal, allowance) via `/dev-preview/ask`, which
+answers the real components from a script.
+
+**Owed.** `lib/meeting-suggest.ts` is half-written and untracked from another session in this tree:
+33 `tsc` errors and two test files that will not load. Untouched — it is not this sprint's area.
+Ask is labelled **Ask** and not "Ai Chat": "Chat" already means Messages in this product's glossary,
+and a second Chat would be the collision CLAUDE.md forbids. One word to change if the user prefers.
+
+## 2026-09-29 · The website, light only; the pictures painted again; the hub in the brand; the chapter pictures and portal stories rebuilt
+
+**Briefs (in order):** "we only keep light mode, we're removing dark mode … use our original gradient,
+in the current brand, and make it more cohesive" · "I like the previous gradient version; this looks
+faded, more empty" · "fix this animation gradient, make it in brand" · the portal cards: "proper,
+delightful animation, on loop" · "fix this illustration" (the keyboard) · of the twelve chapter pictures:
+"too basic … bugs, bubble layers, duplicate file layers, spacing, alignment … proper UI snippets".
+
+**What shipped (local; not deployed).**
+- **One appearance for the website** (`lib/theme.ts` `SITE_APPEARANCE`, `SITE_PATHS`, `isSitePath`):
+  every page in `lib/site-pages.ts` plus `/demo` resolves to light, the default skin and berry, in the
+  boot script before first paint and in every later `applyAppearance`; the stored choice is never
+  touched, so the app keeps dark. `AppearanceBoot` re-applies on every pathname (a soft navigation
+  keeps the layout mounted). The site's theme switch is deleted; the demo's storage is seeded with the
+  site appearance and its storage-event theme sync is gone; the halftone's theme observer is gone;
+  every `html[data-theme='dark']` rule in the website's CSS is gone (the board's own
+  `site-board.css` is left exactly as given).
+- **The pictures are painted again** (`globals.css` "the pictures"): the 2026-09-26 recipe restored
+  verbatim in light: `--f-ink-*` at `l − 0.16, c × 3.0`, one arc per chapter (`--f-a/b/c`), four
+  radials placed as fractions plus the 108° bloom, the print over the whole picture through
+  `overlay` (`.site-screen` is the blend only now). `--site-stock`, `--f-mask` and `data-outer` went
+  with the pale recipe.
+- **The hub's centre is the brand's own picture**: the tile painted in the pictures' recipe in the
+  mark's arc (`--hub-deep` = accent, `--hub-rose`/`--hub-warm` = petal/apricot at picture strength),
+  every picture's grain, two coloured lights turning under a still mark; the glow is the same arc
+  with its light on the same side; each ripple is the tile's colour leaving it along the same axis
+  (45°, no turning). No sky, sage, butter or periwinkle in the centre, no conic wheel.
+- **The portal's three pictures tell stories** (`use-story.ts`, `portal-section.tsx`, globals.css "a
+  portal picture tells its story"): a clock in script (runs only while seen, starts from step 0 the
+  first time, holds the told step under reduced motion), parts that say from which step they show
+  (`data-on`), and CSS transitions (`plot-in`, `plot-pop`, `plot-swap`, `plot-roll`, `plot-draw`,
+  `plot-grow`, `plot-strike`, `plot-cursor`, `plot-press`, `plot-ping`, `plot-settle`). Request →
+  approved → lands as a task → ticked done while her status follows; Maya's cursor travels, presses
+  Approve, the answer replaces the buttons and is stamped; the sent invoice is paid, the balance rolls
+  to $0 and the paper settles. Story pictures are LOOPED (`Plot story`), so they do not fan on hover;
+  the approvals card lost its live button for that reason. Task boxes in them are square.
+- **The twelve chapter pictures rebuilt** (`snippets.tsx`, `demos.tsx`, `areas.tsx`): every picture
+  is a `Screen` (the app's page header: place › page, the page's own controls) at one width
+  (`SCREEN_WIDTH`, 34rem), with at most ONE piece of context drawn as the product's toast
+  (`SceneToast`) on the bottom edge. Fixed: the ghost "stack" cards that ran past every card (anchored
+  to a full-width wrapper), floats sitting on rows, "A.PISM" (now `AvatarGroup` with faces), the
+  calendar's labels 8px above their lines and its half-hour events clipped (zero-height hour rows,
+  0.8px a minute, a now line), the unbilled total. Removed two claims the product cannot make:
+  "Reminder sent" (invoice reminders are `planned` in lib/automations.ts) and "Nudge sent".
+- **The keyboard drawing**: the board is 344 wide and centred, so its stepped bottom row (40px in)
+  no longer hangs the B key off its edge.
+- **Dead code removed** (backed up to the session scratchpad first; `illustrations.tsx` was never
+  committed): `app-demo.tsx` (the old fake demo), `portal-spotlight.tsx`, `illustrations.tsx`, the
+  `.ill-*` and key-press CSS, `PortalArea`.
+
+**Verified.** Headless Chrome with the STORED theme dark: `<html>` light / default / #C41C72 on `/`
+and `/demo`; all twelve chapter pictures captured by real tab presses; the hub; the portal stories at
+three moments; the keyboard. `/demo`: zero requests after ticking a task, no console output. Full
+suite 3,027 passed; tsc clean on every touched file; eslint clean (one pre-existing warning in
+lib/theme.ts).
+
+**Owed / noticed.** The product's quick-add hint (seen in the demo) says `#acme`, a sample name the
+user ruled out: an app string, not the site's. The Focus switch label still clips ("Focu").
+Deploy only on request.
+
+## 2026-09-28 · The landing page in one colour system: stock and one glow per picture, one dark band, titles in two tones
+
+**Brief:** "Right now, focus only on the landing page. Implement the colors and complete every single task
+related to the landing page", the colour and type system proposed in the Ramp canvas
+(claude.ai/artifact/3am22hxuiX5QwZmzcKfDJK), built on the warm 68° surfaces another session shipped today.
+
+**What shipped (local; not deployed).**
+- **Pictures, one recipe** (`globals.css` "the pictures"): warm stock (`--site-stock`, a step below the
+  ground), the place's glow from the picture's OUTER lower corner at one strength for every hue
+  (oklch 0.84 / 0.075, derived from `--color-field-*`), its wheel neighbour answering from the other
+  corner (0.87 / 0.055), and the halftone masked to the glow (`.site-screen`). Each field names only its
+  two hues. `Stage` passes `data-outer` from `flip`. The six jewel-strength runs are gone.
+- **Dark:** stock below the ground, the glow bright and thin (0.76 / 0.14 at 50%). Butter and sage
+  measured olive over near-black whatever the strength, so in the dark only, Day leans into apricot
+  (answered by petal) and Finance toward sky (answered by sky), still palette hues.
+- **One dark band:** "How it fits together" is one dark cell holding the heading, a LIGHT glow picture
+  and the four steps; each step's number wears the colour of the place it happens in, the live one's
+  name is lit and ringed. The footer closes in the same ink. `--site-band*` on the warm axis; in the
+  dark theme the band steps below the ground (it vanished there otherwise).
+- **Type, measured on Ramp:** page title 64/64, section titles 48/50, both Rubik 400, with phone steps
+  (40, 32). Every section title is two-tone (`Title` in words.tsx; `--site-second`, 3.9:1, large type
+  only). Cards take the title-with-its-line (`CardLine`, 18/24, second tone ink-500). Ledes 16/24 capped
+  at 540 or 416. Sections open with `.site-head` (112 above, 64 to content at desktop).
+- **Berry, three jobs:** the loop's steps and an open question no longer wear it.
+- The social card re-shot from the new hero; the three unused people images removed.
+- The people ring's tabs are named by what they show ("Freelancers"): their "who: line" label put words
+  in the name that are not on the button and missed the chip's that are (WCAG 2.5.3).
+
+**The decision that mattered.** Equal numbers, not equal percentages: one OKLCH lightness and chroma for
+every glow is what makes six hues read as one family, and the dark theme needed a lean rather than more
+strength, because yellow light on near-black is olive at any alpha.
+
+**Verified.** Headless Chrome at 1440 (light and dark) and 390: every section. Band contrast probed in
+both themes: titles 16.8:1 and 18.6:1, grey text 6.3:1 and 7.0:1, step numbers on their tiles 12:1, the
+ring 9.3:1; choosing a step turns the picture. Full suite 3019 (3014 pass, 5 skipped) after
+registering the two new sizes with `cn` (tailwind-merge filed them as colours); tsc and eslint clean.
+Lighthouse (dev server, mobile): accessibility 97, best practices 100, SEO 100; its contrast flags were
+text caught mid-entrance, and axe run after every entrance has finished reports no violations in light,
+dark or at phone width.
+
+**Owed.** A product decision, not a landing-page one: the app's house clock is deliberately day-first
+and 24-hour (`lib/date.ts`), so the demo on the page reads "Mon 28 Sep" and "09:00". For a US audience
+that is one file to change, app-wide.
+
+## 2026-09-28 · Who it's for: eight professions, cut out and standing in front of the product; every animation waits to be seen
+
+**Brief:** "here is images you can use and directly implement in website, don't waste time in design all
+in canvas … I want to show different profession people use Zenboard, in Zenboard branding and Zenboard
+style", with a reference of people standing in front of painted cards, a product chip across them. Then,
+mid-way: the timer ring's solid line removed ("light-gray dotted at rest … when active the dots
+progressively appear around the perimeter in the brand accent … no permanent coloured ring"), and "all
+animation start when they appear in viewport, in the entire place".
+
+**What shipped (local; not deployed).**
+- `people.tsx`: a ring of eight (freelancer, creator, designer, founder, personal trainer, consultant,
+  dance teacher, lawyer). The chosen person stands in the middle at full size, the neighbours smaller
+  either side and cut by the cell's edges; the person is cut out (macOS Vision, no downloads) and
+  stands taller than their card, so the head clears its top. Across them rests ONE real thing from
+  their day in Zenboard (a highlight, an approval, a scheduled piece, a payment, a session, a signed
+  proposal, form sign-ups, a drafted invoice), drawn as the page's other resting pieces are. Each
+  card is the colour of the place its chip comes from, read from `CHAPTER`: two per place, no two
+  neighbours alike. The tab grammar, the answer panel and the auto-advance are the section's own.
+- Left out on purpose: the doctor (implies patient records, which Zenboard is not built or certified to
+  hold) and the team shots (teams need shared seats). The photographs stay pictures of who it is for:
+  no names, no quotes.
+- Images: eight transparent WebPs in `public/site/people/`, 54 to 93 KB each.
+- The ring moves by transform only (a translate for its place, a scale from the foot), so the
+  declared layout-animation exception for the old strip is retired from `design-system.test.ts`.
+- The dwell marker: grey dots at rest (a step darker once passed); when timing, the same dots light up
+  in the brand accent one after another, revealed by a line drawn inside a mask, so no solid stroke is
+  ever seen. Less motion: the chosen marker's dots sit lit.
+- Nothing plays before it is seen: a section below the window holds every animation at its first
+  frame (`[data-reveal='rule'][data-shown='false'] *`), and when it is first seen `site-motion.tsx`
+  rewinds its loops to zero, taking back the moment before the script woke. The halftone's shimmer
+  starts its clock when it is first seen, too.
+
+**Verified.** Headless Chrome on the dev server: the ring at 1440 (light and dark) and 390; the dwell
+at rest and mid-run (grey dots, then berry dots lighting round the tile). The details' 12 loops read
+paused at the start before scrolling, still paused 3s later, then running from zero 400ms after the
+section comes into view. Site and design-system tests 242/243 (the one failure is in
+`components/meetings/meeting-panel.tsx`, not touched here); tsc and eslint clean on every file touched.
+
+**Owed.** Nothing for this section. Recorded, not started: the dev server twice kept serving a stale
+`globals.css` after edits; a restart with `.next/dev` cleared fixes it.
+
+## 2026-09-28 · The website after Ramp: measured, then proposed in a canvas; two copy defects fixed
+
+**Brief:** keep the lattice, take Ramp's colour use, section design and type measurements (ramp.com/stack),
+"the goal is not less colour, it is colour designed as one system"; look at spacing between text, text
+measure, text size and the grid text sits on. Also: install find-skills and use it if needed.
+
+**What happened.**
+- Skills: `find-skills` installed and read (plain instructions). Its search surfaced the sibling skills of
+  the already-vetted `better-ui`; `better-typography`, `better-colors` and `better-layout` installed and read
+  in full (guidance only, no scripts or network).
+- Ramp measured at 1440 in a browser: titles 64/64 and 48/50 at weight 400, statements 28/32, card titles
+  18/24, ledes 16/22 capped at 540 to 600, card copy 416 wide (4 of 12 columns, 24 gutters, 64 margins),
+  sections 128 apart, title to lede 32, card title to body 16. Colour: one accent (lime) is both the button
+  and every glow; panels are warm neutral with the glow concentrated; one dark band (12 radius) mid-page.
+- Proposed, NOT built: canvas claude.ai/artifact/3am22hxuiX5QwZmzcKfDJK. Type board (Ramp, today,
+  proposed), colour board (neutrals, berry's three jobs, a hue per place at ONE OKLCH strength, one picture
+  recipe: stock, the place's glow from the outer lower corner, its neighbour answering, the screen), and
+  the homepage in two boards built on the real product captured from the dev server (the transparent
+  captures keep every product card exactly as drawn). Tweaks: title weight 400/500, glow corner/band.
+- Found and fixed in the website: the portal mock named its studio "Meridian" (a ruled-out name, and the
+  rest of the site's studio is Northlight), and four visible labels still said "Money" where the app and
+  the glossary say Finance (footer link, section tag, the demo's sidebar and rail). The sample-name guard in
+  `site.test.ts` now also blocks Darshil, Meridian and Fernwood.
+
+**Verified.** Site tests 83/83. On the dev server: zero "Money", nine "Finance", no "Meridian", the portal
+mock reads Northlight.
+
+**Owed.** Your feedback on the canvas, then the build. Recorded, not started: the homepage demo prints
+"Mon 28 Sep" and 24-hour times, where the website's rule is US formats; that comes from the product's own
+date and time vocabulary, so it is an app-wide decision rather than a website fix.
+
+## 2026-09-28 · Website phase 1: the SEO foundation, and the homepage says the new line
+
+**Brief:** the website and SEO plan (claude.ai/code/artifact/e19cb780-07dd-4f4d-beaa-fbf7b096af8b),
+phase 1: "SEO as a core part of the architecture, not something added later", and the positioning
+"One workspace to calmly run your business" in place of "the calm workspace for your creative business".
+
+**What shipped (local; not deployed).**
+- `lib/site-pages.ts`: ONE list of every public page (path, search title, search line, breadcrumb name,
+  date its words last changed). `pageMetadata()` turns an entry into the page's whole metadata (title,
+  description, canonical, Open Graph, Twitter), so no page writes its own; the homepage and the four
+  legal pages now take theirs from the list.
+- `app/sitemap.ts` and `app/robots.ts`, both from the list. Robots keeps the 21 signed-in places and
+  the plumbing (API, harnesses, auth, onboarding) out of search. Client portals and forms are
+  deliberately NOT in robots: they carry `noindex`, which a crawler has to be allowed to fetch to see.
+- `SITE_URL` from `NEXT_PUBLIC_SITE_URL`, falling back to the live workers.dev address until the
+  domain is chosen; the homepage is spelled without a trailing slash everywhere, matching its canonical.
+- Structured data (`lib/structured-data.ts`, `JsonLd`): Organization, WebSite, SoftwareApplication with
+  a free offer (the terms say "free to use today"), FAQPage from the same list the page shows (moved to
+  `faq-data.ts`, a plain module, so the server page reads values, not a client reference), and a
+  BreadcrumbList on every legal page. The script text escapes `<`, so no value can close the tag.
+- Social card `public/og/zenboard.png`: the homepage's own first screen with the logo, 1200 x 630.
+- The hero: "One calm workspace to run your business.", the line under it from the plan, and the
+  eyebrow "For freelancers, founders and small businesses" (balanced on a phone). The FAQ's "Who is
+  Zenboard for?" names the audiences the product serves today.
+- A found defect, fixed: the Who it's for strip is Radix tabs whose panel was never marked as one, so
+  the chosen tab's `aria-controls` pointed at nothing; the answer block is now the `RT.Content`.
+
+**Verified.** Served tags read back from the dev server (title, description, canonical, 9 Open Graph and
+4 Twitter tags, four valid JSON-LD blocks on the homepage, a breadcrumb on /legal/terms, sitemap with 5
+pages, robots with 26 rules). Lighthouse on the live homepage (phone): performance 93, best practices
+100, SEO 100, accessibility 96; locally after the tabs fix, accessibility 100 and SEO 100. Hero checked at
+390 and 1440, light and dark. `lib/site-pages.test.ts` (11 guards: length limits, clean addresses,
+dates, one helper, sitemap equals the list, robots covers every `app/(app)` folder and blocks no page,
+portals and forms keep noindex, structured data matches the page, the script cannot be closed early).
+tsc + 195 files / 2,942 tests green.
+
+**Owed:** the production domain (one setting, `NEXT_PUBLIC_SITE_URL`), then Search Console.
+
+## 2026-09-27 · The website's colour system: one brand, four chapters, neutral between
+
+**Brief (user):** "we're using a lot of colors and I don't want to remove that. The colors don't feel
+cohesive … noisy and inconsistent. Dark mode especially needs more refinement … build our own stronger
+color system … a clear color hierarchy, define where each color should be used … consistent across light
+and dark … vibrant but still mature, cohesive, and premium."
+
+**What was measured.** Three colour systems at once (six area tints, the app's twelve entity colours in
+the hub, three-hue gradients) and nothing tying a colour to a meaning. The six tints sat at lightness
+0.81 to 0.87 and chroma 0.050 to 0.084, so butter and apricot shouted while sky and sage looked washed out.
+The same place wore different colours in different spots: Finance pink in the Product menu and green on
+the page, the portal apricot in one file and violet in another. Five pictures each blended three far-apart
+hues and five of six carried the brand's rose, so every picture looked like every other; in the dark,
+amber and yellow-green over near-black came out bronze and khaki, and the projects picture steel grey.
+
+**The system.**
+1. **Berry is the brand**: identity and the one action. Never a section's colour.
+2. **Four chapters, one colour each, decided once** (`visual.tsx` `CHAPTER`): Day butter (amber),
+   Projects sky (blue), Client portal periwinkle (violet), Money sage (green). A chapter's colour is its
+   Product-menu card, its tag, its feature tiles, its person and its picture, and nothing else.
+3. **Neutral between**: the hub, the story, who it's for, the details, questions and legal wear ink.
+4. **The palette stays the user's** (2026-09-26: "this is marketing colors we have to use"): every hue
+   is the palette's own field; the system only normalises STRENGTH with relative colour (tints 0.885/0.058,
+   inks 0.56/0.12, dark tiles 0.34 with glyphs 0.88). A first pass had hand-picked values; the palette
+   guard caught it and it was rebuilt from the palette.
+5. **One arc per picture**: a chapter's picture is its own family (at most two neighbouring palette hues);
+   the two whole-product pictures (showcase, story) take two chapters in story order, still neighbours.
+   **Dark runs lean away from yellow** (amber toward apricot and laid on stronger, green toward sky), so a
+   dark picture glows instead of muddying.
+
+**Verified.** Contrast: ink on every tint 8.5:1 or better; dark glyph on dark tile 7.9:1 or better.
+Rendered both themes at 1440 and read every section; the menu's pointers now match the page. Guards
+rewritten to hold the system (palette source, one strength, one map, neutral sections, one-arc pictures,
+no chapter picture is pink). tsc + 194 files / 2,931 tests green.
+
+## 2026-09-27 · The details, drawn exactly as the board draws them
+
+**Brief (user):** "use these exact same illustrations on my website in the Details section. Do not
+change, redesign, or modify the illustration style, line work, shapes, proportions, or any visual
+details. We have 6 features, so arrange them in a 3 × 2 grid. All 6 illustrations should always have
+animation … Do not change anything in the illustrations." Board: claude.ai/artifact/9naKXYCRYER9BgdQSxNL2Y.
+
+**What was wrong.** The row's six were REDRAWN copies, and they had drifted the way redraws do: an aura
+and a dot screen behind four of them (the board draws those only on a stage outside a cell, and these
+live in cells), the focus timer's two buttons swapped in weight, a footer and a button bolted onto the
+calendar, the palette scaled past its proportions, and a bento where the palette was twice the rest.
+
+**What shipped.**
+- `components/site/board-scenes.tsx`: the six scenes as the board's own markup, converted to JSX by
+  machine (every element, class, inline style, path and word), in a `Stage` that fits a scene exactly
+  as the board's `fit()` does (contained, centred).
+- `app/site-board.css`: the board's palette, type roles, cell framing and loops, with values READ OFF
+  THE BOARD AS IT RENDERS, light and dark, scoped to `.ib-scope`. `ill-` became `ib-` only so no class
+  or keyframe can collide with the site's (the site already had an `ill-rise` that means something else).
+- `bento.tsx`: six equal cells, three by two from 1024px (two on a tablet, one on a phone), each stage
+  in the board's 4:3. The small demos are gone: each changed its drawing to show itself off.
+- Motion: the board's loops, always running (the board plays them only under the pointer). The morning
+  email, the one scene the board leaves still, takes the board's own `arrive` loop. Less motion: none.
+
+**Verified.** Every element of all six scenes compared against the board in headless Chrome: position,
+size, colour, background, shadow, radius, borders, type: 389 elements, 0 differences, light AND dark.
+Light renders at scale 1, time 0: 0 differing pixels in all six (max channel delta 3, antialiasing).
+Two differences the comparison found and fixed first: the board's text inherits 14/20 (the site's
+inherited `normal`), and a bare `border` on the board paints in the text colour (the site's base layer
+paints it in the line colour). Loops: 12 running with no pointer, the calendar card measured moving;
+under reduced motion 0. 1440/1024/768/390 checked; `site.test.ts` guards rewritten for the new rule.
+
+## 2026-09-27 · The hub, from the design canvas
+
+**Brief:** claude.ai/artifact/Eepb17AWMWrLSfzwMerT1a — "Zenboard hub · everything in one calm
+place". Twelve features fanning into the mark at the centre, with the lines that connect them drawn.
+
+**Why it belongs on the page.** It is the product's own thesis as a picture. Every other section
+argues a PART — your day, your projects, the portal, the money — and this one argues the whole: that
+they are one place. A paragraph claiming "it's all connected" is a claim; a drawing where every line
+ends at the same mark is the thing itself. Placed right after the hero, as the canvas's handoff
+board asks.
+
+**What came across, and what did not.** The canvas ships as CSS modules and Phosphor icons for a
+different repo; none of that came. What came is the design — the geometry, the twelve features and
+their places on a 1440×640 field — and the behaviour, which its handoff board states precisely:
+900+ full fan with labels · 760–899 fan without labels and chips below · under 760 the fan stops
+shrinking and crops to its centre · over 1600 the band caps at 1600 and the lines fade. All four are
+container queries on the section, so it is right wherever it is put. Measured live at 1440 / 860 /
+390: labels shown / hidden / hidden, chips hidden / shown / shown, field 1288 / 760 / 760px.
+
+**The colours are the product's.** The canvas picks twelve hexes (ten distinct, with Inbox/Docs and
+Goals/Finance sharing) — and those are exactly the ten the app already names for entities,
+`--blue-dot` and the rest, each declared per theme and contrast-checked on both. So a tile's colour
+here is the colour that tile's records wear inside the product, and the dark theme is the token's
+problem rather than this file's.
+
+**Twenty-six lines from one rule.** The fan is generated, not listed: thirteen a side leaving the
+mark 2.6px apart and spreading to thirteen heights at the edge. Twenty-six hand-written cubics is a
+table nobody can check.
+
+**Two defects found by looking, not by a test.**
+1. The mark was INVISIBLE in the centre: `Mark` paints itself with an inline `color`, and an inline
+   style beats a class, so it rendered in ink on the ink-dark tile. It takes a `style` now.
+2. The first fix branched the centre on `data-theme` and produced a mid-grey tile in dark. The
+   right rule has no branch: `--color-ink-900` is dark on a light page and LIGHT on a dark one, and
+   `--color-paper` is its opposite — so the tile is always the page's ink and the mark always its
+   paper, and the centre is the one fully inverted thing in the section either way.
+
+**Four things travel the lines**, inward, because the claim is that everything comes IN. Four and
+never more: a swarm says "busy" where four says "connected". `offset-path` rather than SMIL, so the
+browser composites it and reduced motion stops it in CSS. Measured: offset-distance 32.1% → 9.3%.
+
+**Verified.** 193 files / 2924 tests, lint clean. Driven live at three widths and in both themes.
+
+**Owed.** The canvas's `Mobile` artboard was not read in detail; the phone layout follows the
+handoff's rule rather than that artboard. Its `HowToUse` board describes a `theme="dark"` prop for
+dropping the section on a dark page — not needed here, where the section reads the site's theme.
+
+## 2026-09-27 · The product menu, from the design canvas, with the launch film
+
+**Brief:** "now start work on navigation as in designer" — the canvas's "Site navigation · micro
+illustrations" — and, mid-build, the film itself: `zenboard-launch-1080p60-reworked-share.mp4`.
+
+**What shipped.** Six places in two columns (Home · Inbox · Projects · Client portal · Docs ·
+Finance), each a card with a 190×128 drawing bleeding off its right edge, beside a 15rem aside
+holding everything else Zenboard has — with its keyboard shortcuts — and the launch film. The
+mobile menu reads the same list, so the two cannot drift apart.
+
+**The canvas's argument, and why it wins.** The menu it replaces showed FOUR places explained at
+length plus a featured cell. Six at a glance with one line each is the better shape: a menu is a
+list of where you can go, not a place to read, and anything that needs explaining is a section one
+click away.
+
+**The item's one interaction.** At rest it shows its KEYBOARD SHORTCUT; under the pointer the keys
+give way to an arrow, the card takes the wash and a ring, and its drawing is used — the highlight
+gets ticked, the card lands in its column, the invoice reads Paid. One gesture, and it teaches the
+shortcut to anyone who never hovers long enough to read it. "Press G T" becoming "go here" is a
+change of MEANING, so it goes through `IconSwap`.
+
+**Two house rules beat the canvas, both recorded in the guard.** The canvas draws a hovered card
+WHITE with a ring; white is an elevation, and a state here is a wash — so the ring stays and the
+fill is the house's wash. And its `RIDGELINE` label is sentence case now.
+
+**A defect the canvas work surfaced.** `nav-art.tsx` referenced four CSS classes that were never
+written — `site-art`, `site-art-guide`, `site-art-tag`, `site-art-you` — so `--art-pointer` was
+undefined and **every pointer in the menu rendered black**: an invalid paint, whose SVG fallback is
+black. No test could have caught it (a missing custom property is valid CSS); it was found by
+looking at the menu. The four are written now, and a drawing's pointer takes its area's own hue.
+
+**The film.** 1920×1080, 60fps, 73.557s — which is the `1:13` the canvas's card already showed, so
+the canvas was drawn against this cut. It ships in `public/film/` with a poster frame pulled at
+3 seconds. It is 23 MB, so the card shows the poster and the film loads only when the dialog opens:
+`preload="none"`, never starting on its own. Verified in a browser — opening the menu requests the
+poster and never the MP4.
+
+**Verified.** 193 files / 2917 tests, lint clean. Driven live: the menu opens with six cards and six
+aside items, hovering swaps the shortcut for the arrow, and the dialog opens with the film.
+
+**Owed.** `nav-art.tsx` still holds the five drawings the old menu used (DayArt, BoardArt,
+PortalArt, MoneyArt, ProductArt). Rebuilding the menu orphaned them; they are kept and labelled
+rather than deleted because they are another session's work and the vocabulary is shared. The
+canvas's `NavMobile` artboard has a richer phone menu than the list shipped here. The film has no
+captions.
+
+## 2026-09-27 · The client portal section, from the design canvas
+
+**Brief:** the user's Design canvas (claude.ai/artifact/3HAMhbe4fYnVCyP4nkHYnz, "Client portal
+section · zenboard.app/#portal"), with "all proper interaction".
+
+**What it replaced, and why that is the right call.** The portal was a Spotlight: four features
+beside one rotating picture. The canvas makes a different argument and a better one — the portal is
+FIVE separate promises (a link, the choosing, requests, approvals, invoices), and a list that shows
+one at a time makes a reader wait to find out whether the one they care about is in it.
+
+**The translation.** A canvas is drawn in absolute pixels and literal hexes, because that is what a
+canvas is for. None of them survived: its lilac tile is the periwinkle field the site already owns,
+its deep lilac is that hue at ink strength (`--site-hue-ink`), its green is `success-600`, and its
+geometry became the grid's own columns — 764/545 of 1309 is 7 and 5 of twelve, three 436s are three
+fours — so the section sits on the page's lattice and the stars land where its cells meet. Measured
+at 1440: 807 / 576, then 461 / 461 / 461.
+
+**Eight guards caught eight slips**, every one of them a house rule the canvas does not know about:
+five icon sizes off the scale, four undeclared colour classes (`success-soft`/`700` for
+`success-100`/`600`), an uppercase "INVOICE" with capital-era tracking, a state icon swapped in one
+frame instead of through `IconSwap`, six chips drawn as pills, and three places where the canvas's
+drawing of a control had become a hand-built control. The last is the one worth keeping: the
+switches are the DS `<Switch>` now, the answer buttons are `<Button>`, and the version ghosts take
+`cardClass()` — so a reader who tabs into the card gets the switch the product actually has.
+
+**One real bug, found by looking.** A card's illustration is absolutely positioned (that is what
+lets a browser window overlap a share card with a cursor between them), so it contributes NOTHING
+to the card's height — and the first render collapsed each card onto its words and spilled the
+picture into the row below. The canvas's 600 and 560 are the picture's room, so they came across as
+a floor.
+
+**The interactions.** The canvas marks "You choose what they see" interactive and it is the one
+that matters: the claim is that YOU decide, so the reader decides and the client's view changes
+under their hand. Two more earn their place because they are the card's own verb — copying the
+link, and answering the approval. The other two stay pictures: a request that has already become a
+task and an invoice already paid are states, not acts.
+
+**Verified.** 193 files / 2905 tests, lint clean. Driven in a real browser in both themes: five
+cards with the right titles, the grid at the canvas's proportions, the switch count 4 of 5 → 3 of
+5, "Copy" → "Copied", and Approve → "Approved, and saved with the file" plus the stamp.
+
+**Owed.** The canvas's second half — the Product mega-menu with six micro-illustrations, the "More
+in Zenboard" aside and the mobile menu — is not built. `components/site/nav-art.tsx` exists in this
+tree from another session's work in the same area, so that half needs coordinating rather than
+racing.
+
+## 2026-09-26 · The landing page's motion: an audit, then the five things it was missing
+
+**Briefs (user):** "make the entire landing page smooth and high-quality detailed animation" ·
+"all your animation is clean but not rich and premium" · "once I interact it stops at the same
+place, not auto running, and this happens on all the screens" · "the progress line that shows the
+animation completion looks so basic" · then, of the segmented track that replaced it: "don't like
+this at all… the old is good, just the line is a bit thick and animated and that fills full" · and
+a description of the people strip: the active image expanded and in colour, the other two shrunk
+and black and white, advancing on its own.
+
+**AUDITED FIRST**, off the live DOM, section by section. The result was not what a review would
+have guessed: no `transition: all`, one declared layout transition, and only two interactive
+elements with no feedback (both `<input>`, where the caret IS the feedback). What it did find:
+**124 of the 180 moving elements were changing COLOUR and nothing else**, and the section called
+"the details" — the largest on the page — had 152 elements, 12 transitions, ZERO animations and
+ONE interactive control. Correct, and flat. That measurement is what the rest of this is answering.
+
+1. **Every cell of "the details" does its own thing.** The palette already ran; the other five were
+   pictures. The focus timer RUNS while its card is on screen and starts a real guest session when
+   pressed; hovering a shortcut presses its key; the calendar card puts the task on the day and it
+   moves there; the digest card changes the hour it sends at; the import card runs and counts what
+   came over. Measured after: 39 transitions, 7 interactive.
+
+2. **A card knows where your hand is** (`components/site/sheen.tsx`). A soft light follows the
+   pointer across it and its rim lights with it. It is a LEAF moved with `translate3d`, never a
+   custom property on the card — a variable on an ancestor invalidates style for every descendant,
+   and these cards hold a hundred. The box is measured once per hover, not once per move, and the
+   move listener only exists while a pointer is on the card. On the two sets of cards a reader
+   chooses BETWEEN, and nowhere else.
+
+3. **Choosing carries on; using stops.** `choose` no longer kills the auto-advance. Picking a tab
+   is a reader saying "that one", not "hold everything", and a list frozen on item 3 of 5 for the
+   rest of a visit looks broken. Pressing INSIDE a picture still stops for good.
+
+4. **The dwell is one rule again, thicker and full.** It was briefly a segmented track; the user's
+   objection was exactly right and worth keeping: a row of stubs is a CONTROL's shape, and five
+   stubs that cannot be pressed is a promise the page does not keep. So: the same rule under the
+   item it times, 4px instead of 2, the full width of its item, over a track of its own hue at 16%
+   so it reads as filling something.
+
+5. **The people strip gives the room to whoever is showing.** One cell, three panels, the chosen
+   one 2.2fr and in colour while the others sit at 1fr in black and white, turning its own pages.
+   It is the one place the LAYOUT is the animation — three panels cannot change width by a
+   transform — so it transitions `grid-template-columns` and is declared in
+   `app/design-system.test.ts`, which now guards the CSS side of that rule as well as the TSX side.
+
+**Verified.** 193 files / 2904 tests, lint clean. Each cell driven in a real browser (the clock
+ticks 24:11 → 24:09; the calendar says "On the day at 14:00"; the digest stamp changes; the import
+bar appears). The sheen's light measured translating with the pointer (172,142 → 518,333) at
+z-index −1 and 0 when the pointer leaves. The strip measured 724/329/329 → 329/329/724 with the
+filters following, and the dwell PAUSED rather than unmounted while the pointer rests on it.
+
+## 2026-09-26 · The dark theme, the glass, the brand's one gradient, and the icons
+
+**Briefs (user):** "our white theme looks so cohesive, but our dark theme I also want premium and
+cohesive, like Linear and Calendly" · "all UI behind glass UI, I want to add more detailing on
+that" · "look how Calendly's colours look so fresh and seamless, all part of one brand, I also want
+that in our product" · "I want all icons animated" · and, on the demo, "add more details in UI".
+
+**1. The dark theme separates with EDGES, because its fills cannot.** Measured on one screen in
+both themes: light's ladder runs L .945 (panel shell) → .968 (sidebar) → 1.000 (sheet), every step
+a fill you can see; dark's runs .125 → .169 → .184 → .200, the whole ladder inside a quarter of
+light's room, with a panel body 1.07:1 above its own shell. So `--color-border-panel` is the one
+percentage that is NOT shared: 5% in light, 9% in dark (1.12:1 → 1.19:1 over a panel). Declared and
+explained in `app/theme-bridge.test.ts`, which now checks that both themes still say it the same
+WAY — the theme's own ink, mixed — and that the split is deliberate.
+
+**2. The dark sidebar had no step at all.** `--sidebar` is set to the CARD's tone in dark and the
+PAGE's tone in light, so a column inside a sheet vanished into it (measured: identical). The demo's
+rail takes `bg-canvas`, which is the page's ground in both themes — light is unchanged, dark gains
+the step it was missing.
+
+**3. The glass has four parts, not one band.** A rim at the card's cut, the band itself, an outer
+edge where the pane stops, and the bloom it throws. Four tokens, so dark holds the same four ideas
+at its own strengths (its band had been 7% of a near-white, which measured invisible over a dark
+field; the rim does the work there, as it does on every raised surface in a dark room).
+
+**4. The brand has ONE gradient.** `--brand-sweep`, derived from `--accent` by relative colour, so
+a workspace that changes its accent gets its own sweep. Measured across Calendly's cards, the
+thread that makes four unrelated widgets read as one family is not a palette — it is one gradient
+reused on everything that shows a proportion. `Progress`'s active fill is it now, and
+`SegmentedProgress` gained a `sweep` colour for a bar that IS its card's headline. A day's load
+stays `ink`: it is not an achievement, and the view's one accent is already spent.
+
+**5. Progress fills slide instead of resizing.** Each segment is a full-width bar pushed left until
+its right edge lands on its cumulative share, painted back to front. Transform only, no layout per
+frame, no scaleX distorting the rounded ends.
+
+**6. The demo dashboard does the product's real arithmetic.** The capacity line is `lib/capacity.ts`
+— the same module Home, the Week and the weekly ritual read — so ticking the 2h task moves the bar
+from 5h 15m planned / 2h 45m free to 3h 15m / 4h 45m, live. Plus: estimates on rows, Waiting on in
+the rail, meeting lengths, the habit week, per-project open counts, a sidebar foot, and a header
+row that does something ("New task" puts the caret in the plan's own add line).
+
+**7. Every icon with a state lights up.** `<Icon state>` draws BOTH cuts on one grid cell and
+cross-fades them — 100ms opacity on the hover curve, the fill growing the last sixth of the way in
+on 150ms. Emil's first question sets the budget: a nav glyph is seen a hundred times a day, so it
+gets the hover budget, not the entrance budget. `<Icon nudge>` is the only other gesture, and only
+for glyphs that POINT. Eight call sites that swapped a cut in one frame now cross-fade; one static
+cut (a computed property's type) is a declared exception.
+
+**Verified.** 193 files / 2894 tests. Surfaces composited over white and black in both themes; the
+icon state read out of the live DOM (active: line 0 @ scale .84, fill 1 @ scale 1, 0.1s/0.15s) and
+confirmed to flip on navigation; the capacity bar's arithmetic read back after a tick.
+
+**Owed.** The Bento's five static cells; the moodboard's drawn arcs and overlapping rotated panels;
+a gauge (Calendly's semicircle) has no home in the product yet.
+
+## 2026-09-26 · The gradient, and the screen over it
+
+**Briefs (user, in order):** "our gradient looks so basic, not in brand, not premium" · "look how
+Calendly looks premium … the gradient looks so bad in black and white" · "the one you made looks
+childish and basic" · "I like this granularity and this effect, but with the logo" · on the print:
+"only black and white, we use with blend mode … on a double click I want a ripple … right now that
+halftone execution looks basic and just put on the gradient" · and, on the page itself, "don't
+extend this section, I want this line with the same corner, I want extend from both sides, all
+sections".
+
+**What shipped**
+
+1. **The page has no frame.** `MEASURE` is `w-full`: the lattice runs edge to edge at every width
+   with the same 1px rule and `rounded-lg` corner it has everywhere. The only inset left is a
+   cell's own (`.site-pad`), which the navigation and the footer borrow — measured, the wordmark
+   and `#hero-title` now start on the same column at 1440/768/390 (49/33/21px), and the header's
+   actions end the same distance from the other edge. `@utility bleed-full` is deleted: one band
+   escaping the frame while its neighbours keep it is what looked like a mistake.
+
+2. **A field is one hue ARC.** Three adjacent hues (≤140° per step), never through a neutral.
+   Two hues at opposite ends with the paper between them is what made every picture pale through
+   the middle. Five blurred pastels (the blob mesh) average to grey — that is what "looks bad in
+   black and white" was naming, and the blobs are gone.
+
+3. **The palette's tints are tile values, not picture values.** `--f-ink-*` prints the same hue at
+   `l - 0.16, c × 3.0`. The references measure oklch(.60–.68 .18–.22); the first pass stopped at
+   Calendly's .75/.13 and read as candy. The hue is still chosen in one place.
+
+4. **All radial.** Radials are fractions of the box, so the same three stops read left-to-right in
+   the hero's 1430×300 band and corner-to-corner in a square picture. A 32° linear run put the
+   brand's rose in a corner nothing could see and the hero came out blue.
+
+5. **The dark keeps the hue and changes the light.** Mixing a tint into `#191919` is what made a
+   dark picture mud; the saturated hue is laid over the ground as alpha now.
+
+6. **The screen covers the whole picture**, on the field's own axis, dithered so it has gaps.
+   Printing only the mark's silhouette is what read as a rectangle of dots dropped on a gradient.
+   Seven steps, filled and OPEN alternating and matched by ink mass; nothing under ~0.6 CSS px
+   (below that a filled arc renders as a square, which is the pixel-grid look). The heavy end is
+   the logo: its heart, then the mark.
+
+7. **Two inks, one blend.** `overlay` + a light ink and a deep one is what makes a monochrome
+   screen come out in the picture's own colours — red over the amber, blue over the lavender, all
+   one ink, exactly as the reference does it. The brand-coloured "spark" glyph is deleted.
+
+8. **The print answers the hand.** Point at it and it swells and draws in the DEEP ink; double-click
+   and a ring travels out at 620px/s over 1.15s, flashing the light ink. Reduced motion gets
+   neither.
+
+**Verified.** 193 files / 2889 tests. Six fields captured in both themes at 1440. Edge geometry
+measured at four widths (grid left = 0, wordmark = headline column, footer touches the foot). The
+ripple measured by binning canvas alpha by radius: bin 0–40px went 0.019 → 0.173 at +96ms, the
+front moved to 40–80px by +170ms, and the print settled back.
+
+**Owed.** The Bento's five static cells still have no interaction; the moodboard's drawn arcs and
+overlapping rotated panels are not built.
+
 # Zenboard — PROGRESS
 
 ## Stack (SETTLED — never re-decide)
@@ -17345,6 +18291,152 @@ in both weights beside Phosphor's clock. A stale-`globals.css` Turbopack serve h
 still carried the old token) — fixed the recorded way: stop, `rm -rf .next`, restart. `app/identity.test.ts`.
 **2756 tests / 182 files**.
 
+## The first screen, in the style the user chose — 2026-09-25
+
+The user sent eight screens of a direction they want ("This is the style I like, but you have full freedom on
+functionality and UX — this is mainly the visual direction") and then steered it, note by note, across the
+session. What shipped is the sign-up and onboarding screens rebuilt in that direction, and the system pieces
+underneath them, so the direction is a set of tokens and DS parts rather than two screens that look different
+from the rest.
+
+### What the direction actually was, measured
+
+The reference was read off the PNGs rather than eyeballed (a 1×1 canvas solves each computed colour to sRGB,
+because the tokens compute as `lab()` and reading the numbers out of the string reports the white sheet as
+`#640000`). Ground `#E8E8E3` · sheet `#FAF9F5` · **1.17:1** between them · field wash `#F2F1EB` (1.05:1 on the
+sheet, no edge until touched) · accent `#9A1B6F` · disabled fill `#D9D7CC` · heading ink 13.3:1.
+
+Every one of those maps onto Notion's neutral axis, one rung shifted — which is why this needed no new palette.
+
+### The screens
+
+- **One ground, one lifted thing.** The page is a single colour from edge to edge and the PRODUCT is the only
+  object that comes off it (user: "left side of ui on background, no uplifted", then "background canvas colour is
+  only same … ui dashboard uplifted"). A second, darker ground under one half read as two pages side by side.
+- **The product runs off the window.** Home is drawn at its real measure, scaled up from the top-left (1.3× on
+  sign-up, 1.2× beside the questions) and cut by the right edge: about 52% of it is visible. Nothing is shrunk —
+  a shrunken app is a picture of an app. Earlier passes put it in a card, gave it a nav rail and a frame; all
+  three were removed on the user's notes, and the guard now pins the crop fraction and the flat left column.
+- **It is the app's own parts**, not a screenshot: `Panel`, `PanelHeader`, `PanelBody`, `Checkbox`, the star, the
+  accent chip. Inert, and gone below `lg`.
+- **Onboarding wears the app in its COLLAPSED form** ("we can use this collapsed view on half on onboarding and
+  real time updating according to client input") — the icon rail and the header row from the app's own tokens
+  (`--sidebar-w-collapsed`, `--row-nav`, `--r-sm`, `--color-surface-selected`), filling in as the answers arrive.
+- **The travelling line**: four hairlines behind the form with the brand's light running along them, 9s linear,
+  staggered, transform-only, and still under reduced motion.
+- Sample content names no real client (user: "don't use my client name"), and the copy carries no em dashes.
+
+### The system underneath
+
+- **`--font-title` = Rubik** (user: "we only use serif fonts — use Rubik for titling fonts"). Every heading role
+  (`--font-display`, `--font-editorial`) points at it; the serif stays where it was chosen on purpose, in
+  Documents' reading mode and the Paper skin. One line per role to change, which is what makes it reversible.
+- **The lockup is the real artwork.** The name had been typed in the UI's display face, so it changed shape the
+  day the titling face changed. `Wordmark` draws `illustration/logo.svg` now: mark in `--accent`, lettering in
+  `currentColor`, eight drawn letterforms the guard counts.
+- **The field is a wash, not a box** (`inputBox` gains `tone`, default `soft`): `surface-sunken` at rest with no
+  edge, and on focus it lets go of the wash and takes an accent edge. It LETS GO rather than painting
+  `surface-raised`, because a state that pins an elevation inverts on any ground that is not the card —
+  `app/theme-bridge.test.ts` caught exactly that, in four places, including the RadioCard and the new chip.
+- **`Button` gains `brand` and `brandOutline`** (the accent solid, and the same hue as an edge) for the screens
+  that ARE the product rather than a workspace. In the app, `primary` is still the ink solid.
+- **`StepDots`**, **`RadioCard icon`** (a tile that fills with the accent when chosen), a **chip** toggle variant,
+  and `Mark tone="brand"`.
+- **Light is the default theme** (user directive). The OS is a guess at a preference; the product is drawn
+  against a light reference. 'system' is still a choice anyone can make, and only an explicit choice is stored.
+- **The app shell got its ground back**: it has always been panels floating with a 4px gutter, on a ground that
+  measured **1.04:1** against them — an architecture that was right and invisible. It is `--color-surface-desk`
+  now (`#E9E9E7` light, `#0C0C0C` dark, both already in the palette).
+
+### Recorded, not done
+- The em-dash sweep covers components; `lib/` (digest, export, MCP tool descriptions, automations, form
+  templates) still has ~60, and those strings are pinned by tests that have to move with them.
+- No Google sign-in: Supabase has no OAuth provider configured for it, and a button that cannot work is worse
+  than no button.
+- `components/shell/app-shell.tsx:669` has a pre-existing `react-hooks/set-state-in-effect` error.
+- CLAUDE.md names `bg-surface-secondary` for the sidebar; that class generates **no CSS** (no `--color-*` in
+  `@theme`), which is why a sidebar drawn with it paints nothing.
+
+**Verified** — `scripts/verify/verify-first-run.mjs` (new): desk/ground separation, the lockup's fill and
+letterform count, the field at rest and focused, one filled accent, the crop fraction, the flat left column and
+the inert still, in both themes at 1440 and 375. Beams paused mid-travel and captured. `tsc` clean · eslint clean
+on the files touched · **2773 tests / 182 files** for everything except five failures in another session's
+in-flight `components/site/*` and `components/ds/ui/navigation-menu.tsx`.
+
+### The mistake, recorded
+An automated em-dash pass rewrote strings in `lib/` that are not copy (markdown export, the digest, block
+markers), and reverting the ones flagged as "only dash changes" **clobbered another session's uncommitted
+reactions work in `lib/chat.ts`** — the heuristic counted removed lines, and their work was additions. It was
+reconstructed from `lib/chat.test.ts`, which is the spec (`REACTIONS`, `isReaction`, `groupReactions`,
+`withReaction`, `toggleReaction`, `reacted`, `reactionLabel`, `toMessage` embedding), and all 30 chat tests pass.
+The lesson is narrower than "don't automate copy": **a revert is only safe on a file whose whole diff you have
+read**, and `git checkout --` on a shared tree needs that read first.
+
+## The direction, applied to the product it came from — 2026-09-26
+
+The first-run screens were the brief; this is the rest of the product answering to the same rules.
+Everything here was found by looking at the app rather than by reading it: a sweep that opens twelve
+screens in both themes and reads back what the global moves could have broken.
+
+### What the sweep found, and what it cost to fix
+
+- **A field that cannot be seen.** Making the field a wash (2026-09-25) used `surface-sunken`, ONE
+  absolute tone — and six of twelve screens had a field sitting on a band or an inset of that same
+  tone: 1.00:1, a field you cannot see. It is `surface-fill` now (6% of the theme's own ink), so it
+  composites a step down from whatever is behind it, on a card, a band, a popover or a sheet, in
+  both themes. Same reasoning as "state is a wash, never an elevation", applied to a resting fill.
+- **Five composers that were chromeless without saying so.** The sweep reported them as defects
+  because nothing distinguished "no box, meant" from "a field that lost its border". They carry
+  `data-chromeless` now, which is the declaration the DS already had a name for.
+- **Two pickers spelling the field by hand.** `TimePicker` and `DatePicker` re-wrote TextInput's
+  chrome under a comment claiming it "matches DS TextInput's `sm` field exactly" — which is how a
+  copy drifts: they stayed bordered while every other field became a wash, and Settings showed
+  three bordered boxes among five washed ones. Both take `inputBox({ size: 'sm' })` now.
+- **The shell's gutter.** 4px of ground between the panels was chosen when that ground was
+  invisible; with the desk under them the gap is what makes the sidebar, the header and the page
+  read as three objects, and 4px is not enough of it to read as deliberate. 8px, measured side by
+  side before changing it.
+
+### The em dash, finished
+
+169 lines were rewritten on 2026-09-25 and the job was still not done: a scan for "a dash between
+quotes" missed every string carrying its own inner quotes — including `Add to today — try "Call Sam
+#acme !high 30m"`, which is on Home. The guard (`app/copy-voice.test.ts`) blanks comments out of the
+whole file first and flags whatever em dash is left, which found 27 more in components and lib.
+All of them now read as a colon, a full stop, a comma or the house's middle dot, and the tests that
+pinned the old strings (digest, export, blocks, MCP, content, acceptance, money) moved with them.
+
+One glyph for "no value" everywhere: the EN dash. The app had both, which is how a convention
+becomes a coin toss.
+
+**And the user's clients are out of the fixtures** (54 occurrences, 27 files). The previews are what
+they look at every day.
+
+### The site's hero
+
+- **Half a mark, not a whole one** ("don't show full logo, show half cut logo overflow"). A complete
+  mark inside the frame is a picture OF the logo; one that runs off the edge is the shape the rest of
+  the page uses. Four placements were rendered and compared: oversized-and-cropped-both-ways reads as
+  texture, not as the mark — the lobes are what make it legible, so it keeps its full height and is
+  cut only by the right edge.
+- **The print is a brand gradient** ("make it gradient according our branding colour … marketing
+  colours"). `--site-grad-1..3`: the accent where the mark is densest, opening into two of the
+  marketing fields (`--color-field-petal`, `-apricot`) the site's pictures already use. It is a TINT
+  THROUGH the print (`source-in` over the drawn glyphs), never a gradient behind them — colour in the
+  gaps is the airbrushed cloud this screen exists instead of. Sparks are held back and drawn after
+  the tint, so the one glyph that catches the brand keeps the brand's own colour. Dark keeps the
+  hues and loses the light.
+
+### Governing docs, corrected
+CLAUDE.md said the sidebar is `bg-surface-secondary` — **a name for nothing**: no
+`--color-surface-secondary` is declared in `@theme`, so the class compiled to no CSS. It now
+describes what the shell actually does (a panel on the desk, `--paper`, `--r-lg`, `--app-gutter`),
+and the typography rule states the two families rather than one.
+
+**Verified** — twelve screens × two themes: zero invisible fields, zero text under AA. Settings,
+Home, the portal and the hero captured before and after; the hero at 1440 dark, 1024 and 390.
+`tsc` clean · eslint clean on the files touched · **2814 tests / 186 files**.
+
 ## The website arrives as it is read; the logo answers the hand; focus without an account — 2026-09-26
 User: "the entire website looks basic, no interaction and animation … subtle animation as the page
 appears in view, like Linear and Calendly and Notion and Miro"; with Attio's logo menu, "instead of
@@ -17380,3 +18472,316 @@ when they log in"; "the loader on every reload now, and on production every 5th 
   click menu, copy, spin, session start → done → kept, reduced motion) twice clean.
 - Owed: the committed icon.tsx lacks `Mark tone`/the lockup's `data-slot="logo"` (the other
   session's uncommitted wordmark work, which site files already relied on).
+
+## The Inbox knows where things go — 2026-09-29 (§7Q *File*, the clerk's second act)
+
+Continuing the AI roadmap. §7Q's five capabilities in Phase 6 order: Parse shipped as the meeting
+clerk on 09-28; this is **File** — "triage/inbox suggestions (project, date, label, 'similar task
+exists') learned from *your* filing history. One tap to accept; off by default; never auto-applies."
+
+- **The rules answer first, and they are arithmetic** (`lib/inbox-file.ts`). PRODUCT_THINKING's
+  standing decision is to build the deterministic version of each flow first, because a clerk that
+  files a client's work under the wrong client costs more than one that stays quiet. A thought is
+  placed by the words the person already uses in that project — inverse document frequency over
+  their OWN filed titles, nothing global, nothing stored, built per request from rows the action
+  already had to load. Four inherited rules from `lib/detectors.ts`: pure · a proposal is not a
+  filing · silence is the default · every proposal carries its evidence ("3 tasks in Brand refresh
+  mention 'palette'", never "92% confident").
+- **THE BAR IS A SHARE, NOT A NUMBER.** A word used by exactly one project scores log(1 + projects),
+  so a fixed threshold means "one distinctive word is enough" at nine projects and "never" at three.
+  `minScore()` moves with the person's project count; confidence is *how much of the evidence points
+  here* × *is there enough evidence to be pointing with*.
+- **HALF A NAME IS SOMEBODY'S ORDINARY WORD.** A rule that took the first word of a client's name
+  "when it is long enough to be a name" filed "Atlas of typefaces to buy" under Atlas Coffee. It is
+  gone: full phrase only, for the project name and the client name. The abbreviation case is caught
+  the moment the person has used that word in that project — which is what the history scorer is.
+  Guarded as a control test, because it is the one mistake that would end trust in the feature.
+- **The receipt quotes the person, not us.** The date proposal read `You wrote "Due Thu 1 Oct"` —
+  our own formatting handed back as their sentence. The title is parsed twice now, once with that
+  one grammar rule running alone, and the difference is the phrase (`consumedWords`). When running
+  the rule alone lands on a different day ("by Monday, then call Friday"), there is no honest
+  receipt, so the proposal goes rather than the receipt.
+- **A model sees only the residue** (`lib/inbox-ai.ts`), in ONE call for the whole Inbox. It answers
+  with POSITIONS in the list it was shown, so a project id it never saw cannot appear; an index out
+  of range is dropped, never clamped. It must quote the thought, and a reason that is not in the
+  thought is thrown away — the meeting clerk's rule, for the same reason.
+- **A label is not a home.** Same scorer over the labels the person puts on tasks worded alike, but
+  never on the filing key: it is marked *where it already sits* in the L panel (moving it to the top
+  would break the 1–9 keys that panel is for) and named in a receipt line. One press must not agree
+  to two different kinds of thing.
+- **Nothing is fetched until it is pressed** — which is what "off by default" means here. A settings
+  toggle would be the weaker promise: opening triage would spend a pool shared by every account
+  holder on somebody clearing six thoughts by hand. F applies the filing as ONE decision, through
+  `moveToProject`/`reschedule` — the mutations triage already had, so Z needed no new reversal path.
+- SQL: **0045 `ai_usage` applied by the user this session.** Verified live: table + `ai_pool_neurons`
+  present; and security-tested as an unprivileged caller — insert refused by RLS, select empty, the
+  pool function permission-denied, and delete/update of a real row are 204s that change nothing
+  (proved with a row inserted and removed by the probe; the table was left empty).
+- Verified: tsc clean · 3,099 vitest pass (the 4 failures are the uncommitted website work, untouched
+  here) · **the live evaluation against the real model** (`lib/ai/inbox-file.live.test.ts`,
+  `ZB_LIVE_AI=1`): files what one project clearly owns, leaves personal errands alone, **refuses a
+  thought two coffee clients could own**, ignores an instruction written inside a thought, and reads
+  a six-thought inbox in one call — 57.4 Neurons for five calls, ~11.5 each, ~870 inbox reads a day
+  inside the free pool · meeting-items live evaluation re-run, 5/5 · every card shape driven in a
+  real browser against the dev-preview harness, and two source guards broken to prove they fail.
+- Owed: the Inbox LIST offers nothing — triage is the moment this assists, deliberately, but a
+  person who never triages never meets it. Next in §7Q Phase 6 order: **Draft** (six defined
+  moments), then Recall/Ask in ⌘K, then Watch.
+
+## Meetings M1 — record a meeting, live transcript, Me and Them — 2026-09-29
+
+User brief: meeting notes "exactly like or more advanced than" Granola, Fellow, MeetGeek and Otter.
+The plan, checked against their own sites, is `MEETINGS_PLAN.md` (six stages); this is stage 1.
+
+- **Shipped.** A meeting opens through `<PageView>` now (full page by default, `lib/page-view-mode.ts`)
+  with the record header (When · With · Recorded · "you spoke 42% of the time"), your notes beside the
+  live transcript, and Record in the toolbar: *Record a call* (microphone + the call's tab, no bot) or
+  *Record in the room*. Pause, resume, stop; a level per channel; the recording survives navigation
+  (`RecorderHost` + `RecordingIndicator` mounted once in the shell). "Find action items" now reads the
+  transcript as well as the notes, "Me:"/"Them:" labelled, which is how its instructions already tell
+  mine from theirs. Deleting a meeting asks first and counts the transcript.
+- **The decisions that mattered.**
+  - *Who spoke is measured, not guessed*: mic and call are separate channels; loudness per channel
+    every 100 ms, each judged against its own speaking level (so laptop-speaker echo does not flip it).
+    5/5 turns attributed correctly on the two-voice fixture. Talk-listen ratio falls out for free.
+  - *Pieces cut at pauses* (6–18 s), each a complete WebM/Opus file; silence is never uploaded. The
+    level meter runs in an AudioWorklet because the Zenboard tab is in the background during a call,
+    where timers are throttled to once a minute.
+  - *Nothing is lost*: every piece is written to IndexedDB before it is sent and removed only when
+    its words are in the transcript; a page that closes mid-meeting leaves pieces the next page
+    adopts (per-tab Web Lock proves the old page is gone). Offline, busy, over the allowance: the
+    piece waits. Audio is never kept on a server.
+  - *Route, not server action* (`/api/meetings/:id/transcribe`): actions run one at a time, so a
+    transcription would have queued every note save behind it. Same-origin, session, format, size,
+    ownership, then allowance — in that order, tested.
+  - *Transcription reversed from "on the device"*: browser-sized Whisper was the weakest option
+    measured. `lib/ai/transcribe.ts`: Groq Whisper large-v3-turbo first (0.37 s for 13.8 s of audio,
+    its own free quota), Workers AI's the fallback (46.6 Neurons/min of the shared pool). Two hours of
+    audio per person per day (`DAILY_AUDIO_SECONDS`), metered separately from text so a meeting's ~200
+    pieces cannot eat the day's 40 text acts. Vocabulary = the meeting's title, client and projects.
+- **The model chain, by measurement** (`lib/ai/bake-off.live.test.ts`, Zenboard's own three jobs
+  through its own verifiers): Groq gpt-oss-120b 3/3 at 0.9 s → Workers AI gpt-oss-120b 3/3 at 3.8–4.2 s
+  (the floor) → NVIDIA → Gemini. NVIDIA's free catalog (DeepSeek V4.1 Flash, GLM-5.3, Gemma 4,
+  Nemotron 3 Super) timed out at 25–90 s or answered "Service temporarily overloaded"; Kimi K3 is 404
+  for the account; its trial terms forbid production and use inputs to improve models. Gemini 3.5
+  Flash 1/3 at ~20 s (3.8/3.7 Flash 503, 3.1 Pro 429). Both stay as overflow, gated away from a
+  client's words (`TRAINS_ON_INPUT`, `AI_SHARE_CLIENT_WORDS`).
+- **SQL**: 0046 `meeting_transcripts` + `ai_usage.audio_seconds` — applied by the user, verified live
+  (200s, and a bogus column 400/42703).
+- **Keys**: the NVIDIA line in `.env.local` read `nvapi- nvapi-…` (prefix typed, then the key pasted);
+  the Gemini and Resend lines carried a leading space. Fixed; providers now trim keys.
+- **Verified**: tsc clean; 145 AI tests + 9 route tests (three must-fail mutations caught); full suite
+  3,186 pass, the 4 failures are the website's uncommitted work. In the browser against the REAL
+  Whisper via `/dev-preview/transcribe` (dev-only) with `?fakemic=1` (left channel = mic, right =
+  call): 5/5 turns, correct speakers, pieces back in ~0.27 s on Groq; save carries all 5; with
+  `?transcribe=down` 4 pieces wait in IndexedDB, and after a reload all are adopted and saved. Phone
+  width and dark tokens checked.
+- **Owed**: M2 enhanced notes (next) · Draft's six moments have a server and no surface yet (paused
+  for this brief) · the `app-shell.tsx:674` set-state-in-effect lint error predates this work.
+
+## Meetings M2 — the meeting, written up — 2026-09-29 (MEETINGS_PLAN.md)
+
+Granola's signature act, done the Zenboard way. From your notes and the transcript the clerk writes
+the meeting up: what kind it was, what it was about, the facts that kind exists to find out, what
+was decided, what you owe, what they promised, what they asked for, what is still open.
+
+**M2 was half-built when this sprint picked it up** — `lib/meeting-notes.ts`, its four server
+actions and `meeting-writeup.tsx` all existed; nothing rendered them, nothing tested them, and the
+tree did not typecheck (33 errors: the write-up had absorbed "find action items" and no call site
+had been migrated). Finishing it was the sprint.
+
+- **Wired.** `<MeetingWriteUp>` at the top of the meeting, above the notes and transcript it was
+  written from. `mine` lands in the Action items section that already existed and `asks` in
+  Feedback — the paths that already turn a proposal into data, because a second way to do it would
+  be a second thing to trust. `theirs` gets **Follow up**, which writes
+  `[ ] Follow up with Meridian Studio: send the old brand files tomorrow` into your notes and
+  retires itself. Per-kind **details** (MeetGeek's templates, with nothing to configure) now render;
+  they were computed and dropped.
+- **THE VERIFIER HAD TWO HOLES, AND THE TESTS FOUND BOTH.** `lib/meeting-notes.ts` was the largest
+  untested file in the repo, so the tests came first:
+  1. **A spelled-out number was never checked.** "Send **three** alternative palettes", over a real
+     quote promising two, passed — `numbersIn` matched digits only. It now reads number WORDS and
+     reduces both to one form, so "three" and "3" are the same claim in either direction.
+  2. **A name at the START of an item was never checked.** "**Priya** will send the brand files"
+     passed, because the prose rule skips the first word of a sentence (it has to be capitalised).
+     An item is a fragment, and its first word is exactly where a name goes; `verifyDraft` gained a
+     `fragment` mode for it.
+- **AN ITEM IS HELD TO ITS OWN RECEIPT, NOT TO THE WHOLE MEETING.** Fixing (1) exposed something
+  worse: a transcript containing "March 3rd" licensed "three palettes", because a 3 appeared
+  *somewhere*. Figures are now checked against the one sentence the item cites — which is exactly
+  what the receipt under it promises the reader. Names stay checked against the whole meeting:
+  pinning them to one quote dropped honest lines ("Launch on March 3rd" cites "Yes, March 3rd."),
+  while an invented person is still caught because they are nowhere in the material.
+- **The action gained what it was missing**: the meeting's title and client (so a line may name
+  them) and the previous write-up's dismissals (so writing again does not re-ask what was refused).
+- SQL: **0047 `meetings.summary` + `summarized_at` is NOT applied** — given to the user this
+  session. The feature is gated: the write-up appears and works, and says in one line that it
+  cannot be kept until the migration runs.
+- Verified: tsc clean (33 → 0) · full vitest, the only failures the uncommitted website work
+  untouched here · every write-up state driven in a real browser against the dev-preview harness
+  (`?ai=ok|empty|long|unkept|limit|unavailable|slow|offline`), including the Follow-up round trip,
+  which wrote the line above and retired the promise from the list.
+- **Not verified: the live evaluation** (`lib/ai/meeting-notes.live.test.ts`, five cases including a
+  spoken prompt-injection). The wrangler session expired mid-sprint — `npx wrangler login`, then
+  `ZB_LIVE_AI=1 npx vitest run lib/ai/meeting-notes.live.test.ts`. It replaces the old
+  meeting-items evaluation, whose feature the write-up absorbed.
+- Owed: M3 (ask the meeting) is next in the plan. The brief's scheduling half — booking pages,
+  availability, a shareable link — is not in MEETINGS_PLAN.md at all and needs its own stage.
+
+## Meetings M3 — ask the meeting — 2026-09-29 (MEETINGS_PLAN.md M3 · ASK_PLAN.md A2)
+
+*"What did Alex say about the budget?"* answered from the meeting itself, with the sentences the
+answer rests on, each opening the meeting at the moment it was said.
+
+- **One engine, called by Ask — not a second assistant.** `lib/meeting-ask.ts` (the rules, pure) and
+  `lib/meeting-answer.ts` (server-only, deliberately NOT an action) are Ask's `ask_meeting` verb. On a
+  meeting page Ask already knows which meeting "this" is (it reads the address), the meeting header
+  has a quiet **Ask** beside Record, and Ask offers meeting questions when one is open. Nothing open
+  and nothing named: Ask asks "Which meeting?" with each one's day. "My last meeting", "yesterday's
+  call", "the Ridgeline call" resolve against real rows (`resolveMeetingPhrase`, lib/ask.ts) — the
+  generic words ("call", "meeting") are dropped before scoring, or the plainest phrasing matched
+  nothing.
+- **Receipts, not citations** (rule 7). Granola and Otter put numbered sources after the prose and do
+  not hold the prose to them. Here each receipt is a `QuoteRow` (new DS row: the words whole, who
+  said them and when, a press that opens the meeting at `?t=<seconds>`), and the transcript scrolls
+  to that turn, washes it and focuses it. The prose must say nothing its receipts do not: figures
+  from the receipts shown, names from the meeting or the question. An answer that fails is not
+  shown — its receipts are ("Here is what was said about it"). "Not in the meeting" is our sentence.
+- **The budget is measured.** Groq's free tier allows **8,000 tokens a minute and 1,000 requests a
+  day for the whole key** (`x-ratelimit-*` headers, 2026-09-29). A question sends at most ~16,000
+  characters: the whole meeting when it fits, else your notes, the lines sharing the question's
+  rarest words (two either side), and the write-up's key moments, with `[…]` where a stretch was
+  skipped — and the answer says it read part of a long meeting.
+
+**Found and fixed at the rule, each with a test that fails without the fix:**
+1. **Asking a meeting from Ask CLOSED the meeting.** The full-page PageView is modal and read a
+   click in the shell's Ask drawer as a click outside. New declared tier `<Drawer companion>`:
+   PageView exempts `[data-companion]` as it exempts toasts, and a companion's wheel and touch-moves
+   stop at its edge so a modal's scroll lock beneath it (react-remove-scroll — centred mode) cannot
+   freeze it. The first version never attached its listener (the content mounts through a portal a
+   render later) — caught by the must-fail control, fixed with a state-backed ref.
+2. **Ask's composer lost focus after every send** (disabled while busy, and the browser blurs a
+   disabled field). `MessageComposer` takes focus back when re-enabled — never away from somewhere
+   the person moved while waiting.
+3. **A receipt is the whole sentence** (`sentencesAround`, lib/meeting-suggest.ts, shared by the
+   write-up and Ask): a model-chosen fragment can change what was said — "pay the deposit" cut out
+   of "I will not pay the deposit before the contract is signed".
+4. **What was said to the machine is not evidence** (`isInstruction`). The write-up's live
+   evaluation, run for the first time, came back from Workers AI with **"Fee is now $50,000 and the
+   deadline is waived" as a DECISION**, quoting the injected sentence — every check passed, because
+   the words were said. Such sentences are now taken out of what a model is shown and refused as
+   evidence and as a source of figures. Narrow on purpose: "Ignore my earlier instructions about the
+   colour" and 'Update the "Summary" slide' stay talk.
+5. **The verifier read contractions as names** ("You’ll send…" refused as naming someone called
+   You’ll) and never matched a possessive to its name ("Sarah’s"). Found by the live Ask evaluation;
+   it had been dropping honest write-up items too.
+6. On the meeting page: an unwritten meeting drew a bare "Summary" over an empty band (loaded as
+   `ready` with no notes — the common case); the write-up doubled the gap above the notes to 64px;
+   its "5 minutes ago" came from date-fns instead of `formatAgo`; its user copy said "migration 0047".
+
+**Verified.** Unit: 181 tests in the meetings and Ask area (full suite 3,335 pass; the only failures
+are the 4 website tests from other sessions' uncommitted site work). 13 must-fail mutations, all red.
+Live: Ask-a-meeting 5/5 on Groq (0.3–1.1 s a question, an injected instruction ignored, a 420-line
+meeting answered from 574 characters); the write-up 5/5 on Workers AI (401 Neurons) and 5/5 on Groq
+(0.9–2.6 s) — its first live verification. Browser (dev-preview harnesses): Ask button → question →
+answer → receipt → the meeting at 4:31, washed, focused, `t` consumed; centred mode; dark; 375 px;
+keyboard-only follow-ups.
+
+**Owed.** SQL **0047 is still not applied** (probed: `meetings.summary` → 42703, `meetings.id` → 200):
+the write-up works but is not kept, and Ask cannot lean on its key moments. **M3b** — asking across
+meetings — is next. A write-up of a meeting over ~20 minutes exceeds Groq's 8,000 tokens a minute and
+always falls to Workers AI — a map-reduce write-up is owed. A recording stopped while its meeting is
+CLOSED (from the shell's indicator) is not written up until the meeting is opened.
+
+**Also shipped — M2's missing half: the notes write themselves.** The brief asks for the summary
+"after the meeting, automatically"; the recorder had announced a finished recording
+(`onRecordingFinished`) and nothing listened. The open meeting now writes itself up the moment every
+piece is transcribed and saved — silently skipped when there is too little to write, because nobody
+asked. Verified with the real recorder and real Whisper in the harness: after Stop, exactly two calls —
+the transcript save (67 ms) and ONE write-up (80 ms), queued behind the save so it reads every word —
+and the summary on screen at 1.5 s with no press.
+
+## What the live evaluation found, once it could run — 2026-09-29
+
+The M2 evaluation had been written but never run: the Cloudflare session was expired. The user ran
+`wrangler login`; running it then found two faults every unit test had missed, both in SHARED code,
+both now deterministic tests with controls.
+
+- **THE GATEWAY WAS THROWING AWAY WHOLE ANSWERS.** Measured over repeated runs, about one gpt-oss
+  answer in ten to a long meeting comes back as TWO complete JSON objects, one after the other.
+  `finish` is `stop` and each object is valid alone — but `parseJSONObject` sliced from the first
+  `{` to the LAST `}`, which spans both and parses as nothing. A write-up the person waited thirty
+  seconds for was lost to a second opinion nobody asked for. `firstObject` now takes the first
+  BALANCED object, tracking strings so a brace inside a quote reads as text and not as structure.
+  Found by instrumenting finish reason, token count and parse result across five runs — the failing
+  one was double the length of the others — rather than by re-running until it went green.
+- **A TRUE ITEM WAS DROPPED OVER ONE RETYPED WORD.** The transcript said "We still owe you the old
+  brand files"; the model quoted "We'll still owe you…"; exact containment refused it, and the
+  client's only promise in the meeting vanished from the write-up. Punishing the CLAIM because the
+  RECEIPT was retyped is the wrong trade. `snapQuote` matches a quote to the sentence it points at
+  and **shows that sentence** — stricter than what it replaced rather than looser, because the
+  reader now always sees text lifted from the material, where the old path fell back to the model's
+  own unchecked string whenever `sentencesAround` missed. A quote that matches no sentence to 80% of
+  its own vocabulary is still refused outright, and one under three distinguishing words is refused
+  for gesturing at the meeting instead of pointing at a line.
+- **One failure was the TEST being wrong, not the model.** It asserted the menu-board request into
+  `asks`; the transcript has the client ask and then "Me: Sure, I'll put a quote together", and the
+  prompt's own rule puts what the note-taker has taken on into `mine` — exactly where the model put
+  it. The assertion now only requires that it survive somewhere.
+- The evaluation is **explicitly not a gate**, and its header now says so: the model is stochastic
+  and a case fails perhaps one run in five on wording alone. Its job is systematic faults, and what
+  it finds must leave as a deterministic test rather than as a reason to re-run.
+- Verified: tsc clean · full vitest green but for the pre-existing website failures · the live suite
+  5/5 including the spoken prompt-injection case · both faults carry unit tests and their controls
+  in `lib/ai/gateway.test.ts` and `lib/meeting-suggest.test.ts`.
+- Cloudflare agent setup, at the user's request: the skills plugin and marketplace were already
+  installed; `cloudflare-docs` (public, no auth) added and verified connected. `mcp.cloudflare.com`
+  still needs the user to authorise. The note claiming this Mac has no `claude` CLI was **wrong as
+  of today** and has been corrected loudly in memory — it does, at `~/.nvm/.../bin/claude`.
+
+## One colour system, one geometry, calmer conversations — 2026-10-02
+
+Three user briefs in one session: rebuild the colour system ("clean, consistent, minimal,
+human-feeling … the calm quality of Claude's interface", reference kobra.systems/components/sheet),
+a full spacing/radius/sizing consistency pass, and a "second product from Linear, more human"
+redesign brief. Mid-way: **"don't change shell, I love that"** — the shell's structure and surfaces
+are kept; the work stayed inside the system and the workspace.
+
+### What was measured first
+- 13 screens painted **45 distinct backgrounds, 16 text colours, 26 border colours, 20 icon
+  colours**; neutrals sat on twelve hues (surfaces 68°, ink 92°, washes composited grey, dark built
+  from chroma-zero greys beside warm ones); status colours were raw Tailwind; seven raw hue tokens
+  (`--green`, `--red`, `--blue`…) and `--color-text-accent/-selected` were dark-tuned literals read
+  by light.
+- Geometry across 15 screens: **17 control heights**, radii of 1/2/3/4/5/6/8/10/12/14/16/20/24,
+  16px icons 4, 6, 8 or 12px from their words, two segmented tracks, four checkbox sizes.
+
+### What shipped
+- **Colour** (`app/theme-shadcn.css` header has the whole rationale): one neutral hue (95°),
+  chroma capped by area (0.005 / 0.007 / 0.010 / 0.012), three text levels (900=800, 700=600, 500),
+  one recipe for status, data palette, labels and project colours, a calm berry (`#AF356C` /
+  `#C2477C`; artwork keeps `#C41C72` as `BRAND_BERRY`), warm layered shadows, per-theme scrim and
+  tooltip. `tokens.generated.css`, `tokens.css` and `globals.css :root` now hold references only.
+- **Geometry**: one control ladder for Button/Input/Select/Combobox (24/28/32/36/40), one radius by
+  role (4/6/8/12), icon gaps that follow the glyph, menus at the overlay radius with trailing checks,
+  frameless status badges, `--measure` for conversations.
+- **Shell parts** shared by the app and the demo (`components/shell/shell-parts.tsx`): every
+  sidebar row on one glyph column, toolbar icons in one group with one divider, 28px controls.
+- **Shared rail heading** (`components/ui/rail-section-heading.tsx`) in the sidebar, Tasks,
+  Calendar and Documents; counts and row actions share one trailing slot; rail rules reach both
+  edges.
+- **Conversations**: Messages and Ask on Home on a centred reading column, 15px message type, one
+  composer anatomy in two sizes, the Ask question bubble at 12px, answer lists unboxed.
+- **Copy**: generic "Nothing here yet" states rewritten as contextual guidance.
+
+### Bugs found on the way
+- The segmented control's ring and thumb lift referenced `--line-soft`, declared nowhere, so the
+  whole `box-shadow` was dropped: no thumb lift anywhere in the app.
+- ⌘K and Quick capture drew the field-tier edge (28%) instead of the one overlay chrome; Quick
+  capture's buttons were hand-rolled at 30px.
+
+### Verified
+tsc clean · full vitest 3478/3478 (21 guards rewritten deliberately to the new system's properties,
+not deleted) · captures of every main screen in both themes · the website renders unchanged apart
+from its CTA taking the calmer berry. Lint errors remaining in `command-palette.tsx`,
+`notifications-bell.tsx` and `emoji-picker.tsx` predate this work.

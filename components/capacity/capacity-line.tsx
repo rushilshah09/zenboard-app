@@ -71,7 +71,7 @@ export function CapacityLine({ c, bar = false, className }: {
       {bar && <CapacityBar c={c} />}
       <p className="text-ui text-ink-500">
         <span className="tabular-nums text-ink-800">{capacityHeadline(c)}</span>
-        {' — '}
+        {': '}
         {/* Warning, never danger: an overloaded day is a planning signal, and a
             product that alarms about ordinary days teaches people to ignore it
             (§7O's notification diet, applied to a colour). */}

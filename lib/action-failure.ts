@@ -88,6 +88,6 @@ export function classifyRejection(
  */
 export const FAILURE_COPY: Record<ActionFailure, string> = {
   server: 'That didn’t save. The page now shows what’s saved.',
-  stale: 'That didn’t save — Zenboard has been updated.',
+  stale: 'That didn’t save. Zenboard has been updated.',
   unreachable: 'Couldn’t reach Zenboard. That change didn’t save.',
 };

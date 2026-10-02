@@ -2,12 +2,22 @@
 // Meeting mutations — a meeting is a client conversation (call/notes/transcript)
 // that feedback gets extracted from (the "2.2" card). RLS scopes everything to
 // the user. See supabase/migrations/0016_feedback.sql and lib/actions/feedback.ts.
+import { notReady } from '@/lib/not-ready';
 import { activeSpaceId } from '@/lib/active-space';
 import { requireSession } from '@/lib/auth';
 import { mentionsSupported } from '@/lib/connected';
 import { forgetMentionsFrom } from '@/lib/actions/mentions';
 import { intakeTask } from '@/lib/task-intake';
 import { actionKey, meetingDestination } from '@/lib/meeting-actions';
+import { generateJSON } from '@/lib/ai/gateway';
+import { userTimezone } from '@/lib/user-tz';
+import { MIN_TRANSCRIPT_CHARS } from '@/lib/meeting-suggest';
+import {
+  MEETING_NOTES_SYSTEM, NOTES_MAX_TOKENS, NOTES_MESSAGES, meetingNotesSchema, notesMaterial,
+  storedNotesSchema, verifyNotes, writeUpInput, type MeetingNotes, type NotesProblem,
+} from '@/lib/meeting-notes';
+import { transcriptSchema, transcriptText, type TranscriptSegment } from '@/lib/meeting-transcript';
+import { readSegments } from '@/lib/meeting-data';
 
 export async function addMeeting(
   input: { clientId?: string | null; title: string; notes?: string; metAt?: string },
@@ -64,7 +74,7 @@ export async function makeTaskFromMeeting(
 ): Promise<{ error: string } | { taskId: string; title: string; projectId: string | null }> {
   const { supabase, user } = await requireSession();
   if (!(await mentionsSupported(supabase))) {
-    return { error: 'Linking needs migration 0027.' };
+    return notReady('Linking isn’t available yet.', '0027');
   }
 
   const { data: meetingData } = await supabase.from('meetings')
@@ -132,6 +142,159 @@ export async function makeTaskFromMeeting(
 }
 
 /**
+ * The clerk writes the meeting up (lib/meeting-notes.ts, MEETINGS_PLAN.md M2): summary, decisions,
+ * your action items, their promises and asks, open questions — from your notes and the recording.
+ *
+ * `notes` is what the panel holds, because the panel is AHEAD of the database (notes save on blur,
+ * and pressing the button is what blurs the box); called without it — after a recording stops,
+ * say — the saved notes are read instead. The meeting is always looked up, so this only runs for a
+ * meeting the caller owns.
+ *
+ * The write-up is KEPT on the meeting (0047) — it is the meeting's own notes, and asking again
+ * would spend the shared pool twice. What it proposes stays a proposal: nothing here makes a task,
+ * a feedback item or an action line.
+ */
+export async function writeUpMeeting(
+  meetingId: string,
+  notes?: string | null,
+): Promise<{ error: string; reason: NotesProblem } | { notes: MeetingNotes; kept: boolean }> {
+  const { supabase, user } = await requireSession();
+  // Title, client and any previous write-up come back in the SAME read: the context is what lets a
+  // line name the client (lib/meeting-notes.ts `verifyNotes`), and the old dismissals are what stop
+  // a second write-up asking again about a proposal already turned down.
+  const { data: meeting } = await supabase.from('meetings')
+    .select('id, notes, title, summary, clients(name)').eq('id', meetingId).maybeSingle();
+  if (!meeting) return { error: NOTES_MESSAGES.missing, reason: 'missing' };
+  const row = meeting as unknown as {
+    notes: string | null; title: string | null; summary: unknown; clients: { name: string } | null;
+  };
+  const context = { title: row.title, clientName: row.clients?.name ?? null };
+  const previous = storedNotesSchema.safeParse(row.summary);
+
+  const typed = typeof notes === 'string' ? notes : (row.notes ?? '');
+  const material = notesMaterial(typed, await recordedText(supabase, meetingId));
+  if (material.length < MIN_TRANSCRIPT_CHARS) return { error: NOTES_MESSAGES.short, reason: 'short' };
+
+  const { input, truncated } = writeUpInput(context, material);
+  const res = await generateJSON({
+    feature: 'meeting-notes',
+    system: MEETING_NOTES_SYSTEM,
+    input,
+    schema: meetingNotesSchema,
+    maxTokens: NOTES_MAX_TOKENS,
+    userId: user.id,
+    timeZone: await userTimezone(),
+  });
+  if (!res.ok) return { error: NOTES_MESSAGES[res.reason], reason: res.reason };
+
+  const written = verifyNotes(res.data, material, {
+    context,
+    truncated,
+    dismissed: previous.success ? previous.data.dismissed : [],
+  });
+  const { error } = await supabase.from('meetings')
+    .update({ summary: written as unknown as Record<string, unknown>, summarized_at: written.at })
+    .eq('id', meetingId);
+  return { notes: written, kept: !error };
+}
+
+/** A meeting's kept write-up. `supported: false` when 0047 is not applied. */
+export async function loadMeetingWriteUp(
+  meetingId: string,
+): Promise<{ supported: boolean; notes: MeetingNotes | null }> {
+  const { supabase } = await requireSession();
+  const { data, error } = await supabase.from('meetings').select('summary').eq('id', meetingId).maybeSingle();
+  if (error) return { supported: false, notes: null };
+  const parsed = storedNotesSchema.safeParse((data as { summary: unknown } | null)?.summary);
+  return { supported: true, notes: parsed.success ? (parsed.data as MeetingNotes) : null };
+}
+
+/**
+ * "Not this one": a proposal the person dismissed is remembered on the write-up, so the next visit
+ * does not ask again. `key` is `list:key` (mine · asks · theirs).
+ */
+export async function dismissWriteUpItem(meetingId: string, key: string): Promise<{ error: string } | { ok: true }> {
+  const { supabase } = await requireSession();
+  if (typeof key !== 'string' || !/^(mine|asks|theirs):/.test(key) || key.length > 300) return { error: 'Nothing to dismiss.' };
+  const { data, error } = await supabase.from('meetings').select('summary').eq('id', meetingId).maybeSingle();
+  if (error || !data) return { error: 'That meeting isn’t available.' };
+  const parsed = storedNotesSchema.safeParse((data as { summary: unknown }).summary);
+  if (!parsed.success) return { error: 'This meeting has no write-up.' };
+  const dismissed = [...new Set([...parsed.data.dismissed, key])].slice(-200);
+  const { error: upd } = await supabase.from('meetings')
+    .update({ summary: { ...parsed.data, dismissed } as unknown as Record<string, unknown> }).eq('id', meetingId);
+  return upd ? { error: 'That didn’t save.' } : { ok: true };
+}
+
+/** Delete the write-up (not the meeting, notes or transcript). */
+export async function clearMeetingWriteUp(meetingId: string): Promise<{ error: string } | { ok: true }> {
+  const { supabase } = await requireSession();
+  const { error } = await supabase.from('meetings').update({ summary: null, summarized_at: null }).eq('id', meetingId);
+  return error ? { error: 'The write-up couldn’t be removed.' } : { ok: true };
+}
+
+type DB = Awaited<ReturnType<typeof requireSession>>['supabase'];
+
+/** A recorded meeting's words as text, or '' when there is no recording (or no 0046 yet). */
+async function recordedText(supabase: DB, meetingId: string): Promise<string> {
+  return transcriptText(await readSegments(supabase, meetingId));
+}
+
+/** A meeting's recorded transcript, as saved. `null` = never recorded. */
+export type SavedTranscript = { segments: TranscriptSegment[]; language: string | null; duration: number };
+
+/**
+ * The transcript for a meeting being opened. `supported: false` when 0046 is not applied — the
+ * panel then records and shows the live transcript but says it cannot keep it.
+ */
+export async function loadMeetingTranscript(
+  meetingId: string,
+): Promise<{ supported: boolean; transcript: SavedTranscript | null }> {
+  const { supabase } = await requireSession();
+  const { data, error } = await supabase.from('meeting_transcripts')
+    .select('segments, language, duration_seconds').eq('meeting_id', meetingId).maybeSingle();
+  if (error) return { supported: false, transcript: null };
+  if (!data) return { supported: true, transcript: null };
+  const row = data as { segments: unknown; language: string | null; duration_seconds: number };
+  const parsed = transcriptSchema.safeParse(row.segments);
+  return {
+    supported: true,
+    transcript: parsed.success ? { segments: parsed.data, language: row.language, duration: row.duration_seconds } : null,
+  };
+}
+
+/**
+ * Keep a meeting's transcript. The recorder calls this as the words arrive and once more when it
+ * stops; each call carries the WHOLE transcript, so a save that is lost is repaired by the next.
+ * Validated here, because this is a door any browser can knock on: segments are bounded in number
+ * and length, and the meeting must be the caller's (RLS, and 0046's policy checks it again).
+ */
+export async function saveMeetingTranscript(
+  meetingId: string,
+  input: { segments: TranscriptSegment[]; language: string | null; duration: number },
+): Promise<{ error: string; reason: 'invalid' | 'migration' | 'failed' } | { ok: true }> {
+  const { supabase, user } = await requireSession();
+  const parsed = transcriptSchema.safeParse(input?.segments);
+  if (!parsed.success) return { error: 'That transcript could not be saved.', reason: 'invalid' };
+  const language = typeof input.language === 'string' && /^[a-z]{2,3}$/.test(input.language) ? input.language : null;
+  const duration = Number.isFinite(input.duration) ? Math.max(0, Math.round(input.duration)) : 0;
+
+  const { error } = await supabase.from('meeting_transcripts').upsert({
+    meeting_id: meetingId,
+    user_id: user.id,
+    segments: parsed.data,
+    language,
+    duration_seconds: duration,
+    source: 'recording',
+  }, { onConflict: 'meeting_id' });
+  if (!error) return { ok: true };
+  const missing = /does not exist|schema cache|could not find the table/i.test(error.message);
+  return missing
+    ? { ...notReady('Transcripts can’t be saved yet.', '0046'), reason: 'migration' as const }
+    : { error: 'The transcript didn’t save.', reason: 'failed' };
+}
+
+/**
  * Take notes on a calendar event — PRODUCT_CONTEXT §14's first arrow:
  * `calendar event → meeting → notes → decisions → tasks`.
  *
@@ -153,7 +316,7 @@ export async function meetingFromEvent(
   eventId: string,
 ): Promise<{ error: string } | { id: string; existing: boolean }> {
   const { supabase, user } = await requireSession();
-  if (!(await mentionsSupported(supabase))) return { error: 'Linking needs migration 0027.' };
+  if (!(await mentionsSupported(supabase))) return notReady('Linking isn’t available yet.', '0027');
 
   const { data: ev } = await supabase.from('calendar_events')
     .select('id, title, starts_at, space_id').eq('id', eventId).maybeSingle();

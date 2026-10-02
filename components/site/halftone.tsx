@@ -2,23 +2,38 @@
 // ── THE HALFTONE ────────────────────────────────────────────────────────────
 //
 // The website's gradient, printed rather than airbrushed. A soft colour cloud is how every SaaS page
-// says "calm"; Zenboard's pages say it in their own marks. A cell is screened the way a print is: a
-// lattice of small glyphs whose weight follows the shape underneath. The glyphs are Zenboard's, in
-// order of weight:
+// says "calm"; Zenboard's pages say it in their own marks. A cell is SCREENED the way a print is: a
+// lattice whose ink mass follows the shape underneath.
 //
-//   ·  a dot   ·  a heavier dot   ·  the page's joint (the star four cells leave where they meet)
-//   ·  the star at the heart of the mark   ·  the mark itself
+// THE RAMP, lightest to heaviest (rebuilt 2026-09-26 from the user's moodboard, which is a plotter's
+// screen: filled dots and open rings of ramping size over a blurred field):
 //
-// and the shape underneath is always the mark, placed and cropped by its cell: the hero holds the whole
-// of it behind the headline, and each product area shows one lobe (a different one each time, so the
-// four areas between them hold the whole mark). A gradient here is the mark, drawn in marks.
+//   ·  a fine dot  ·  an open ring  ·  a dot  ·  a wider ring  ·  a heavy dot
+//   ·  the star at the heart of the mark  ·  the mark itself
 //
-// It moves the way print does not, only a little: a slow wave crosses the screen and steps the glyphs
-// it passes one weight up or down, and now and then a glyph catches the brand's colour. And it answers
-// the pointer: the print swells where the visitor points, and its middle catches the colour. It runs only
-// while the cell is on screen and the tab is visible, and never when less motion is asked for; then it
-// is printed once and left alone. It is decoration, so it is hidden from assistive technology and
-// takes no pointer.
+// Filled and open ALTERNATE, and each step carries more ink than the one below it whichever it is
+// (a ring's ink is its circumference times its stroke; the pairs are matched to within a few per
+// cent). That alternation is the whole difference between a screen and a field of dots: it is what
+// gives the print a weave. The heavy end is the logo, because the user's rule is that the shapes
+// here are ours ("we use mostly our logo shape for the halftone").
+//
+// The shape underneath is always the mark, placed and cropped by its cell: the hero holds the whole
+// of it behind the headline, and each product area shows one lobe.
+//
+// TWO INKS, NEVER THREE. Light and deep — white and black, both blended into the colour rather than
+// laid on it (user, 2026-09-26: "I don't want brand colour on that, I want only black and white, we
+// use with blend mode"). The open rings take the deep ink and the filled marks the light one, which
+// is what makes a screen read as printed rather than as an overlay.
+//
+// IT ANSWERS THE HAND. Point at it and the print swells and DARKENS under the pointer, drawing in
+// the deep ink. Double-click it and a ring travels out from where you struck, lifting the screen as
+// it passes and flashing it in the light ink: the same gesture as a finger on water, and the only
+// thing on this page that answers a click rather than a hover. A slow wave crosses the whole screen
+// besides, stepping the glyphs it passes one weight up or down.
+//
+// It runs only while the cell is on screen and the tab is visible, and never when less motion is
+// asked for; then it is printed once and left alone, rings and all. It is decoration, so it is
+// hidden from assistive technology and takes no pointer.
 
 import * as React from 'react';
 import { MARK_PATH } from '@/components/ds/icons';
@@ -37,27 +52,39 @@ export type MarkPlacement = {
 /** Where the screen thins out: the side the words are on. */
 export type Fade = 'start' | 'end' | 'top' | 'bottom';
 
-/** The ramp's thresholds, lightest to heaviest: where a density crosses one, the glyph changes. */
-const STEPS = [0.12, 0.28, 0.5, 0.72, 0.9];
+/** The ramp's thresholds, lightest to heaviest: where a density crosses one, the glyph changes.
+    Seven steps where there were five, because the moodboard's screens ramp in small increments and
+    a five-step screen reads as five separate textures rather than as one gradient. */
+const STEPS = [0.1, 0.22, 0.34, 0.47, 0.62, 0.78, 0.92];
 /** How far the passing wave moves a glyph's density: never more than about one step. */
-const SWELL = 0.12;
+const SWELL = 0.1;
 /** The wave's length, in glyphs. */
 const WAVE = 9;
-/** The share of glyphs that can ever catch the brand's colour, and for what share of a period. */
-const SPARKS = 0.03;
-const SPARK_SPAN = 0.08;
+/** How heavy the ambient screen gets at its densest corner, before the mark is drawn over it.
+    About a third: the ground is fine dots and open rings, and the mark still has four steps of
+    ramp above it to rise through. */
+const AMBIENT = 0.34;
 /** Frames drawn per second while it moves. The wave is slow: more frames would only cost battery. */
 const FPS = 24;
-/** THE POINTER (user, 2026-09-26: "all the halftone effect with mouse interactive"). Where the visitor
-    points, the print swells: a patch about `REACH` glyphs across lifts every glyph in it by up to
-    `LIFT`, its middle catches the brand's colour, and bare ground near it shows a faint grain of its
-    own, so the pointer is answered even where there is no mark. The patch follows the pointer and
-    fades in and out by a share of the way each frame (`FOLLOW`, `FADE`), so it trails like light
-    rather than snapping like a cursor. */
+/** THE POINTER (user, 2026-09-26: "all the halftone effect with mouse interactive"). Where the
+    visitor points, the print swells: a patch about `REACH` glyphs across lifts every glyph in it by
+    up to `LIFT`, and draws in the DEEP ink, so the pointer leaves a dark thumbprint on the screen
+    rather than a coloured one. The patch follows the pointer and fades in and out by a share of the
+    way each frame (`FOLLOW`, `FADE`), so it trails like light rather than snapping like a cursor. */
 const REACH = 11;
 const LIFT = 0.55;
 const FOLLOW = 0.22;
 const FADE = 0.16;
+/** THE RIPPLE (user, 2026-09-26: "on a double click I want a ripple effect also"). A ring of lift
+    travelling out from the strike at `RIPPLE_SPEED` px a second, `RIPPLE_WIDTH` px thick, fading
+    over `RIPPLE_LIFE`. It flashes the glyphs it passes in the LIGHT ink, which is the opposite of
+    what the pointer does: you point and the print darkens, you strike and it catches the light.
+    Three at once is plenty — a fourth is indistinguishable and costs a pass over the lattice. */
+const RIPPLE_SPEED = 620;
+const RIPPLE_WIDTH = 52;
+const RIPPLE_LIFE = 1.15;
+const RIPPLE_LIFT = 0.85;
+const MAX_RIPPLES = 3;
 
 const level = (d: number) => {
   let l = 0;
@@ -119,22 +146,42 @@ function blur(src: Float32Array, cols: number, rows: number, r: number) {
 // same curve turned a quarter, which is the shape four rounded cells leave where they meet.
 const HEART = `M${MARK_PATH.split('M').pop()}`;
 
+/**
+ * ONE CELL OF THE SCREEN, at level `l`. Everything is a fraction of the PITCH rather than of a
+ * fixed 14px cell, so a finer screen is the same drawing smaller rather than a different one.
+ *
+ * No mark is smaller than about 0.6 CSS px across: below that a filled arc renders as a faint
+ * SQUARE and the screen reads as a pixel grid, which is the other half of what "looks basic, just
+ * put on the gradient" was describing.
+ *
+ * Filled and OPEN alternate up the ramp, which is what the user's reference screens do and what
+ * gives a print its weave; a field of plain dots reads as a texture swatch. The pairs are matched
+ * by ink mass, since a ring's ink is 2πr·lw and a dot's is πr²: (r .12, lw .055) against r .105 is
+ * about 15% apart, (r .185, lw .075) against r .165 about 1%. So the ramp alternates texture
+ * without the weight jumping around.
+ *
+ * The heavy end is the logo — its heart, then the mark whole (user, 2026-09-26: "we use mostly our
+ * logo shape for the halftone or any effect shape").
+ */
 function glyph(g: CanvasRenderingContext2D, l: number, pitch: number, mark: Path2D, heart: Path2D) {
-  const u = pitch / 14; // drawn for a 14px pitch, and scaled with it
-  if (l === 1 || l === 2) {
+  if (l <= 5) {
+    const ring = l === 2 || l === 4;
+    const r = [0.085, 0.145, 0.125, 0.205, 0.185][l - 1] * pitch;
     g.beginPath();
-    g.arc(0, 0, (l === 1 ? 0.7 : 1.05) * u, 0, Math.PI * 2);
-    g.fill();
+    g.arc(0, 0, r, 0, Math.PI * 2);
+    if (!ring) { g.fill(); return; }
+    g.lineWidth = (l === 2 ? 0.062 : 0.082) * pitch;
+    g.strokeStyle = g.fillStyle;
+    g.stroke();
     return;
   }
-  const size = (l === 3 ? 7 : l === 4 ? 9 : 7.5) * u;
-  g.rotate(l === 3 ? Math.PI / 4 : 0);
+  const size = (l === 6 ? 0.55 : 0.72) * pitch;
   g.scale(size / 20, size / 20);
   g.translate(-10, -10);
-  g.fill(l === 5 ? mark : heart);
+  g.fill(l === 7 ? mark : heart);
 }
 
-/** Every glyph in every ink, drawn once: a frame is then only copies. Rows: soft, strong, accent. */
+/** Every glyph in every ink, drawn once: a frame is then only copies. Rows: light, strong, deep. */
 function sheetFor(pitch: number, dpr: number, inks: string[]) {
   const sheet = document.createElement('canvas');
   sheet.width = Math.ceil(pitch * dpr * STEPS.length);
@@ -211,9 +258,26 @@ function latticeFor(w: number, h: number, pitch: number, place: Required<MarkPla
       const mx = ((dx * cos - dy * sin) / px) * 20 + 10;
       const my = ((dx * sin + dy * cos) / px) * 20 + 10;
       const fill = 0.5 + 0.5 * smooth(4, 18, (mx + my) / 2);
-      let d = smooth(0.35, 0.65, cov[k]) * fill;
-      // Outside the mark: a loose grain, closer together near it, like ink that travelled.
-      if (cov[k] < 0.05) d = s < 0.003 + 0.04 * halo[k] ? STEPS[0] + 0.02 : 0;
+      // THE WHOLE PICTURE IS SCREENED, not a rectangle of it. The first pass printed the mark's
+      // silhouette and left the rest bare, which read as a pixel-grid patch dropped on the
+      // gradient — the user, 2026-09-26, of exactly that: "right now that halftone execution
+      // looks basic and just put on the gradient". In the reference, the screen covers
+      // everything and its WEIGHT follows the picture's light.
+      //
+      // So: an ambient screen on the field's own axis. `.site-field-*` lays its richest hue at
+      // the bottom-left corner and blooms to the top-right, so the screen is densest at the
+      // bottom-left and thins out to nothing at the top-right, and the two are one picture
+      // rather than a drawing on top of one. It is dithered by the cell's own seed, which is
+      // what leaves the gaps a printed screen has; an undithered ambient is a wallpaper.
+      const amb = AMBIENT * smooth(0.02, 1.02, (1 - u) * 0.55 + v * 0.45) * (0.45 + 1.15 * s);
+      // The mark reads through the blur as well as through its own coverage, so its edge is a
+      // gradient of density rather than a cut line. That was right when the field around it was
+      // bare — a soft edge then read as a blurred square — and wrong now that the whole picture
+      // is screened: against an ambient ground a crisp silhouette reads as a RECTANGLE OF DOTS
+      // dropped on the gradient, which is exactly what the user saw.
+      let d = Math.max(smooth(0.06, 0.88, 0.45 * cov[k] + 0.55 * halo[k]) * fill, amb);
+      // Just outside the mark the ink travelled a little further: the halo lifts the ambient.
+      if (cov[k] < 0.05) d = Math.max(amb * (1 + 1.6 * halo[k]), s < 0.04 * halo[k] ? STEPS[1] : 0);
       const keep = fade === 'start' ? smooth(0.16, 0.6, u)
         : fade === 'end' ? smooth(0.16, 0.6, 1 - u)
           : fade === 'top' ? smooth(0.12, 0.6, v)
@@ -254,7 +318,9 @@ export function Halftone({ mark, fade, weight = 1, pitch = 10, className }: {
     let raf = 0;
     let last = -Infinity;
     let onScreen = false;
-    const t0 = performance.now();
+    // The clock starts when the print is first seen, so its shimmer begins in front of the reader.
+    let t0 = performance.now();
+    let firstSeen = false;
     // The pointer as the print feels it: where it is, where the light has got to, and how strongly.
     let tx = 0;
     let ty = 0;
@@ -263,13 +329,15 @@ export function Halftone({ mark, fade, weight = 1, pitch = 10, className }: {
     let pull = 0;
     let want = 0;
     let fresh = true;
+    /** Rings struck by a double-click, newest last. Each is where, and when it started. */
+    let rings: { x: number; y: number; at: number }[] = [];
 
-    const inks = () => ['--site-glyph', '--site-glyph-strong', '--site-glyph-accent'].map((t) => colour(canvas, t));
+    const inks = () => ['--site-glyph', '--site-glyph-strong', '--site-glyph-deep'].map((t) => colour(canvas, t));
 
     const draw = (t: number | null) => {
       ctx.clearRect(0, 0, w, h);
       if (!lattice || !sheet) return;
-      const { cols, rows, base, seed } = lattice;
+      const { cols, rows, base } = lattice;
       const c = pitch * dpr;
       const phase = t == null ? 0 : (t / period) * Math.PI * 2;
       if (t != null) {
@@ -277,28 +345,48 @@ export function Halftone({ mark, fade, weight = 1, pitch = 10, className }: {
         py += (ty - py) * FOLLOW;
         pull += (want - pull) * FADE;
         if (want === 0 && pull < 0.01) { pull = 0; fresh = true; }
+        rings = rings.filter((r) => t - r.at < RIPPLE_LIFE);
       }
       const reach2 = (REACH * pitch) ** 2;
+      // Each live ring, resolved once per frame rather than once per glyph: where its front has
+      // got to, and how much of it is left.
+      const live = t == null ? [] : rings.map((r) => ({
+        x: r.x, y: r.y,
+        at: (t - r.at) * RIPPLE_SPEED,
+        amp: (1 - (t - r.at) / RIPPLE_LIFE) ** 2 * RIPPLE_LIFT,
+      }));
       for (let j = 0; j < rows; j++) {
         for (let i = 0; i < cols; i++) {
           const k = j * cols + i;
           const d0 = base[k];
-          if (d0 <= 0 && pull === 0) continue;
+          const cx = (i + 0.5) * pitch;
+          const cy = (j + 0.5) * pitch;
           let lift = 0;
           if (pull > 0) {
-            const dx = (i + 0.5) * pitch - px;
-            const dy = (j + 0.5) * pitch - py;
+            const dx = cx - px;
+            const dy = cy - py;
             const q = (dx * dx + dy * dy) / reach2;
             if (q < 1) lift = (1 - q) * (1 - q) * pull;
           }
-          if (d0 <= 0 && lift <= 0) continue;
+          // The ring: a band of lift at the travelling front, falling off either side of it.
+          let wave = 0;
+          for (const r of live) {
+            const dr = Math.hypot(cx - r.x, cy - r.y) - r.at;
+            if (dr < -RIPPLE_WIDTH || dr > RIPPLE_WIDTH) continue;
+            const f = 1 - Math.abs(dr) / RIPPLE_WIDTH;
+            wave = Math.max(wave, f * f * r.amp);
+          }
+          if (d0 <= 0 && lift <= 0 && wave <= 0) continue;
           let d = t != null && d0 > STEPS[1] ? d0 + SWELL * Math.sin((i + j * 0.6) / WAVE - phase) : d0;
           if (lift > 0) d = Math.max(d + LIFT * lift, lift * 0.42);
+          if (wave > 0) d = Math.max(d + wave, wave * 0.5);
           const l = level(d);
           if (!l) continue;
-          const spark = t != null && l >= 3 && seed[k] < SPARKS && (t / period + seed[k] * 97) % 1 < SPARK_SPAN;
-          const lit = lift > 0.6 && seed[k] < 0.3;
-          const ink = spark || lit ? 2 : l >= 4 ? 1 : 0;
+          // TWO INKS, and which one is a statement about what made the glyph. The open rings take
+          // the deep ink, which is what gives the screen its weave; the pointer draws in it too,
+          // so pointing leaves a dark thumbprint. A ring from a double-click catches the LIGHT
+          // ink instead: you point and the print darkens, you strike and it flashes.
+          const ink = wave > 0.22 ? 1 : lift > 0.28 || l === 2 || l === 4 ? 2 : l >= 6 ? 1 : 0;
           ctx.drawImage(sheet, (l - 1) * c, ink * c, c, c, i * pitch, j * pitch, pitch, pitch);
         }
       }
@@ -350,8 +438,18 @@ export function Halftone({ mark, fade, weight = 1, pitch = 10, className }: {
       if (fresh) { px = tx; py = ty; fresh = false; }
     };
     const onLeave = () => { want = 0; };
+    /** A strike on the plate. Ignored when less motion is asked for: a ripple is motion and
+        nothing else, so there is nothing to show still. */
+    const onStrike = (e: MouseEvent) => {
+      if (still.matches) return;
+      const r = canvas.getBoundingClientRect();
+      rings.push({ x: e.clientX - r.left, y: e.clientY - r.top, at: (performance.now() - t0) / 1000 });
+      if (rings.length > MAX_RIPPLES) rings.shift();
+      sync();
+    };
     host.addEventListener('pointermove', onMove, { passive: true });
     host.addEventListener('pointerleave', onLeave);
+    host.addEventListener('dblclick', onStrike);
 
     const resized = new ResizeObserver(() => {
       layout();
@@ -360,15 +458,12 @@ export function Halftone({ mark, fade, weight = 1, pitch = 10, className }: {
     resized.observe(host);
     const seen = new IntersectionObserver(([e]) => {
       onScreen = e.isIntersecting;
+      if (onScreen && !firstSeen) { firstSeen = true; t0 = performance.now(); }
       sync();
     });
     seen.observe(canvas);
-    // A theme or skin change repaints the inks.
-    const themed = new MutationObserver(() => {
-      sheet = sheetFor(pitch, dpr, inks());
-      draw(moving() ? (performance.now() - t0) / 1000 : null);
-    });
-    themed.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-skin'] });
+    // No theme to follow: the website has one appearance (lib/theme.ts `SITE_APPEARANCE`), so the
+    // inks read once per layout are the inks for good.
     document.addEventListener('visibilitychange', sync);
     still.addEventListener('change', sync);
 
@@ -376,11 +471,11 @@ export function Halftone({ mark, fade, weight = 1, pitch = 10, className }: {
       if (raf) cancelAnimationFrame(raf);
       resized.disconnect();
       seen.disconnect();
-      themed.disconnect();
       document.removeEventListener('visibilitychange', sync);
       still.removeEventListener('change', sync);
       host.removeEventListener('pointermove', onMove);
       host.removeEventListener('pointerleave', onLeave);
+      host.removeEventListener('dblclick', onStrike);
     };
   }, [x, y, size, turn, fade, weight, pitch]);
 

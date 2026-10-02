@@ -100,7 +100,7 @@ export function RepeatPicker({ value, onChange }: {
         <Icon icon={Info} size={12} className="mt-px shrink-0" />
         <span>
           {value.kind === 'weekly'
-            ? `Measured by the week — no single day counts against you.`
+            ? `Measured by the week, no single day counts against you.`
             : `${scheduleLabel(value)}. Days it isn’t due never count as missed.`}
           <span className="sr-only"> Schedule: {scheduleLongLabel(value)}.</span>
         </span>

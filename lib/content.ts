@@ -55,8 +55,8 @@ export const STAGE_ACTION: Record<Stage, string> = {
   // Deliberately neutral about WHO: a review can be yours. When a client has
   // actually been asked, the piece shows the real line instead.
   review: 'Waiting on a look',
-  scheduled: 'Nothing — it is set',
-  published: 'Nothing — it is out',
+  scheduled: 'Nothing, it is set',
+  published: 'Nothing, it is out',
 };
 
 /**
@@ -961,7 +961,7 @@ export function contentFromProject(projectName: string, presetIds: string[]): Ne
   return PROJECT_CONTENT_PRESETS
     .filter((p) => presetIds.includes(p.id))
     .map((p) => ({
-      title: `${name} — ${p.label.toLowerCase()}`,
+      title: `${name} · ${p.label.toLowerCase()}`,
       // A piece born from a finished project is a PIECE, not a capture:
       // the user picked it in the close-out, so it is already a decision.
       meta: { stage: 'idea' as Stage, bucket: 'piece' as Bucket, format: p.format, channel: p.channel },
@@ -1161,7 +1161,7 @@ export function repurpose(
   return offered
     .filter((p) => presetIds.includes(p.id))
     .map((p) => ({
-      title: `${name} — ${p.label.toLowerCase()}`,
+      title: `${name} · ${p.label.toLowerCase()}`,
       meta: {
         stage: 'idea' as Stage,
         bucket: 'piece' as Bucket,

@@ -79,20 +79,26 @@ describe('the cookie choice', () => {
   const banner = read('components/site/cookie-consent.tsx');
 
   it('gives declining the same weight as accepting', () => {
-    const decline = banner.match(/<Button variant="(\w+)" onClick=\{\(\) => decide\(ESSENTIAL_ONLY\)\}>Decline<\/Button>/)?.[1];
-    const accept = banner.match(/<Button variant="(\w+)" onClick=\{\(\) => decide\(EVERYTHING\)\}>Accept all<\/Button>/)?.[1];
+    const decline = banner.match(/<Button variant="(\w+)" onClick=\{\(\) => dismissBanner\(ESSENTIAL_ONLY\)\}>Decline<\/Button>/)?.[1];
+    const accept = banner.match(/<Button variant="(\w+)" onClick=\{\(\) => dismissBanner\(EVERYTHING\)\}>Accept all<\/Button>/)?.[1];
     expect(decline).toBeTruthy();
     expect(decline).toBe(accept);
+    // Parity alone would still allow BOTH to be the filled accent, which is two filled accents on
+    // one view (CLAUDE.md) and reads as a pair of Accepts. The accent belongs here as an EDGE.
+    expect(decline, 'the accept/decline pair must not carry the filled accent').not.toBe('brand');
   });
 
   it('treats closing the card, and Global Privacy Control, as a decline', () => {
-    expect(banner).toMatch(/label="Close, and keep only essential cookies"[\s\S]{0,200}onClick=\{\(\) => decide\(ESSENTIAL_ONLY\)\}/);
+    expect(banner).toMatch(/label="Close, and keep only essential cookies"[\s\S]{0,200}onClick=\{\(\) => dismissBanner\(ESSENTIAL_ONLY\)\}/);
     expect(banner).toMatch(/if \(state === 'open' && globalPrivacyControl\(\)\) writeConsent\(ESSENTIAL_ONLY\);/);
   });
 
   it('can be reopened from every page', () => {
     expect(read('components/site/site-chrome.tsx')).toMatch(/<CookieSettingsLink/);
-    expect(read('components/site/site-home.tsx')).toMatch(/<CookieConsent \/>/);
-    expect(read('components/site/legal.tsx')).toMatch(/<CookieConsent \/>/);
+    // ONE place, not one per page. The banner was spelled out in site-home and legal; it now stands in
+    // the frame that every page stands in (site-shell.tsx), so "every page" is STRUCTURAL — a page added
+    // later cannot forget the choice, because it cannot render without the shell.
+    expect(read('components/site/site-shell.tsx')).toMatch(/<CookieConsent \/>/);
+    for (const f of ['site-home.tsx', 'legal.tsx']) expect(read(`components/site/${f}`), f).toMatch(/<SiteShell/);
   });
 });

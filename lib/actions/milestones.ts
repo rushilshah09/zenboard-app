@@ -18,6 +18,7 @@
 // build treat the WHOLE file as having no exports at all. `tsc` accepts it
 // happily — the error only appears at bundle time — so this comment is the
 // warning the type system cannot give.
+import { notReady } from '@/lib/not-ready';
 import { createClient } from '@/lib/supabase/server';
 import { requireSession } from '@/lib/auth';
 
@@ -38,7 +39,7 @@ export async function projectMilestonesSupported(db?: DB): Promise<boolean> {
   }
 }
 
-const NOT_READY = { error: 'Project milestones need migration 0036.' } as const;
+const NOT_READY = () => notReady('Milestones aren’t available yet.', '0036');
 
 /**
  * Add a dated checkpoint to a project.
@@ -54,7 +55,7 @@ export async function addProjectMilestone(
   dueDate: string | null = null,
 ): Promise<{ error: string } | { id: string }> {
   const { supabase, user } = await requireSession();
-  if (!(await projectMilestonesSupported(supabase))) return NOT_READY;
+  if (!(await projectMilestonesSupported(supabase))) return NOT_READY();
 
   const clean = title.trim();
   if (!clean) return { error: 'A milestone needs a name.' };
@@ -69,7 +70,7 @@ export async function addProjectMilestone(
 /** Date or un-date a checkpoint. `null` returns it to "undated". */
 export async function setMilestoneDate(id: string, dueDate: string | null): Promise<{ error: string } | { ok: true }> {
   const { supabase } = await requireSession();
-  if (!(await projectMilestonesSupported(supabase))) return NOT_READY;
+  if (!(await projectMilestonesSupported(supabase))) return NOT_READY();
   const { error } = await supabase.from('milestones').update({ due_date: dueDate }).eq('id', id);
   return error ? { error: error.message } : { ok: true };
 }

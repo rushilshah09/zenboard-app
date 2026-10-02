@@ -14,10 +14,11 @@ import { notifyOwner } from '@/lib/notify';
 import { postFormWebhook, buildWebhookAnswers } from '@/lib/webhook';
 import { sendEmail, siteOrigin } from '@/lib/email';
 import { verifyTurnstile } from '@/lib/turnstile';
+import { trippedHoneypot, tooFast } from '@/lib/spam-guard';
 import { isAccepting } from '@/lib/forms';
 import { instantiate, templateByKey } from '@/lib/form-templates';
 import {
-  starterBlocks, toFormContent, toFormSettings, validateAll, visibleFieldIds,
+  isField, starterBlocks, toFormContent, toFormSettings, validateAll, visibleFieldIds,
   type Answers, type FormBlock, type FormSettings,
 } from '@/lib/form-schema';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -384,21 +385,10 @@ async function onResponseComplete(svc: DB, ctx: CompletionContext) {
 // A caught bot gets `{ ok: true }` with a discarded payload, NOT an error:
 // telling a bot precisely how it failed is how it learns to pass next time.
 
-/** Minimum plausible time between opening a form and submitting it. */
-const MIN_FILL_MS = 3000;
 /** New responses one form may open in a minute before we stop opening more. */
 const BURST_PER_MINUTE = 30;
-
-function trippedHoneypot(honeypot?: string): boolean {
-  return typeof honeypot === 'string' && honeypot.trim().length > 0;
-}
-
-function tooFast(startedAt?: unknown): boolean {
-  if (typeof startedAt !== 'string') return false; // unknown start ⇒ give benefit of the doubt
-  const started = Date.parse(startedAt);
-  if (!Number.isFinite(started)) return false;
-  return Date.now() - started < MIN_FILL_MS;
-}
+// The honeypot and the time trap moved to lib/spam-guard.ts when the waitlist needed the same two;
+// a second copy of a rule like this drifts — one gets a fix and the other keeps the bug.
 
 /** Resolve a token to a live, still-accepting form. The gate every public write shares. */
 async function resolveLiveForm(token: string) {
@@ -572,15 +562,21 @@ export async function submitResponse(
   return { ok: true, id: (data as { id: string }).id };
 }
 
-/** Drop anything that isn't a current field — never store stray keys from a client. */
+/**
+ * Drop anything that isn't a current field's answer — never store stray keys,
+ * or shapes a field cannot produce, from a client. Every answer the product
+ * writes is one of four: text, a list of texts, a finite number, a tick. An
+ * object, a NaN or a 10 MB string is a crafted request, and it stops here.
+ */
 function pruneAnswers(answers: Answers, blocks: FormBlock[]): Answers {
-  const allowed = new Set(blocks.map((b) => b.id));
+  const allowed = new Set(blocks.filter((b) => isField(b.type)).map((b) => b.id));
   const out: Answers = {};
   for (const [k, v] of Object.entries(answers ?? {})) {
     if (!allowed.has(k)) continue;
     if (typeof v === 'string') out[k] = v.slice(0, 10000);
-    else if (Array.isArray(v)) out[k] = v.filter((x): x is string => typeof x === 'string').slice(0, 100);
-    else out[k] = v;
+    else if (Array.isArray(v)) out[k] = v.filter((x): x is string => typeof x === 'string').map((x) => x.slice(0, 1000)).slice(0, 100);
+    else if (typeof v === 'number' && Number.isFinite(v)) out[k] = v;
+    else if (typeof v === 'boolean' || v === null) out[k] = v;
   }
   return out;
 }

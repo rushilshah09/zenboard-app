@@ -139,7 +139,7 @@ export function PortalChat({
             <EmptyState
               illustration={<Icon icon={MessageCircle} size={20} />}
               title={`Message ${studio}`}
-              description="Ask anything — they’ll see it straight away."
+              description="Ask anything and they’ll see it straight away."
             />
           }
         />

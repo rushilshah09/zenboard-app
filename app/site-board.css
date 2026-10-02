@@ -1,0 +1,175 @@
+/* ── THE ILLUSTRATION BOARD, EXACTLY (components/site/board-scenes.tsx) ────────────────────────
+   The user, 2026-09-27: "use these exact same illustrations … do not change, redesign, or modify the
+   illustration style, line work, shapes, proportions, or any visual details", from their board
+   (claude.ai/artifact/9naKXYCRYER9BgdQSxNL2Y). So this is the board's own palette, type and motion,
+   carried over value for value (read from the board as it renders, light and dark) and renamed from
+   `ill-` to `ib-` only so that nothing here can collide with a class or keyframe of the same name
+   elsewhere on the site. It is scoped to `.ib-scope`, the stage each scene is drawn on, and nothing
+   outside a stage can see it.
+
+   A drawing does not follow the site's own tokens on purpose: a copy that re-derives its colours from
+   the house palette drifts whenever that palette moves, and "exactly" is the brief. */
+.ib-scope {
+  --ib-page: #f6f5f2;
+  --ib-tile: #fff;
+  --ib-stage: #f2f1ed;
+  --ib-surface: #fff;
+  --ib-surface-2: #f8f7f4;
+  --ib-surface-3: #efeeea;
+  --ib-scrim: #f6f5f2b8;
+  --ib-ink-1: #1e1c1a;
+  --ib-ink-2: #4a4744;
+  --ib-ink-3: #7a7672;
+  --ib-ink-4: #b3afa9;
+  --ib-skeleton: #e9e7e2;
+  --ib-line: #1e1c1a14;
+  --ib-line-strong: #1e1c1a24;
+  --ib-dot: #1e1c1a17;
+  --ib-solid: #1e1c1a;
+  --ib-on-solid: #fff;
+  --ib-accent: #c41c72;
+  --ib-accent-soft: #c41c7214;
+  --ib-accent-line: #c41c7247;
+  --ib-success: #3e9a6c;
+  --ib-success-soft: #3e9a6c1f;
+  --ib-aura-a: #ee96be73;
+  --ib-aura-b: #b0a8ee66;
+  --ib-aura-c: #fac4a073;
+  --ib-feature-icon-bg: #cdc9f4;
+  --ib-feature-icon-ink: #24214a;
+  --ib-label-berry: #c41c72;
+  --ib-label-indigo: #6d64c8;
+  --ib-label-moss: #3e9a6c;
+  --ib-label-ochre: #c4912b;
+  --ib-label-slate: #4f82ae;
+  --ib-label-indigo-soft: #6d64c81f;
+  --ib-label-slate-soft: #4f82ae1f;
+  --ib-label-ochre-soft: #c4912b24;
+  --ib-shadow-1: 0 0 0 1px #1e1c1a14, 0 1px 2px #1e1c1a0d;
+  --ib-shadow-2: 0 0 0 1px #1e1c1a14, 0 1px 2px #1e1c1a0a, 0 8px 24px -8px #1e1c1a24;
+  --ib-shadow-float: 0 0 0 1px #1e1c1a14, 0 2px 4px #1e1c1a0a, 0 24px 48px -16px #1e1c1a3d;
+  --ib-shadow-key: inset 0 -2px 0 #1e1c1a1a, 0 0 0 1px #1e1c1a24, 0 1px 2px #1e1c1a0f;
+  --ib-shadow-key-down: inset 0 1px 0 #1e1c1a14, 0 0 0 1px #1e1c1a24;
+  --ib-loop: 6s;
+  /* The board's text starts from its page's body: 14/20, regular, untracked. */
+  color: var(--ib-ink-2); font-family: var(--font-sans); font-size: 14px; line-height: 20px; letter-spacing: normal; font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+}
+/* A bare `border` on the board paints in the text's colour (Tailwind's own default); the site's base
+   layer paints it in the line colour for its registry components. Inside a scene, the board's rule. */
+@layer base {
+  .ib-scope *, .ib-scope ::before, .ib-scope ::after { border-color: currentColor; }
+}
+html[data-theme='dark'] .ib-scope {
+  --ib-page: #000;
+  --ib-tile: #121212;
+  --ib-stage: #0d0d0d;
+  --ib-surface: #1e1e1e;
+  --ib-surface-2: #262626;
+  --ib-surface-3: #303030;
+  --ib-scrim: #0000008c;
+  --ib-ink-1: #f2f1eb;
+  --ib-ink-2: #c9c8c2;
+  --ib-ink-3: #91918e;
+  --ib-ink-4: #5c5c5c;
+  --ib-skeleton: #3a3a38;
+  --ib-line: #f2f1eb14;
+  --ib-line-strong: #f2f1eb24;
+  --ib-dot: #f2f1eb12;
+  --ib-solid: #f2f1eb;
+  --ib-on-solid: #121212;
+  --ib-accent: #d55391;
+  --ib-accent-soft: #c41c7229;
+  --ib-accent-line: #d5539166;
+  --ib-success: #55a87c;
+  --ib-success-soft: #1e2c24;
+  --ib-aura-a: #c41c7238;
+  --ib-aura-b: #8b84c933;
+  --ib-aura-c: #c97a5529;
+  --ib-feature-icon-bg: #232134;
+  --ib-feature-icon-ink: #b4aedd;
+  --ib-label-berry: #c41c72;
+  --ib-label-indigo: #8b84c9;
+  --ib-label-moss: #55a87c;
+  --ib-label-ochre: #c99e3f;
+  --ib-label-slate: #6e9cc0;
+  --ib-label-indigo-soft: #232134;
+  --ib-label-slate-soft: #1c2733;
+  --ib-label-ochre-soft: #322a16;
+  --ib-shadow-1: 0 0 0 1px #f2f1eb14, 0 1px 2px #0000004d;
+  --ib-shadow-2: 0 0 0 1px #f2f1eb14, 0 1px 2px #0000004d, 0 8px 24px -8px #00000080;
+  --ib-shadow-float: 0 0 0 1px #f2f1eb24, 0 2px 4px #0000004d, 0 24px 48px -16px #000000b3;
+  --ib-shadow-key: inset 0 -2px 0 #0006, 0 0 0 1px #f2f1eb24;
+  --ib-shadow-key-down: inset 0 1px 0 #0006, 0 0 0 1px #f2f1eb24;
+}
+
+/* The board's type roles, at the board's sizes (it sets them in the components layer, under utilities). */
+@layer components {
+  .ib-t-h4 { font-size: 15px; line-height: 1.35; color: var(--ib-ink-1); font-weight: 500; }
+  .ib-t-small { font-size: 13px; line-height: 1.45; }
+  .ib-t-caption { font-size: 12px; line-height: 1.4; }
+  .ib-t-micro { font-size: 10px; line-height: 1.2; letter-spacing: .02em; font-weight: 500; }
+  .ib-t-stat { font-size: 32px; letter-spacing: -.02em; color: var(--ib-ink-1); font-variant-numeric: tabular-nums; font-weight: 600; line-height: 1; }
+  .ib-t-mono { font-family: var(--font-mono); font-size: 12px; line-height: 1.4; }
+}
+
+/* The board's colour utilities (it sets them in the utilities layer). */
+@layer utilities {
+  .border-ib-line { border-color: var(--ib-line); }
+  .border-ib-line-strong { border-color: var(--ib-line-strong); }
+  .bg-ib-accent { background-color: var(--ib-accent); }
+  .bg-ib-accent-soft { background-color: var(--ib-accent-soft); }
+  .bg-ib-feature-icon-bg { background-color: var(--ib-feature-icon-bg); }
+  .bg-ib-ink-1 { background-color: var(--ib-ink-1); }
+  .bg-ib-line { background-color: var(--ib-line); }
+  .bg-ib-page { background-color: var(--ib-page); }
+  .bg-ib-scrim { background-color: var(--ib-scrim); }
+  .bg-ib-solid { background-color: var(--ib-solid); }
+  .bg-ib-success { background-color: var(--ib-success); }
+  .bg-ib-surface { background-color: var(--ib-surface); }
+  .bg-ib-surface-2 { background-color: var(--ib-surface-2); }
+  .bg-ib-surface-3 { background-color: var(--ib-surface-3); }
+  .text-ib-accent { color: var(--ib-accent); }
+  .text-ib-feature-icon-ink { color: var(--ib-feature-icon-ink); }
+  .text-ib-ink-1 { color: var(--ib-ink-1); }
+  .text-ib-ink-2 { color: var(--ib-ink-2); }
+  .text-ib-ink-3 { color: var(--ib-ink-3); }
+  .text-ib-ink-4 { color: var(--ib-ink-4); }
+  .text-ib-on-solid { color: var(--ib-on-solid); }
+  .shadow-ib-1 { --tw-shadow: var(--ib-shadow-1); box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow); }
+  .shadow-ib-2 { --tw-shadow: var(--ib-shadow-2); box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow); }
+  .shadow-ib-float { --tw-shadow: var(--ib-shadow-float); box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow); }
+}
+
+/* A scene sits in a cell (the board's `.ill-cell`): its glass frame gives way to the card's own lift. */
+.ib-scope .ib-glass { padding: 0px; box-shadow: none !important; backdrop-filter: none !important; background: none !important; }
+.ib-scope .ib-glass > div { box-shadow: var(--ib-shadow-2); }
+
+/* THE MOTION, the board's own loops, always running (the brief: "all six should always have
+   animation"; the board plays them only under the pointer). Six seconds, in and out, on transform,
+   opacity and a stroke only. Less motion asked for: they stand still, as the board's do. */
+.ib-anim { animation-duration: var(--ib-loop); animation-iteration-count: infinite; animation-timing-function: cubic-bezier(.65, 0, .35, 1); }
+.ib-travel { animation-name: ib-travel; animation-duration: 2.4s; animation-timing-function: cubic-bezier(.2, 0, 0, 1); }
+.ib-arrive { animation-name: ib-arrive; }
+.ib-orbit { animation-name: ib-orbit; animation-duration: 8s; animation-timing-function: linear; }
+.ib-blink { animation-name: ib-blink; animation-duration: 1.1s; animation-timing-function: step-end; }
+.ib-select { animation-name: ib-select; }
+.ib-drift { animation-name: ib-drift; }
+.ib-press { animation-name: ib-press; animation-timing-function: linear; }
+.ib-rise { animation-name: ib-rise; }
+.ib-sweep { animation-name: ib-sweep; animation-timing-function: linear; animation-direction: alternate; }
+.ib-drag { animation-name: ib-drag; }
+.ib-pulse { animation-name: ib-pulse; animation-duration: 2s; }
+@keyframes ib-travel { 0% { opacity: 0; left: 0%; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { opacity: 0; left: 100%; } }
+@keyframes ib-arrive { 0%, 55% { opacity: 1; transform: none; } 62% { opacity: 0; transform: translateY(-6px) scale(0.98); } 72% { opacity: 0; transform: translateY(6px) scale(0.98); } 84%, 100% { opacity: 1; transform: none; } }
+@keyframes ib-orbit { 100% { transform: rotate(360deg); } }
+@keyframes ib-blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+@keyframes ib-select { 0%, 22% { transform: translateY(0px); } 30%, 52% { transform: translateY(var(--ib-row)); } 60%, 82% { transform: translateY(calc(var(--ib-row) * 2)); } 90%, 100% { transform: translateY(0px); } }
+@keyframes ib-drift { 0%, 100% { transform: translate(0px); } 40%, 60% { transform: translate(var(--ib-dx, -24px), var(--ib-dy, 12px)); } }
+@keyframes ib-press { 0%, 18%, 32%, 68%, 82%, 100% { box-shadow: var(--ib-shadow-key); transform: translateY(0px); } 22%, 28%, 72%, 78% { box-shadow: var(--ib-shadow-key-down); transform: translateY(1px); } }
+@keyframes ib-rise { 0%, 60% { opacity: 1; transform: none; } 68%, 76% { opacity: 0; transform: translateY(6px); } 86%, 100% { opacity: 1; transform: none; } }
+@keyframes ib-sweep { 0% { stroke-dashoffset: 32px; } 100% { stroke-dashoffset: 26px; } }
+@keyframes ib-drag { 0%, 30% { transform: translate(0px) rotate(-2deg); } 55%, 80% { transform: translate(var(--ib-dx, 0), var(--ib-dy, 0)) rotate(0deg); } 100% { transform: translate(0px) rotate(-2deg); } }
+@keyframes ib-offset { 0% { offset-distance: 0%; opacity: 0; } 15%, 85% { opacity: 1; } 100% { offset-distance: 100%; opacity: 0; } }
+@keyframes ib-pulse { 0%, 100% { box-shadow: 0 0 0 0 var(--ib-pulse, var(--ib-accent-line)); } 50% { box-shadow: rgba(0, 0, 0, 0) 0px 0px 0px 4px; } }
+@media (prefers-reduced-motion: reduce) { .ib-anim { animation: none !important; } }

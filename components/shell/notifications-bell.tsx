@@ -13,6 +13,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Icon, MenuLabel, Popover, PopoverTrigger, PopoverContent } from '@/components/ds/ui';
 import { Bell } from '@/components/ds/icons';
 import { formatAgo } from '@/lib/date';
+import { TOOLBAR_ICON_BUTTON } from '@/components/shell/shell-parts';
 
 type NotifRow = {
   id: string; kind: string; title: string; body: string | null;
@@ -86,11 +87,11 @@ export function NotificationsBell({ demo }: { demo?: NotifRow[] } = {}) {
       <PopoverTrigger asChild>
       <button
         aria-label="Notifications" title="Notifications" className="zb-nav-item zb-press"
-        style={{ position: 'relative', width: 28, height: 28, display: 'grid', placeItems: 'center', background: 'transparent', border: 'none', borderRadius: 8, cursor: 'pointer', color: 'var(--color-icon-default)', flexShrink: 0 }}>
+        style={{ ...TOOLBAR_ICON_BUTTON, position: 'relative' }}>
         <Icon icon={Bell} size={16} />
         {/* The ONE true-berry element in chrome (Figma 1:764). */}
         {unread > 0 && (
-          <span aria-label={`${unread} unread`} style={{ position: 'absolute', top: 2, right: 1, minWidth: 10, height: 10, padding: 2, borderRadius: 120, background: 'var(--color-berry-500)', border: '1px solid var(--paper)', color: '#FDFEFB', fontSize: 8, fontWeight: 500, display: 'grid', placeItems: 'center', lineHeight: 1 }}>{unread > 9 ? '9+' : unread}</span>
+          <span aria-label={`${unread} unread`} style={{ position: 'absolute', top: 2, right: 1, minWidth: 10, height: 10, padding: 2, borderRadius: 'var(--r-full)', background: 'var(--accent)', border: '1px solid var(--paper)', color: 'var(--on-accent)', fontSize: 8, fontWeight: 500, display: 'grid', placeItems: 'center', lineHeight: 1 }}>{unread > 9 ? '9+' : unread}</span>
         )}
       </button>
       </PopoverTrigger>
@@ -108,7 +109,7 @@ export function NotificationsBell({ demo }: { demo?: NotifRow[] } = {}) {
             <div className="max-h-[360px] overflow-y-auto">
               {rows.map((r) => (
                 <button key={r.id} onClick={() => openRow(r)}
-                  className="group/note zb-press flex w-full items-start gap-2 rounded-md px-2.5 py-2 text-left transition-colors duration-fast">
+                  className="group/note zb-press flex w-full items-start gap-2 rounded-sm px-2 py-2 text-left transition-colors duration-fast">
                   <span aria-hidden className="mt-1.5 size-1.5 shrink-0 rounded-full" style={{ background: r.read ? 'transparent' : 'var(--color-berry-500)' }} />
                   <span className="min-w-0 flex-1">
                     <span className={`block truncate text-ui ${r.read ? 'text-ink-600 group-hover/note:text-ink-700' : 'text-ink-800'}`}>{r.title}</span>

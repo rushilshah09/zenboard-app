@@ -7,18 +7,18 @@
 // skippable at any point.
 import { useState } from 'react';
 import { todayISO } from '@/lib/date';
-import { Sparkles, ArrowRight, ChevronLeft, Moon, Folder, type IconType } from '@/components/ds/icons';
-import { Button, Icon, Mark, Field, TextInput, RadioGroup, RadioCard, Kbd, TimePicker, toast } from '@/components/ds/ui';
+import { Sparkles, ArrowRight, ChevronLeft, Moon, Folder, Users, Target, Flame, type IconType } from '@/components/ds/icons';
+import { Button, Icon, Wordmark, StepDots, Field, TextInput, RadioGroup, RadioCard, Kbd, TimePicker, toast } from '@/components/ds/ui';
 import { OnboardingPreview } from '@/components/onboarding/onboarding-preview';
-import { cn } from '@/lib/cn';
 import { updateProfile, updatePreferences, type ProfileRole } from '@/lib/actions/profile';
+import { defaultModulesForRole } from '@/lib/nav-modules';
 import { addProject } from '@/lib/actions/projects';
 import { addTask } from '@/lib/actions/tasks';
 
-const ROLES: { id: ProfileRole; label: string; hint: string }[] = [
-  { id: 'freelancer', label: 'Freelancer', hint: 'Clients, projects, invoices' },
-  { id: 'founder', label: 'Founder', hint: 'Building a company' },
-  { id: 'individual', label: 'Individual', hint: 'Personal focus & habits' },
+const ROLES: { id: ProfileRole; label: string; hint: string; icon: IconType }[] = [
+  { id: 'freelancer', label: 'Freelancer', hint: 'Clients, projects, invoices', icon: Users },
+  { id: 'founder', label: 'Founder', hint: 'Building a company', icon: Target },
+  { id: 'individual', label: 'Individual', hint: 'Personal focus & habits', icon: Flame },
 ];
 const TOTAL = 3;
 const TASK_PLACEHOLDERS = ['Draft the brief', 'Email the client', 'Sketch three directions'];
@@ -54,7 +54,7 @@ export function OnboardingFlow({ email, suggestedName, initialStep = 0, nowHour 
     }).catch(() => ({ error: 'unreachable' as const }));
     setBusy(false);
     if ('error' in res) {
-      toast({ message: 'Could not save that. Your answers are still here — try again.', variant: 'error' });
+      toast({ message: 'Could not save that. Your answers are still here. Try again.', variant: 'error' });
       return;
     }
     setStep(1);
@@ -63,7 +63,7 @@ export function OnboardingFlow({ email, suggestedName, initialStep = 0, nowHour 
   async function finish() {
     setBusy(true);
     const fail = () => {
-      toast({ message: 'Could not finish setting up. Your answers are still here — try again.', variant: 'error' });
+      toast({ message: 'Could not finish setting up. Your answers are still here. Try again.', variant: 'error' });
       setBusy(false);
     };
     // Make the plan real (§7U): a project + today's first tasks, the first starred.
@@ -78,7 +78,15 @@ export function OnboardingFlow({ email, suggestedName, initialStep = 0, nowHour 
         .catch(() => ({ error: 'unreachable' as const }));
       if (t && typeof t === 'object' && 'error' in t) return fail();
     }
-    const prefs = await updatePreferences({ dayEnd }).catch(() => ({ error: 'unreachable' as const }));
+    // THE ROLE FINALLY DOES SOMETHING. Until now "What brings you here?" was
+    // written to profiles.role and read by exactly one line (whether to ask for
+    // an hourly rate), so somebody who chose "Personal focus & habits" still got
+    // Clients, Finance, Forms, Messages and Content in their sidebar — and no way
+    // to remove them. This seeds the rail from their answer; every module stays
+    // one tick away in Sidebar control. Same round trip as `dayEnd`, because a
+    // round trip is the whole cost here.
+    const prefs = await updatePreferences({ dayEnd, navModules: defaultModulesForRole(role) })
+      .catch(() => ({ error: 'unreachable' as const }));
     if ('error' in prefs) return fail();
     const done = await updateProfile({ onboarding_complete: true }).catch(() => ({ error: 'unreachable' as const }));
     if ('error' in done) return fail();
@@ -92,6 +100,15 @@ export function OnboardingFlow({ email, suggestedName, initialStep = 0, nowHour 
     // same person this same flow at their next sign-in.
     const res = await updateProfile({ full_name: name.trim() || null, role: role ?? undefined, onboarding_complete: true })
       .catch(() => ({ error: 'unreachable' as const }));
+    // Seed the rail ONLY if they told us who they are before skipping. With no
+    // role we know nothing, so we write nothing and the account stays
+    // unconfigured — which renders every module. Guessing a shape for someone who
+    // declined to answer is how a skip turns into six missing features.
+    if (!('error' in res) && role) {
+      // Not awaited into the failure path: they asked to leave. A rail that has
+      // to be adjusted once is a smaller cost than a skip that refuses to skip.
+      void updatePreferences({ navModules: defaultModulesForRole(role) }).catch(() => {});
+    }
     if ('error' in res) {
       toast({ message: 'Could not skip just now. Try again in a moment.', variant: 'error' });
       setBusy(false);
@@ -103,37 +120,30 @@ export function OnboardingFlow({ email, suggestedName, initialStep = 0, nowHour 
   const preview = { step, name, role, projectName, tasks, dayEnd, nowHour };
 
   return (
-    // Two columns from `lg`: the questions, and the day they are building. Below that the preview
-    // drops away rather than stacking — on a phone the questions are the only thing worth the
-    // screen, and a picture above them would push the field off it.
+    // The desk, and two sheets lying on it: the questions, and the day they are building. Below
+    // `lg` the preview drops away rather than stacking — on a phone the questions are the only
+    // thing worth the screen, and a picture above them would push the field off it. Same shell as
+    // the sign-up screen, because signing up and setting up are one arrival.
     <div className="grid min-h-[100dvh] grid-cols-1 bg-canvas lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
-      <div className="flex min-w-0 flex-col">
+      <div className="flex min-w-0 flex-col overflow-hidden">
         {/* One header row: who this is, how far along, and the way out. */}
-        <header className="flex items-center gap-3 px-7 py-[18px]">
-          <Mark size={20} />
-          <span className="font-display text-h2 font-semibold tracking-[-0.01em]">Zenboard</span>
+        <header className="flex items-center gap-3 px-7 py-5">
+          <Wordmark />
           <div className="flex-1" />
-          {/* Progress as the reference draws it: a dash per step, and the count in words a
-              person can hold — "2 of 3" says how much is left; four grey bars do not. */}
-          <span className="flex items-center gap-2" aria-label={`Step ${step + 1} of ${TOTAL}`}>
-            <span className="flex gap-1" aria-hidden>
-              {Array.from({ length: TOTAL }).map((_, i) => (
-                <span key={i} className={cn('h-0.5 w-6 rounded-full transition-colors duration-base', i <= step ? 'bg-[var(--accent)]' : 'bg-line')} />
-              ))}
-            </span>
-            <span className="text-caption tabular-nums text-ink-500">{step + 1} of {TOTAL}</span>
-          </span>
+          {/* A dash per step and the count — the shape the reference uses, and the
+              one the DS now owns (the words live in its accessible name). */}
+          <StepDots current={step + 1} total={TOTAL} />
           <button
             type="button"
             onClick={skip}
             disabled={busy}
-            className="focus-ring rounded-sm px-2 py-1 text-caption text-ink-500 transition-colors hover:text-ink-800 disabled:opacity-50"
+            className="focus-ring rounded-sm px-2 py-1 text-caption text-ink-500 transition-colors hover:text-ink-800 disabled:text-ink-500"
           >
             Skip setup
           </button>
         </header>
 
-        <div className="flex flex-1 items-center justify-center px-6 pb-16">
+        <div className="flex flex-1 items-center justify-center overflow-y-auto px-6 pb-10">
           <div className="zb-enter w-[min(460px,100%)]" style={{ animation: 'fade-rise var(--duration-base) var(--ease-out-quiet)' }}>
 
         {step === 0 && (
@@ -154,7 +164,7 @@ export function OnboardingFlow({ email, suggestedName, initialStep = 0, nowHour 
               <RadioGroup legend="What brings you here?" value={role ?? undefined} onValueChange={(v) => setRole(v as ProfileRole)}>
                 <div className="flex flex-col gap-2">
                   {ROLES.map((r) => (
-                    <RadioCard key={r.id} value={r.id} label={r.label} description={r.hint} />
+                    <RadioCard key={r.id} value={r.id} label={r.label} description={r.hint} icon={<Icon icon={r.icon} size={16} />} />
                   ))}
                 </div>
               </RadioGroup>
@@ -175,7 +185,7 @@ export function OnboardingFlow({ email, suggestedName, initialStep = 0, nowHour 
               )}
             </div>
             <Footer>
-              <Button variant="primary" fullWidth disabled={!name.trim() || !role} loading={busy} onClick={saveIdentity} iconRight={<Icon icon={ArrowRight} size={16} />}>
+              <Button variant="brand" size="lg" fullWidth disabled={!name.trim() || !role} loading={busy} onClick={saveIdentity} iconRight={<Icon icon={ArrowRight} size={16} />}>
                 Continue
               </Button>
             </Footer>
@@ -212,7 +222,7 @@ export function OnboardingFlow({ email, suggestedName, initialStep = 0, nowHour 
               </Field>
             </div>
             <Footer onBack={() => setStep(0)} busy={busy}>
-              <Button variant="primary" disabled={busy} onClick={() => setStep(2)} iconRight={<Icon icon={ArrowRight} size={16} />}>
+              <Button variant="brand" size="lg" disabled={busy} onClick={() => setStep(2)} iconRight={<Icon icon={ArrowRight} size={16} />}>
                 Continue
               </Button>
             </Footer>
@@ -238,7 +248,7 @@ export function OnboardingFlow({ email, suggestedName, initialStep = 0, nowHour 
               </div>
             </div>
             <Footer onBack={() => setStep(1)} busy={busy}>
-              <Button variant="primary" loading={busy} onClick={finish} iconRight={<Icon icon={ArrowRight} size={16} />}>
+              <Button variant="brand" size="lg" loading={busy} onClick={finish} iconRight={<Icon icon={ArrowRight} size={16} />}>
                 Enter Zenboard
               </Button>
             </Footer>
@@ -247,8 +257,10 @@ export function OnboardingFlow({ email, suggestedName, initialStep = 0, nowHour 
           </div>
         </div>
 
-        {/* What the product is, in its own words — the line the browser tab already carries. */}
-        <p className="px-7 pb-6 text-caption text-ink-500">A calm operating system for your work and life.</p>
+        {/* What the product is, in its own words — the line the browser tab already
+            carries, and the same one the sign-up sheet ends with. It said "calm"
+            here and "quiet" there; one product, one sentence. */}
+        <footer className="px-7 py-5 text-label text-ink-500">A quiet operating system for your work and life.</footer>
       </div>
 
       <OnboardingPreview state={preview} />

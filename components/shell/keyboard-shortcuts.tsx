@@ -36,6 +36,7 @@ export const SHORTCUT_GROUPS: { title: string; items: { keys: string[]; label: s
       { keys: ['⌘', 'K'], label: 'Open command palette' },
       { keys: ['?'], label: 'Open command palette' },
       { keys: ['C'], label: 'Quick capture to Inbox' },
+      { keys: ['A'], label: 'Ask' },
       { keys: ['⇧', 'T'], label: 'Triage inbox' },
       { keys: ['F'], label: 'Focus mode on or off' },
     ],
@@ -113,6 +114,9 @@ export function GlobalShortcuts() {
 
       if (key === 'g') { pendingG.current = Date.now(); _lastG = Date.now(); return; }
       if (key === 'c') { e.preventDefault(); window.dispatchEvent(new Event('zb:capture')); return; }
+      // A for Ask. It carries no words, so the panel opens on an empty composer — the palette is
+      // the path that hands its text over (components/ask/ask-panel.tsx).
+      if (key === 'a') { e.preventDefault(); window.dispatchEvent(new CustomEvent('zb:ask', { detail: {} })); return; }
       // F TOGGLES. It used to push `/focus` unconditionally, so the one key bound to the mode
       // could enter it and never leave — pressing F again re-entered the route you were already
       // on. A mode whose whole premise is "one way out" must not hide that way from the keyboard.

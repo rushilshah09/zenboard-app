@@ -133,13 +133,13 @@ export default function DsPreviewPage() {
           <Row label="avatar">
             <Avatar name="Rushil Shah" size={24} />
             <Avatar name="Mira Patel" size={28} />
-            <Avatar name="TechSpark" size={24} square />
+            <Avatar name="Northwind" size={24} square />
             <Spinner />
             <Button variant="primary" size="sm"><Spinner className="border-(--on-primary)" /> Saving</Button>
           </Row>
         </Group>
         <Group title="Card">
-          <Card className="p-4"><span style={{ fontSize: 'var(--text-small-size)', color: 'var(--ink-2)' }}>Send invoice for July to TechSpark</span></Card>
+          <Card className="p-4"><span style={{ fontSize: 'var(--text-small-size)', color: 'var(--ink-2)' }}>Send invoice for July to Northwind</span></Card>
         </Group>
       </div>
     </div>

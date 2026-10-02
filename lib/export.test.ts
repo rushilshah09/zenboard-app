@@ -61,7 +61,7 @@ describe('projectsToMarkdown', () => {
         }],
       }],
     })], '2026-07-20');
-    expect(md).toContain('# Zenboard projects — exported 2026-07-20');
+    expect(md).toContain('# Zenboard projects, exported 2026-07-20');
     expect(md).toContain('## Acme rebrand');
     expect(md).toContain('Status: active · Client: Acme · Space: Work');
     expect(md).toContain('### Design');

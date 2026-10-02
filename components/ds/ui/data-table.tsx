@@ -68,6 +68,12 @@ export interface DataTableProps<T> {
   onSelectedChange?: (s: Set<string>) => void;
   loading?: boolean;
   empty?: React.ReactNode;
+  /**
+   * The table INSIDE a document — an invoice's line items — rather than a table that is its own
+   * object. No card (a card on a sheet is a fill on a fill), no sticky head, and the first and last
+   * columns sit on the document's own edges instead of 16px in from a card that is not there.
+   */
+  flush?: boolean;
   className?: string;
 }
 
@@ -87,6 +93,7 @@ export function DataTable<T>({
   onSelectedChange,
   loading,
   empty,
+  flush = false,
   className,
 }: DataTableProps<T>) {
   const [sort, setSort] = React.useState<{ key: string; dir: 1 | -1 } | null>(null);
@@ -116,22 +123,25 @@ export function DataTable<T>({
     onSelectedChange(next);
   };
 
+  // A document's columns end ON its margins; a card's start 16px inside its edge.
+  const pad = flush ? "px-3 first:ps-0 last:pe-0" : "px-4";
   const cellClass = (c: Column<T>) =>
     cn(
-      "px-4 text-ui",
+      pad,
+      "text-ui",
       c.numeric ? "text-end tabular-nums" : "text-start",
       c.mono && "font-mono text-caption text-ink-500",
     );
 
   return (
-    <div className={cardClass(cn("overflow-hidden", className))}>
+    <div className={flush ? cn("min-w-0", className) : cardClass(cn("overflow-hidden", className))}>
       <div className="overflow-x-auto overflow-y-hidden">
         {/* `border-collapse` is deliberately NOT spelled: the browser default is already
             `collapse`, and a utility here is a decision a skin could never revise. */}
         <table className="w-full" style={minWidth ? { minWidth } : undefined} aria-busy={loading || undefined}>
           <caption className="sr-only">{caption}</caption>
           <thead>
-            <tr className={cn("sticky top-0 z-sticky bg-surface-raised", "border-b border-line-soft")}>
+            <tr className={flush ? "border-b border-line" : cn("sticky top-0 z-sticky bg-surface-raised", "border-b border-line-soft")}>
               {selectable && (
                 <th scope="col" className="h-9 w-10 px-4">
                   <Checkbox
@@ -150,7 +160,7 @@ export function DataTable<T>({
                     aria-sort={active ? (sort!.dir === 1 ? "ascending" : "descending") : undefined}
                     style={{ width: c.width }}
                     // Column heads are LABELS, so they take the label role the whole app uses.
-                    className={cn("h-9 px-4 text-overline font-normal text-ink-500", c.numeric ? "text-end" : "text-start")}
+                    className={cn("h-9 text-overline font-normal text-ink-500", pad, c.numeric ? "text-end" : "text-start")}
                   >
                     {c.sortBy ? (
                       <button

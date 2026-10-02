@@ -36,9 +36,22 @@
   --color-border-focus: var(--color-border-focus);
   --color-border-invalid: var(--color-border-invalid);
 
+  /* `bg-surface` — THE NAME CLAUDE.md'S CARD RECIPE USES, and it was never declared
+     (found 2026-09-30 by measuring the compiled class: it resolved to `rgba(0,0,0,0)`).
+     Nothing painted with it today — a previous sweep moved the three real call sites onto
+     DS components and left comments saying so — but the constitution still tells the next
+     author to write `bg-surface border border-border rounded-lg` for a card, and that
+     recipe produced a TRANSPARENT card. Exactly the `bg-surface-secondary` failure noted
+     below: a colour class the theme never declared compiles to nothing and paints the page
+     behind it. Declared as the card, which is what the recipe means by it. */
+  --color-surface: var(--card);
   --color-surface-desk: var(--color-surface-desk);
   --color-surface-panel: var(--color-surface-panel);
   --color-surface-sunken: var(--color-surface-sunken);
+  /* `bg-surface-band` — a card's band. Declared here or the class compiles to
+     nothing and paints the page behind it, which is what `bg-surface-secondary`
+     did to the sidebar. */
+  --color-surface-band: var(--color-surface-band);
   --color-surface-raised: var(--color-surface-raised);
   --color-surface-hover: var(--color-surface-hover);
   --color-surface-active: var(--color-surface-active);
@@ -117,9 +130,17 @@
   --text-title-2--letter-spacing: -0.46px;
   --text-title-2--line-height: 32px;
   --text-title-2--font-weight: 600;
-  --text-title-1: 30px;
-  --text-title-1--line-height: 36px;
-  --text-title-1--letter-spacing: -0.63px;
+  /* 30px -> 28px (2026-09-30). This was the ONE rung in either family that sat off the
+     scale CLAUDE.md states (11/12/13/14/15/18/22/28) — `title-3` (22) and `title-2` (24)
+     both land on it — and it was also the last size where the two families disagreed:
+     globals' top role `--text-h1` is 28px, so a StatCard figure drawn with `text-title-1`
+     rendered 2px larger than a page title drawn with `text-h1`, for no stated reason.
+     Measured on Money, where four currency figures rendered at 30px.
+     Tracking is pinned to h1's -0.021em (= -0.588px at 28) so the two families agree at
+     the size they now share — which is exactly what app/type-scale.test.ts guards. */
+  --text-title-1: 28px;
+  --text-title-1--line-height: 34px;
+  --text-title-1--letter-spacing: -0.588px;
   --text-title-1--font-weight: 600;
 
   /* Framed-panel card tokens (mirror of design-system tokens.json radius.panel /
@@ -135,7 +156,21 @@
      should say what it is, and if the scale moves, it moves with it. */
   --radius-tag: var(--radius-xs);
   /* The panel shadow was `rgb(0 0 0 / 0.04)` inline — a black shadow that does
-     nothing on a dark panel. `--shadow-xs` is defined per theme. */
+     nothing on a dark panel. Both of these are defined per theme.
+     IT STAYS `--shadow-xs`, and the attempt to widen it is worth recording.
+     On 2026-09-28 this was pointed at `--shadow-lift-1`, which had just taken
+     Ramp's measured card profile (~5% at the edge, gone by 8px). The user saw it
+     within the hour: "this shadow is not looking good, and there's a lot of gap
+     in the shell's left navigation."
+
+     They were right, and the measurement was not wrong — it was taken in the
+     wrong ARCHITECTURE. Ramp sets white cards on a page, where a bloom is the
+     only thing saying the card is above the paper. Zenboard sets panels on a
+     DESK with an 8px gutter, and the desk is already darker than the panels —
+     that is its whole job. Add a bloom and it does not lift anything, it just
+     fills the gutter with grey, which is exactly what the screenshot showed.
+     A shadow separates a thing from what is BEHIND it; these panels are
+     separated by a ground and a gap, so they need contact, not lift. */
   --shadow-panel: 0 0 0 1px var(--color-border-panel), var(--shadow-xs);
 
   /* Motion tokens DS components animate with (durations/eases the app lacks). */
@@ -164,10 +199,57 @@
   --duration-fast: 100ms;
   --duration-base: 150ms;
   --duration-slow: 200ms;
+
+  /* ── WAITING ──────────────────────────────────────────────────────────
+     Loading has its own three numbers, and they are NOT on the ladder above:
+     that ladder is for things that START and FINISH, and these are for things
+     that repeat until the work is done. Naming them here is what stops the app
+     writing `animate-[spin_0.6s]` in one file and `animate-spin` (Tailwind's
+     1s) in the next, which is exactly what it was doing — two spinner speeds,
+     five call sites apart.
+
+     · `--duration-spin` is 600ms, not Tailwind's 1000ms. Emil Kowalski: a
+       faster-spinning spinner makes the app feel like it loads faster, at an
+       identical load time. 600ms is fast enough to read as working and slow
+       enough not to strobe.
+     · `--duration-sweep` is one pass of a skeleton's light. Slower than the
+       spinner on purpose: a skeleton is furniture, and furniture that flickers
+       is worse than furniture that sits still.
+     · `--delay-busy` is THE most important number here, and the app had no
+       equivalent. A spinner shown for a 90ms fetch is a FLASH, and a flash
+       makes an interface feel slower than no indicator at all, because the eye
+       registers the interruption and not the speed. So every busy indicator is
+       held back by 140ms: if the work finishes first, nothing was ever seen.
+       140 is under the ~200ms at which a wait stops feeling instantaneous, so
+       nothing that needs an indicator goes without one. */
+  --duration-spin: 600ms;
+  --duration-sweep: 1150ms;
+  --delay-busy: 140ms;
+  /* Reduced motion keeps the spinner — a still spinner says "stuck", not
+     "working" — and slows it to a turn the eye can follow without tracking. */
+  --duration-spin-calm: 1600ms;
+  /* THINKING is the fourth way this app says "working", and it is not a turn.
+     The mark BREATHES while Ask is composing an answer (user, 2026-09-29: "use
+     my logo thinking and loading whol chting"). A turn says "a machine is
+     fetching"; a breath says "something is considering", which is what is
+     actually happening and what Claude's own mark does while it thinks.
+     1400ms because a breath the eye can follow is near a resting human one —
+     faster reads as a pulse alarm, slower reads as a stall. It is a LOOP, so
+     it takes `linear` like every other constant motion here (Emil's rule);
+     the shape of the breath lives in the keyframe, not in an easing. */
+  --duration-think: 1400ms;
   /* Four rungs, and each one is a different number. `--duration-slower` was a
      fifth NAME for 200ms - the same wait, said twice - and `--duration-hold`
      (700ms) had no callers at all. A rung nobody can distinguish is how a scale
      drifts back into two. */
+
+  /* AMBIENT is not a fifth rung of that ladder: the ladder times a RESPONSE (a
+     press, a menu, a drawer), and this times something that was never waiting
+     for you - a light travelling along the hairlines behind the sign-up form.
+     It is deliberately far outside the response range, because anything near it
+     would read as the page still loading. Constant motion takes `linear`
+     (Emil's rule); anything else makes a loop pulse. */
+  --duration-ambient: 9s;
 
   /* Z-index registry DS overlays rely on.
      The DS scale (10–60) is the app's *in-page* ladder. Above it sit two things
@@ -259,6 +341,29 @@
   --animate-flash-highlight: flash-highlight 1200ms var(--ease-standard);
 }
 
+/* ── THE LADDER HAS TO COMPILE, AND IT DID NOT (2026-09-29) ────────────────────
+   `--ease-*` is a Tailwind v4 theme NAMESPACE, so `ease-out-quiet` becomes a
+   utility on its own. There is no `--duration-*` namespace: `duration-<name>`
+   matches nothing, emits nothing, and the element silently falls back to
+   `--default-transition-duration`. Measured on the served stylesheet — 364 KB,
+   six `.ease-*` rules, and **zero `.duration-*` rules** — while the segmented
+   thumb, whose class list reads `duration-base ease-out-quiet`, reported the
+   curve correctly and `0.1s` for the wait.
+
+   So every one of the 342 `duration-*` classes in this app ran at 100ms. The
+   ladder above was right, the tokens were right, `TW_RAW_MS` forbade writing
+   `duration-150` instead — and the four rungs were one rung. `duration-fast`
+   was correct by accident (the default IS --duration-fast); `instant`, `base`
+   and `slow` — 102 call sites — were not.
+
+   Four static utilities close it, exactly as `.ease-*` does it: the `--tw-*`
+   variable first (Tailwind composes its shorthand from it), then the property.
+   Guarded by "one duration ladder" → "every rung on the ladder compiles". */
+@utility duration-instant { --tw-duration: var(--duration-instant); transition-duration: var(--duration-instant); }
+@utility duration-fast    { --tw-duration: var(--duration-fast);    transition-duration: var(--duration-fast); }
+@utility duration-base    { --tw-duration: var(--duration-base);    transition-duration: var(--duration-base); }
+@utility duration-slow    { --tw-duration: var(--duration-slow);    transition-duration: var(--duration-slow); }
+
 /* An anchored surface grows out of the point its trigger gives it (the Radix
    transform-origin) and never travels: the 4px rise this used to carry lifted
    every menu BELOW its trigger up toward it, and slid its anchored corner. */
@@ -284,10 +389,64 @@
 @keyframes settle-out {
   to { opacity: 0; transform: translateY(-2px); }
 }
+/* CONSTANT MOTION IS LINEAR. Both of these were `ease-in-out`, which pauses at
+   each end of every pass — on a loop that reads as a stutter, not as a sweep.
+   Emil's own easing rule: constant motion (a marquee, a progress bar) is linear. */
 @keyframes indeterminate { from { translate: -110% 0; } to { translate: 350% 0; } }
 @keyframes shimmer { from { transform: translateX(-100%); } to { transform: translateX(200%); } }
-@keyframes reveal-down { from { height: 0; opacity: 0.4; } to { height: var(--radix-accordion-content-height); opacity: 1; } }
-@keyframes reveal-up { from { height: var(--radix-accordion-content-height); } to { height: 0; opacity: 0.4; } }
+@keyframes think { 0%, 100% { opacity: 0.45; transform: scale(0.96); } 50% { opacity: 1; transform: scale(1); } }
+
+/* ── THE THREE WAYS THIS APP SAYS "WORKING" ────────────────────────────────
+   One vocabulary, so a spinner in a button and a spinner in a field turn at the
+   same speed, and so no call site ever writes a duration again. */
+@utility zb-spin {
+  animation: spin var(--duration-spin) linear infinite;
+}
+@utility zb-sweep {
+  animation: shimmer var(--duration-sweep) linear infinite;
+}
+/* The mark, thinking. Opacity AND a 4% scale: opacity alone reads as a flicker
+   on a shape this small, and scale alone reads as a throb. Together they read
+   as breathing. Transform and opacity only, so it runs off the main thread
+   while the answer is being composed — which is exactly when the main thread
+   is busy. */
+@utility zb-think {
+  animation: think var(--duration-think) linear infinite;
+}
+/* THE HELD-BACK REVEAL. The indicator mounts immediately (so nothing has to
+   time anything in JavaScript, and nothing re-renders) and is invisible until
+   `--delay-busy` has passed. Work that finishes first unmounts it unseen.
+
+   A TRANSITION WITH `@starting-style`, NOT AN ANIMATION, and that is not a
+   preference. `zb-busy` is worn BESIDE `zb-spin`, and two `animation`
+   shorthands on one element do not compose — the later rule wins outright, so
+   the first pass silently turned the delay off wherever it was needed most
+   (measured on the live page: `animation-delay: 0s` on a spinner wearing both).
+   A transition touches nothing the spin owns. Browsers without
+   `@starting-style` simply show it at once, which is what they did before. */
+@utility zb-busy {
+  opacity: 1;
+  transition: opacity var(--duration-fast) var(--ease-hover) var(--delay-busy);
+  @starting-style { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* A still spinner reads as stuck, so it keeps turning, slowly. The sweep is
+     movement for its own sake, so it stops and the skeleton simply sits there. */
+  .zb-spin { animation-duration: var(--duration-spin-calm); }
+  .zb-sweep { animation: none; }
+  .zb-busy { transition: none; }
+  /* The mark keeps BREATHING, for the same reason the spinner keeps turning: a
+     still indicator says stuck, not working. It keeps the fade and gives up the
+     scale — reduced motion means fewer and gentler animations, not none. The
+     TWIN CONVENTION in this codebase is to redefine the keyframe under its own
+     name here, opacity only, so no call site has to know a second name exists. */
+  @keyframes think { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+}
+/* The box opens and the words arrive behind it, rather than the text stretching with the height:
+   opacity finishes at 60% of the travel, so by the time the box stops the answer is already
+   readable and nothing appears to snap into place at the end. */
+@keyframes reveal-down { from { height: 0; opacity: 0; } 60% { opacity: 1; } to { height: var(--radix-accordion-content-height); opacity: 1; } }
+@keyframes reveal-up { from { height: var(--radix-accordion-content-height); opacity: 1; } 40% { opacity: 0; } to { height: 0; opacity: 0; } }
 /* "You arrived here" — one pulse, then gone.
    The colour is `--sel-block`, the wash a swept block already wears, so
    arriving at a block reads as that block being pointed at rather than as a
@@ -302,6 +461,27 @@
 
 /* ── @utility helpers DS components apply directly (§6.6). ─────────────────── */
 @utility surface-panel { @apply bg-paper rounded-xl; box-shadow: var(--shadow-lift-1); }
+/* THE SHEET — a page-sized card lying on the desk (`bg-surface-desk`).
+   It is the CARD recipe one rung up, not a new object: the same fill and the
+   same hairline, at radius-xl because the corner is 4× the size on a surface
+   this big, with a soft lift so the sheet reads as lying ON the desk rather
+   than cut out of it. One declaration, because the hairline is a 1px spread
+   ring INSIDE the shadow — `border` + `surface-edge` + a lift would be three
+   rules fighting over one `box-shadow`, which is how the edge light got lost
+   the first time. A sheet SITS: the separation is the desk's job (1.23:1 in
+   light), not the shadow's. */
+@utility sheet {
+  /* `--color-paper`, not `--color-surface-raised`. They are the same white in
+     light, and 9 lightness steps apart in dark (#202020 vs #333333) — and the
+     APP's own floating panels (sidebar, header, content) are `--paper`. A
+     sign-up sheet at the popover tone would have meant the first screen and the
+     product it opens into stand on different ground. In dark the separation
+     from the desk is 1.09:1, carried by the hairline and the edge light rather
+     than by tone; that is the same contract every panel in the app already has. */
+  background-color: var(--color-paper);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 0 0 1px var(--color-border-panel), var(--shadow-lift-2), var(--edge-light);
+}
 @utility surface-raised { @apply bg-paper rounded-md; box-shadow: var(--shadow-lift-2); }
 @utility focus-ring {
   @apply outline-none;
@@ -339,7 +519,7 @@
    app's most-used control lit up nothing at all. The ring lives on the SHELL
    via `:focus-within`, because the visible box is the shell, not the input. */
 @utility composer-shell {
-  @apply flex items-center gap-2 rounded-lg border border-line-strong bg-surface-raised py-1 pl-3.5 pr-1.5;
+  @apply flex items-center gap-2 rounded-md border border-line-strong bg-surface-raised py-1 pl-3.5 pr-1.5;
   transition: box-shadow var(--duration-fast) var(--ease-hover);
   &:focus-within {
     box-shadow: 0 0 0 2px var(--focus-offset, var(--color-surface-panel)), 0 0 0 4px var(--color-border-focus);

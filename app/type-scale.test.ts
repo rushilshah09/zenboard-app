@@ -114,9 +114,12 @@ describe('the specular edge', () => {
   it('exists in both themes, and is a SHADOW in both', () => {
     // `none` inside a box-shadow list invalidates the whole declaration — a light theme that
     // wrote `--edge-light: none` would silently lose every shadow that composes it.
-    const dark = /--edge-light:\s*([^;]+);/.exec(globals)?.[1]?.trim();
-    const light = /--edge-light:\s*([^;]+);/.exec(readFileSync('app/tokens-light.css', 'utf8'))?.[1]?.trim();
-    expect(dark).toMatch(/^inset 0 1px 0 0 rgb\(255 255 255 \/ 0\.04\d?\)$/);
+    // Both halves live in the bridge, per theme (2026-10-02: no colour literal outside the theme
+    // files), so neither theme can inherit the other's.
+    const bridge = readFileSync('app/tokens-light.css', 'utf8');
+    const light = /--edge-light:\s*([^;]+);/.exec(bridge.slice(bridge.indexOf("html[data-theme='light'] {")))?.[1]?.trim();
+    const dark = /--edge-light:\s*([^;]+);/.exec(bridge.slice(bridge.lastIndexOf("html[data-theme='dark'] {")))?.[1]?.trim();
+    expect(dark).toMatch(/^inset 0 1px 0 0 oklch\(1 0 0 \/ 0\.04\d?\)$/);
     expect(light, 'a pale surface catches no highlight — but it must still be a shadow').toBe('inset 0 0 0 0 transparent');
     expect(light).not.toBe('none');
   });

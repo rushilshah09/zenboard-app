@@ -13,9 +13,34 @@ import { Count } from "./count";
 //     side/bottom border, so edges never double up.
 //
 // Everything is token-driven — radius (--radius-panel), elevation (--shadow-panel),
-// surfaces (surface-sunken / surface-raised) and the hairline (line) — so every new
-// panel inherits the exact styling and any token change propagates everywhere.
-// Dark mode follows automatically (the ring and surfaces are theme-aware tokens).
+// the surface (paper) and the hairline (line) — so every new panel inherits the exact
+// styling and any token change propagates everywhere. Dark mode follows automatically
+// (the ring and surfaces are theme-aware tokens).
+//
+// ── THE CARD IS DUAL-TONE, IN BOTH THEMES (user direction 2026-09-29) ──────
+// The shell is `bg-surface-band` and the body is `bg-paper`: a sunken wrap holding a raised
+// sheet, so the header sits on one tone and the content on another. That is the structure, and it
+// is what the user means by a card having body rather than being a white rectangle with a line in
+// it — they sent light and dark side by side to show it: *"like dark mode i want 2 colour in white
+// mode, single white looks like wireframe"*, then pointed at Ask's composer, which is the same
+// recipe with the band at the bottom.
+//
+// I FLATTENED THIS TO ONE TONE EARLIER THE SAME DAY and was wrong. The measurement behind it was
+// real — in light the band was L 94.20 against a page of L 96.29, so a card's own header was darker
+// than the ground it lies on, which is why four stacked bands read as stripes. But the answer to
+// that is not to delete the second tone; it is that light had no rung between the page (0.968) and
+// the card (1.0) for the band to use. Removing it made Home a wireframe, which is the exact
+// failure [[zenboard-home-cards]] already recorded: a card must have weight even when nearly empty.
+//
+// THE RUNG IS PAID (2026-09-29, same day). `--band` — light oklch(0.981 0.0030 68), dark the
+// `--muted` that already worked — reaches this shell as `bg-surface-band`. Light now ascends like
+// dark does: page L* 96.29 -> band 97.70 -> body 100, and the band->body CONTRAST is 1.059
+// against dark's 1.058, which is the number the light value was solved for. The
+// shell is no longer `bg-surface-sunken`, because a RECESS INSIDE a surface and a card's band are
+// two jobs that only looked like one in the theme where both happened to point down.
+//
+// Dark needed no argument either way: there the band already sits ABOVE the card, because dark
+// lifts as it rises while light steps down from white.
 
 export interface PanelProps extends React.HTMLAttributes<HTMLDivElement> {
   /** shadow = the elevated "Shadow 1" lift (default); border = a flat hairline (banners). */
@@ -30,7 +55,7 @@ export const Panel = React.forwardRef<HTMLDivElement, PanelProps>(function Panel
     <div
       ref={ref}
       className={cn(
-        "flex flex-col overflow-hidden rounded-panel bg-surface-sunken",
+        "flex flex-col overflow-hidden rounded-panel bg-surface-band",
         frame === "shadow" ? "shadow-panel" : "border border-line",
         className,
       )}
@@ -84,13 +109,21 @@ export const PanelHeader = React.forwardRef<HTMLDivElement, PanelHeaderProps>(fu
     >
       {canonical ? (
         <>
-          <div className="flex min-w-0 items-center gap-1 text-ink-500 [&_svg]:size-4">
+          <div className="flex min-w-0 items-center gap-2 text-ink-500 [&_svg]:size-4">
             {icon}
             {/* A heading, not a span: a card's title is a section of the page, and a screen-reader user moves by
-                headings — Home's seven cards were absent from the outline (2026-09-22). Looks exactly as it did. */}
-            {title != null && <h2 className="m-0 truncate text-[14px] font-medium leading-none">{title}</h2>}
-            {count != null && <Count value={count} className="ms-0.5" />}
-            {summary ? <span className="ms-0.5 shrink-0 text-caption text-ink-500">{summary}</span> : null}
+                headings — Home's seven cards were absent from the outline (2026-09-22).
+                THE HEADING WAS QUIETER THAN ITS OWN CONTENT (2026-09-30). It was `text-[14px] font-medium`
+                inheriting `text-ink-500` from the row above — measured on Home, all seven card titles rendered
+                14px/500 at 6.1:1 while the body they head measured 7-12.26:1. A heading that is fainter and the
+                same size as its body is not a heading; that inversion, repeated on every card in the app, is the
+                single biggest reason the product read as a wireframe. `text-h2` is the DS's own declared role for
+                this job ("card/featured titles: 16/22/600", globals.css) and this component's doc comment above
+                has always said 16px medium — the role existed and the component was not consuming it. The wrapper
+                keeps ink-500 so the GLYPH stays quiet; only the title steps forward. */}
+            {title != null && <h2 className="m-0 truncate text-h2 leading-none text-ink-900">{title}</h2>}
+            {count != null && <Count value={count} />}
+            {summary ? <span className="shrink-0 text-caption text-ink-500">{summary}</span> : null}
           </div>
           {action}
         </>
@@ -119,7 +152,7 @@ export const PanelBody = React.forwardRef<HTMLDivElement, React.HTMLAttributes<H
     return (
       <div
         ref={ref}
-        className={cn("flex w-full flex-col overflow-hidden rounded-panel bg-paper-4 shadow-lift-1", className)}
+        className={cn("flex w-full flex-col overflow-hidden rounded-panel bg-paper-4 shadow-xs", className)}
         {...props}
       />
     );

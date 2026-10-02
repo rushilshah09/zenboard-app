@@ -55,14 +55,41 @@ describe('the questions sit beside what they build', () => {
   it('is a split, with the preview dropping away on a phone', () => {
     expect(markup).toMatch(/lg:grid-cols-\[minmax\(0,1fr\)_minmax\(0,1\.05fr\)\]/);
     expect(markup).toMatch(/<OnboardingPreview state=\{preview\} \/>/);
-    expect(preview).toMatch(/hidden[^"]*lg:flex/);
+    expect(preview).toMatch(/hidden[^"]*lg:block/);
+  });
+
+  // ── THE FIRST-RUN LOOK (2026-09-25) ──────────────────────────────────────
+  // The user's reference: a sheet lying on a darker ground, the brand on the mark and the one
+  // filled action, and beside it the product — in its COLLAPSED form here ("we can use this
+  // collapsed view on half on onboarding and real time updating according to client input"),
+  // because this half is narrow and what has to be readable is the part that answers typing.
+  it('is the page, with the brand on it and the preview raised beside it', () => {
+    expect(markup).toMatch(/grid min-h-\[100dvh\] grid-cols-1 bg-canvas/);
+    expect(markup).not.toMatch(/className="sheet /);   // the questions are the page, not a card
+    // ONE ground for the whole page: the preview is raised on it, not laid on a second colour.
+    expect(preview).not.toMatch(/bg-surface-desk/);
+    expect(markup).toMatch(/<Wordmark \/>/);
+    // One filled accent on the screen: the step's own action, and nothing else.
+    expect(markup.match(/variant="brand"/g)?.length, 'one brand CTA per step').toBe(3);
+    expect(markup).not.toMatch(/variant="primary"/);
+  });
+
+  it('shows the app, not a column of panels — the rail, the header, then the page', () => {
+    expect(preview).toMatch(/var\(--sidebar-w-collapsed\)/);
+    expect(preview).toMatch(/RAIL\.map/);
+    // Panels with the app's own gutter between them, exactly as AppShell draws them.
+    expect(preview).toMatch(/var\(--app-gutter\)/);
+    // It runs off the right of the window rather than stopping politely inside it, and it is
+    // oversized rather than shrunk: the app at its real measure, scaled up and cut.
+    expect(preview).toMatch(/absolute inset-y-0 start-2 top-10/);
+    expect(preview).toMatch(/transform: 'scale\(1\.2\)'/);
   });
 
   it('draws the preview with the app’s own components, inert', () => {
     for (const part of ['<Panel frame="shadow">', '<PanelHeader', '<PanelBody>', '<Checkbox']) {
       expect(preview, part).toContain(part);
     }
-    expect(preview).toMatch(/<aside aria-hidden/);
+    expect(preview).toMatch(/<aside[\s\S]{0,40}aria-hidden/);   // the attribute, wherever the tag wraps
     expect(preview).toMatch(/pointer-events-none/);
     expect(preview).toMatch(/tabIndex=\{-1\}/);
   });
@@ -87,8 +114,12 @@ describe('the questions sit beside what they build', () => {
     expect(readFileSync('app/onboarding/page.tsx', 'utf8')).toMatch(/nowHour=\{new Date\(\)\.getHours\(\)\}/);
   });
 
-  it('says how far along you are, in words', () => {
-    expect(markup).toMatch(/\{step \+ 1\} of \{TOTAL\}/);
-    expect(markup).toMatch(/aria-label=\{`Step \$\{step \+ 1\} of \$\{TOTAL\}`\}/);
+  it('says how far along you are, and says it in words where it matters', () => {
+    // The DS owns the shape now (`StepDots`): dashes and "1/3" for the eye, and the accessible
+    // name in words, because "one slash three" is a worse sentence than a screen reader needs.
+    expect(markup).toMatch(/<StepDots current=\{step \+ 1\} total=\{TOTAL\} \/>/);
+    const dots = readFileSync('components/ds/ui/steps.tsx', 'utf8');
+    expect(dots).toMatch(/aria-label=\{`Step \$\{current\} of \$\{total\}`\}/);
+    expect(dots).toMatch(/\{current\}\/\{total\}/);
   });
 });

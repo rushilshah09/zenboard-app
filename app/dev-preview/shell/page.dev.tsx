@@ -7,6 +7,7 @@ import { AppShell } from '@/components/shell/app-shell';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button, Icon, SegmentedControl } from '@/components/ds/ui';
 import { Plus } from '@/components/ds/icons';
+import { defaultModulesForRole, type ProfileRole } from '@/lib/nav-modules';
 
 const SPACES = [{ id: 's1', name: "Rushil shah's workspace", emoji: '✦', color: '#9A1B6F', tag: 'WORK' as const }];
 
@@ -16,14 +17,49 @@ const TABS = [
   { value: 'feedback', label: 'Feedback' },
 ];
 
+// The three shapes the rail can take, plus the unconfigured one. This is the
+// only place all four can be compared without four accounts — and comparing
+// them is the point: the question "does an Individual still get Finance?" has a
+// visual answer, not a code-reading one.
+const SHAPES: { id: string; label: string; modules: string[] | null }[] = [
+  { id: 'unset', label: 'Existing account (unset)', modules: null },
+  ...(['freelancer', 'founder', 'individual'] as ProfileRole[]).map((r) => ({
+    id: r, label: r[0].toUpperCase() + r.slice(1), modules: defaultModulesForRole(r),
+  })),
+];
+
 export default function ShellPreviewPage() {
   if (process.env.NODE_ENV === 'production') notFound();
+  return <ShellPreview />;
+}
+
+function ShellPreview() {
+  const [shape, setShape] = useState('freelancer');
+  const modules = SHAPES.find((s) => s.id === shape)?.modules ?? null;
   return (
-    <AppShell name="Rushil shah" email="designdotrushil@gmail.com" spaces={SPACES} pins={[
-      { type: 'project', id: 'p1', label: 'Balluji rebrand' },
+    <>
+      {/* Harness-only chrome, outside the shell it is inspecting. */}
+      <div style={{ position: 'fixed', top: 8, right: 8, zIndex: 9999, display: 'flex', gap: 4, background: 'var(--color-surface-raised)', border: '1px solid var(--color-border)', borderRadius: 'var(--r-md)', padding: 4 }}>
+        {SHAPES.map((s) => (
+          <button key={s.id} onClick={() => setShape(s.id)}
+            style={{ font: 'inherit', fontSize: 12, padding: '4px 8px', borderRadius: 'var(--r-sm)', border: 'none', cursor: 'pointer',
+              background: shape === s.id ? 'var(--accent)' : 'transparent', color: shape === s.id ? 'var(--on-accent)' : 'var(--color-text-secondary)' }}>
+            {s.label}
+          </button>
+        ))}
+      </div>
+      <AppShellHarness modules={modules} />
+    </>
+  );
+}
+
+function AppShellHarness({ modules }: { modules: string[] | null }) {
+  return (
+    <AppShell enabledModules={modules} name="Rushil shah" email="designdotrushil@gmail.com" spaces={SPACES} pins={[
+      { type: 'project', id: 'p1', label: 'Ridgeline rebrand' },
       { type: 'doc', id: 'd1', label: 'Q3 brief' },
       { type: 'task', id: 't1', label: 'Chase the contract signature' },
-      { type: 'invoice', id: 'i1', label: 'INV-018 · TechSpark' },
+      { type: 'invoice', id: 'i1', label: 'INV-018 · Northwind' },
     ] as const} activeSpaceId="s1">
       <Body />
     </AppShell>

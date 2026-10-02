@@ -17,7 +17,7 @@ export async function syncGoogleCalendar(): Promise<{ error: string } | { ok: tr
   // tell the user: reconnect. Asking again afterwards is how we know which.
   const svc = createServiceClient();
   const conn = await getValidAccessToken(svc, user.id);
-  if (!conn) return (await hasConnection(svc, user.id)) ? { error: 'Google needs you to reconnect — the previous permission expired.' } : { skipped: true };
+  if (!conn) return (await hasConnection(svc, user.id)) ? { error: 'Google needs you to reconnect. The previous permission expired.' } : { skipped: true };
   const res = await importGoogleEvents(supabase, user.id, conn.token);
   if ('error' in res) return { error: res.error };
   return { ok: true, count: res.count };

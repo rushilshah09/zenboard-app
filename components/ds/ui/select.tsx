@@ -31,12 +31,13 @@ export interface SelectProps {
   className?: string;
 }
 
-const TRIGGER_SIZE = { sm: "h-8 px-3 text-ui", md: "h-9 px-3 text-ui", lg: "h-11 px-3 text-ui" };
+// The control ladder — the same heights as Input and Button (28 · 32 · 36).
+const TRIGGER_SIZE = { sm: "h-7 px-2.5 text-ui", md: "h-8 px-3 text-ui", lg: "h-9 px-3 text-ui" };
 
 export function Select({ groups, placeholder = "Select…", size = "md", className, id, "aria-label": ariaLabel, ...props }: SelectProps) {
   const fieldProps = useFieldProps({ id });
   if (process.env.NODE_ENV !== "production" && groups.reduce((n, g) => n + g.options.length, 0) > 12) {
-    console.warn("Select: more than 12 options (§4.14) — use a Combobox.");
+    console.warn("Select: more than 12 options (§4.14). Use a Combobox.");
   }
   return (
     <RSel.Root {...props}>
@@ -46,12 +47,15 @@ export function Select({ groups, placeholder = "Select…", size = "md", classNa
         aria-describedby={fieldProps["aria-describedby"]}
         aria-invalid={fieldProps["aria-invalid"]}
         className={cn(
-          "group flex w-full items-center justify-between gap-2 rounded-md border bg-surface-raised text-start text-ink-900",
+          "group flex w-full items-center justify-between gap-2 rounded-sm border text-start text-ink-900",
           // The FIELD tier, same as TextInput. This was `border-line` — the
           // token that draws a card edge and a divider — so a select trigger
           // measured 1.5:1 against its own ground: a control you could not
           // see the shape of. See the tier note in app/tokens-light.css.
-          "border-line-strong transition-colors duration-instant hover:border-line-control",
+          // THE SAME FIELD AS TextInput (input.tsx `soft`): a recessed wash with no edge until it is
+          // touched, then the card's own ground and the accent edge. It was a white box with a 28% edge
+          // while every text field beside it was a wash — two kinds of field in one form.
+          "border-transparent bg-surface-fill transition-colors duration-instant hover:wash-over data-[state=open]:bg-transparent data-[state=open]:border-[var(--accent)]",
           // Was `focus:border-berry-500 focus:ring-[3px] focus:ring-berry-100`,
           // which produced **`box-shadow: none`** on focus — measured — so the
           // Select had no visible focus state at all. (And berry is a legacy

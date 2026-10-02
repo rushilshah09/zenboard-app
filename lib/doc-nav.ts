@@ -61,9 +61,12 @@ export type NavSource = {
 
 // Labels are the RAIL's labels, verbatim. One name per concept: a crumb reading
 // "Drafts" beside a rail row reading "Draft" is two names for one place.
+// (2026-09-30: the rail now opens on All documents and calls `draft` what it is — Unfiled — so
+// these follow it, order included. Renaming the rail without this list is exactly the two-names
+// drift the line above exists to prevent; app/design-system.test.ts holds the two together now.)
 export const SECTIONS: { kind: SectionKind; label: string }[] = [
-  { kind: 'draft', label: 'Draft' },
   { kind: 'all', label: 'All documents' },
+  { kind: 'draft', label: 'Unfiled' },
   { kind: 'collections', label: 'Collections' },
   { kind: 'shared', label: 'Shared' },
   { kind: 'templates', label: 'Templates' },
@@ -323,9 +326,13 @@ export function siblingsHeading(src: NavSource, node: NavNode): string | undefin
       const self = pageById(src, node.id);
       if (!self) return undefined;
       const parentPage = pageById(src, self.parent_id ?? null);
-      if (parentPage) return `Pages in ${pageLabel(parentPage)}`;
+      // DOCS, not "Pages" (CLAUDE.md glossary: Doc/Documents, never "page" as the entity name).
+      if (parentPage) return `Docs in ${pageLabel(parentPage)}`;
       const folder = folderById(src, self.folder_id);
-      return `Pages in ${folder ? folder.name : SECTION_LABEL[sectionOf(self)]}`;
+      if (folder) return `Docs in ${folder.name}`;
+      const section = sectionOf(self);
+      // "Docs in Unfiled" is not English; the section's own name says it better.
+      return section === 'draft' ? 'Unfiled docs' : `Docs in ${SECTION_LABEL[section]}`;
     }
   }
 }

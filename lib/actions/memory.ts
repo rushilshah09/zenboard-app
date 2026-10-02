@@ -12,6 +12,7 @@
 // memory CLAIMS goes through `supersedeMemory`, which leaves the old row intact
 // with an end date and a pointer. Blur that and "what was true in March" stops
 // having an answer, which is the entire reason this module is worth building.
+import { notReady } from '@/lib/not-ready';
 import { createClient } from '@/lib/supabase/server';
 import { activeSpaceId } from '@/lib/active-space';
 import { requireSession } from '@/lib/auth';
@@ -39,7 +40,7 @@ export async function memoriesSupported(db?: DB): Promise<boolean> {
   }
 }
 
-const NOT_READY = { error: 'Memory needs migration 0029.' } as const;
+const NOT_READY = () => notReady('Memory isn’t available yet.', '0029');
 
 /** Every column the app reads back, matching `COLUMNS` in lib/memory.ts. */
 const RETURNING =
@@ -54,7 +55,7 @@ function refuseBody(body: string): string | null {
   const problem = bodyProblem(body);
   if (problem === 'empty') return 'Write the fact first.';
   if (problem === 'too-long') {
-    return `A memory is one line — trim this to ${BODY_MAX} characters. Longer than that belongs in a doc.`;
+    return `A memory is one line: trim this to ${BODY_MAX} characters. Longer than that belongs in a doc.`;
   }
   return null;
 }
@@ -82,7 +83,7 @@ async function spaceFor(supabase: DB, userId: string, subject: MemorySubject): P
  */
 export async function remember(input: RememberInput): Promise<MemoryResult> {
   const { supabase, user } = await requireSession();
-  if (!(await memoriesSupported(supabase))) return NOT_READY;
+  if (!(await memoriesSupported(supabase))) return NOT_READY();
 
   const refusal = refuseBody(input.body);
   if (refusal) return { error: refusal };
@@ -138,7 +139,7 @@ export async function remember(input: RememberInput): Promise<MemoryResult> {
  */
 export async function supersedeMemory(previousId: string, body: string): Promise<MemoryResult> {
   const { supabase, user } = await requireSession();
-  if (!(await memoriesSupported(supabase))) return NOT_READY;
+  if (!(await memoriesSupported(supabase))) return NOT_READY();
 
   const refusal = refuseBody(body);
   if (refusal) return { error: refusal };
@@ -215,7 +216,7 @@ export async function supersedeMemory(previousId: string, body: string): Promise
  */
 export async function updateMemoryBody(id: string, body: string): Promise<MemoryResult> {
   const { supabase } = await requireSession();
-  if (!(await memoriesSupported(supabase))) return NOT_READY;
+  if (!(await memoriesSupported(supabase))) return NOT_READY();
 
   const refusal = refuseBody(body);
   if (refusal) return { error: refusal };
@@ -237,7 +238,7 @@ export async function updateMemoryBody(id: string, body: string): Promise<Memory
 /** Pin a fact: it floats to the top and is exempt from decay. The user override. */
 export async function setMemoryPinned(id: string, pinned: boolean): Promise<MemoryResult> {
   const { supabase } = await requireSession();
-  if (!(await memoriesSupported(supabase))) return NOT_READY;
+  if (!(await memoriesSupported(supabase))) return NOT_READY();
   const { data, error } = await supabase
     .from('memories').update({ pinned }).eq('id', id).select(RETURNING).single();
   return error ? { error: error.message } : { ok: true, memory: data as unknown as Memory };
@@ -250,7 +251,7 @@ export async function setMemoryPinned(id: string, pinned: boolean): Promise<Memo
  */
 export async function archiveMemory(id: string, archived = true): Promise<MemoryResult> {
   const { supabase } = await requireSession();
-  if (!(await memoriesSupported(supabase))) return NOT_READY;
+  if (!(await memoriesSupported(supabase))) return NOT_READY();
   const { data, error } = await supabase
     .from('memories')
     .update({ archived_at: archived ? new Date().toISOString() : null })
@@ -267,7 +268,7 @@ export async function archiveMemory(id: string, archived = true): Promise<Memory
  */
 export async function forgetMemory(id: string): Promise<{ error: string } | { ok: true }> {
   const { supabase } = await requireSession();
-  if (!(await memoriesSupported(supabase))) return NOT_READY;
+  if (!(await memoriesSupported(supabase))) return NOT_READY();
   const { error } = await supabase.from('memories').delete().eq('id', id);
   return error ? { error: error.message } : { ok: true };
 }
@@ -347,7 +348,7 @@ export async function dismissProposal(key: string): Promise<{ error: string } | 
  */
 export async function confirmMemory(id: string): Promise<MemoryResult> {
   const { supabase } = await requireSession();
-  if (!(await memoriesSupported(supabase))) return NOT_READY;
+  if (!(await memoriesSupported(supabase))) return NOT_READY();
 
   // `recall_count` is deliberately NOT part of `Memory` — it feeds decay and is
   // never rendered, so widening the type would make every surface in the app

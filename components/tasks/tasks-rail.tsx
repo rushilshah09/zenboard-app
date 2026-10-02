@@ -35,7 +35,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Plus, Inbox as Tray, SquareCheckBig as CheckSquare, CalendarCheck,
-  Trash2 as Trash, Filter as FunnelSimple, ChevronDown as CaretDown,
+  Trash2 as Trash, Filter as FunnelSimple,
   Ellipsis as DotsThree, Pencil,
 } from '@/components/ds/icons';
 import {
@@ -50,14 +50,12 @@ import { scopeFill } from '@/lib/entity-color';
 import type { View, SavedViewDef, RailFilter, RailCounts, RailActive, ScopeCounts } from './types';
 import { tempId } from '@/lib/temp-id';
 import { useServerState } from '@/lib/use-server-state';
+import { RailSectionHeading } from '@/components/ui/rail-section-heading';
 
 export const railBtn = (on: boolean) => cn(
   'focus-ring group relative flex h-[var(--row-nav)] items-center gap-[var(--nav-gap,8px)] rounded-sm px-[var(--nav-px,8px)] text-left text-ui transition-colors duration-fast',
   on ? 'bg-surface-selected font-medium text-ink-900' : 'font-normal text-ink-600 hover:bg-surface-hover hover:text-ink-800',
 );
-// The section-label ROLE (CLAUDE.md), not a private 11px copy of it: seven files spelled their own.
-const sectionLabel = 'text-overline text-ink-500';
-
 // The WORKING views — the two places you actually stand: what came in, and what
 // you said you'd do today.
 const VIEWS: { id: View; label: string; icon: typeof Tray }[] = [
@@ -86,16 +84,8 @@ function SectionHead({ label, open, onToggle, addLabel, onAdd }: {
   label: string; open: boolean; onToggle: () => void; addLabel?: string; onAdd?: () => void;
 }) {
   return (
-    <div className="flex items-center gap-1.5 px-2 py-1">
-      <button type="button" onClick={onToggle} aria-expanded={open}
-        className="focus-ring flex flex-1 items-center gap-1.5 rounded-xs text-left">
-        <Icon icon={CaretDown} size={12} aria-hidden className={cn('text-ink-500 transition-transform duration-fast ease-standard', !open && '-rotate-90')} />
-        <span className={sectionLabel}>{label}</span>
-      </button>
-      {onAdd && addLabel && (
-        <IconButton size="xs" variant="ghost" onClick={onAdd} label={addLabel} icon={<Icon icon={Plus} size={12} />} />
-      )}
-    </div>
+    <RailSectionHeading label={label} open={open} onToggle={onToggle}
+      action={onAdd && addLabel ? <IconButton size="xs" variant="ghost" onClick={onAdd} label={addLabel} icon={<Icon icon={Plus} size={12} />} /> : undefined} />
   );
 }
 
@@ -270,7 +260,6 @@ export function TasksRail({
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <IconButton size="xs" variant="ghost" label={`${s.name} actions`}
-                        className="reveal-on-hover data-[state=open]:opacity-100"
                         icon={<Icon icon={DotsThree} size={14} />} />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
@@ -325,7 +314,10 @@ export function TasksRail({
           return (
             <button key={key} onClick={() => pickScope(key)} aria-current={active.scope === key ? 'true' : undefined}
               className={cn(railBtn(active.scope === key), 'shrink-0')}>
-              <span aria-hidden className="size-2 shrink-0 rounded-[2px]" style={{ background: s.color ?? 'var(--color-ink-500)' }} />
+              {/* scopeFill, not the stored value (2026-09-30). This file already imported it
+                  and this one swatch still painted `s.color` raw — a stored hex cannot know its
+                  theme, which is the whole reason --scope-* exists. */}
+              <span aria-hidden className="size-2 shrink-0 rounded-[2px]" style={{ background: scopeFill(s.color, 'var(--color-ink-500)') }} />
               {s.name}
             </button>
           );

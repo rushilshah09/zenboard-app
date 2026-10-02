@@ -109,7 +109,7 @@ export type AnswerRow = { responseId: string; text: string; at: string };
 /**
  * Every non-empty answer to one question.
  *
- * Blanks are dropped rather than shown as "—": the count beside the question
+ * Blanks are dropped rather than shown as "–": the count beside the question
  * ("9 answers") has to mean nine people said something, or an optional field
  * looks as answered as a required one.
  */

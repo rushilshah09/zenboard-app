@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { pageMetadata, SITE_PAGES } from '@/lib/site-pages';
 import { ContactEmail, DocLink, Effective, Items, LegalShell, Part, Term, type Toc } from '@/components/site/legal';
 import { LEGAL, PROVIDERS } from '@/lib/legal';
 
@@ -6,10 +7,7 @@ import { LEGAL, PROVIDERS } from '@/lib/legal';
 // named in "Who we share it with" is one the code calls (lib/legal.ts `PROVIDERS`), and nothing is
 // promised that the product does not do. Have it reviewed by a lawyer before relying on it.
 
-export const metadata: Metadata = {
-  title: 'Privacy notice · Zenboard',
-  description: 'What information Zenboard collects, why, who it is shared with, how long it is kept, and your rights.',
-};
+export const metadata: Metadata = pageMetadata(SITE_PAGES.privacy);
 
 const TOC: Toc = [
   { id: 'about', title: 'About this notice' },
@@ -31,7 +29,7 @@ const TOC: Toc = [
 export default function PrivacyNoticePage() {
   const { product, entity } = LEGAL;
   return (
-    <LegalShell
+    <LegalShell page={SITE_PAGES.privacy}
       title="Privacy notice"
       lede={<>What information {product} collects, why we collect it, who we share it with, and the choices you have.</>}
       toc={TOC}

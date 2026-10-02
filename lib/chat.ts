@@ -25,6 +25,9 @@ export type ChatMessage = {
   pending?: boolean;
   /** The send failed. The row stays, and offers a retry, rather than vanishing. */
   failed?: boolean;
+  /** The pills under the message. ABSENT (not empty) when the read did not ask for reactions:
+   *  before 0044 is applied, and on a realtime row, there is no answer rather than "none". */
+  reactions?: Reaction[];
 };
 
 /** The database bound (0043's check constraint), repeated so the composer can say so first. */
@@ -49,7 +52,7 @@ export function normalizeBody(raw: string): BodyCheck {
   const body = raw.replace(/^\s+|\s+$/g, '');
   if (!body) return { ok: false, error: 'Write a message first.' };
   if (body.length > CHAT_BODY_MAX) {
-    return { ok: false, error: `That is ${body.length.toLocaleString()} characters — the limit is ${CHAT_BODY_MAX.toLocaleString()}.` };
+    return { ok: false, error: `That is ${body.length.toLocaleString()} characters, and the limit is ${CHAT_BODY_MAX.toLocaleString()}.` };
   }
   return { ok: true, body };
 }
@@ -57,7 +60,93 @@ export function normalizeBody(raw: string): BodyCheck {
 type Row = {
   id: string; project_id: string; author: string; author_name: string | null; body: string;
   created_at: string; edited_at: string | null; deleted_at: string | null;
+  /** Embedded by the reactions read (0044). Absent on every other read. */
+  project_message_reactions?: ReactionRow[] | null;
 };
+
+// ── REACTIONS ──────────────────────────────────────────────────────────────
+//
+// A closed set, because a reaction is not a message: anything a person can type belongs in the
+// composer, where it is edited, deleted and read like everything else they said. Eight, so the
+// picker is one row and the first three can sit in the hover bar the way Slack's do.
+
+/** The reactions on offer. The first three are the one-click ones (`QUICK_REACTIONS`). */
+export const REACTIONS = ['👍', '✅', '🎉', '👀', '🔥', '❤️', '😄', '🙏'] as const;
+export type ReactionEmoji = (typeof REACTIONS)[number];
+
+/** What each one is called, for the screen reader and the tooltip. */
+export const REACTION_NAMES: Record<string, string> = {
+  '👍': 'thumbs up', '✅': 'done', '🎉': 'celebrate', '👀': 'looking',
+  '🔥': 'fire', '❤️': 'love', '😄': 'smile', '🙏': 'thank you',
+};
+
+/** Only the ones on offer, and only as themselves: a client cannot post text as a reaction. */
+export const isReaction = (v: unknown): v is ReactionEmoji =>
+  typeof v === 'string' && (REACTIONS as readonly string[]).includes(v);
+
+/** A stored reaction (0044). Taking one back sets `removed_at`; the row stays. */
+export type ReactionRow = {
+  emoji: string;
+  /** Normalized at READ time, like `author`: anything that is not the team is the client. */
+  reactor: string;
+  created_at: string;
+  removed_at?: string | null;
+};
+
+/** What is drawn: one pill per emoji, and which side is on it. */
+export type Reaction = { emoji: string; team: boolean; client: boolean };
+
+/**
+ * Rows → pills, in the order each emoji was FIRST used, so a pill does not jump when the other
+ * side joins it. A reaction that was taken back is not a pill; its row is still there, because
+ * "removed" is a fact about when, not a hole in the history.
+ */
+export function groupReactions(rows: readonly ReactionRow[]): Reaction[] {
+  const pills = new Map<string, Reaction>();
+  const firstUsed = new Map<string, string>();
+  for (const r of rows) {
+    if (r.removed_at) continue;
+    const pill = pills.get(r.emoji) ?? { emoji: r.emoji, team: false, client: false };
+    if (r.reactor === 'team') pill.team = true; else pill.client = true;
+    pills.set(r.emoji, pill);
+    const first = firstUsed.get(r.emoji);
+    if (!first || r.created_at < first) firstUsed.set(r.emoji, r.created_at);
+  }
+  return [...pills.values()].sort((a, b) => (firstUsed.get(a.emoji)! < firstUsed.get(b.emoji)! ? -1 : 1));
+}
+
+/** Is this pill mine? */
+export const reacted = (r: Reaction, me: ChatAuthor): boolean => (me === 'team' ? r.team : r.client);
+
+/**
+ * My side on one emoji, set to `on`. Idempotent, because the realtime stream sends our own writes
+ * back and an echo must not double anything; a pill nobody is on stops existing.
+ */
+export function withReaction(list: readonly Reaction[], emoji: string, side: ChatAuthor, on: boolean): Reaction[] {
+  const out: Reaction[] = [];
+  let seen = false;
+  for (const r of list) {
+    if (r.emoji !== emoji) { out.push(r); continue; }
+    seen = true;
+    const next: Reaction = { ...r, [side]: on };
+    if (next.team || next.client) out.push(next);
+  }
+  if (!seen && on) out.push({ emoji, team: side === 'team', client: side === 'client' });
+  return out;
+}
+
+/** Slack's press: the same emoji again takes mine back, and a pill the other side is on adds me beside them. */
+export const toggleReaction = (list: readonly Reaction[], emoji: string, side: ChatAuthor): Reaction[] =>
+  withReaction(list, emoji, side, !list.some((r) => r.emoji === emoji && reacted(r, side)));
+
+/** Who reacted, from where I am sitting: I am always "You", and the other side has its name. */
+export function reactionLabel(r: Reaction, me: ChatAuthor, names: { team: string; client: string }): string {
+  const who = [
+    r.team ? (me === 'team' ? 'You' : names.team) : null,
+    r.client ? (me === 'client' ? 'You' : names.client) : null,
+  ].filter(Boolean);
+  return `${who.join(' and ')} reacted with ${REACTION_NAMES[r.emoji] ?? r.emoji}`;
+}
 
 /**
  * One row → one message. Normalizes at READ time (the property-vocabulary rule): an author outside
@@ -76,6 +165,10 @@ export function toMessage(r: Row, fallbackName: { team: string; client: string }
     createdAt: r.created_at,
     editedAt: r.edited_at,
     deleted,
+    // Only when the read asked for them: `undefined` means "not read", `[]` means "none".
+    ...(Array.isArray(r.project_message_reactions)
+      ? { reactions: groupReactions(r.project_message_reactions) }
+      : null),
   };
 }
 

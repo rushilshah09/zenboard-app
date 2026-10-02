@@ -598,7 +598,7 @@ export function WeekView({ days, initialTasks, projects, subByParent, rangeLabel
                 <span className="text-caption tabular-nums text-ink-500">{inboxOpen}</span>
                 <span className="flex-1" />
                 <IconButton size="sm" variant="ghost" label="Collapse unscheduled"
-                  tooltip={fitsCollapsed && !fitsOpen ? 'Collapse — this is what is hiding the rest of your week' : 'Collapse unscheduled'}
+                  tooltip={fitsCollapsed && !fitsOpen ? 'Collapse: this is what is hiding the rest of your week' : 'Collapse unscheduled'}
                   icon={<Icon icon={ChevronLeft} size={14} />} onClick={() => setInboxCollapsed(true)} />
               </div>
             }>

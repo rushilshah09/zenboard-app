@@ -18,8 +18,8 @@
 // this kind of feature feel like surveillance. That is a deliberate difference,
 // and it is the one §9's "zero surprise" measure depends on.
 import { useState } from 'react';
-import { Sparkles, Check, X } from '@/components/ds/icons';
-import { Icon, toast } from '@/components/ds/ui';
+import { Sparkles } from '@/components/ds/icons';
+import { SuggestionRow, toast } from '@/components/ds/ui';
 import { acceptProposal, dismissProposal, forgetMemory } from '@/lib/actions/memory';
 import { BandHeading } from '@/components/memory/memory-row';
 import type { ProposalView } from '@/lib/memory-suggest';
@@ -60,46 +60,29 @@ function Row({ p, onDone }: { p: ProposalView; onDone: (key: string) => void }) 
     toast({ message: 'Won’t mention it again.' });
   };
 
+  // The shared proposal row: the receipt is always visible, and both answers are real buttons in
+  // the tab order with 44px reach on touch — an action you cannot reach without a mouse is not an
+  // action.
   return (
-    <li className="group flex flex-col gap-1 py-2 sm:flex-row sm:items-start sm:gap-3">
-      <div className="min-w-0 flex-1">
-        <p className="text-ui text-ink-800">{p.body}</p>
-        {/* The receipt. Always visible, never behind a hover or a tooltip: it is
-            the difference between an inference you can check and one you have to
-            take on faith. */}
-        <p className="pt-0.5 text-caption text-ink-500">
+    <SuggestionRow
+      receipt={(
+        <>
           {p.href ? (
             <a href={p.href} className="focus-ring rounded-sm underline decoration-line-strong underline-offset-2 hover:text-ink-800">
               {p.subjectLabel}
             </a>
           ) : p.subjectLabel}
           {' · '}{p.evidence}
-        </p>
-      </div>
-
-      {/* 44px targets on coarse pointers via `touch-row`; both actions are real
-          buttons in the tab order, and neither is hover-revealed — an action you
-          cannot reach without a mouse is not an action. */}
-      <div className="flex shrink-0 items-center gap-1">
-        <button
-          onClick={accept}
-          disabled={busy}
-          className="focus-ring touch-row flex h-8 items-center gap-1.5 rounded-md border border-line-strong px-2.5 text-caption text-ink-800 hover:bg-surface-hover disabled:opacity-50"
-        >
-          <Icon icon={Check} size={12} />
-          Remember
-        </button>
-        <button
-          onClick={dismiss}
-          disabled={busy}
-          aria-label={`Dismiss: ${p.body}`}
-          title="Don’t mention this again"
-          className="focus-ring touch-row grid h-8 w-8 place-items-center rounded-md text-ink-500 hover:bg-surface-hover hover:text-ink-800 disabled:opacity-50"
-        >
-          <Icon icon={X} size={14} />
-        </button>
-      </div>
-    </li>
+        </>
+      )}
+      acceptLabel="Remember"
+      onAccept={accept}
+      dismissLabel="Don’t mention this again"
+      onDismiss={dismiss}
+      busy={busy}
+    >
+      {p.body}
+    </SuggestionRow>
   );
 }
 

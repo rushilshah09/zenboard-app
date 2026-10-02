@@ -37,7 +37,7 @@ import { setTaskList } from '@/lib/actions/task-lists';
 // Re-exported so the route and the harnesses keep one import site for the module.
 export type { View, TaskProject, SavedViewDef } from '@/components/tasks/types';
 import { HubLayout } from '@/components/ui/hub-layout';
-import { Triage, type InboxTask, type UndoKind } from '@/components/tasks/triage';
+import { Triage, type InboxTask, type TriageSuggestResult, type UndoKind } from '@/components/tasks/triage';
 import { addTask, deleteTask, moveTaskToProject, returnToInbox, setTaskOrder } from '@/lib/actions/tasks';
 import { setTaskLabel } from '@/lib/actions/labels';
 import { useListCursor, useListKeys } from '@/lib/list-keys';
@@ -149,7 +149,7 @@ const NO_TASK_LABELS: Record<string, string[]> = Object.freeze({});
 
 export function TasksView({
   initialTasks, projects, subByParent, labels = [], taskLabels = NO_TASK_LABELS, savedViews = NO_SAVED_VIEWS as SavedViewDef[], savedViewsSupported = false,
-  lists = NO_SCOPES, listsSupported = false, hiddenScopes = NO_KEYS,
+  lists = NO_SCOPES, listsSupported = false, hiddenScopes = NO_KEYS, onSuggestFiling,
 }: {
   initialTasks: TaskItem[]; projects: Record<string, TaskProject>; subByParent: Record<string, { done: number; total: number }>; labels?: TaskLabelDef[]; taskLabels?: Record<string, string[]>; savedViews?: SavedViewDef[]; savedViewsSupported?: boolean;
   /** 0038. Empty + unsupported until the migration is applied. */
@@ -157,6 +157,9 @@ export function TasksView({
   /** Scope keys switched off in the rail, read from `profiles.preferences` by
    *  the route so the first paint is already right. */
   hiddenScopes?: string[];
+  /** Ask the clerk where the Inbox's thoughts go (§7Q *File*). Absent ⇒ triage offers nothing,
+   *  which is what the dev-preview harnesses get: they have no session to spend an allowance. */
+  onSuggestFiling?: () => Promise<TriageSuggestResult>;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -687,6 +690,14 @@ export function TasksView({
   const triageProject = (t: InboxTask, pid: string) => { void moveToProject(t.id, pid); };
   const triageDelete = (t: InboxTask) => { void remove(t.id); };
 
+  // Accepting the clerk's answer (§7Q *File*) is ONE decision made of the mutations this view
+  // already has — no new write path, and therefore nothing new for Z to know about: both of these
+  // take the thought out of the Inbox, and `triageUndo` puts it back the same way for either.
+  const triageFile = (t: InboxTask, filing: { projectId?: string; date?: string }) => {
+    if (filing.projectId) moveToProject(t.id, filing.projectId);
+    if (filing.date) reschedule(t.id, filing.date);
+  };
+
   // Z steps a decision back. A delete is the one that can't be patched back —
   // the row is gone from the table — so it is undone by re-creating it, which
   // means a new id, which is why this returns the restored task.
@@ -797,6 +808,7 @@ export function TasksView({
             <Triage
               items={inboxQueue} projects={projectList} labels={labels}
               onComplete={triageDone} onSchedule={triageSchedule} onProject={triageProject} onDelete={triageDelete}
+              onFile={onSuggestFiling ? triageFile : undefined} onSuggest={onSuggestFiling}
               onLabel={(id, labelId) => { void setTaskLabel(id, labelId, true); }}
               onUnlabel={(id, labelId) => { void setTaskLabel(id, labelId, false); }}
               onUndo={triageUndo}
@@ -955,7 +967,7 @@ export function TasksView({
                   ))}
                   </Presence>
                   {visible.length === 0 && completed.length === 0 && (
-                    <EmptyLine className="px-2 py-7">Nothing here yet.</EmptyLine>
+                    <EmptyLine className="px-2 py-7">Nothing open here. Add a task above.</EmptyLine>
                   )}
                 </div>
 
@@ -1198,7 +1210,7 @@ function EmptyState({ view, scopeName, onAdd, onImport }: { view: View; scopeNam
   const copy: Record<View, { h: string; sub: string }> = {
     inbox: { h: 'Capture now, plan later', sub: 'Inbox is your go-to spot for quick task entry. Clear your mind now, organize when you’re ready.' },
     today: { h: 'All clear for today', sub: 'Nothing on today’s plate. Add a task, or pull something in from your Inbox.' },
-    completed: { h: 'Nothing completed yet', sub: 'Finished tasks land here — your quiet record of progress.' },
+    completed: { h: 'Nothing completed yet', sub: 'Finished tasks land here. Your quiet record of progress.' },
   };
   const c = scopeName ? { h: `Nothing in ${scopeName}`, sub: 'Tasks you file here will show up in this list.' } : copy[view];
   // Coming from another app? Offer the CSV import on the Inbox empty state (§7U:

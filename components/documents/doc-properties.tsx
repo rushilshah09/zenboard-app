@@ -183,13 +183,13 @@ function PropValue({ prop, all, ctx, onPatch }: { prop: DocProp; all: DocProp[];
     // by a property saved before that, and saying so plainly is the only honest
     // rendering left.
     // A formula is computed here, by the same engine the database uses. An
-    // expression that is empty or invalid reads as "—" rather than as a value:
+    // expression that is empty or invalid reads as "–" rather than as a value:
     // the engine cannot tell those apart (both are null) but a person can, and
     // the editor beside it says which.
     if (t === 'formula') {
       const v = evalPageFormula(prop, all, { pageId: ctx.pageId, title: '', createdAt: ctx.createdAt, updatedAt: ctx.updatedAt });
       const text = formulaDisplay(v);
-      return <span className={cn(text ? 'text-ui text-ink-800' : EMPTY, 'inline-block pt-1')}>{text || (prop.formula?.expr?.trim() ? '—' : 'No expression')}</span>;
+      return <span className={cn(text ? 'text-ui text-ink-800' : EMPTY, 'inline-block pt-1')}>{text || (prop.formula?.expr?.trim() ? '–' : 'No expression')}</span>;
     }
     // rollup aggregates across a relation and has no engine on a page yet; it is
     // withheld from the picker, so this is only a property saved before that.
@@ -666,4 +666,4 @@ function useOutside(ref: React.RefObject<HTMLElement | null>, active: boolean, o
 // A property value is a standalone fact on the page, so both shapes carry the
 // year — unlike a row in a list, there's no surrounding context to infer it.
 const fmtDate = (iso?: string) => (iso ? formatDay(iso, { year: true }) ?? iso : '');
-const fmtDateTime = (iso?: string) => (iso ? formatDayTime(iso, { year: true }) ?? iso : '—');
+const fmtDateTime = (iso?: string) => (iso ? formatDayTime(iso, { year: true }) ?? iso : '–');

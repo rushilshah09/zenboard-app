@@ -14,12 +14,12 @@ import { ActionFailureNet } from '@/components/shell/action-failure-net';
 
 const TASKS: FocusTask[] = [
   { id: 'f1', title: 'Finish the pricing page copy', done: false, priority: 'high', highlight: false, estimate_minutes: 45, elapsed_minutes: 0, project_id: 'p1', notes: null },
-  { id: 'f2', title: 'Send Balluji the revised timeline', done: false, priority: 'med', highlight: false, estimate_minutes: 15, elapsed_minutes: 0, project_id: 'p1', notes: null },
+  { id: 'f2', title: 'Send Ridgeline the revised timeline', done: false, priority: 'med', highlight: false, estimate_minutes: 15, elapsed_minutes: 0, project_id: 'p1', notes: null },
   { id: 'f3', title: 'Book the studio for Thursday', done: false, priority: 'low', highlight: false, estimate_minutes: null, elapsed_minutes: 0, project_id: null, notes: null },
   { id: 'f4', title: 'Reply to the tax email', done: true, priority: 'low', highlight: false, estimate_minutes: 10, elapsed_minutes: 10, project_id: null, notes: null },
 ];
 
-const PROJECTS = { p1: { id: 'p1', name: 'Balluji', color: '#9A1B6F' } };
+const PROJECTS = { p1: { id: 'p1', name: 'Ridgeline', color: '#9A1B6F' } };
 const SUBS = { f1: [{ id: 's1', title: 'Rewrite the hero line', done: false }, { id: 's2', title: 'Cut the third tier', done: true }] };
 
 // The three states worth looking at: work to do, everything finished, and a day

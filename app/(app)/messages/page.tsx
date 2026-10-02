@@ -25,7 +25,7 @@ export default async function MessagesPage({ searchParams }: { searchParams: Pro
           <EmptyState
             illustration={<Icon icon={MessageCircle} size={20} />}
             title="Messages are almost ready"
-            description="Apply database migration 0043 to start."
+            description="Each client project gets its own conversation here."
           />
         </div>
       </>

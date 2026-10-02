@@ -36,7 +36,7 @@ function CopyField({ label, value, multiline = false }: { label: string; value: 
       setCopied(true);
       setTimeout(() => setCopied(false), 1600);
     } catch {
-      toast({ message: 'Copy failed — select the text and copy it manually.', variant: 'error' });
+      toast({ message: 'Copy failed. Select the text and copy it manually.', variant: 'error' });
     }
   };
   return (
@@ -108,7 +108,7 @@ export function ShareView({ form, demo = false }: {
       <div className="mx-auto w-full max-w-[720px] px-5 py-10 sm:px-8">
         <h2 className="text-h3 text-ink-900">This form isn’t published yet.</h2>
         <p className="mt-2 max-w-[52ch] text-body text-ink-600">
-          Publishing creates the link people fill in. Nothing is shared until you do — and you can keep editing afterwards.
+          Publishing creates the link people fill in. Nothing is shared until you do, and you can keep editing afterwards.
         </p>
       </div>
     );
@@ -120,7 +120,7 @@ export function ShareView({ form, demo = false }: {
         <div>
           <span className="text-overline text-ink-500">Link</span>
           <p className="mt-1 text-body text-ink-600">
-            Anyone with this link can fill the form in — no account needed.
+            Anyone with this link can fill the form in, no account needed.
             {form.status === 'closed' && <span className="text-warning-600"> The form is closed, so the link shows a closed notice.</span>}
           </p>
         </div>
@@ -139,7 +139,7 @@ export function ShareView({ form, demo = false }: {
         <div>
           <span className="text-overline text-ink-500">Embed</span>
           <p className="mt-1 text-body text-ink-600">
-            Paste this into your own site. It stays in sync — editing the form updates every page it is on.
+            Paste this into your own site. It stays in sync: editing the form updates every page it is on.
           </p>
         </div>
         <CopyField label="Embed code" value={embed} multiline />

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  CHAT_BODY_MAX, DELETED_BODY, RUN_WINDOW_MS, canEdit, dayLabel, lastEditable, layoutMessages, normalizeBody, toMessage, unreadCount,
+  CHAT_BODY_MAX, DELETED_BODY, REACTIONS, REACTION_NAMES, RUN_WINDOW_MS, canEdit, dayLabel, groupReactions, isReaction,
+  lastEditable, layoutMessages, normalizeBody, reacted, reactionLabel, toMessage, toggleReaction, unreadCount, withReaction,
   type ChatMessage,
 } from './chat';
 
@@ -178,5 +179,86 @@ describe('editing your own messages', () => {
   it('overwrites a deleted body with a placeholder the column accepts', () => {
     expect(DELETED_BODY.length).toBeGreaterThanOrEqual(1);
     expect(normalizeBody(DELETED_BODY).ok).toBe(true);
+  });
+});
+
+describe('reactions', () => {
+  it('accepts only the reactions on offer — a link cannot post text as a reaction', () => {
+    expect(isReaction('👍')).toBe(true);
+    expect(isReaction('lol')).toBe(false);
+    expect(isReaction('👍👍')).toBe(false);
+    expect(isReaction('<img>')).toBe(false);
+    expect(isReaction(42)).toBe(false);
+    expect(REACTIONS.length).toBe(8);
+  });
+
+  it('names every reaction on offer', () => {
+    for (const e of REACTIONS) expect(REACTION_NAMES[e]).toBeTruthy();
+  });
+
+  it('groups rows into pills, in the order each emoji was first used', () => {
+    const rows = [
+      { emoji: '🎉', reactor: 'client', created_at: '2026-09-25T10:02:00Z' },
+      { emoji: '👍', reactor: 'team', created_at: '2026-09-25T10:00:00Z' },
+      { emoji: '👍', reactor: 'client', created_at: '2026-09-25T10:01:00Z' },
+    ];
+    expect(groupReactions(rows)).toEqual([
+      { emoji: '👍', team: true, client: true },
+      { emoji: '🎉', team: false, client: true },
+    ]);
+  });
+
+  it('skips a reaction that was taken back — the row stays, the pill does not', () => {
+    const rows = [
+      { emoji: '👍', reactor: 'team', created_at: '2026-09-25T10:00:00Z', removed_at: '2026-09-25T10:05:00Z' },
+      { emoji: '👀', reactor: 'client', created_at: '2026-09-25T10:01:00Z', removed_at: null },
+    ];
+    expect(groupReactions(rows)).toEqual([{ emoji: '👀', team: false, client: true }]);
+  });
+
+  it('sets a side on and off idempotently, and drops a pill nobody is on', () => {
+    const one = withReaction([], '👀', 'team', true);
+    expect(one).toEqual([{ emoji: '👀', team: true, client: false }]);
+    // An echo of the same change is a no-op — the realtime stream sends our own writes back.
+    expect(withReaction(one, '👀', 'team', true)).toEqual(one);
+    expect(withReaction(one, '👀', 'team', false)).toEqual([]);
+    expect(withReaction([], '👀', 'team', false)).toEqual([]);
+    const both = withReaction(one, '👀', 'client', true);
+    expect(both).toEqual([{ emoji: '👀', team: true, client: true }]);
+    expect(withReaction(both, '👀', 'team', false)).toEqual([{ emoji: '👀', team: false, client: true }]);
+  });
+
+  it('toggles like Slack: the same emoji again takes it back', () => {
+    const on = toggleReaction([], '🔥', 'client');
+    expect(on).toEqual([{ emoji: '🔥', team: false, client: true }]);
+    expect(toggleReaction(on, '🔥', 'client')).toEqual([]);
+    // …but pressing a pill the OTHER side is on adds me beside them.
+    expect(toggleReaction(on, '🔥', 'team')).toEqual([{ emoji: '🔥', team: true, client: true }]);
+  });
+
+  it('knows which pills are mine', () => {
+    expect(reacted({ emoji: '🔥', team: true, client: false }, 'team')).toBe(true);
+    expect(reacted({ emoji: '🔥', team: true, client: false }, 'client')).toBe(false);
+  });
+
+  it('says who reacted, from where I am sitting', () => {
+    const names = { team: 'Rushil', client: 'Acme' };
+    expect(reactionLabel({ emoji: '👍', team: true, client: true }, 'team', names)).toBe('You and Acme reacted with thumbs up');
+    expect(reactionLabel({ emoji: '👍', team: true, client: false }, 'client', names)).toBe('Rushil reacted with thumbs up');
+    expect(reactionLabel({ emoji: '🦄', team: false, client: true }, 'client', names)).toBe('You reacted with 🦄');
+  });
+});
+
+describe('a message carries its reactions', () => {
+  const base = {
+    id: 'm1', project_id: 'p1', author: 'client', author_name: 'Acme', body: 'Hi',
+    created_at: '2026-09-25T10:00:00Z', edited_at: null, deleted_at: null,
+  };
+  it('reads embedded reactions into pills', () => {
+    const m = toMessage({ ...base, project_message_reactions: [{ emoji: '✅', reactor: 'team', created_at: base.created_at, removed_at: null }] }, { team: 'You', client: 'Client' });
+    expect(m.reactions).toEqual([{ emoji: '✅', team: true, client: false }]);
+  });
+  it('leaves reactions absent when the read did not include them (before 0044, or a realtime row)', () => {
+    expect(toMessage(base, { team: 'You', client: 'Client' })).not.toHaveProperty('reactions');
   });
 });

@@ -142,7 +142,7 @@ export async function invoiceUnbilledTime(projectId: string): Promise<{ error: s
   const dayLabel = (iso: string) => formatDay(iso) ?? '';
   const rows = entries.map((e, idx) => ({
     invoice_id: inv.id,
-    description: e.note?.trim() || `${projName} — ${dayLabel(e.started_at)}`,
+    description: e.note?.trim() || `${projName} · ${dayLabel(e.started_at)}`,
     quantity: Math.round(((e.minutes ?? 0) / 60) * 100) / 100, // hours, 2dp
     unit_amount: e.rate ?? defaultRate,
     time_entry_id: e.id,

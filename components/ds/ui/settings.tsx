@@ -3,6 +3,7 @@ import { cn } from "@/lib/cn";
 import { Pencil } from "@/lib/icons";
 import { Icon } from "./icon";
 import { IconButton } from "./icon-button";
+import { AnchorRow } from "./anchor-row";
 
 // Settings pattern — grouped preference rows (reference-measured density,
 // Zenboard skin). A pane opens with SettingsPaneHeader (title-3 + one quiet
@@ -77,27 +78,17 @@ export interface SettingsRowProps {
 export function SettingsRow({
   title, description, icon, control, value, onEdit, editLabel, layout = "inline", className,
 }: SettingsRowProps) {
+  // THE row (components/ds/ui/anchor-row.tsx) with settings' own trailing grammar on it:
+  // `label | value | edit`, so you can take in a whole pane by running down one column.
   return (
-    <div
-      className={cn(
-        "flex gap-x-6 gap-y-3 py-3",
-        layout === "inline" ? "flex-wrap items-center justify-between" : "flex-col",
-        className,
-      )}
-    >
-      <div className="flex min-w-0 flex-1 basis-52 items-start gap-3">
-        {icon && (
-          <span className="grid size-8 shrink-0 place-items-center rounded-sm bg-paper-3 text-ink-600 [&_svg]:size-4">
-            {icon}
-          </span>
-        )}
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <div className="text-ui text-ink-800">{title}</div>
-          {description && <div className="text-meta text-ink-500">{description}</div>}
-        </div>
-      </div>
-      {(control || value != null || onEdit) && (
-        <div className={cn("flex shrink-0 items-center gap-2", layout === "stack" && "self-start")}>
+    <AnchorRow
+      icon={icon}
+      title={title}
+      description={description}
+      layout={layout}
+      className={cn("py-3", className)}
+      trailing={(control || value != null || onEdit) ? (
+        <>
           {value != null && <span className="truncate text-ui text-ink-600">{value}</span>}
           {control}
           {onEdit && (
@@ -109,8 +100,8 @@ export function SettingsRow({
               onClick={onEdit}
             />
           )}
-        </div>
-      )}
-    </div>
+        </>
+      ) : undefined}
+    />
   );
 }

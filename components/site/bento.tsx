@@ -1,148 +1,90 @@
 'use client';
 // ── THE DETAILS ─────────────────────────────────────────────────────────────
 //
-// The small things that add up, each on a card of its own. Every one is a real feature, named the way
-// the app names it, and the shortcuts are the app's own (components/shell). The command palette card
-// WORKS: type, move with the arrow keys, press Enter.
+// The small things that add up, each on a card of its own: a real feature, named the way the app
+// names it, and drawn by the user's illustration board.
+//
+// THE DRAWINGS ARE THE BOARD'S, EXACTLY (user, 2026-09-27: "use these exact same illustrations …
+// arrange them in a 3 × 2 grid … all 6 should always have animation … do not change anything").
+// They come from `board-scenes.tsx`, the board's own markup and values, and they sit in a plain 3 × 2
+// grid: six features of equal weight, so six cells of equal size, where the row before was a bento
+// with the palette twice the size of the rest. Every drawing loops on the board's own motion.
+//
+// What the row gave up for it: four of the cards used to be small demos (the palette took keys, the
+// timer counted, the calendar card had a button, the import ran). Each of those changed its drawing
+// to demonstrate itself, which is the one thing the brief rules out. The product itself, working, is
+// the second section of the page.
 
 import * as React from 'react';
-import { Calendar as CalendarIcon, Check, Keyboard, Mail, Plug, Search, Timer, Upload, type IconType } from '@/components/ds/icons';
-import { Icon, Kbd, cardClass } from '@/components/ds/ui';
-import { Command, CommandEmpty, CommandInput, CommandItem, CommandList, CommandShortcut } from '@/components/ds/ui/command';
+import { Calendar as CalendarIcon, Keyboard, Mail, Plug, Search, Timer, type IconType } from '@/components/ds/icons';
 import { cn } from '@/lib/cn';
-import { Cell, IconTile, type Hue } from './visual';
+import { BoardCalendar, BoardDigest, BoardFocus, BoardIntegrations, BoardPalette, BoardShortcuts } from './board-scenes';
+import { CardLine, Cell, HUE, IconTile, Plot, type Hue } from './visual';
 
-const COMMANDS = [
-  { label: 'New task', keys: ['C'], done: 'A new task is waiting for its title.' },
-  { label: 'Go to Projects', keys: ['G', 'P'], done: 'Projects is open.' },
-  { label: 'Go to Finance', keys: ['G', 'M'], done: 'Finance is open.' },
-  { label: 'Go to Documents', keys: ['G', 'D'], done: 'Documents is open.' },
-  { label: 'Focus mode', keys: ['F'], done: 'Everything else is out of the way.' },
-  { label: 'Triage inbox', keys: ['⇧', 'T'], done: 'Your inbox, one item at a time.' },
-];
-
-const SHORTCUTS = [
-  { keys: ['⌘', 'K'], label: 'Command palette' },
-  { keys: ['C'], label: 'Quick capture' },
-  { keys: ['H'], label: 'Highlight a task' },
-  { keys: ['E'], label: 'Complete a task' },
-  { keys: ['F'], label: 'Focus mode' },
-  { keys: ['G', 'P'], label: 'Go to Projects' },
-];
-
-/** One cell of the grid: its glyph, a title that says what it is, a line that says why, and the thing itself. */
+/** One cell of the grid: its glyph, a title that says what it is, a line that says why, and the drawing.
+ *
+ *  AN ILLUSTRATION IS LOOPED OR INTERACTIVE, NEVER BOTH (user, 2026-09-28: "some animated and some
+ *  interactive — animated is continuously on loop, on hover nothing is happening; and interactive
+ *  is interactive"). These six LOOP: their drawings run `ib-*` on their own clock (site-board.css),
+ *  so the pointer is given nothing to do. The tile used to rotate 6° and scale on card hover, which
+ *  is what the user saw as "the entire illustration is dancing" — a drawing already in motion does
+ *  not need a second, unrelated motion laid over it when you happen to point at it.
+ *
+ *  The portal's pictures are the other kind: they hold still and their cards fan under the pointer
+ *  (globals.css, "a stack of cards fans"). One rule, two answers. */
 function Card({ className, icon, hue, title, body, children }: { className?: string; icon: IconType; hue: Hue; title: string; body: string; children?: React.ReactNode }) {
   return (
-    // Its words arrive, then the thing itself (each child is `data-reveal="rise"`); the cell does not
-    // fade, because a cell fading in shows the grid's line behind it. Under the pointer its tile turns
-    // a little toward the reader, the one sign the card is more than a picture.
-    <Cell data-reveal-group className={cn('group/card flex flex-col gap-6 p-6 sm:p-8', className)}>
+    // Its words arrive, then the drawing (each child is `data-reveal="rise"`); the cell does not fade,
+    // because a cell fading in shows the grid's line behind it. Under the pointer its tile turns a
+    // little toward the reader, the one sign the card is more than a picture.
+    <Cell sheen data-reveal-group className={cn('group/card flex flex-col gap-6 p-6 sm:p-8', className)}>
       <div data-reveal="rise" className="flex items-start gap-4">
-        <IconTile icon={icon} hue={hue} className="transition-transform duration-slow ease-out-quiet group-hover/card:-rotate-6 group-hover/card:scale-105" />
-        <div className="min-w-0 pt-[7px]">
-          <p className="text-body-lg font-medium leading-snug text-ink-900">{title}</p>
-          <p className="mt-1.5 max-w-[42ch] text-ui text-ink-600">{body}</p>
-        </div>
+        <IconTile icon={icon} hue={hue} />
+        <CardLine title={title} body={body} className="min-w-0 max-w-[416px] pt-1.5" />
       </div>
       {children}
     </Cell>
   );
 }
 
-function CommandDemo() {
-  const [ran, setRan] = React.useState<string | null>(null);
-  // THE PAGE MUST NOT JUMP TO THIS. cmdk scrolls its selected item into view whenever it mounts or
-  // selects, with `scrollIntoView`, which scrolls every ancestor up to the window: a first visit
-  // landed 5,773px down the page, on this card. So nothing is selected until the visitor reaches
-  // the palette (a pointer over it, or focus in it); with nothing selected there is nothing to scroll
-  // to, and once they are here a "nearest" scroll has nothing left to move.
-  const [value, setValue] = React.useState('');
-  const here = React.useRef(false);
-  const arrive = () => { here.current = true; };
-  return (
-    <div data-reveal="rise" className="flex flex-1 flex-col gap-3" onPointerEnter={arrive} onFocusCapture={arrive}>
-      <Command
-        className={cardClass('shadow-panel')}
-        loop
-        value={value}
-        onValueChange={(v) => { if (here.current) setValue(v); }}
-      >
-        <CommandInput placeholder="Type a command…" className="text-ui text-ink-900 placeholder:text-ink-500" aria-label="Command" />
-        <CommandList className="max-h-[15rem] p-1">
-          <CommandEmpty className="py-6 text-center text-ui text-ink-500">No command by that name.</CommandEmpty>
-          {COMMANDS.map((c) => (
-            <CommandItem
-              key={c.label}
-              value={c.label}
-              onSelect={() => setRan(c.label)}
-              className="h-8 rounded-md px-2.5 text-ui text-ink-800 data-[selected=true]:bg-surface-hover data-[selected=true]:text-ink-900"
-            >
-              {c.label}
-              <CommandShortcut className="ms-auto"><Kbd keys={c.keys} /></CommandShortcut>
-            </CommandItem>
-          ))}
-        </CommandList>
-      </Command>
-      <p aria-live="polite" className="min-h-5 text-caption text-ink-500">
-        {ran ? <span key={ran} className="site-swap zb-enter inline-flex items-center gap-1.5"><Icon icon={Check} size={14} className="text-success-600" />{COMMANDS.find((c) => c.label === ran)?.done}</span> : 'Arrow keys to move, Enter to run.'}
-      </p>
-    </div>
-  );
-}
+/** The six, in the board's order, with the board's words. */
+/** ONE SECTION, ONE COLOUR (user, 2026-09-28: "in one section we use only one colour for icons,
+ *  we don't use multiple colours").
+ *
+ *  These were `hue="neutral"` six times, which the user read as "too faded"; the first fix walked
+ *  the palette's six across the row, which they then read as a fairground. Both notes point the
+ *  same way: the section needs colour, and it needs to be ONE. A chapter hue would be a lie here —
+ *  these are the parts you use in every chapter, so no chapter owns them — which leaves the brand's
+ *  own family, and that is the honest answer for the section about Zenboard's own craft. */
+const DETAILS: { icon: IconType; hue: Hue; title: string; body: string; Scene: () => React.ReactElement }[] = [
+  { icon: Search, hue: 'petal', title: 'Everything is a few keys away', body: 'The command palette opens with ⌘K. Type, move with the arrow keys, press Enter.', Scene: BoardPalette },
+  { icon: Keyboard, hue: 'petal', title: 'Shortcuts you learn once', body: 'The keys follow the words: H highlights, E completes, G then P goes to Projects.', Scene: BoardShortcuts },
+  { icon: Timer, hue: 'petal', title: 'Focus mode', body: 'One task on screen, a timer, and nothing else until you come back.', Scene: BoardFocus },
+  { icon: CalendarIcon, hue: 'petal', title: 'Your calendar, beside your tasks', body: 'Connect Google Calendar and your meetings sit on the same day as your plan.', Scene: BoardCalendar },
+  { icon: Mail, hue: 'petal', title: 'Your day, in your inbox', body: 'A short email each morning: the highlight, the plan, and what is waiting on others.', Scene: BoardDigest },
+  { icon: Plug, hue: 'petal', title: 'Bring your work with you', body: 'Import your pages from Notion. Connect an AI assistant through Zenboard’s MCP server.', Scene: BoardIntegrations },
+];
 
-/** The cells of the details row: they sit straight in the page's grid (a Row's subgrid), not in a box of their own. */
+/** The cells of the details row: they sit straight in the page's grid (a Row's subgrid), three across
+    and two down on a wide screen, two across on a tablet, one on a phone. */
 export function Bento() {
   return (
     <>
-      <Card
-        className="lg:col-span-6 lg:row-span-2"
-        icon={Search}
-        hue="periwinkle"
-        title="Everything is a few keys away"
-        body="The command palette opens with ⌘K. Try it here: type, move with the arrow keys, press Enter."
-      >
-        <CommandDemo />
-      </Card>
-
-      <Card className="lg:col-span-6" icon={Keyboard} hue="periwinkle" title="Shortcuts you learn once" body="The keys follow the words: H highlights, E completes, G then P goes to Projects.">
-        <ul data-reveal="rise" className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
-          {SHORTCUTS.map((s) => (
-            <li key={s.label} className="flex items-center justify-between gap-3 rounded-md px-2 py-1 text-ui text-ink-700 transition-colors duration-fast ease-hover hover:text-ink-900">
-              {s.label}<Kbd keys={s.keys} />
-            </li>
-          ))}
-        </ul>
-      </Card>
-
-      <Card className="lg:col-span-6" icon={Timer} hue="periwinkle" title="Focus mode" body="One task on screen, a timer, and nothing else until you come back.">
-        <div data-reveal="rise" className="mt-auto flex items-center gap-4 rounded-lg bg-surface-fill px-4 py-3">
-          <span className="text-title-3 tabular-nums text-ink-900">24:12</span>
-          <span className="min-w-0 flex-1 truncate text-ui text-ink-700">Finish the logo presentation</span>
-          <Kbd keys={['F']} />
-        </div>
-      </Card>
-
-      <Card className="lg:col-span-4" icon={CalendarIcon} hue="periwinkle" title="Your calendar, beside your tasks" body="Connect Google Calendar and your meetings sit on the same day as your plan.">
-        <ul data-reveal="rise" className="mt-auto flex flex-col gap-1.5 text-ui">
-          <li className="flex items-center gap-3 rounded-md bg-surface-fill px-3 py-2"><span className="tabular-nums text-caption text-ink-500">11:30</span><span className="truncate text-ink-800">Ridgeline call</span></li>
-          <li className="flex items-center gap-3 rounded-md border border-line px-3 py-2"><span className="tabular-nums text-caption text-ink-500">14:00</span><span className="truncate text-ink-900">Type and color system</span></li>
-        </ul>
-      </Card>
-
-      <Card className="lg:col-span-4" icon={Mail} hue="periwinkle" title="Your day, in your inbox" body="A short email each morning: the highlight, the plan, and what is waiting on others.">
-        <div data-reveal="rise" className={cardClass('mt-auto px-4 py-3 text-ui')}>
-          <p className="text-caption text-ink-500">Zenboard · 7:30</p>
-          <p className="mt-1 font-medium text-ink-900">Thursday: 4 tasks, 2 meetings</p>
-          <p className="mt-0.5 truncate text-ink-600">Highlight: Send the Ridgeline invoice</p>
-        </div>
-      </Card>
-
-      <Card className="lg:col-span-4" icon={Plug} hue="periwinkle" title="Bring your work with you" body="Import your pages from Notion. Connect an AI assistant through Zenboard’s MCP server.">
-        <ul data-reveal="rise" className="mt-auto flex flex-col gap-1.5 text-ui text-ink-800">
-          <li className="flex items-center gap-2.5"><Icon icon={Upload} size={16} weight="fill" className="text-ink-500" />Import from Notion</li>
-          <li className="flex items-center gap-2.5"><Icon icon={Plug} size={16} weight="fill" className="text-ink-500" />MCP server for AI assistants</li>
-        </ul>
-      </Card>
+      {DETAILS.map(({ icon, hue, title, body, Scene }) => (
+        <Card key={title} className="md:col-span-6 lg:col-span-4" icon={icon} hue={hue} title={title} body={body}>
+          {/* The stage every drawing gets, and now it is the SAME stage the portal's pictures stand
+              on (user, 2026-09-28: "keep that treatment consistent across all illustrations") — the
+              dotted ground and the area's bloom, from `Plot` in visual.tsx. The board's own 4:3, so
+              the row reads as one at every width and a drawing never floats in a stage taller than
+              it (a fixed height did, below 1280px). No label: the card's own title already says
+              what the drawing shows, and a screen reader does not need it twice. `HUE[hue]` rides
+              the stage too, so the bloom behind a drawing is its own card's colour rather than the
+              page's fallback accent — the tile and the light behind it agree. */}
+          <Plot glow data-reveal="rise" className={cn('mt-auto aspect-[4/3] w-full', HUE[hue])}>
+            <Scene />
+          </Plot>
+        </Card>
+      ))}
     </>
   );
 }

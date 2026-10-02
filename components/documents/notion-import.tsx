@@ -84,7 +84,7 @@ export function NotionImportModal({ open, onOpenChange, onImported }: {
         >
           <Icon icon={Upload} size={20} className="text-ink-500" />
           <span className="text-ui text-ink-800">Choose your exported .md files</span>
-          <span className="text-caption text-ink-500">Select the whole folder — subfolders come across too.</span>
+          <span className="text-caption text-ink-500">Select the whole folder, subfolders come across too.</span>
         </button>
         <input ref={inputRef} type="file" accept=".md,.markdown,.txt" multiple onChange={onFiles} className="sr" />
 

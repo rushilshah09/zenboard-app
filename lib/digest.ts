@@ -189,33 +189,33 @@ export function digestBlocks(
   const task = (t: DigestTask) => `• ${t.title}\n  ${origin}/tasks?task=${t.id}`;
   const request = (r: DigestRequest) => `• ${r.title}\n  ${origin}/projects/${r.projectId}`;
   const piece = (e: CalendarEntry) =>
-    `• ${e.piece.title?.trim() || 'Untitled'} — ${e.kind === 'shoot' ? 'filming' : 'going out'}\n  ${origin}/content?piece=${e.piece.id}`;
+    `• ${e.piece.title?.trim() || 'Untitled'} · ${e.kind === 'shoot' ? 'filming' : 'going out'}\n  ${origin}/content?piece=${e.piece.id}`;
   const meeting = (m: DigestMeeting) => `• ${m.when}  ${m.title}`;
 
   const blocks: string[] = [];
 
   if (today.length) {
-    const head = `Today — ${today.length} ${today.length === 1 ? 'task' : 'tasks'}`;
+    const head = `Today · ${today.length} ${today.length === 1 ? 'task' : 'tasks'}`;
     // The capacity line rides here and nowhere else: it is a claim about
     // today's list, so it belongs beside today's list.
     const line = capacity ? `\n${capacityHeadline(capacity)}.` : '';
     blocks.push(`${head}${line}\n\n${section(today, task)}`);
   }
   if (opts.meetings && meetings.length) {
-    blocks.push(`Meetings — ${meetings.length}\n\n${section(meetings, meeting)}`);
+    blocks.push(`Meetings · ${meetings.length}\n\n${section(meetings, meeting)}`);
   }
   if (content.length) {
     // The same one-line summary Home puts above its content section.
-    blocks.push(`Content today — ${contentTodaySummary(content)}\n\n${section(content, piece)}`);
+    blocks.push(`Content today · ${contentTodaySummary(content)}\n\n${section(content, piece)}`);
   }
   if (overdue.length) {
-    blocks.push(`Overdue — ${overdue.length}\n\n${section(overdue, task)}`);
+    blocks.push(`Overdue · ${overdue.length}\n\n${section(overdue, task)}`);
   }
   if (waitingOn.length) {
-    blocks.push(`Waiting on something else — ${waitingOn.length}\n\n${section(waitingOn, task)}`);
+    blocks.push(`Waiting on something else · ${waitingOn.length}\n\n${section(waitingOn, task)}`);
   }
   if (overnight.length) {
-    blocks.push(`From your clients — ${overnight.length} new\n\n${section(overnight, request)}`);
+    blocks.push(`From your clients · ${overnight.length} new\n\n${section(overnight, request)}`);
   }
   return blocks;
 }

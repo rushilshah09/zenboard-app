@@ -72,7 +72,7 @@ export function planConversion(prop: PropDef, to: PropType, rows: Row[]): Conver
     for (const r of rows) values.set(r.id, undefined);
     lost = withValue.length;
     if (lost > 0) {
-      warnings.push(`All ${lost} existing value${lost === 1 ? '' : 's'} will be deleted — a ${to} property computes its own value.`);
+      warnings.push(`All ${lost} existing value${lost === 1 ? '' : 's'} will be deleted: a ${to} property computes its own value.`);
     }
     return { values, kept: 0, lost, warnings, lossless: lost === 0 };
   }

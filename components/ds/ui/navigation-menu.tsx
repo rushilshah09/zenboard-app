@@ -13,16 +13,24 @@ import { button } from "./button";
 import { Icon } from "./icon";
 import { OVERLAY_CLASS } from "./menu";
 
-export function NavigationMenu({ className, children, ...props }: React.ComponentPropsWithoutRef<typeof RNM.Root>) {
+export function NavigationMenu({ className, children, panel = "fit", ...props }: React.ComponentPropsWithoutRef<typeof RNM.Root> & {
+  /** `fit` (the default): the panel hangs from the bar at its content's own width, growing from its
+   *  top left. `bar`: the panel spans the bar the menu sits in, for a menu too large to hang from one
+   *  trigger (the website's Product menu). The bar is the nearest POSITIONED ancestor, so the caller
+   *  makes it `relative`; the panel then lines up with the bar's own edges and grows from its middle. */
+  panel?: "fit" | "bar";
+}) {
+  const fit = panel === "fit";
   return (
-    <RNM.Root className={cn("relative flex items-center", className)} {...props}>
+    <RNM.Root className={cn(fit && "relative", "flex items-center", className)} {...props}>
       {children}
-      <div className="absolute start-0 top-full z-dropdown flex">
+      <div className={cn("absolute top-full z-dropdown flex", fit ? "start-0" : "inset-x-0")}>
         <RNM.Viewport
           className={cn(
             OVERLAY_CLASS,
-            "zb-enter relative mt-2 origin-top-left overflow-hidden",
-            "h-(--radix-navigation-menu-viewport-height) w-(--radix-navigation-menu-viewport-width)",
+            "zb-enter relative mt-2 overflow-hidden",
+            "h-(--radix-navigation-menu-viewport-height)",
+            fit ? "w-(--radix-navigation-menu-viewport-width) origin-top-left" : "w-full origin-top",
             "data-[state=open]:animate-emerge data-[state=closed]:animate-exit",
           )}
         />

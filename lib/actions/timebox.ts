@@ -7,6 +7,7 @@
 // returns a clean "not available yet", and the UI hides the affordance. The app
 // is correct before and after — nothing here can half-write a twin, because the
 // two links are written in an order where a failure leaves no dangling half.
+import { notReady } from '@/lib/not-ready';
 import { createClient } from '@/lib/supabase/server';
 import { activeSpaceId } from '@/lib/active-space';
 import { userTimezone } from '@/lib/user-tz';
@@ -32,7 +33,7 @@ export async function taskEventsSupported(db?: DB): Promise<boolean> {
   }
 }
 
-const NOT_READY = { error: 'Timeboxing needs migration 0030.' } as const;
+const NOT_READY = () => notReady('Timeboxing isn’t available yet.', '0030');
 
 export type TimeboxResult = { error: string } | { eventId: string; startsAt: string; endsAt: string };
 
@@ -47,7 +48,7 @@ export type TimeboxResult = { error: string } | { eventId: string; startsAt: str
  */
 export async function timeboxTask(taskId: string, startsAtISO: string): Promise<TimeboxResult> {
   const { supabase, user } = await requireSession();
-  if (!(await taskEventsSupported(supabase))) return NOT_READY;
+  if (!(await taskEventsSupported(supabase))) return NOT_READY();
 
   const { data: task } = await supabase
     .from('tasks')
@@ -114,7 +115,7 @@ export async function timeboxTask(taskId: string, startsAtISO: string): Promise<
  */
 export async function untimeboxTask(taskId: string): Promise<{ error: string } | { ok: true }> {
   const { supabase } = await requireSession();
-  if (!(await taskEventsSupported(supabase))) return NOT_READY;
+  if (!(await taskEventsSupported(supabase))) return NOT_READY();
 
   const { data: task } = await supabase.from('tasks').select('event_id').eq('id', taskId).maybeSingle();
   if (!task?.event_id) return { ok: true };   // already un-timeboxed

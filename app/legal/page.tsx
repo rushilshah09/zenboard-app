@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { pageMetadata, SITE_PAGES } from '@/lib/site-pages';
 import Link from 'next/link';
 import { ArrowRight } from '@/components/ds/icons';
 import { Icon, cardInteractiveClass } from '@/components/ds/ui';
@@ -7,14 +8,11 @@ import { DOCUMENTS, LEGAL } from '@/lib/legal';
 
 // The legal centre: the documents that govern Zenboard, one line each on what they are for.
 
-export const metadata: Metadata = {
-  title: 'Legal · Zenboard',
-  description: 'The terms that govern Zenboard, how we handle your information, and the cookies we use.',
-};
+export const metadata: Metadata = pageMetadata(SITE_PAGES.legal);
 
 export default function LegalPage() {
   return (
-    <LegalShell
+    <LegalShell page={SITE_PAGES.legal}
       title="The terms we work by, in plain words."
       lede={<>The agreement between you and {LEGAL.product}, what we do with your information, and the cookies this site uses.</>}
     >

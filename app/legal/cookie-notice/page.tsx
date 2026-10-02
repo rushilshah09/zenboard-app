@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { pageMetadata, SITE_PAGES } from '@/lib/site-pages';
 import { ContactEmail, DocLink, Effective, Items, LegalShell, Part, Term, type Toc } from '@/components/site/legal';
 import { CookieSettingsLink } from '@/components/site/cookie-settings-link';
 import { COOKIES, LEGAL } from '@/lib/legal';
@@ -7,10 +8,7 @@ import { COOKIES, LEGAL } from '@/lib/legal';
 // each is for and how long it lasts, and how to change the choice. Nothing optional runs today, and
 // the notice says so rather than listing categories the site does not use as though it did.
 
-export const metadata: Metadata = {
-  title: 'Cookie notice · Zenboard',
-  description: 'The cookies and similar technologies Zenboard uses, what they are for, and how to change your choice.',
-};
+export const metadata: Metadata = pageMetadata(SITE_PAGES.cookies);
 
 const TOC: Toc = [
   { id: 'what', title: 'What cookies are' },
@@ -24,7 +22,7 @@ const TOC: Toc = [
 export default function CookieNoticePage() {
   const { product } = LEGAL;
   return (
-    <LegalShell
+    <LegalShell page={SITE_PAGES.cookies}
       title="Cookie notice"
       lede={<>The cookies and similar technologies {product} uses, what each one is for, and how to change your choice.</>}
       toc={TOC}

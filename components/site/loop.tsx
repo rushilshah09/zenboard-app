@@ -21,16 +21,18 @@ import { cn } from '@/lib/cn';
 import { FACES } from './faces';
 import { Halftone } from './halftone';
 import { Dwell, useAutoAdvance } from './use-auto-advance';
-import { Cell, Eyebrow, Joints, Mesh } from './visual';
-import { Words } from './words';
+import { CHAPTER, Cell, Eyebrow, HUE, Joints, Mesh } from './visual';
+import { Title } from './words';
 
 /** The track between Zenboard and her portal, or between Zenboard and your day. */
 type Track = 'portal' | 'day';
 type Hop = { track: Track; inward: boolean; label: string; icon: IconType };
 
-const STEPS: { title: string; body: string; log: string; hops: [Hop, Hop] }[] = [
+/** Each step happens in one place of the product, and its number wears that place's colour. */
+const STEPS: { title: string; body: string; log: string; place: keyof typeof CHAPTER; hops: [Hop, Hop] }[] = [
   {
     title: 'She asks',
+    place: 'portal',
     body: 'Priya asks for social sizes of the logo, in her portal.',
     log: 'A request, turned into a task',
     hops: [
@@ -40,6 +42,7 @@ const STEPS: { title: string; body: string; log: string; hops: [Hop, Hop] }[] = 
   },
   {
     title: 'You do it',
+    place: 'day',
     body: 'It lands on today’s plan. You tick it off, and she hears it is ready.',
     log: 'Done, and sent for review',
     hops: [
@@ -49,6 +52,7 @@ const STEPS: { title: string; body: string; log: string; hops: [Hop, Hop] }[] = 
   },
   {
     title: 'She approves',
+    place: 'portal',
     body: 'One press in her portal, and the invoice goes out by itself.',
     log: 'Approved, and invoiced',
     hops: [
@@ -58,6 +62,7 @@ const STEPS: { title: string; body: string; log: string; hops: [Hop, Hop] }[] = 
   },
   {
     title: 'She pays',
+    place: 'money',
     body: 'Her payment lands in Finance, and your day tells you.',
     log: 'Paid, and in Finance',
     hops: [
@@ -201,7 +206,7 @@ function Day({ step }: { step: number }) {
 export function Loop() {
   // Destructured on purpose: reading a field off the object that also holds the ref reads, to the
   // React Compiler's rules, as reading the ref during render.
-  const { ref, active, auto, seen, running, choose, next, hold } = useAutoAdvance(STEPS.length);
+  const { ref, active, seen, running, choose, next, hold } = useAutoAdvance(STEPS.length);
   return (
     <RT.Root asChild value={String(active)} onValueChange={(v) => choose(Number(v))}>
       <section
@@ -215,63 +220,65 @@ export function Loop() {
         className="site-row col-span-full grid scroll-mt-20 grid-cols-subgrid gap-px"
       >
         <Joints />
-        <Cell pad className="py-14 sm:py-16 lg:py-20">
-          <div data-reveal-group className="grid gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-end lg:gap-16">
-            <div>
-              <Eyebrow hue="petal" icon={Orbit} data-reveal="rise">How it fits together</Eyebrow>
-              <h2 id="how-title" data-reveal="words" className="mt-6 max-w-[18ch] text-balance font-editorial text-h1 text-ink-900 sm:text-headline"><Words>One request, from ask to paid.</Words></h2>
-            </div>
-            <p data-reveal="rise" className="max-w-[44ch] text-body-lg text-ink-600">
+        {/* THE BAND: the page's one dark section (globals.css "the band"), and the part the rest of
+            the page hangs from. One cell holds all of it: the heading, the picture, the steps. */}
+        <Cell pad className="site-band site-hue-neutral pb-10 pt-16 sm:pb-12 sm:pt-20 lg:pb-16 lg:pt-28">
+          <div data-reveal-group className="flex flex-col items-center text-center">
+            <Eyebrow hue="neutral" icon={Orbit} data-reveal="rise">How it fits together</Eyebrow>
+            <h2 id="how-title" data-reveal="words" className="mt-6 max-w-[20ch] text-balance font-editorial text-headline-sm sm:text-headline"><Title then="from ask to paid.">One request,</Title></h2>
+            <p data-reveal="rise" className="mt-8 max-w-[540px] text-lead leading-6 text-site-ink-muted">
               Her portal, your plan and your invoices are one system, so a request moves through it by itself. Follow one from start to finish.
             </p>
           </div>
-        </Cell>
 
-        {/* The picture in its three layers: the gradient, the mark printed over it in light (the hub at
-            the mark's heart), and the product's cards on top. */}
-        {/* Her portal, Zenboard and your day lift onto it in that order: the way the request travels. */}
-        <Cell data-reveal-group className="site-field site-field-how overflow-hidden py-14 sm:py-20">
-          <Mesh />
-          <Halftone mark={{ x: 0.5, y: 0.5, size: 1.1 }} />
-          {STEPS.map((s, i) => (
-            <RT.Content key={s.title} value={String(i)} className="relative focus-visible:outline-none">
-              <p className="sr-only">Step {i + 1} of {STEPS.length}. {s.title}: {s.body}</p>
-              <div aria-hidden inert className="mx-auto grid max-w-[68rem] grid-cols-1 items-center justify-items-center px-5 lg:grid-cols-[minmax(0,1fr)_minmax(6rem,0.8fr)_auto_minmax(6rem,0.8fr)_minmax(0,1fr)] lg:px-10">
-                <Portal step={i} />
-                <TrackLine track="portal" step={i} />
-                <Hub step={i} />
-                <TrackLine track="day" step={i} />
-                <Day step={i} />
-              </div>
-            </RT.Content>
-          ))}
-        </Cell>
+          {/* THE PICTURE, LIGHT, INSIDE THE BAND, as Ramp holds its product in a lit card on its dark
+              section: the band is only the room around it, and the picture keeps the page's theme, so
+              the product's cards read exactly as they do everywhere else. Its layers are every
+              picture's: the portal's violet turning into the brand's rose, the mark printed over it
+              in light, and her portal, Zenboard and your day lifting on in the order the request
+              travels. */}
+          <div data-reveal-group className="site-field site-field-how relative mt-12 overflow-hidden rounded-xl py-12 sm:mt-14 sm:py-16">
+            <Mesh />
+            <Halftone mark={{ x: 0.5, y: 0.5, size: 1.1 }} pitch={7} className="site-screen" />
+            {STEPS.map((s, i) => (
+              <RT.Content key={s.title} value={String(i)} className="relative focus-visible:outline-none">
+                <p className="sr-only">Step {i + 1} of {STEPS.length}. {s.title}: {s.body}</p>
+                <div aria-hidden inert className="mx-auto grid max-w-[68rem] grid-cols-1 items-center justify-items-center px-5 lg:grid-cols-[minmax(0,1fr)_minmax(6rem,0.8fr)_auto_minmax(6rem,0.8fr)_minmax(0,1fr)] lg:px-10">
+                  <Portal step={i} />
+                  <TrackLine track="portal" step={i} />
+                  <Hub step={i} />
+                  <TrackLine track="day" step={i} />
+                  <Day step={i} />
+                </div>
+              </RT.Content>
+            ))}
+          </div>
 
-        <RT.List data-reveal-group aria-label="One request, step by step" className="col-span-full grid grid-cols-subgrid gap-px">
-          {STEPS.map((s, i) => (
-            // A step IS a cell of the grid, so its words arrive and the cell does not (a cell fading in
-            // would show the line behind it as a grey block). Its hover takes no fill at all (user,
-            // 2026-09-26: "only the text and content highlight"): the words darken.
-            <RT.Trigger
-              key={s.title}
-              value={String(i)}
-              className="focus-ring group relative col-span-full rounded-lg bg-background px-5 py-6 text-start sm:px-6 lg:col-span-3"
-            >
-              {i === active && auto && <Dwell onEnd={next} className="absolute inset-x-5 -top-px h-0.5 overflow-hidden sm:inset-x-6" />}
-              {/* A step's NUMBER AND ITS NAME are one thing, so they take one colour (user,
-                  2026-09-26: "make number and text both coloured in brand") — and the step you are
-                  on takes the brand, which is the same rule the feature lists follow: colour marks
-                  the one that is showing. The name is set in the titling face, because that is
-                  what it is. `text-accent-text` rather than the raw accent: berry is 2.91:1 on a
-                  dark card, and this list is read in both themes. */}
-              <p data-reveal="rise" className="flex items-center gap-2 font-display text-body-lg font-medium">
-                <span className="tabular-nums text-ink-500 transition-colors duration-fast ease-hover group-hover:text-ink-800 group-data-[state=active]:text-accent-text">{i + 1}</span>
-                <span className="text-ink-500 transition-colors duration-fast ease-hover group-hover:text-ink-800 group-data-[state=active]:text-accent-text">{s.title}</span>
-              </p>
-              <p data-reveal="rise" className="mt-2 max-w-[34ch] text-ui text-ink-500 transition-colors duration-fast ease-hover group-hover:text-ink-600 group-data-[state=active]:text-ink-600">{s.body}</p>
-            </RT.Trigger>
-          ))}
-        </RT.List>
+          <RT.List data-reveal-group aria-label="One request, step by step" className="mt-10 grid gap-x-8 gap-y-8 text-start sm:grid-cols-2 lg:mt-12 lg:grid-cols-4">
+            {STEPS.map((s, i) => (
+              // `flex flex-col`: the steps share a grid row, which stretches every button to the
+              // tallest, and a button centres its content vertically, so a two-line step sat 12px
+              // below a three-line one. A flex button lays its content out from the top.
+              <RT.Trigger key={s.title} value={String(i)} className="focus-ring group flex flex-col rounded-md text-start">
+                {/* A step's NUMBER wears the colour of the place it happens in, always (the same rule
+                    as the people above it: every one wears its box, and the ring marks the one that
+                    is live). While the step holds, the dots draw in round it and the line runs them
+                    as its timer. Its words are one sentence at two volumes, the name in the band's
+                    light and the rest in its grey (the card title with its line). The step you are on
+                    is the one whose name is lit. */}
+                <span data-reveal="rise" className="block">
+                  <Dwell active={i === active} onEnd={next} size={36} radius={11} className={HUE[CHAPTER[s.place]]}>
+                    <span aria-hidden className={cn('site-tile grid size-7 place-items-center rounded-md text-caption font-medium tabular-nums', HUE[CHAPTER[s.place]])}>{i + 1}</span>
+                  </Dwell>
+                  <span className="mt-4 block max-w-[34ch] text-h3 leading-6">
+                    <span className="text-site-ink-muted transition-colors duration-[var(--site-hover)] ease-hover group-hover:text-site-ink-fg group-data-[state=active]:text-site-ink-fg">{s.title}.</span>{' '}
+                    <span className="text-site-ink-muted">{s.body}</span>
+                  </span>
+                </span>
+              </RT.Trigger>
+            ))}
+          </RT.List>
+        </Cell>
       </section>
     </RT.Root>
   );

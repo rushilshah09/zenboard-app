@@ -42,6 +42,25 @@ export const MOTION = {
   ease: [0.23, 1, 0.32, 1] as const,
   /** For anything that should feel physical rather than switched. */
   spring: { type: 'spring', stiffness: 520, damping: 34, mass: 0.7 } satisfies Transition,
+  /**
+   * ── THE TWO SPRINGS, SAID THE WAY APPLE SAYS THEM ─────────────────────────
+   * User, 2026-09-30: "entire application ... intrection is so statics i want apple like
+   * interaction". Apple's own answer is springs, described by TWO numbers rather than the physics
+   * triplet — damping ratio (how much it overshoots) and response (how fast it gets there) —
+   * because a person can reason about those and cannot reason about stiffness 520 / mass 0.7.
+   * Motion's `bounce` + `duration` is that same pair.
+   *
+   * `calm` is critically damped: damping 1.0, response 0.4, NO overshoot. It is the default,
+   * because an overshoot on something that merely appeared reads as a wobble. `carried` has
+   * Apple's bounce and is allowed ONLY where the gesture itself carried momentum — a flick, a
+   * throw, a drag release. Overshoot is the interface agreeing with your hand; with no hand it is
+   * decoration.
+   *
+   * (`spring` above is ζ ≈ 0.89 — under-damped, so it belongs to the `carried` family. It is kept
+   * because `Move` is FLIP for a dragged or reordered row, which is exactly a carried gesture.)
+   */
+  calm: { type: 'spring', bounce: 0, duration: 0.4 } satisfies Transition,
+  carried: { type: 'spring', bounce: 0.2, duration: 0.4 } satisfies Transition,
   /** An icon changing with state (better-ui's contextual-icon values: no bounce, ever). */
   swap: { type: 'spring', duration: 0.3, bounce: 0 } satisfies Transition,
 };
@@ -128,6 +147,79 @@ const MOVES = new Set(['transform', 'x', 'y', 'scale', 'rotate', 'height', 'widt
 function onlyFades<T>(target: T): T {
   if (!target || typeof target !== 'object' || Array.isArray(target)) return target;
   return Object.fromEntries(Object.entries(target as Record<string, unknown>).filter(([k]) => !MOVES.has(k))) as T;
+}
+
+/**
+ * ONE VIEW BECOMING ANOTHER — a mode toggle, a tab whose whole pane changes.
+ *
+ * USER, 2026-09-30, looking at Home's Dashboard/Ask toggle: *"entire application ... intrection
+ * is so statics"*. They were looking at the right thing. The toggle's own thumb slid, and then the
+ * entire page under it was replaced by a bare ternary — no exit, no entrance, nothing. One half of
+ * the interaction animated, which is what made the other half's absence visible.
+ *
+ * ── WHY IT MOVES SIDEWAYS, AND WHICH WAY ────────────────────────────────────
+ * Apple's spatial consistency: a thing leaves the way it came, and the in-between frames point at
+ * the outcome. The toggle is horizontal and the pane belongs to the segment you pressed, so the
+ * pane travels the way the thumb just did — press the right-hand segment and the pane arrives from
+ * the right. 8px, not 40: a HINT at direction. A full-page slide on something pressed many times a
+ * day is a journey.
+ *
+ * ── THE SPRING IS CRITICALLY DAMPED ─────────────────────────────────────────
+ * `MOTION.calm` — no overshoot, because no gesture carried momentum into this. A bounce here would
+ * be the interface being pleased with itself.
+ *
+ * ── THE ENTRANCE IS WHAT THIS CAN PROMISE ───────────────────────────────────
+ * `AnimatePresence initial` is TRUE, and that is not a default nobody thought about. An exit only
+ * runs while the presence tree survives the change — and Home's two modes do not share a layout:
+ * Dashboard is a `PageLayout`, Ask is a `HubLayout` with a rail, so switching replaces the whole
+ * subtree and the outgoing pane is gone before anything could animate it out. Measured with
+ * `getAnimations()`: with `initial={false}` the swap ran ZERO animations, exactly as before this
+ * existed. So the honest contract is an ARRIVAL. Where a caller's layout does survive (a tab
+ * inside one pane), the exit below runs too and the pair is symmetric.
+ *
+ * ── `wait`, AND WHY NOT `popLayout` ─────────────────────────────────────────
+ * `popLayout` lifts the leaving pane out of flow so the two overlap, which is what Apple does —
+ * but two panes here differ in height by hundreds of pixels, so the container collapses mid-swap
+ * and the page jumps. `wait` keeps the layout honest.
+ *
+ * Reduced motion keeps the cross-fade and drops the travel; a keyboard arrival is instant, read
+ * from the same seam every other entrance uses, so nothing here decides that twice.
+ */
+export function ViewSwap({ swapKey, direction = 1, className, children }: {
+  /** Changing this is what swaps the view. */
+  swapKey: string;
+  /** +1 when the new view sits to the RIGHT of the old one in its control, -1 to the left. */
+  direction?: 1 | -1;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const still = useReducedMotion();
+  const instant = still || lastInput() === 'keyboard';
+  const shift = instant ? 0 : 8 * direction;
+
+  return (
+    <AnimatePresence mode="wait" initial>
+      <motion.div
+        key={swapKey}
+        className={className}
+        initial={{ opacity: 0, transform: `translateX(${shift}px)` }}
+        animate={{ opacity: 1, transform: 'translateX(0px)' }}
+        // The exit carries its OWN transition: a leaving child animates with the props of its last
+        // render and would otherwise take the entrance's spring — an exit as long as its entrance
+        // is the half of a swap you wait through.
+        exit={{
+          opacity: 0,
+          transform: `translateX(${-shift}px)`,
+          transition: instant ? { duration: 0 } : { duration: MOTION.fast, ease: MOTION.ease },
+        }}
+        transition={instant
+          ? { duration: 0 }
+          : { transform: MOTION.calm, opacity: { duration: MOTION.base, ease: MOTION.ease } }}
+      >
+        {children}
+      </motion.div>
+    </AnimatePresence>
+  );
 }
 
 /**

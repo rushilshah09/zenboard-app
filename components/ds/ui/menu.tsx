@@ -39,21 +39,21 @@ import { Icon } from "@/components/ds/ui/icon";
 //
 // Held by app/theme-bridge.test.ts ("every floating list paints the RAISED tier") and
 // app/design-system.test.ts ("one overlay chrome").
-export const OVERLAY_CLASS = "rounded-lg border border-border bg-popover text-popover-foreground shadow-md";
+export const OVERLAY_CLASS = "rounded-md border border-border bg-popover text-popover-foreground shadow-lift-2";
 
 export const MENU_PANEL_CLASS = `${OVERLAY_CLASS} p-1 zb-enter [animation:zb-pop-in_var(--duration-fast)_var(--ease-out-quiet)]`;
 
 // Shared item chrome — the same metrics as a Radix DropdownMenuItem, so a
 // hand-positioned MenuItem and a DropdownMenuItem are pixel-identical.
 export const MENU_ITEM_CLASS =
-  "flex min-h-8 w-full cursor-pointer select-none items-center gap-2 rounded-md px-2 py-1.5 text-left text-ui text-ink-800 outline-none";
+  "flex min-h-8 w-full cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-left text-ui text-ink-800 outline-none";
 
 export const MENU_LABEL_CLASS = "px-2 pb-1 pt-2 text-overline text-ink-500";
 
 export const MENU_SEPARATOR_CLASS = "-mx-1 my-1 h-px bg-border";
 
 export const MENU_FIELD_CLASS =
-  "h-8 w-full min-w-0 rounded-md border-0 bg-surface-hover px-2 text-ui text-ink-900 caret-ink-900 outline-none placeholder:text-ink-500 " +
+  "h-8 w-full min-w-0 rounded-sm border-0 bg-surface-hover px-2 text-ui text-ink-900 caret-ink-900 outline-none placeholder:text-ink-500 " +
   "disabled:text-ink-500";
 
 /**

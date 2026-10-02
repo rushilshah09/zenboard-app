@@ -70,7 +70,7 @@ export function TaskCard({ task, sub, project, showWhen = true, onToggle, onOpen
             onCloseAutoFocus={(e) => { if (opening.current) { e.preventDefault(); opening.current = false; } }}>
             {onOpen && <DropdownMenuItem icon={<Icon icon={Pencil} size={16} />} onSelect={() => { opening.current = true; onOpen(); }}>Open</DropdownMenuItem>}
             {onHighlight && (
-              <DropdownMenuItem icon={<Icon icon={Highlight} size={16} weight={task.highlight ? 'fill' : 'regular'} />} onSelect={onHighlight}>
+              <DropdownMenuItem icon={<Icon icon={Highlight} size={16} state={!!task.highlight} />} onSelect={onHighlight}>
                 {task.highlight ? 'Remove highlight' : 'Highlight'}
               </DropdownMenuItem>
             )}

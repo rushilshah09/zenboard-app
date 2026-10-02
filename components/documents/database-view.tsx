@@ -383,7 +383,7 @@ function ViewSettings({ view, props, onPatchView, onCopyLink, onClose, startAt =
         {header(page === 'timelineBy' ? 'Show timeline by' : 'End date', 'layout')}
         {page === 'timelineEnd' && (
           <button onClick={() => onPatchView({ endDateProp: undefined })} className={cn('zb-press', POP_ROW)}>
-            <span style={{ flex: 1 }}>None — one-day bars</span>
+            <span style={{ flex: 1 }}>None. One-day bars</span>
             {!current && <Icon icon={Check} size={16} className="text-ink-600" />}
           </button>
         )}
@@ -788,7 +788,7 @@ function LinkedDbPicker({ onPick }: { onPick: (colId: string) => void }) {
         icon={<Icon icon={Search} size={16} />} className="mb-1" />
       {!state && <DbLine>Loading databases…</DbLine>}
       {state && 'error' in state && <DbFailureLine failure={describeDbFailure(state.error, 'list')} onRetry={() => { setState(null); setAttempt((n) => n + 1); }} />}
-      {state && 'collections' in state && rows.length === 0 && <DbLine>{q.trim() ? 'No databases match.' : 'No databases yet — create one with /database.'}</DbLine>}
+      {state && 'collections' in state && rows.length === 0 && <DbLine>{q.trim() ? 'No databases match.' : 'No databases yet, create one with /database.'}</DbLine>}
       {rows.map((c) => (
         <button key={c.id} onClick={() => onPick(c.id)} className={cn('zb-press', POP_ROW)}>
           <Icon icon={Database} size={16} className="shrink-0 text-ink-600" />
@@ -1280,7 +1280,7 @@ function DatabaseSurface({ store, onExpand, inline }: {
               {i > 0 && (
                 <button
                   onClick={() => setLogic(logic === 'and' ? 'or' : 'and')}
-                  aria-label={`Match ${logic === 'and' ? 'all' : 'any'} filters — click to switch to ${logic === 'and' ? 'any' : 'all'}`}
+                  aria-label={`Match ${logic === 'and' ? 'all' : 'any'} filters. Click to switch to ${logic === 'and' ? 'any' : 'all'}`}
                   title={logic === 'and' ? 'All filters must match. Click for any.' : 'Any filter may match. Click for all.'}
                   className="zb-press focus-ring"
                   style={{ display: 'inline-flex', alignItems: 'center', height: 26, padding: '0 6px', borderRadius: 'var(--r-sm)', border: '1px solid var(--line-2)', background: 'transparent', cursor: 'pointer', fontSize: 'var(--text-caption-size)', color: 'var(--text-secondary)', fontWeight: 500 }}>
@@ -1314,7 +1314,7 @@ function DatabaseSurface({ store, onExpand, inline }: {
               {(rules.length > 0 || gi > 0) && (
                 <button
                   onClick={() => setLogic(logic === 'and' ? 'or' : 'and')}
-                  aria-label={`Match ${logic === 'and' ? 'all' : 'any'} filters — click to switch to ${logic === 'and' ? 'any' : 'all'}`}
+                  aria-label={`Match ${logic === 'and' ? 'all' : 'any'} filters. Click to switch to ${logic === 'and' ? 'any' : 'all'}`}
                   className="zb-press focus-ring"
                   style={{ display: 'inline-flex', alignItems: 'center', height: 26, padding: '0 6px', borderRadius: 'var(--r-sm)', border: '1px solid var(--line-2)', background: 'transparent', cursor: 'pointer', fontSize: 'var(--text-caption-size)', color: 'var(--text-secondary)', fontWeight: 500 }}>
                   {logic}
@@ -1589,7 +1589,7 @@ function DatabaseSurface({ store, onExpand, inline }: {
               <span style={{ fontSize: 'var(--text-caption-size)', color: 'var(--text-muted)' }}>{fmtCellDate(r.updated_at)}</span>
             </button>
           ))}
-          {visible.length === 0 && <DbLine>Nothing here yet.</DbLine>}
+          {visible.length === 0 && <DbLine>No rows yet. Add the first one below.</DbLine>}
           <button onClick={() => addAndOpen()} className="zb-press" style={{ display: 'flex', alignItems: 'center', gap: 6, height: 'var(--row-nav)', padding: '0 8px', border: 'none', background: 'transparent', borderRadius: 'var(--r-sm)', color: 'var(--text-secondary)', fontSize: 'var(--text-small-size)', cursor: 'pointer', textAlign: 'left' }}>
             <Icon icon={Plus} size={14} /> New
           </button>

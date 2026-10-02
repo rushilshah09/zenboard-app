@@ -2,7 +2,7 @@
 //
 // A task is a record that opens in a panel above whatever page opened it (`?task=<id>`, read by the panel the app
 // shell mounts). Every opener used to write `${pathname}?task=${id}`, and the panel closed to the bare
-// `pathname` — so the page's own settings went both ways: open a task from the Balluji project, close it, and
+// `pathname` — so the page's own settings went both ways: open a task from the Ridgeline project, close it, and
 // the list behind was the Inbox (found 2026-09-21, proving task editing). Only `task` is this file's; every
 // other parameter belongs to the page and passes through untouched.
 //

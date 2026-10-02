@@ -1,240 +1,208 @@
 /* ============================================================================
-   THE THEME SOURCE OF TRUTH — shadcn's neutral tokens, light and dark.
+   THE PALETTE — every colour value Zenboard paints, light and dark.
    ============================================================================
-   Per the shadcn theming spec the user supplied: semantic background/foreground
-   PAIRS in `:root` and a dark block, exposed to Tailwind through `@theme inline`
-   so `bg-background`, `text-muted-foreground`, `border-border` and `ring-ring`
-   all work.
+   This file holds VALUES and nothing else. `tokens-light.css` maps the app's
+   names onto them per theme; `tokens.generated.css`, `tokens.css` and the
+   `:root` in `globals.css` hold only REFERENCES (no colour literal lives
+   outside the theme files), so a token can no longer exist in one theme's
+   dialect and be read by the other — the failure this codebase hit five times.
 
-   Two deliberate differences from the doc, both forced by this codebase:
+   ── THE SYSTEM (user directive 2026-10-02) ────────────────────────────────
+   "Clean, consistent, minimal, human-feeling … the subtle, calm quality of
+   Claude's interface … as refined and intentional as Notion and Linear. No
+   restrictions on the colours." Measured before it was rebuilt: 13 screens
+   painted 45 distinct backgrounds, 16 text colours, 26 border colours and 20
+   icon colours, with neutrals spread over twelve hues (surfaces on a 68° axis,
+   ink on 92°, washes composited grey, a dark mode built from chroma-zero
+   greys beside warm ones) and status colours that were raw Tailwind.
 
-   1. The dark selector is `html[data-theme='dark']`, not `.dark`. Zenboard's
-      appearance switcher has always written `data-theme` onto <html>
-      (lib/theme.ts), the cookie and the SSR boot read it, and Light/Dark/System
-      resolve through it. Renaming the mechanism to match the doc's example
-      would be a migration with no user-visible gain. `html[…]` (0,1,1) also
-      outranks the plain `:root` blocks in the three older token files, which
-      matters: `globals.css` sets `color-scheme: dark` in a `:root` further down
-      the emitted sheet, and at equal specificity that won on order.
+   Five rules now, each one guarded (app/design-system.test.ts,
+   app/theme-bridge.test.ts):
 
-   2. Zenboard's own 558 tokens are not replaced — they are RE-POINTED at these
-      (see the bottom of this file). The semantic layer here is the source; the
-      Zenboard names are the vocabulary the app already speaks. One set of
-      values, two sets of names, no second palette to keep in sync.
+   1. ONE NEUTRAL HUE — 95°, the hue Claude's ivory (#FAF9F5 = 0.982/0.0054/95)
+      and Notion's ink (#37352F = 0.329/0.0107/92) both sit on. Every surface,
+      border, wash, ink and neutral tag rung, in both themes, is on it. There is
+      no chroma-zero grey anywhere in the product.
 
-   ── WHY THIS EXISTS AT ALL ────────────────────────────────────────────────
-   Light mode was a dead control: `data-theme` was written and no CSS read it.
-   The first fix mirrored the dark theme by flipping its white-alpha washes to
-   black-alpha, which measured 1.046:1 on screen — the whole page was one flat
-   sheet and every filled button vanished. shadcn's light theme is the canonical
-   answer to why: it uses SOLID tones (`--secondary: 0.97`) and a REAL border
-   (`--border: 0.922`), because a translucent wash cannot separate surfaces on a
-   light ground. Dark separates with luminance; light separates with borders.
+   2. CHROMA SCALES WITH AREA. The large reading surfaces stay white or a
+      whisper (card/popover pure white; canvas 0.0045); the small FRAME
+      surfaces carry the warmth (desk, fills, bands ≤ 0.007); edges a touch more
+      (≤ 0.008); ink the most (≤ 0.012). Below Claude's own ground and
+      parchment (0.0054 / 0.011), so it reads as ivory, never as the khaki cast
+      that reversed the 2026-09-08 paper pass (0.0070 spread over the canvas).
+
+   3. THREE TEXT LEVELS. Primary (titles AND body), secondary (labels,
+      descriptions), tertiary (meta). The ramp had five text steps inside 0.17
+      of lightness — #37352F / #44423C / #52504A / #5B5953 / #64625C — which is
+      the muddiness, not a hierarchy. Each level clears 4.5:1 on every ground it
+      can land on, hovered and pressed rows inside a popover included.
+
+   4. ONE RECIPE FOR EVERY HUE. Status, tags, labels, event colours and project
+      colours are all solved from the same lightness/chroma per role (dot ·
+      soft fill · text), so a green tag and a success badge are one family and
+      no single hue is louder than the rest.
+
+   5. THE ACCENT IS CALM. Berry keeps its hue (357°) and gives up the neon:
+      0.544/0.207 → 0.525/0.165, about a fifth less saturated. One filled
+      accent per view (CLAUDE.md), so the colour says "this one" and nothing
+      else. The brand ARTWORK keeps #C41C72 (lib/brand.ts); the UI accent is
+      lib/theme.ts.
+
+   The dark selector is `html[data-theme='dark']` (0,1,1), not `.dark`: the
+   appearance switcher writes `data-theme` (lib/theme.ts), and the higher
+   specificity beats the plain `:root` blocks of the older token files.
    ========================================================================= */
 
 :root {
-  --radius: 0.625rem;
+  --radius: 0.375rem;
 
-  /* ── THE PAGE IS TINTED AND CARDS ARE WHITE. ────────────────────────────
-     shadcn's stock light theme sets `--background` and `--card` to the SAME
-     value (`oklch(1 0 0)`), and gets away with it because every shadcn card
-     carries a border. Zenboard's UI is layered — a page holds panels, panels
-     hold cards, cards hold header bands — and it reads those layers by VALUE.
-     With both at white the whole screen collapsed into one sheet; the user's
-     words were "all looks flat", twice, in both themes.
-     So the page steps down and the card stays white. That is also what Notion
-     and Linear do in light, and what shadcn's own dashboard blocks do when they
-     set `--background` to the sidebar tint. Still only shadcn's neutral axis —
-     just using more of it. */
-  /* ── THE PALETTE IS NOTION'S. ────────────────────────────────────────────
-     User, 2026-09-08, three instructions in one day, in this order:
-       1. "a little bit of warmness and paper, not too harsh yellow"
-       2. "totally fucked up ... not 100% black and white ... I want clean
-           looking white colour, remove warmth paper"
-       3. "all color inspiration from notion directly copy this colors"
+  /* ── SURFACES (light) ─────────────────────────────────────────────────────
+     desk 0.945  →  canvas 0.975  →  band 0.982  →  card / popover 1.000
+     The shell's panels lie on the DESK (1.17:1 against a white panel — the
+     Kobra/Claude frame weight, softer than the 1.25:1 grey it replaces). The
+     CANVAS is a page's own ground where one shows (onboarding, full-screen
+     modes, the portal). Cards and popovers are pure white: warmth lives in the
+     ground, the band, the fills and the edges, never in the card. */
+  --background: oklch(0.975 0.0045 95);               /* #F8F7F3 canvas — Claude's ivory, a step deeper */
+  --desk: oklch(0.945 0.006 95);                      /* #EEEDE8 the ground the shell's panels lie on */
+  --card: oklch(1 0 0);                               /* #FFFFFF */
+  --popover: oklch(1 0 0);                            /* #FFFFFF */
+  /* A card's header band: lifted off the canvas, stopping short of the body
+     (band→body 1.04:1), so a card reads as one object with a head. */
+  --band: oklch(0.982 0.0035 95);                     /* #FAF9F6 */
+  /* The recessed fill: a segmented track, a chip, a code block, a well. */
+  --secondary: oklch(0.958 0.0055 95);                /* #F2F1ED */
+  --muted: oklch(0.958 0.0055 95);                    /* #F2F1ED */
+  --accent-surface: oklch(0.935 0.0065 95);           /* #EBE9E5 the firmer solid fill */
 
-     (1) produced a warm-paper pass. (2) rejected it on sight. (3) settles it.
-     They are not contradictory once you MEASURE the difference:
-
-                     page chroma   border chroma   ink chroma
-       our warm pass    0.0070        0.0104         0.0040
-       Notion           0.0026        0.0027         0.0107
-
-     We had 3-4x Notion's tint on the LARGEST surfaces and less than half its
-     warmth in the ink — precisely inverted. A 0.007 chroma spread across a
-     whole canvas is a khaki cast; the same warmth inside text is just ink that
-     is not clinically blue-black. Tint is not the variable. AREA is.
-
-     So: Notion's values, verbatim, with two deliberate deviations, each
-     forced by a difference between the two products and each measured.
-
-     DEVIATION 1 — the page. Notion's canvas is #FFFFFF and its SIDEBAR is
-     #F7F7F5, because Notion is a document. Zenboard is card-heavy (Home,
-     dashboards, StatCards, rails), and with page and card both white the
-     layering collapses — the user said "all looks flat", twice, in both
-     themes. So Zenboard's page takes Notion's own chrome grey #F7F7F5 and
-     cards stay #FFFFFF. Same two values Notion uses, one role across.
-
-     DEVIATION 2 — secondary ink. Notion ships #787774, which measures
-     4.48:1 on white and 4.17:1 on the page — it fails WCAG AA. Copying a
-     colour is not copying an accessibility bug. Darkened along Notion's own
-     hue to #6A6966, the lightest value that clears 4.5:1 on ALL FOUR light
-     surfaces (5.49 / 5.12 / 4.85 / 4.52). Dark's #9B9B9B already passes.
-
-     Guarded in app/design-system.test.ts by a chroma CAP that scales with
-     area (surfaces <= 0.004, ink <= 0.012), which is the rule that would have
-     caught the beige, plus a strict ladder check in both themes. */
-  --background: oklch(0.976 0.0026 106.4);            /* Notion #F7F7F5 */
-  --foreground: oklch(0.329 0.0107 91.7);             /* Notion #37352F */
-  --card: oklch(1 0 0);                               /* Notion #FFFFFF */
-  --card-foreground: oklch(0.329 0.0107 91.7);
-  --popover: oklch(1 0 0);                            /* Notion #FFFFFF */
-  --popover-foreground: oklch(0.329 0.0107 91.7);
-  --primary: oklch(0.329 0.0107 91.7);                /* Notion #37352F */
+  /* ── INK (light) ──────────────────────────────────────────────────────────
+     Notion's ink, kept: warm, never blue-black. The secondary and tertiary
+     levels are DERIVED from it in tokens-light.css (86% / 72% over the canvas),
+     so moving this one value moves the whole hierarchy with it. */
+  --foreground: oklch(0.329 0.0107 95);               /* #37352F */
+  --card-foreground: oklch(0.329 0.0107 95);
+  --popover-foreground: oklch(0.329 0.0107 95);
+  --secondary-foreground: oklch(0.329 0.0107 95);
+  --accent-surface-foreground: oklch(0.329 0.0107 95);
+  --muted-foreground: oklch(0.51 0.009 95);           /* #676660 = the tertiary level, 5.4:1 on white */
+  --primary: oklch(0.329 0.0107 95);
   --primary-foreground: oklch(1 0 0);
-  /* An alias under a name globals.css does NOT also use. `--primary` exists in
-     both this file and globals.css, so the bridge cannot write
-     `--primary: var(--primary)` — that is a self-reference, which CSS treats as
-     invalid-at-computed-value-time and silently drops. It did exactly that: the
-     dark theme's primary button lost its fill and became invisible. */
-  --primary-solid: oklch(0.205 0 0);
-  --primary-solid-foreground: oklch(0.985 0 0);
-  /* Bands and fills sit BELOW the card so a header band reads against the body
-     it sits on, and hover steps down again so it is felt on a white surface. */
-  --secondary: oklch(0.958 0.0027 106.4);            /* Notion #F1F1EF */
-  --secondary-foreground: oklch(0.329 0.0107 91.7);
-  --muted: oklch(0.958 0.0027 106.4);                /* Notion #F1F1EF */
-  --muted-foreground: oklch(0.508 0.0047 91.5);      /* #6A6966 — see note */
-  --accent-surface: oklch(0.933 0.0027 106.5);       /* Notion #E9E9E7 */
-  --accent-surface-foreground: oklch(0.329 0.0107 91.7);
-  /* Destructive INK — "Delete", an error line. It is text, so 4.5:1, and on
-     the hardest ground it meets: a hovered menu row (the popover under
-     --wash-1). shadcn's oklch(0.577 0.245 27.3) measured 4.22 on --muted,
-     4.45 on the page and 4.37 on a hovered row. This is 4.75 at its worst
-     (a hovered --muted row), and app/theme-bridge.test.ts recomputes all eight
-     grounds. Measured by the two-theme overlay sweep, 2026-09-11. */
-  --destructive: oklch(0.53 0.22 27.3);
-  --border: oklch(0.933 0.0027 106.5);               /* Notion #E9E9E7 */
-  /* A PICTURE'S edge (an illustration, a cover, a photo): pure black at 10% on light, pure white at
-     10% on dark. Never a tinted neutral — a tinted edge picks up the surface behind it and reads as
-     dirt on the image. */
-  --edge-image: oklch(0 0 0 / 0.1);
-  /* THE BOUNDARY THAT *IS* THE CONTROL — a checkbox, radio, switch track or
-     slider thumb, where there is no text and no label inside the shape, so an
-     invisible edge means an invisible control. Solved against all five light
-     surfaces; worst is the sunken well at 3.30:1 (the hardest ground is always
-     the one nearest the border's own luminance — the darkest here, the
-     lightest in dark). A SOLID on purpose: every other edge in this system is
-     ink at a percentage, but a >=3:1 promise must not depend on what is behind
-     it. Warmth tracks the ink family (#37352F). */
-  --border-control: #838381;
+  /* `--primary` exists in globals.css too, so the bridge reads the solid through
+     this alias (a self-reference would be dropped at computed-value time). */
+  --primary-solid: oklch(0.329 0.0107 95);
+  --primary-solid-foreground: oklch(0.985 0.003 95);  /* #FBFAF8 */
 
-  /* ── ENTITY COLOUR — a project's / list's own hue ───────────────────────
-     Five choices, and until now five RAW HEXES stored in the row and painted
-     straight onto the page. A stored hex is theme-blind, so on a dark rail
-     they measured 1.66-2.53:1: the deep ones simply vanished. (The event/tag
-     palette had already solved this with per-theme `--pal-*` tokens; scopes
-     were the one entity family still on literals, declared TWICE.)
+  /* ── THE TINT — what every wash and hairline is made of ───────────────────
+     The ink's own lightness on the 95° axis, at the chroma a wash needs to keep
+     its hue once it is composited at a few percent (5% of this over white lands
+     at chroma 0.0026 on 95°, 10% at 0.0042 — warm rather than grey, and inside
+     the fill cap; 0.042 rounded to a grey at 5%, measured).
+     `--tint-line` carries less, for the one edge dense enough (the 45% focus
+     edge) to out-tint the ink beside it. */
+  --tint: oklch(0.329 0.048 95);
+  --tint-line: oklch(0.329 0.024 95);
 
-     Same mechanism now. Kept as their own family rather than folded into
-     `--pal-*`, because these are the muted, brand-appropriate five a project
-     picks from, while `--pal-*` is the more saturated nine that events and
-     tags use for variety — different jobs, and merging them would make every
-     project chip louder.
-
-     Every value below is solved against the surfaces of its own theme (light:
-     card + page; dark: card, band, popover) and clears 3:1 on the worst of
-     them. `-on` is the glyph that sits ON the fill — a tick in a LayerToggle —
-     and it FLIPS: white reads best on light plum (7.61:1) but near-black wins
-     on light amber (5.16 vs 2.94). That is why it is a token per colour and
-     not a hardcoded `text-white`. See lib/entity-color.ts. */
-  --scope-plum: #9A1B6F;    --scope-plum-on: #FFFFFF;   /* 7.61 card / 7.09 page */
-  --scope-sage: #7B8B5F;    --scope-sage-on: #191919;   /* 3.68 / 3.43 · on 4.77 */
-  --scope-amber: #BC7E2D;   --scope-amber-on: #191919;  /* 3.41 / 3.18 · on 5.16 */
-  --scope-blue: #2B5CB0;    --scope-blue-on: #FFFFFF;   /* 6.44 / 6.00 */
-  --scope-indigo: #5C4FB8;  --scope-indigo-on: #FFFFFF; /* 6.43 / 6.00 */
-  /* shadcn's `--input` is the FORM-CONTROL edge, and it had simply been copied
-     from --border — so a checkbox was drawn with the divider colour and
-     measured 1.07:1 in light, 1.3:1 in dark. */
+  /* ── EDGES (light) ────────────────────────────────────────────────────────
+     decorative  --border        1.30:1 on white — dividers, card edges
+     field       28% tint        ≥ 1.6:1 — inputs, selects (tokens-light.css)
+     control     --border-control ≥ 3:1 on EVERY surface — checkbox, radio,
+                                  switch track, slider thumb (3.36:1 at worst,
+                                  on the desk) */
+  --border: oklch(0.912 0.0075 95);                   /* #E3E2DC */
+  --border-control: #82807A;                          /* oklch(0.6 0.01 95) — a SOLID, see the tier note */
   --input: var(--border-control);
-  --ring: oklch(0.782 0.0042 106.5);
-  --sidebar: oklch(0.976 0.0026 106.4);              /* Notion #F7F7F5 */
-  --sidebar-foreground: oklch(0.329 0.0107 91.7);
-  --sidebar-primary: oklch(0.329 0.0107 91.7);
+  --ring: oklch(0.78 0.008 95);                       /* #B9B7B2 */
+  /* A PICTURE'S edge (a cover, an illustration, a photo): pure black at 10%.
+     A tinted edge picks up the surface behind it and reads as dirt on the image. */
+  --edge-image: oklch(0 0 0 / 0.1);
+
+  /* ── DESTRUCTIVE INK — "Delete", an error line, a danger fill ─────────────
+     One red for the word and the fill: 4.6:1 on the hardest ground it meets (a
+     hovered row on the recessed fill), and white text on it measures 5.7:1. */
+  --destructive: oklch(0.53 0.15 27);                 /* #B24039 */
+
+  /* ── ENTITY COLOUR — a project's / list's own hue (lib/entity-color.ts) ───
+     The five are the ACCENT family at the accent's lightness (0.525), so a
+     project's dot and the chosen accent are one family. Every fill clears 4.4:1
+     on the desk (its darkest ground) and carries a white glyph at ≥ 5.2:1. */
+  --scope-plum: #9C428C;    --scope-plum-on: #FFFFFF;
+  --scope-sage: #5D733F;    --scope-sage-on: #FFFFFF;
+  --scope-amber: #975A02;   --scope-amber-on: #FFFFFF;
+  --scope-blue: #206ABE;    --scope-blue-on: #FFFFFF;
+  --scope-indigo: #5D5DB8;  --scope-indigo-on: #FFFFFF;
+
+  --sidebar: oklch(0.975 0.0045 95);
+  --sidebar-foreground: oklch(0.329 0.0107 95);
+  --sidebar-primary: oklch(0.329 0.0107 95);
   --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.958 0.0027 106.4);
-  --sidebar-accent-foreground: oklch(0.329 0.0107 91.7);
-  --sidebar-border: oklch(0.933 0.0027 106.5);
-  --sidebar-ring: oklch(0.782 0.0042 106.5);
+  --sidebar-accent: oklch(0.958 0.0055 95);
+  --sidebar-accent-foreground: oklch(0.329 0.0107 95);
+  --sidebar-border: oklch(0.912 0.0075 95);
+  --sidebar-ring: oklch(0.78 0.008 95);
 }
 
-/* NOTE on the one rename: shadcn's `--accent` is a SURFACE (hover/menu
-   highlight). Zenboard's `--accent` is the user's chosen brand hue, pinned
-   inline by the appearance switcher and read by ~40 files. Two different
-   meanings, one name — so shadcn's surface token is `--accent-surface` here.
-   Renaming Zenboard's instead would have silently repainted every checkbox,
-   switch and focus ring the moment this file loaded. */
+/* shadcn's `--accent` is a SURFACE (a hover/menu highlight); Zenboard's `--accent`
+   is the person's chosen hue, pinned inline by the appearance switcher. One name,
+   two meanings — so shadcn's surface is `--accent-surface` here. */
 
 html[data-theme='dark'] {
-  /* Dark needs the same treatment for the same reason. Zenboard's original dark
-     ran #000 → #121212 → #1E1E1E → #262626: four steps, and the panel visibly
-     floated off a true-black desk. shadcn's stock pair (0.145 → 0.205) is a
-     tighter range, and mapping straight onto it flattened the layering the app
-     is built from. The page drops and the surfaces above it lift. */
-  --background: oklch(0.213 0 0);                     /* Notion #191919 */
-  --foreground: oklch(0.870 0 0);                     /* Notion #D4D4D4 */
-  --card: oklch(0.244 0 0);                           /* Notion #202020 */
-  --card-foreground: oklch(0.870 0 0);
-  /* A popover is the MOST raised surface, so in dark it must sit above the
-     band (`--muted`) — not below it. shadcn's stock dark puts popover at
-     0.205 and muted at 0.269, which is fine when `muted` is only a fill; here
-     `muted` is Zenboard's card header band, so the ladder has to ascend:
-     page 0.213 → card 0.244 → band 0.289 → popover 0.321 (steps 0.031 ·
-     0.045 · 0.032, each at least Notion's own page→card step; guarded in
-     app/theme-bridge.test.ts). The cost of being the LIGHTEST ground: a state
-     wash on it (9% ink → #414141) fails ink-500 and ink-600, and neither this
-     value nor the ramp can move to fix that — so a washed row brings its
-     secondary text forward to ink-700 instead (same test file). */
-  --popover: oklch(0.321 0 0);                        /* #333333 */
-  --popover-foreground: oklch(0.870 0 0);
-  --primary: oklch(0.870 0 0);
-  --primary-foreground: oklch(0.213 0 0);
-  --primary-solid: oklch(0.870 0 0);
-  --primary-solid-foreground: oklch(0.213 0 0);
-  --secondary: oklch(0.289 0 0);                      /* #2B2B2B — see ladder note */
-  --secondary-foreground: oklch(0.870 0 0);
-  --muted: oklch(0.289 0 0);                          /* #2B2B2B */
-  --muted-foreground: oklch(0.689 0 0);               /* Notion #9B9B9B */
-  --accent-surface: oklch(0.321 0 0);                 /* #333333 */
-  --accent-surface-foreground: oklch(0.870 0 0);
-  /* shadcn's oklch(0.704 0.191 22.2) was 4.37:1 on the popover (#333333,
-     the lightest dark surface) and 3.85 on a hovered menu row — "Delete
-     workstream" was below AA the moment you pointed at it. 4.80 at its worst. */
-  --destructive: oklch(0.76 0.15 22.2);
-  --border: oklch(0.360 0 0);                         /* #3D3D3D — above the popover */
-  --edge-image: oklch(1 0 0 / 0.1);
-  /* Worst ground in dark is the popover (the lightest surface), at 3.29:1. */
-  --border-control: #828282;
+  /* ── SURFACES (dark) ──────────────────────────────────────────────────────
+     desk 0.180 → canvas 0.213 → card 0.244 → band 0.289 → popover 0.321
+     Each step at least Notion's own page→card step (0.030), so the layers read
+     by value; dark also separates with EDGES (the 9% panel edge, bridge), which
+     is what Linear does. The popover is the MOST raised surface. Same 95° axis
+     as light — a chroma-zero grey under a warm accent reads as dirty, not neutral. */
+  --background: oklch(0.213 0.0045 95);               /* #1A1917 */
+  --desk: oklch(0.18 0.004 95);                       /* #121210 */
+  --card: oklch(0.244 0.0048 95);                     /* #21201E */
+  --popover: oklch(0.321 0.0052 95);                  /* #343330 */
+  /* Dark's band IS its recessed rung, already above the card. */
+  --band: var(--muted);
+  --secondary: oklch(0.289 0.005 95);                 /* #2C2B28 */
+  --muted: oklch(0.289 0.005 95);                     /* #2C2B28 */
+  --accent-surface: oklch(0.321 0.0052 95);           /* #343330 */
 
-  /* Lifted until each clears 3:1 on the POPOVER, dark's lightest surface and
-     therefore its hardest ground. Sage and amber were already light enough and
-     are unchanged — a value that works is not improved by being different. The
-     glyph is near-black on all five here, because every dark fill is light. */
-  --scope-plum: #CE509D;    --scope-plum-on: #191919;   /* 4.08 card / 3.55 band / 3.16 popover */
-  --scope-sage: #7B8B5F;    --scope-sage-on: #191919;   /* 4.42 / 3.84 / 3.43 */
-  --scope-amber: #C88A3B;   --scope-amber-on: #191919;  /* 5.55 / 4.82 / 4.30 */
-  --scope-blue: #4B7ED5;    --scope-blue-on: #191919;   /* 4.07 / 3.54 / 3.16 */
-  --scope-indigo: #7A71DD;  --scope-indigo-on: #191919; /* 4.06 / 3.53 / 3.15 */
+  /* ── INK (dark) ─────────────────────────────────────────────────────────── */
+  --foreground: oklch(0.9 0.006 95);                  /* #DFDEDA */
+  --card-foreground: oklch(0.9 0.006 95);
+  --popover-foreground: oklch(0.9 0.006 95);
+  --secondary-foreground: oklch(0.9 0.006 95);
+  --accent-surface-foreground: oklch(0.9 0.006 95);
+  --muted-foreground: oklch(0.708 0.0056 95);         /* #A2A19D = the tertiary level */
+  --primary: oklch(0.9 0.006 95);
+  --primary-foreground: oklch(0.213 0.0045 95);
+  --primary-solid: oklch(0.9 0.006 95);
+  --primary-solid-foreground: oklch(0.213 0.0045 95);
+  /* Dark's washes are made of its own ink (which is already on the axis). */
+  --tint: var(--foreground);
+  --tint-line: var(--foreground);
+
+  /* ── EDGES (dark) ───────────────────────────────────────────────────────── */
+  --border: oklch(0.36 0.0055 95);                    /* #3E3D3A — above the popover */
+  --border-control: #81807C;                          /* oklch(0.6 0.006 95) — 3.20:1 on the popover, dark's hardest ground */
   --input: var(--border-control);
-  --ring: oklch(0.468 0 0);
-  --sidebar: oklch(0.244 0 0);                        /* Notion #202020 */
-  --sidebar-foreground: oklch(0.870 0 0);
-  --sidebar-primary: oklch(0.870 0 0);
-  --sidebar-primary-foreground: oklch(0.213 0 0);
-  --sidebar-accent: oklch(0.321 0 0);
-  --sidebar-accent-foreground: oklch(0.870 0 0);
-  --sidebar-border: oklch(0.360 0 0);
-  --sidebar-ring: oklch(0.468 0 0);
+  --ring: oklch(0.47 0.005 95);
+  --edge-image: oklch(1 0 0 / 0.1);
+
+  /* 4.5:1 on a pressed row inside the popover, dark's hardest ground. */
+  --destructive: oklch(0.785 0.11 25);                /* #F0958D */
+
+  /* Lifted until each clears 4.2:1 on the popover; every dark fill is light, so
+     the glyph on it is near-black. */
+  --scope-plum: #CB7CBB;    --scope-plum-on: #171614;
+  --scope-sage: #8FA476;    --scope-sage-on: #171614;
+  --scope-amber: #C98D50;   --scope-amber-on: #171614;
+  --scope-blue: #629EE9;    --scope-blue-on: #171614;
+  --scope-indigo: #8D92E4;  --scope-indigo-on: #171614;
+
+  --sidebar: oklch(0.244 0.0048 95);
+  --sidebar-foreground: oklch(0.9 0.006 95);
+  --sidebar-primary: oklch(0.9 0.006 95);
+  --sidebar-primary-foreground: oklch(0.213 0.0045 95);
+  --sidebar-accent: oklch(0.321 0.0052 95);
+  --sidebar-accent-foreground: oklch(0.9 0.006 95);
+  --sidebar-border: oklch(0.36 0.0055 95);
+  --sidebar-ring: oklch(0.47 0.005 95);
 }
 
 /* Expose them to Tailwind, so `bg-background` / `text-muted-foreground` /
@@ -255,11 +223,8 @@ html[data-theme='dark'] {
   --color-accent-surface: var(--accent-surface);
   --color-accent-surface-foreground: var(--accent-surface-foreground);
   --color-destructive: var(--destructive);
-  /* The one shadcn token this mapping was missing, and it was load-bearing:
-     without it `border-border` is a dead class AND the base rule in globals.css
-     that gives every registry component its border colour resolves to nothing,
-     so `var(--color-border)` fell through to the inherited `color` — the
-     sign-in card drew its edge in near-black ink at 19.8:1. */
+  /* Load-bearing: the base rule in globals.css gives every registry component
+     its border colour from this; without it `border-border` is a dead class. */
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);

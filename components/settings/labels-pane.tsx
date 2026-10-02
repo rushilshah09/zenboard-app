@@ -98,7 +98,7 @@ export function LabelsPane() {
 
   return (
     <div className="flex flex-col gap-10">
-      <SettingsPaneHeader title="Labels" description="Cross-cutting tags for tasks. A label is a view over your work — deleting one never deletes a task." />
+      <SettingsPaneHeader title="Labels" description="Cross-cutting tags for tasks. A label is a view over your work: deleting one never deletes a task." />
 
       <SettingsSection title={total > 0 ? `${total} ${total === 1 ? 'label' : 'labels'}` : 'Labels'}>
         {!supported ? (

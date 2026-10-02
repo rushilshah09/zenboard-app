@@ -62,31 +62,57 @@ export const Radio = React.forwardRef<HTMLButtonElement, RadioProps>(function Ra
 
 // Radio card (§4.17) — the whole card is the label; for choices with
 // consequences worth describing. Max 4.
-export const RadioCard = React.forwardRef<HTMLButtonElement, RadioProps>(function RadioCard(
-  { label, description, className, ...props },
+export const RadioCard = React.forwardRef<HTMLButtonElement, RadioProps & {
+  /** A glyph for the choice. It rides a tile that fills with the accent when
+   *  chosen — so the card's answer to "which one is picked?" is a shape and a
+   *  hue, not only a dot. Without one, the dot is still the mark. */
+  icon?: React.ReactNode;
+}>(function RadioCard(
+  { label, description, icon, className, ...props },
   ref,
 ) {
   return (
     <RR.Item
       ref={ref}
       className={cn(
-        "focus-ring group flex w-full items-start gap-3 rounded-md border p-3 text-start transition-colors duration-instant",
-        "border-line bg-paper hover:wash-over",
-        "data-[state=checked]:border-[var(--accent)] data-[state=checked]:bg-[var(--accent-soft)]",
+        "focus-ring group flex w-full items-center gap-3 rounded-md border p-3 text-start transition-colors duration-instant",
+        // RESTING on a wash, CHOSEN on the card's own fill with the accent edge
+        // — the reference's move, and the right way round: the chosen one is
+        // the one that comes forward. (It was `--accent-soft`, which is a
+        // near-white 16% wash: on a light card, no fill at all.)
+        "border-transparent bg-surface-sunken hover:wash-over",
+        // CHOSEN = the wash LET GO OF, not a second fill: the chosen card comes forward to
+        // whatever ground the group is on, so this reads the same inside a sheet, a modal or a
+        // panel. Pinning `surface-raised` here would be an elevation painted by a state
+        // (app/theme-bridge.test.ts), which inverts on any ground that is not the card.
+        "data-[state=checked]:border-[var(--accent)] data-[state=checked]:bg-transparent",
         className,
       )}
       {...props}
     >
-      <span
-        aria-hidden
-        className={cn(
-          "mt-0.5 size-[18px] shrink-0 rounded-full border bg-surface-raised transition-[border-color] duration-fast",
-          "border-line-strong group-data-[state=checked]:border-[5px] group-data-[state=checked]:border-[var(--accent)]",
-        )}
-      />
-      <span className="flex flex-col gap-0.5">
+      {icon ? (
+        <span
+          aria-hidden
+          className={cn(
+            "grid size-9 shrink-0 place-items-center rounded-md transition-colors duration-fast",
+            "bg-surface-raised text-ink-600",
+            "group-data-[state=checked]:bg-[var(--accent)] group-data-[state=checked]:text-[var(--on-accent)]",
+          )}
+        >
+          {icon}
+        </span>
+      ) : (
+        <span
+          aria-hidden
+          className={cn(
+            "size-[18px] shrink-0 self-start mt-0.5 rounded-full border bg-surface-raised transition-[border-color] duration-fast",
+            "border-line-strong group-data-[state=checked]:border-[5px] group-data-[state=checked]:border-[var(--accent)]",
+          )}
+        />
+      )}
+      <span className="flex min-w-0 flex-col gap-0.5">
         <span className="text-body font-medium text-ink-900">{label}</span>
-        {/* ink-600, not ink-500: on the checked card's berry tint, ink-500 drops
+        {/* ink-600, not ink-500: on the checked card's tint, ink-500 drops
             under AA in dark (4.16:1). */}
         {description && <span className="text-meta text-ink-600">{description}</span>}
       </span>

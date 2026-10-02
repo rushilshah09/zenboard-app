@@ -148,7 +148,7 @@ describe('digestEmail', () => {
     // too, because leading an email with overdue work is the anxious framing
     // that section's first sentence rejects.
     const mail = digestEmail(input({ today: [t('a', 'Ship the logo')], overdue: [t('b', 'Chase the invoice')] }), origin)!;
-    expect(mail.text.indexOf('Today —')).toBeLessThan(mail.text.indexOf('Overdue —'));
+    expect(mail.text.indexOf('Today ·')).toBeLessThan(mail.text.indexOf('Overdue ·'));
   });
 
   it('carries the capacity line beside today, and only there', () => {
@@ -179,7 +179,7 @@ describe('digestEmail', () => {
 
   it('includes waiting-on when there IS something else to send', () => {
     const mail = digestEmail(input({ today: [t('a', 'A')], waitingOn: [t('w', 'Blocked thing')] }), origin)!;
-    expect(mail.text).toContain('Waiting on something else — 1');
+    expect(mail.text).toContain('Waiting on something else · 1');
   });
 });
 
@@ -214,16 +214,16 @@ describe('content and meetings — the day a creator actually has', () => {
   it('a shoot day alone is worth the email — it is the least movable thing in the week', () => {
     const mail = digestEmail(input({ content: [shoot] }), origin);
     expect(mail).not.toBeNull();
-    expect(mail!.text).toContain('Content today — Filming at 09:00');
-    expect(mail!.text).toContain('Studio tour — filming');
+    expect(mail!.text).toContain('Content today · Filming at 09:00');
+    expect(mail!.text).toContain('Studio tour · filming');
     expect(mail!.text).toContain('https://z.app/content?piece=c1');
   });
 
   it('puts what is being made after the plan and before what is late', () => {
     const mail = digestEmail(input({ today: [t('a', 'A')], content: [shoot], overdue: [t('b', 'B')] }), origin)!;
     const at = (s: string) => mail.text.indexOf(s);
-    expect(at('Today —')).toBeLessThan(at('Content today —'));
-    expect(at('Content today —')).toBeLessThan(at('Overdue —'));
+    expect(at('Today ·')).toBeLessThan(at('Content today ·'));
+    expect(at('Content today ·')).toBeLessThan(at('Overdue ·'));
   });
 
   it('names it in the subject with the same words Home uses', () => {
@@ -241,7 +241,7 @@ describe('content and meetings — the day a creator actually has', () => {
       input({ today: [t('a', 'A')], overdue: [t('b', 'B')], meetings: [{ title: 'Kickoff', when: '10:00 – 11:00' }] }),
       origin, { meetings: true },
     );
-    expect(blocks[1]).toBe('Meetings — 1\n\n• 10:00 – 11:00  Kickoff');
+    expect(blocks[1]).toBe('Meetings · 1\n\n• 10:00 – 11:00  Kickoff');
     expect(blocks[2].startsWith('Overdue')).toBe(true);
   });
 

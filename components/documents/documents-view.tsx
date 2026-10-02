@@ -11,8 +11,8 @@
 //   · editor: white sheet card (r12) floating on the canvas.
 // All operations preserved: create (page/template/folder), rename, duplicate,
 // favorite, move-to-folder, share link, archive/restore, delete. Autosaved.
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FileText, Repeat, Plus, Trash2, Hash, Tag, X, Ellipsis, EllipsisVertical, Star, Undo2, ChevronRight, ChevronDown, Folder as FolderIcon, Cards, ShareNetwork, Link as LinkIcon, Layout, History, Search, PanelLeft, Filter, ArrowLeft, Smile, Image, MessageCircle, Pencil, Grid2x2, Rows3, Upload, Database, Images } from "@/components/ds/icons";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { FileText, Repeat, Plus, Trash2, Hash, X, Ellipsis, EllipsisVertical, Star, Undo2, ChevronDown, Folder as FolderIcon, Cards, ShareNetwork, Link as LinkIcon, Layout, History, Search, PanelLeft, Filter, ArrowLeft, Smile, Image, MessageCircle, Pencil, Grid2x2, Rows3, Upload, Database, Images } from "@/components/ds/icons";
 import { Button, Icon, IconButton, SegmentedControl, MenuPanel, MenuItem, TextInput, EmptyState, EmptyLine, toast, toastReverted, dismissToast, useConfirm } from "@/components/ds/ui";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
@@ -24,7 +24,9 @@ import { HUB_RAIL_CLASS } from '@/components/ui/hub-layout';
 import { NotionImportModal } from "@/components/documents/notion-import";
 import { PageHeader } from '@/components/ui/page-header';
 import { cn } from "@/lib/cn";
-import { formatAgo, formatDayTime } from '@/lib/date';
+import { formatAgo, formatDayTime, todayISO } from '@/lib/date';
+import { groupDocs } from '@/lib/doc-recency';
+import { DocIndex } from '@/components/documents/doc-index';
 import { useRecordParam } from '@/lib/hub-url';
 import { ConnectedPanel } from '@/components/connected/connected-panel';
 import { MemoryPanel } from '@/components/memory/memory-panel';
@@ -37,6 +39,7 @@ import { BODY_MAX, type MemorySubject } from '@/lib/memory';
 import { remember, forgetMemory } from '@/lib/actions/memory';
 import type { RememberHook } from '@/components/documents/rich-text';
 import { DocLinks } from '@/components/documents/doc-links';
+import { RailSectionHeading } from '@/components/ui/rail-section-heading';
 import { addFolder, addPage, getPage, updatePage, deletePage, movePages, setPageFavorite, archivePage, duplicatePage } from '@/lib/actions/library';
 import { saveVersion } from '@/lib/actions/versions';
 import { syncMentions, forgetMentionsFrom } from '@/lib/actions/mentions';
@@ -114,11 +117,11 @@ const typeIcon = (t: string) => (t === 'review' ? Repeat : t === 'template' ? La
 // Before this, only Trash and Shared said anything at all — the other four fell
 // through a ternary to `null` and rendered a blank grey field.
 const EMPTY_COPY: Record<View['kind'], { title: string; body: string }> = {
-  draft: { title: 'No drafts', body: 'Anything you write that isn’t in a folder waits here. Start one and file it whenever you like.' },
-  all: { title: 'No documents yet', body: 'Meeting notes, briefs, scopes — everything you write for this workspace lives here.' },
+  draft: { title: 'Nothing unfiled', body: 'Docs that aren’t in a folder show up here.' },
+  all: { title: 'No documents yet', body: 'Meeting notes, briefs, scopes. Everything you write for this workspace lives here.' },
   collections: { title: 'No collections yet', body: 'Gather images, videos, links and files into a visual library.' },
   shared: { title: 'Nothing shared yet', body: 'Docs you send to a client through their portal show up here.' },
-  templates: { title: 'No templates yet', body: 'Save a doc you rewrite often — a kickoff brief, a retro — and start from it next time.' },
+  templates: { title: 'No templates yet', body: 'Save a doc you rewrite often. A kickoff brief, a retro, and start from it next time.' },
   trash: { title: 'Trash is empty', body: 'Deleted docs rest here until you delete them for good.' },
   folder: { title: 'This folder is empty', body: 'Start a doc here, or move an existing one in from its page menu.' },
 };
@@ -128,6 +131,15 @@ const EMPTY_COPY: Record<View['kind'], { title: string; body: string }> = {
 // for the `precise` scale. This was a private ladder with its own thresholds —
 // Documents said "3 months ago" where the rest of the app said "2 Jun".
 const ago = (iso: string) => formatAgo(iso, { precise: true }) ?? '';
+
+// The Documents index layout, remembered per browser. A per-viewer convenience, so localStorage
+// (CLAUDE.md: never for state that must be shared). Read once after hydration, never pushed:
+// another tab switching ITS layout should not rearrange this one.
+const DOC_LAYOUT_KEY = 'zb:docs:layout';
+function readDocLayout(): 'grid' | 'list' {
+  try { return window.localStorage.getItem(DOC_LAYOUT_KEY) === 'grid' ? 'grid' : 'list'; } catch { return 'list'; }
+}
+const noLayoutSubscribe = () => () => {};
 /**
  * A title textarea that fits its own content.
  *
@@ -141,26 +153,13 @@ function growTitle(el: HTMLTextAreaElement | null) {
   el.style.height = `${el.scrollHeight}px`;
 }
 
-/**
- * Card preview: the first content lines, WITH the shape of the document intact.
- *
- * It used to flatten every line to one size and one colour, which turned a card
- * into eight identical grey rows — a document's headings are the only thing that
- * makes a glance at it worth anything, and they were the first thing thrown away.
- * A heading now reads as a heading, at the card's scale.
- */
-type PreviewLine = { text: string; heading: boolean };
-function previewLines(content: Page['content']): PreviewLine[] {
-  return toBlocks(content)
-    .filter((b) => b.text.trim() && b.type !== 'code')
-    .slice(0, 9)
-    .map((b) => ({ text: b.text, heading: b.type === 'h1' || b.type === 'h2' || b.type === 'h3' }));
-}
 
 // `spaceName` used to arrive here and go nowhere — nothing on the screen named
 // the workspace. The trail names it now, from `spaces` + `activeSpaceId`, which
 // is also what its menu switches between.
-export function DocumentsView({ initialFolders, initialPages, initialPageId = null, userName = 'You', spaces = [], activeSpaceId = null, commentsEnabled = false }: { initialFolders: Folder[]; initialPages: Page[]; initialPageId?: string | null; userInitial?: string; userName?: string; spaces?: NavSpace[]; activeSpaceId?: string | null; commentsEnabled?: boolean }) {
+export function DocumentsView({ initialFolders, initialPages, initialPageId = null, userName = 'You', spaces = [], activeSpaceId = null, commentsEnabled = false, timeZone }: { initialFolders: Folder[]; initialPages: Page[]; initialPageId?: string | null; userInitial?: string; userName?: string; spaces?: NavSpace[]; activeSpaceId?: string | null; commentsEnabled?: boolean;
+  /** The person's zone (profile), so the index's Today/Yesterday headings are the same on the server as in the browser. */
+  timeZone?: string }) {
   const [folders, setFolders] = useServerState(initialFolders);
   const [pages, setPages] = useServerState(initialPages);
 
@@ -170,7 +169,9 @@ export function DocumentsView({ initialFolders, initialPages, initialPageId = nu
   // The Collection Index has an address, `?view=collections`, so a link can land on it. The param is replaced, never
   // pushed — like `?page=` — because Documents' other views are not addresses and Back should not walk them.
   const [viewParam, setViewParam] = useRecordParam('view');
-  const [view, setView] = useState<View>(viewParam === 'collections' ? { kind: 'collections' } : { kind: 'draft' });
+  // ALL DOCUMENTS is where Documents opens (2026-09-30). It opened on "Draft", which is really UNFILED
+  // (`!folder_id`), so filing a doc into a folder made it vanish from the screen you land on.
+  const [view, setView] = useState<View>(viewParam === 'collections' ? { kind: 'collections' } : { kind: 'all' });
   useEffect(() => { setViewParam(view.kind === 'collections' ? 'collections' : null); }, [view.kind, setViewParam]);
 
   // Pages inside pages (the Page block). The store that page blocks read their
@@ -210,7 +211,17 @@ export function DocumentsView({ initialFolders, initialPages, initialPageId = nu
   const [q, setQ] = useState('');
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
-  const [gridView, setGridView] = useState<'grid' | 'list'>('grid');
+  // LIST IS THE PRIMARY DESIGN (2026-09-30) — an index is for finding, and finding is scanning —
+  // and the choice is REMEMBERED. It was per-visit state that reset to the grid on every open.
+  // Read through useSyncExternalStore: the server renders the list, the browser then shows a stored
+  // grid with no hydration mismatch and no setState in an effect.
+  const storedLayout = useSyncExternalStore(noLayoutSubscribe, readDocLayout, () => 'list' as const);
+  const [pickedLayout, setPickedLayout] = useState<'grid' | 'list' | null>(null);
+  const gridView = pickedLayout ?? storedLayout;
+  const setGridView = (v: 'grid' | 'list') => {
+    setPickedLayout(v);
+    try { window.localStorage.setItem(DOC_LAYOUT_KEY, v); } catch { /* storage unavailable */ }
+  };
   // The Collection Index's order — for this visit, like the grid/list choice above.
   const [indexSort, setIndexSort] = useState<IndexSort>('edited');
   // An empty Collection's + on the Index opens it with Add open — once: the Collection says when it has.
@@ -625,6 +636,20 @@ export function DocumentsView({ initialFolders, initialPages, initialPageId = nu
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const patchPage = (id: string, patch: Partial<Page>) => setPages((ps) => ps.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+  // A cover set from a gallery tile (2026-09-30). Written the way `withBlocks` writes a body: every
+  // other key the content holds — blocks, comments, properties, width — rides along untouched, so
+  // choosing a cover can never cost the page anything else. A NEW cover starts centred, as it does
+  // in the editor; only re-picking the same picture keeps its position. Optimistic, and put back if
+  // the write loses.
+  async function setCover(p: Page, cover: string | undefined) {
+    const prev = p.content;
+    const next: Record<string, unknown> = prev && !Array.isArray(prev) ? { ...(prev as Record<string, unknown>) } : { blocks: toBlocks(prev) };
+    if (next.cover !== cover) delete next.coverPos;
+    if (cover) next.cover = cover; else delete next.cover;
+    patchPage(p.id, { content: next });
+    const r = await updatePage(p.id, { content: next }).catch(() => ({ error: 'unreachable' as const }));
+    if ('error' in r) { patchPage(p.id, { content: prev }); toastReverted(r.error); }
+  }
   async function fav(id: string, v: boolean) {
     patchPage(id, { is_favorite: v });
     const r = await setPageFavorite(id, v);
@@ -689,7 +714,7 @@ export function DocumentsView({ initialFolders, initialPages, initialPageId = nu
     const url = `${window.location.origin}${recordHref('doc', id) ?? `/documents?page=${id}`}`;
     navigator.clipboard?.writeText(url)
       .then(() => toast({ message: 'Link copied.' }))
-      .catch(() => toast({ message: `Copy failed — the link is ${url}`, variant: 'error' }));
+      .catch(() => toast({ message: `Copy failed: the link is ${url}`, variant: 'error' }));
   }
 
   const selected = pages.find((p) => p.id === selectedId) ?? null;
@@ -739,7 +764,7 @@ export function DocumentsView({ initialFolders, initialPages, initialPageId = nu
   // against titling a master/detail hub is about the selected *record*, and a
   // folder's name appears nowhere else on screen once the rail scrolls.
   const VIEW_META = {
-    draft: { label: 'Draft', icon: FileText },
+    draft: { label: 'Unfiled', icon: FileText },
     all: { label: 'All documents', icon: Cards },
     collections: { label: 'Collections', icon: Images },
     shared: { label: 'Shared', icon: ShareNetwork },
@@ -862,7 +887,7 @@ export function DocumentsView({ initialFolders, initialPages, initialPageId = nu
               {!headerTight && (
                 <span className={cn('inline-flex h-8 cursor-default items-center gap-1.5 whitespace-nowrap rounded-md px-2 text-body', save === 'error' ? 'text-danger-600' : 'text-ink-500')}>
                   <Icon icon={History} size={16} className="text-ink-500" />
-                  {save === 'saving' ? 'Saving…' : save === 'error' ? 'Save failed — retrying' : `Edited ${ago(selected.updated_at)}`}
+                  {save === 'saving' ? 'Saving…' : save === 'error' ? 'Save failed, retrying' : `Edited ${ago(selected.updated_at)}`}
                 </span>
               )}
               {/* One control per action: this row used to carry a "Share ⌄"
@@ -875,7 +900,7 @@ export function DocumentsView({ initialFolders, initialPages, initialPageId = nu
               {/* Favorite = a single star that fills in when saved (Notion/Linear
                   convention) — matches the doc rows + context menu, which already
                   use the star. Outline when not saved, accent-filled when saved. */}
-              <IconButton size="sm" label={selected.is_favorite ? 'Remove from favorites' : 'Add to favorites'} aria-pressed={!!selected.is_favorite} className={selected.is_favorite ? 'text-[var(--accent)]' : undefined} icon={<Icon icon={Star} size={16} weight={selected.is_favorite ? 'fill' : 'regular'} />} onClick={() => fav(selected.id, !selected.is_favorite)} />
+              <IconButton size="sm" label={selected.is_favorite ? 'Remove from favorites' : 'Add to favorites'} aria-pressed={!!selected.is_favorite} className={selected.is_favorite ? 'text-[var(--accent)]' : undefined} icon={<Icon icon={Star} size={16} state={!!selected.is_favorite} />} onClick={() => fav(selected.id, !selected.is_favorite)} />
               <div className="relative">
                 <DocContextMenu p={selected} folders={folders} userName={userName}
                     open={docMenu} onOpenChange={setDocMenu}
@@ -984,7 +1009,7 @@ export function DocumentsView({ initialFolders, initialPages, initialPageId = nu
                   aria-label={headerTight ? 'Import' : undefined} onClick={() => setImporting(true)}>{headerTight ? null : 'Import'}</Button>
               )}
               {view.kind !== 'trash' && (
-                <Button size="sm" variant="secondary" icon={<Icon icon={Plus} size={16} />} onClick={createHere}>{createLabel}</Button>
+                <Button size="sm" variant="primary" icon={<Icon icon={Plus} size={16} />} onClick={createHere}>{createLabel}</Button>
               )}
               {/* The other things a page can be — a Database, a Collection (COLLECTION_ITEM_BRIEF §12) —
                   beside New rather than only inside a folder's menu. Templates are made as templates,
@@ -1038,11 +1063,15 @@ export function DocumentsView({ initialFolders, initialPages, initialPageId = nu
           />
         </div>
         <div style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <RailItem icon={FileText} label="Draft" on={!selected && view.kind === 'draft'} onClick={() => openView({ kind: 'draft' })} />
           {/* "All Projects" was a HiFi label that survived into a Documents rail
               where it named the wrong noun — these are documents, and the app has
-              one name per concept. Sentence case, per the glossary. */}
+              one name per concept. Sentence case, per the glossary. FIRST, because it
+              is where Documents opens. */}
           <RailItem icon={Cards} label="All documents" on={!selected && view.kind === 'all'} onClick={() => openView({ kind: 'all' })} />
+          {/* UNFILED, not "Draft" (2026-09-30). The view is `!folder_id`: nothing about these docs
+              is unfinished, they are simply not in a folder yet, and "Draft" promised a state the
+              filter never checked. The internal id stays `draft` so no link or test moves. */}
+          <RailItem icon={FileText} label="Unfiled" on={!selected && view.kind === 'draft'} onClick={() => openView({ kind: 'draft' })} />
           {/* The Collection Index (COLLECTION_PLAN X1): every Collection, as a visual card. */}
           <RailItem icon={Images} label="Collections" on={!selected && view.kind === 'collections'} onClick={() => openView({ kind: 'collections' })} />
           <RailItem icon={ShareNetwork} label="Shared" on={!selected && view.kind === 'shared'} onClick={() => openView({ kind: 'shared' })} />
@@ -1051,15 +1080,11 @@ export function DocumentsView({ initialFolders, initialPages, initialPageId = nu
 
         {/* Collapsible Folders section */}
         <div style={{ padding: '8px 8px 0', display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <div style={{ display: 'flex', alignItems: 'center', padding: '0 8px', height: 32 }}>
-            <button onClick={() => setFoldersOpen((v) => !v)} aria-expanded={foldersOpen} className="focus-ring rounded-sm" style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, height: '100%', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}>
-              <Icon icon={foldersOpen ? ChevronDown : ChevronRight} size={12} style={{ color: 'var(--text-secondary)' }} />
-              <span style={{ fontSize: 'var(--text-caption-size)', fontWeight: 500, color: 'var(--text-secondary)' }}>Folders</span>
-            </button>
-            <button onClick={() => { setFoldersOpen(true); setFolderParent(undefined); setCreatingFolder((c) => !c); }} title="New folder" aria-label="New folder" className="focus-ring touch-min" style={{ display: 'grid', placeItems: 'center', width: 20, height: 20, borderRadius: 'var(--r-xs)', border: 'none', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-              <Icon icon={Plus} size={14} />
-            </button>
-          </div>
+          {/* The rails' one section heading (components/ui/rail-section-heading.tsx), as Tasks, Calendar
+              and the sidebar's Pinned draw it. */}
+          <RailSectionHeading label="Folders" open={foldersOpen} onToggle={() => setFoldersOpen((v) => !v)}
+            action={<IconButton size="xs" variant="ghost" label="New folder" icon={<Icon icon={Plus} size={12} />}
+              onClick={() => { setFoldersOpen(true); setFolderParent(undefined); setCreatingFolder((c) => !c); }} />} />
           {foldersOpen && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingTop: 5 }}>
               {creatingFolder && (
@@ -1242,11 +1267,7 @@ export function DocumentsView({ initialFolders, initialPages, initialPageId = nu
                   pane, plus an `!important` media query to survive narrow
                   widths. `auto-fill` + `minmax` responds to the CONTAINER and
                   fills the row at any width, so the media query goes too. */}
-              <div className={isIndex
-                ? cardGridClass('md', 'gap-5')
-                : gridView === 'grid'
-                  ? cardGridClass('sm', 'gap-5')
-                  : 'mx-auto flex w-full max-w-[960px] flex-col gap-1.5'}>
+              <div className={isIndex ? cardGridClass('md', 'gap-5') : undefined}>
                 {/* The Collection Index (COLLECTION_PLAN X1–X2): "New collection" first, then every Collection as a
                     visual card with the same hover controls a doc card has. An empty Index uses the empty states below. */}
                 {isIndex && sortedPages.length > 0 && <NewCollectionCard onCreate={createHere} />}
@@ -1266,41 +1287,41 @@ export function DocumentsView({ initialFolders, initialPages, initialPageId = nu
                         onArchive={() => { archive(p.id, true); setMenuFor(null); }} />
                     )} />
                 ))}
-                {/* The dashed "New doc" affordance is for a grid that already has
-                    something in it. With nothing there the EmptyState below does
-                    the inviting, and two create affordances in an empty pane read
-                    as indecision. */}
-                {!isIndex && view.kind !== 'trash' && sortedPages.length > 0 && (
-                  gridView === 'grid' ? (
-                    <button onClick={() => newPage(currentFolderId, view.kind === 'templates' ? 'template' : 'note')} className="zb-press doc-newnote"
-                      style={{ width: '100%', aspectRatio: '220 / 280', maxHeight: 320, borderRadius: 'var(--r-lg)', border: '1px dashed var(--line-3)', background: 'var(--paper)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--text-muted)' }}>
-                      <Icon icon={FileText} size={16} style={{ color: 'var(--text-muted)' }} />
-                      <span style={{ fontSize: 'var(--text-body-lg-size)', fontWeight: 500, letterSpacing: '-0.02em' }}>New doc</span>
-                    </button>
-                  ) : (
-                    <button onClick={() => newPage(currentFolderId, view.kind === 'templates' ? 'template' : 'note')} className="zb-press doc-newnote"
-                      style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', height: 40, borderRadius: 'var(--r-md)', border: '1px dashed var(--line-3)', background: 'transparent', cursor: 'pointer', color: 'var(--text-muted)', padding: '0 12px' }}>
-                      <Icon icon={Plus} size={16} /> <span style={{ fontSize: 'var(--text-body-size)', fontWeight: 500 }}>New doc</span>
-                    </button>
-                  )
-                )}
-                {!isIndex && sortedPages.map((p) => (
-                  <DocCard key={p.id} p={p} layout={gridView} trash={view.kind === 'trash'} folders={folders} userName={userName}
-                    renaming={renamingId === p.id}
-                    menuOpen={menuFor === p.id}
-                    onOpen={() => { if (view.kind !== 'trash') setSelectedId(p.id); }}
-                    onMenu={() => setMenuFor(menuFor === p.id ? null : p.id)}
-                    onCloseMenu={() => setMenuFor(null)}
-                    onRename={() => { setMenuFor(null); setRenamingId(p.id); }}
-                    onRenameTo={(t) => renameTo(p.id, t)} onCancelRename={() => setRenamingId(null)}
-                    onDup={() => dup(p.id)} onFav={() => { fav(p.id, !p.is_favorite); setMenuFor(null); }}
-                    onShare={() => { setMenuFor(null); share(p.id); }}
-                    onMove={(fid) => moveTo(p.id, fid)}
-                    onArchive={() => { archive(p.id, true); setMenuFor(null); }}
-                    onRestore={() => archive(p.id, false)}
-                    onDelete={() => { setMenuFor(null); removePage(p.id); }}
+                {/* NO CREATE CARD (2026-09-30). The dashed "New doc" tile took the best cell of the grid
+                    to offer the journey the header's New doc — this view's brand action — already offers. */}
+                {!isIndex && sortedPages.length > 0 && (
+                  <DocIndex
+                    // Trash and Templates are not about recency, so they are one ungrouped list.
+                    groups={view.kind === 'trash' || isTemplates
+                      ? [{ id: 'today', label: '', items: sortedPages }]
+                      : groupDocs(sortedPages, todayISO(timeZone), timeZone)}
+                    headings={!(view.kind === 'trash' || isTemplates)}
+                    layout={gridView}
+                    folders={folders}
+                    renamingId={renamingId}
+                    typeIcon={typeIcon}
+                    ago={ago}
+                    onOpen={(p) => { if (view.kind !== 'trash') setSelectedId(p.id); }}
+                    onRenameTo={(p, t) => renameTo(p.id, t)}
+                    onCancelRename={() => setRenamingId(null)}
+                    onCover={view.kind === 'trash' ? undefined : setCover}
+                    actions={(p) => view.kind === 'trash' ? (
+                      // Always visible in Trash: restoring and deleting are what the view is for.
+                      <span className="inline-flex items-center gap-0.5">
+                        <IconButton size="xs" variant="ghost" label="Restore" icon={<Icon icon={Undo2} size={14} />} onClick={() => archive(p.id, false)} />
+                        <IconButton size="xs" variant="ghost" label="Delete forever" className="text-danger-600" icon={<Icon icon={Trash2} size={14} />} onClick={() => { setMenuFor(null); removePage(p.id); }} />
+                      </span>
+                    ) : (
+                      <DocCardActions p={p} folders={folders} userName={userName} menuOpen={menuFor === p.id}
+                        onMenu={() => setMenuFor(menuFor === p.id ? null : p.id)} onCloseMenu={() => setMenuFor(null)}
+                        onRename={() => { setMenuFor(null); setRenamingId(p.id); }}
+                        onShare={() => { setMenuFor(null); share(p.id); }}
+                        onFav={() => { fav(p.id, !p.is_favorite); setMenuFor(null); }}
+                        onDup={() => dup(p.id)} onMove={(fid) => moveTo(p.id, fid)}
+                        onArchive={() => { archive(p.id, true); setMenuFor(null); }} />
+                    )}
                   />
-                ))}
+                )}
                 {/* Every view now says something when it's empty. Four of the six
                     used to render literally nothing (the ternary fell through to
                     `null`), so an empty Draft or folder was a blank grey field.
@@ -1338,7 +1359,7 @@ export function DocumentsView({ initialFolders, initialPages, initialPageId = nu
       </div>
       </div>
       <style>{`
-        .doc-card:hover{box-shadow:var(--shadow-crisp)}
+        /* No lift on hover: a state is a wash, never an elevation. The edge darkens instead (below). */
         /* Ghost page controls (Add icon · Add cover · Add comment): full pill
            surface — icon + label react together, layout never shifts. */
         .doc-ghost{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border:none;background:transparent;border-radius:var(--r-sm);font-size:12px;font-weight:500;color:var(--disabled-text);cursor:pointer;transition:background var(--duration-fast) var(--ease-hover),color var(--duration-fast) var(--ease-hover)}
@@ -1354,7 +1375,7 @@ export function DocumentsView({ initialFolders, initialPages, initialPageId = nu
            stays visible while its menu is open — and while focus is inside the card,
            or tabbing onto Rename or the menu lands on a control nobody can see. */
         .doc-cardmenu{opacity:0;transition:opacity var(--duration-fast) var(--ease-hover)}
-        .doc-card:hover .doc-cardmenu,.doc-card:focus-within .doc-cardmenu,.doc-cardmenu[data-open="true"]{opacity:1}
+        .doc-card:hover .doc-cardmenu,.doc-card:focus-within .doc-cardmenu,.doc-row:hover .doc-cardmenu,.doc-row:focus-within .doc-cardmenu,.doc-tile:hover .doc-cardmenu,.doc-tile:focus-within .doc-cardmenu,.doc-cardmenu[data-open="true"]{opacity:1}
         @media (hover:none){.doc-cardmenu{opacity:1}}
         /* Grid card hover — uniform paper-3 wash (body is transparent) */
         .doc-card:hover{border-color:var(--line-3)}
@@ -1428,18 +1449,6 @@ function RailItem({ icon, label, on, variant = 'nav', indent = 0, onClick, count
 }
 
 // Tag chips (redesign): white pill · tag glyph in the palette color · 10px text.
-function TagChips({ tags, max }: { tags: string[]; max: number }) {
-  if (!tags.length) return null;
-  return (
-    <span style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-      {tags.slice(0, max).map((t) => { const c = paletteFor(t); return (
-        <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 6px 3px 5px', borderRadius: 'var(--r-xs)', background: 'var(--paper-2)', boxShadow: 'inset 0 0 0 1px var(--line-2)', fontSize: 'var(--text-micro-size)', lineHeight: 1, color: 'color-mix(in srgb, var(--ink) 72%, transparent)', whiteSpace: 'nowrap' }}>
-          <Icon icon={Tag} size={12} weight="fill" style={{ color: c.dot, flexShrink: 0 }} />{t}
-        </span>
-      ); })}
-    </span>
-  );
-}
 
 // The hover controls every page card carries: a grouped pencil (rename) and ⋮ (the page's menu). A doc card and a
 // Collection card on the Index use these same controls, so both kinds of card are used the same way
@@ -1474,107 +1483,7 @@ function DocCardActions({ p, folders, userName, menuOpen, onMenu, onCloseMenu, o
   );
 }
 
-// Doc card — grid (fluid, card surface with a preview sheet) or list (full-width
-// row). Hover reveals a grouped pencil (rename) + ⋮ (menu) control; the menu is
-// the sectioned DocContextMenu. Per the home + popup HiFi.
-function DocCard({ p, layout, trash, folders, userName, renaming, menuOpen, onOpen, onMenu, onCloseMenu, onRename, onRenameTo, onCancelRename, onDup, onFav, onShare, onMove, onArchive, onRestore, onDelete }: {
-  p: Page; layout: 'grid' | 'list'; trash: boolean; folders: Folder[]; userName: string; renaming: boolean; menuOpen: boolean;
-  onOpen: () => void; onMenu: () => void; onCloseMenu: () => void; onRename: () => void; onRenameTo: (t: string) => void; onCancelRename: () => void;
-  onDup: () => void; onFav: () => void; onShare: () => void; onMove: (fid: string | null) => void; onArchive: () => void; onRestore: () => void; onDelete: () => void;
-}) {
-  const lines = previewLines(p.content);
-  const titleInput = (
-    <input autoFocus defaultValue={p.title ?? ''} autoComplete="off" data-1p-ignore data-lpignore="true"
-      onKeyDown={(e) => { if (e.key === 'Enter') onRenameTo((e.target as HTMLInputElement).value); if (e.key === 'Escape') onCancelRename(); }}
-      onClick={(e) => e.stopPropagation()} onBlur={(e) => onRenameTo(e.target.value)}
-      style={{ flex: 1, minWidth: 0, border: '1px solid var(--accent-border)', borderRadius: 'var(--r-xs)', outline: 'none', background: 'var(--paper-2)', fontSize: 'var(--text-body-size)', padding: '3px 6px', color: 'var(--ink)' }} />
-  );
-  // Hover control cluster (grouped pencil + menu), or trash restore/delete.
-  const actions = trash ? (
-    <span style={{ display: 'inline-flex', gap: 2, flexShrink: 0 }}>
-      <button onClick={(e) => { e.stopPropagation(); onRestore(); }} title="Restore" aria-label="Restore" style={{ display: 'grid', placeItems: 'center', width: 26, height: 26, borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)' }}><Icon icon={Undo2} size={14} /></button>
-      <button onClick={(e) => { e.stopPropagation(); onDelete(); }} title="Delete forever" aria-label="Delete forever" style={{ display: 'grid', placeItems: 'center', width: 26, height: 26, borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--red-text)' }}><Icon icon={Trash2} size={14} /></button>
-    </span>
-  ) : (
-    <DocCardActions p={p} folders={folders} userName={userName} menuOpen={menuOpen} onMenu={onMenu} onCloseMenu={onCloseMenu}
-      onRename={onRename} onShare={onShare} onFav={onFav} onDup={onDup} onMove={onMove} onArchive={onArchive} />
-  );
-
-  // ── List row ──
-  if (layout === 'list') {
-    return (
-      /* A doc looks like a doc in BOTH layouts: the same white surface and the
-         same hairline the grid card uses. It was `--paper-2` with no border —
-         #F1F1EF on the gallery's #EFEFEC canvas, **1.02:1** — so a list of
-         documents rendered as a page of text with no rows under it, the same
-         bug the grid card had and from the same cause. */
-      <div className="doc-card doc-listrow focus-ring" onClick={trash ? undefined : onOpen} style={{ position: 'relative', width: '100%', display: 'flex', alignItems: 'center', gap: 10, height: 44, padding: '0 8px 0 12px', borderRadius: 'var(--r-md)', background: 'var(--paper)', border: '1px solid var(--line)', transition: 'box-shadow var(--duration-fast) var(--ease-hover), border-color var(--duration-fast) var(--ease-hover)', cursor: trash ? 'default' : 'pointer' }}>
-        {p.icon ? <PageIcon icon={p.icon} size={16} /> : <Icon icon={typeIcon(p.type)} size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />}
-        {renaming ? titleInput : (
-          <button onClick={(e) => { e.stopPropagation(); onOpen(); }} title={p.title || 'Untitled'} className="focus-ring touch-min rounded-xs" style={{ flex: 1, minWidth: 0, padding: 0, background: 'transparent', border: 'none', cursor: trash ? 'default' : 'pointer', textAlign: 'left', fontSize: 'var(--text-body-size)', fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title || 'Untitled'}</button>
-        )}
-        {p.is_favorite && <Icon icon={Star} size={12} weight="fill" style={{ color: 'var(--accent-text)', flexShrink: 0 }} />}
-        <span className="doc-listtags" style={{ flexShrink: 0 }}><TagChips tags={p.tags ?? []} max={2} /></span>
-        <span style={{ fontSize: 'var(--text-caption-size)', color: 'var(--text-muted)', flexShrink: 0, whiteSpace: 'nowrap', width: 92, textAlign: 'right' }}>{ago(p.updated_at)}</span>
-        {actions}
-      </div>
-    );
-  }
-
-  // ── Grid card ──
-  // The whole card opens the doc; the pencil/menu/rename stop propagation so
-  // their own actions fire instead.
-  return (
-    <div className="doc-card focus-ring" onClick={trash ? undefined : onOpen} // No width/height: the grid column decides the width, and the aspect
-      // ratio keeps the preview's proportion as the card grows. Fixed 220x280
-      // is what made the gallery unable to fill a row.
-      style={{ position: 'relative', width: '100%', aspectRatio: '220 / 280', maxHeight: 320, borderRadius: 'var(--r-lg)', background: 'var(--paper)', border: '1px solid var(--line)', display: 'flex', flexDirection: 'column', overflow: 'hidden', transition: 'box-shadow var(--duration-fast) var(--ease-hover), border-color var(--duration-fast) var(--ease-hover)', cursor: trash ? 'default' : 'pointer' }}>
-      {/* Head — sits ON the card surface, separated from the preview by one
-          hairline. It used to paint its own `--paper-3` strip on top of a
-          `--paper-2` card, so the card's own grey showed only in the gaps and
-          the whole thing read as a grey box with white patches. */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 12, borderBottom: '1px solid var(--color-line-soft)' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
-          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {renaming ? titleInput : (
-              <button onClick={(e) => { e.stopPropagation(); onOpen(); }} title={p.title || 'Untitled'} className="focus-ring touch-min rounded-xs" style={{ minWidth: 0, padding: 0, background: 'transparent', border: 'none', cursor: trash ? 'default' : 'pointer', textAlign: 'left', display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: '100%' }}>
-                {p.icon && <PageIcon icon={p.icon} size={15} />}
-                <span style={{ minWidth: 0, fontSize: 'var(--text-body-size)', fontWeight: 500, lineHeight: '18px', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title || 'Untitled'}</span>
-              </button>
-            )}
-            <span style={{ fontSize: 'var(--text-caption-size)', lineHeight: '16px', color: 'var(--text-muted)' }}>Updated {ago(p.updated_at)}</span>
-          </div>
-          {p.is_favorite && <Icon icon={Star} size={12} weight="fill" style={{ color: 'var(--accent-text)', flexShrink: 0, marginTop: 2 }} />}
-          {actions}
-        </div>
-        <TagChips tags={p.tags ?? []} max={3} />
-      </div>
-      {/* Body — the preview, on the CARD'S OWN SURFACE.
-          
-          It used to paint `--paper-2`, one step down, on the theory that the
-          step was the header/content distinction. Measured on the real page,
-          that step was the bug: `--paper-2` is #F1F1EF and the gallery canvas
-          is #EFEFEC — **1.02:1**. The card's bottom two-thirds was the same
-          colour as the page behind it, so a card read as a floating white
-          strip with a hole under it, and the grid had no visible rows at all.
-          (The card's own border does not rescue it: #E9E9E7 on that canvas is
-          1.06:1.)
-          
-          The hairline under the header was already doing the job the fill was
-          added for. CLAUDE.md's rule says it in one line — "NEVER nest two
-          fills — one level max, separated by a border" — and this is what
-          breaking it looks like when the inner fill happens to match the
-          canvas. One surface now, one hairline. */}
-      <div style={{ flex: 1, minHeight: 0, width: '100%', padding: 12, overflow: 'hidden' }}>
-        {lines.length ? lines.map((l, i) => (
-          <span key={i} style={{ display: 'block', fontSize: 'var(--text-caption-size)', fontWeight: l.heading ? 600 : 400, color: l.heading ? 'var(--text-primary)' : 'var(--text-secondary)', lineHeight: '17px', marginTop: l.heading && i > 0 ? 6 : 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.text}</span>
-        )) : (
-          <span style={{ fontSize: 'var(--text-caption-size)', color: 'var(--text-muted)' }}>Empty doc</span>
-        )}
-      </div>
-    </div>
-  );
-}
+// The index's rows and tiles live in components/documents/doc-index.tsx (2026-09-30 redesign).
 
 // Document context menu (redesign): a 200px sectioned sheet — text-only rows,
 // full-width hairlines between sections, Delete in red, and a "last edited"

@@ -1,5 +1,6 @@
 'use server';
 // Goal + milestone mutations. RLS scopes to the signed-in user.
+import { notReady } from '@/lib/not-ready';
 import { createClient } from '@/lib/supabase/server';
 import { userTimezone } from '@/lib/user-tz';
 import { todayISO } from '@/lib/date';
@@ -17,6 +18,10 @@ export async function addGoal(input: { title: string; horizon: 'month' | 'quarte
   const { data, error } = await supabase.from('goals')
     .insert({ user_id: user.id, space_id: sid, title: input.title.trim(), horizon: input.horizon, target_date: input.targetDate ?? null, project_id: input.projectId ?? null })
     .select('id').single();
+  // A check-constraint violation on a MONTH goal is the one failure that means the horizon itself
+  // is missing (migration 0008). The client used to assume that for EVERY failed month goal — a
+  // dropped connection included — and threw the real reason away.
+  if (error?.code === '23514' && input.horizon === 'month') return notReady('Month goals aren’t available yet.', '0008');
   if (error || !data) return { error: error?.message ?? 'Could not add goal.' };
   return { id: data.id };
 }

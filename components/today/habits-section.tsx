@@ -7,7 +7,7 @@
 // berry→ink remap); type/color resolve through the ds-theme scale.
 import { useEffect, useRef, useState } from 'react';
 import { Flame, Plus, Pencil, Trash2 } from "@/components/ds/icons";
-import { Icon, Button, Checkbox, EmptyState, IconButton, InlineConfirm, addLine, inlineEdit, inlineEditProps, toastReverted } from '@/components/ds/ui';
+import { Icon, Button, Checkbox, AnchorRow, IconButton, InlineConfirm, addLine, inlineEdit, inlineEditProps, toastReverted } from '@/components/ds/ui';
 import { Panel, PanelHeader, PanelBody } from '@/components/ui/panels';
 import { HOME_SECTION, homeRow } from '@/components/today/home-rows';
 import { toggleHabit, addHabit, renameHabit, deleteHabit } from '@/lib/actions/habits';
@@ -96,7 +96,7 @@ export function HabitsSection({ initialHabits, error }: { initialHabits: TodayHa
           <input ref={addRef} value={newTitle} onChange={(e) => setNewTitle(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') add(); if (e.key === 'Escape') { setAdding(false); setNewTitle(''); } }}
             onBlur={() => { if (!newTitle.trim()) setAdding(false); }}
-            placeholder="New habit — e.g. Morning walk" aria-label="New habit" autoComplete="off" data-1p-ignore data-lpignore="true"
+            placeholder="New habit, e.g. Morning walk" aria-label="New habit" autoComplete="off" data-1p-ignore data-lpignore="true"
             className="min-w-0 flex-1 bg-transparent text-ui text-ink-800 outline-none placeholder:text-ink-500" />
           {/* Secondary, not primary — the page's one filled primary is the plan's "Add". */}
           {newTitle.trim() && <Button variant="secondary" size="sm" onClick={add}>Add</Button>}
@@ -107,12 +107,15 @@ export function HabitsSection({ initialHabits, error }: { initialHabits: TodayHa
         <p className="px-[var(--panel-px)] py-3.5 text-ui text-danger-600">Couldn’t load your habits. Try refreshing.</p>
       ) : habits.length === 0 ? (
         !adding && (
-          <EmptyState
-            size="inline"
-            illustration={<Icon icon={Flame} size={20} />}
-            title="No habits yet"
-            description="Build a rhythm — small things, done daily."
-            primary={<Button variant="secondary" size="sm" icon={<Icon icon={Plus} size={16} />} onClick={() => setAdding(true)}>Add a habit</Button>}
+          // A SECTION of a populated page, so `<EmptyLine>` — see states.tsx. The action stays,
+          // because unlike the other three this one starts something that exists nowhere else on
+          // the page; it just sits IN the sentence rather than under a 180px centred column.
+          <AnchorRow
+            className="px-[var(--panel-px)] py-3.5"
+            icon={<Icon icon={Flame} size={16} />}
+            title="Start a habit"
+            description="Build a rhythm: small things, done daily."
+            trailing={<Button variant="secondary" size="sm" icon={<Icon icon={Plus} size={16} />} onClick={() => setAdding(true)}>Add a habit</Button>}
           />
         )
       ) : (

@@ -53,7 +53,7 @@ export function NewSpaceModal({ onClose, onCreated }: { onClose: () => void; onC
       onOpenChange={(o) => { if (!o) onClose(); }}
       size="sm"
       title="New workspace"
-      description="A hard context of its own — separate clients, projects and finance."
+      description="A hard context of its own: separate clients, projects and finance."
       // Anything typed is worth a "Discard changes?" rather than a silent close.
       dirty={name.trim().length > 0}
       footer={(

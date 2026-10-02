@@ -122,7 +122,7 @@ export function Appearance() {
             silently does nothing, the row says so. */}
         <SettingsRow
           title="Light and dark"
-          description={paper ? 'Paper is a light material — light and dark apply to the default theme.' : 'Light, dark, or match your system.'}
+          description={paper ? 'Paper is a light material. Light and dark apply to the default theme.' : 'Light, dark, or match your system.'}
           control={
             <SegmentedControl
               aria-label="Light and dark"

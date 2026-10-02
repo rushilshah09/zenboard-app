@@ -18,7 +18,7 @@ import {
   Icon, Button, IconButton, Badge, Stat, Tabs, SegmentedControl, Checkbox,
   EmptyState, ActivityFeed as DSActivityFeed, Modal, Field, TextInput, Textarea, DatePicker,
   toast, useConfirm, type BadgeStatus, type ActivityEntry, type TabItem,
-  EmptyLine, RecordHeader, Progress, CARD_CLASS } from '@/components/ds/ui';
+  EmptyLine, RecordHeader, Progress, CARD_CLASS, inlineEditProps } from '@/components/ds/ui';
 import { recordHref } from '@/lib/connected';
 import { RecordIcon } from '@/components/ui/record-icon';
 import { EmojiPicker } from '@/components/ui/emoji-picker';
@@ -406,7 +406,7 @@ export function ProjectsWorkspace({ projects: initProjects, tasks: initTasks, ti
       }]);
       else flash(res.error);
     } catch {
-      flash('Could not save that — check your connection and try again.');
+      flash('Could not save that. Check your connection and try again.');
     }
   }
   // Section mutations (optimistic). Deleting a section keeps its tasks — the FK
@@ -753,7 +753,11 @@ export function ProjectsWorkspace({ projects: initProjects, tasks: initTasks, ti
             <Button size="sm" variant="ghost" icon={<Icon icon={Sparkles} size={16} />} onClick={() => setCloseOutOpen(true)}>Wrap up</Button>
           )}
           <Button size="sm" variant="ghost" icon={<Icon icon={Pencil} size={16} />} onClick={() => setEditOpen(true)}>Edit</Button>
-          <Button size="sm" variant="secondary" icon={<Icon icon={Plus} size={16} />} onClick={newTask}>New task</Button>
+          {/* THE VIEW'S ONE BRAND ACTION (2026-09-30). Every module had its `primary` only
+          inside its EmptyState, so Zenboard showed colour exactly when it had no data and
+          went fully grey the moment you used it. The two are never on screen together, so
+          promoting the populated header's hero keeps the cap at one per view. */}
+          <Button size="sm" variant="primary" icon={<Icon icon={Plus} size={16} />} onClick={newTask}>New task</Button>
         </>
       ) : undefined}
     >
@@ -1156,7 +1160,7 @@ function TaskList({ tasks, subByParent, onToggle, onOpen, onHighlight, sections 
     return (
       <Empty
         title="No tasks yet"
-        line="Bigger jobs split into workstreams — Identity, Motion, Web."
+        line="Bigger jobs split into workstreams: Identity, Motion, Web."
         action={sectionsSupported ? (
           <Button size="sm" variant="secondary" icon={<Icon icon={Plus} size={14} />}
             onClick={() => setAddingSection(true)}>New workstream</Button>
@@ -1372,7 +1376,7 @@ function CalendarView({ tasks, onOpen }: { tasks: PTask[]; onOpen: (id: string) 
   return (
     <div className={cn(cardShell, 'p-3.5 @container')}>
       <div className="mb-2.5 text-title-4 text-ink-900">{formatMonthYear(now, { long: true })}</div>
-      {scheduled === 0 && <EmptyLine className="mb-2.5 py-0">No tasks have a date yet — set a date on a task to see it here.</EmptyLine>}
+      {scheduled === 0 && <EmptyLine className="mb-2.5 py-0">No tasks have a date yet. Set a date on a task to see it here.</EmptyLine>}
       {/* The month grid, for a card with room for seven columns. Weekday
           heads in sentence case: the `text-overline` role has been sentence
           case since 2026-09-08, and "MON" was the one place still shouting. */}
@@ -1510,8 +1514,8 @@ function Overview({ tasks, events, notes, onOpenTask, onToggle, canLog, onLog, u
           <div className={composerShell}>
             <Icon icon={Pencil} size={14} className="shrink-0 text-ink-500" />
             <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') submit(false); }}
-              placeholder={statusNote ? 'Post an update…' : 'Write the first status update — where do things stand?'}
-              autoComplete="off" data-1p-ignore data-lpignore="true" className={composerInput} />
+              placeholder={statusNote ? 'Post an update…' : 'Write the first status update, where do things stand?'}
+              autoComplete="off" data-1p-ignore data-lpignore="true" className={composerInput} {...inlineEditProps} />
             {/* TWO buttons rather than one button and a mode. A sticky "post to
                 client" toggle would sooner or later send a private note to a
                 client because it was still switched on from last time, and
@@ -1575,7 +1579,7 @@ function Overview({ tasks, events, notes, onOpenTask, onToggle, canLog, onLog, u
       <section className="mt-10">
         <SectionHeading count={open.length}>Key tasks</SectionHeading>
         {key.length === 0
-          ? <EmptyLine className="py-0">Nothing open — all clear.</EmptyLine>
+          ? <EmptyLine className="py-0">Nothing open, all clear.</EmptyLine>
           : <div className="flex flex-col">
               {key.map((t) => (
                 <div key={t.id} className="group -mx-2 flex items-center gap-2.5 rounded-sm px-2 py-1.5 transition-colors hover:bg-surface-hover">
@@ -1615,8 +1619,8 @@ function PortalTab({ enabled, requests, messages, taskDone, approvals, docs, por
         </div>
         <p className="mt-1.5 max-w-prose text-pretty text-ui text-ink-500">
           {enabled
-            ? 'Your client follows this project through a private link — progress, shared docs, and a place to send requests. Manage what they see, or preview it as they would.'
-            : 'Share a curated, read-only view of this project — progress, deliverables, and a request inbox — through a private link. No account needed on their side.'}
+            ? 'Your client follows this project through a private link: progress, shared docs, and a place to send requests. Manage what they see, or preview it as they would.'
+            : 'Share a curated, read-only view of this project: progress, deliverables, and a request inbox, through a private link. No account needed on their side.'}
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           <Button size="sm" variant="secondary" icon={<Icon icon={Share2} size={16} />} onClick={onManageShare}>{enabled ? 'Manage sharing' : 'Turn on sharing'}</Button>
@@ -1682,7 +1686,7 @@ function ApprovalsSection({ approvals: initial, docs }: { approvals: PApproval[]
       {approvals.length === 0 ? (
         <div className="rounded-lg border border-dashed border-line-strong">
           <EmptyState size="inline" illustration={<Icon icon={Circle} size={20} />} title="No approvals yet"
-            description={docs.length === 0 ? 'Add a document to this project, then send it to the client for sign-off.' : 'Send a document to the client for sign-off — you’ll see their decision here.'} />
+            description={docs.length === 0 ? 'Add a document to this project, then send it to the client for sign-off.' : 'Send a document to the client for sign-off. You’ll see their decision here.'} />
         </div>
       ) : (
         <div className="grid gap-2.5">
@@ -1764,7 +1768,7 @@ function ProjectTime({ times, onAdd, onInvoice }: { times: PTime[]; onAdd: (minu
         <span className="flex-1" />
         {parseFloat(mins) > 0 && <Button size="sm" variant="secondary" onClick={submit}>Log time</Button>}
       </div>
-      {times.length === 0 ? <Empty title="No time logged yet" line="Add minutes above — it'll show up in Finance › Unbilled." /> : (
+      {times.length === 0 ? <Empty title="No time logged yet" line="Add minutes above and it'll show up in Finance › Unbilled." /> : (
         <div className={cn(cardShell, 'overflow-hidden')}>
           {times.map((t, i) => (
             <div key={t.id} className={cn('flex items-center gap-2.5 px-3.5 py-3 text-ui', i > 0 && 'border-t border-line-soft')}>
@@ -1882,7 +1886,7 @@ function CloseOutModal({ projectName, doneCount, totalTasks, loggedMinutes, unbi
           <div className={cn(cardShell, 'flex items-center gap-3 px-3.5 py-3')}>
             <div className="min-w-0 flex-1">
               <div className="text-ui text-ink-800"><span className="tabular-nums">{formatMinutes(unbilledMinutes)}</span> unbilled</div>
-              <div className="text-caption text-ink-500">across {unbilledCount} {unbilledCount === 1 ? 'entry' : 'entries'} — invoice it before you close.</div>
+              <div className="text-caption text-ink-500">across {unbilledCount} {unbilledCount === 1 ? 'entry' : 'entries'} · invoice it before you close.</div>
             </div>
             <Button size="sm" variant="secondary" icon={<Icon icon={Landmark} size={14} />} onClick={invoice}>Create invoice</Button>
           </div>

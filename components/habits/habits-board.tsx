@@ -100,7 +100,7 @@ export function HabitsJournal({ board }: { board: HabitsBoard }) {
   async function remove(h: BoardHabit) {
     const ok = await confirm({
       title: `Delete “${h.title}”?`,
-      body: `Its whole history goes with it — ${h.doneDates.length} logged ${h.doneDates.length === 1 ? 'day' : 'days'}. Archive instead if you just want it out of the way.`,
+      body: `Its whole history goes with it: ${h.doneDates.length} logged ${h.doneDates.length === 1 ? 'day' : 'days'}. Archive instead if you just want it out of the way.`,
       actionLabel: 'Delete habit',
     });
     if (!ok) return;
@@ -183,7 +183,7 @@ export function HabitsJournal({ board }: { board: HabitsBoard }) {
           options={[{ value: 'journal', label: 'Journal' }, { value: 'review', label: 'Review' }]}
           fit="content"
         />
-        <Button size="sm" variant="secondary" icon={<Icon icon={Plus} size={16} />} onClick={() => setAddOpen(true)}>New habit</Button>
+        <Button size="sm" variant="primary" icon={<Icon icon={Plus} size={16} />} onClick={() => setAddOpen(true)}>New habit</Button>
       </>}
     >
       {board.error ? (
@@ -191,8 +191,8 @@ export function HabitsJournal({ board }: { board: HabitsBoard }) {
       ) : habits.length === 0 ? (
         <EmptyState
           illustration={<Icon icon={Repeat} size={20} />}
-          title="No habits yet"
-          description="Small things, done often — on the days you choose."
+          title="Start a habit"
+          description="Small things, done often, on the days you choose."
           primary={<Button variant="primary" icon={<Icon icon={Plus} size={16} />} onClick={() => setAddOpen(true)}>New habit</Button>}
         />
       ) : mode === 'review' ? (
@@ -212,7 +212,7 @@ export function HabitsJournal({ board }: { board: HabitsBoard }) {
                 weeks={buildHeat({ endISO: board.date, weeks: 18, doneDates: h.doneDates, skippedDates: h.skippedDates, createdAt: h.createdAt, schedule: h.schedule })} />
               <div className="flex shrink-0 items-center gap-5">
                 <Stat label="Streak" value={streakText(h)} />
-                <Stat label="Best" value={h.bestStreak > 0 ? `${h.bestStreak}${h.streakUnit === 'week' ? 'w' : 'd'}` : '—'} />
+                <Stat label="Best" value={h.bestStreak > 0 ? `${h.bestStreak}${h.streakUnit === 'week' ? 'w' : 'd'}` : '–'} />
                 <Stat label="30 days" value={`${h.consistency30}%`} />
               </div>
             </div>
@@ -222,7 +222,7 @@ export function HabitsJournal({ board }: { board: HabitsBoard }) {
         <div className="flex flex-col gap-6">
           {groups.map((g) => (
             <div key={g.key}>
-              <div className="mb-1.5 flex items-center gap-1.5 px-0.5 text-overline text-ink-500">
+              <div className="mb-1.5 flex items-center gap-1 px-0.5 text-overline text-ink-500">
                 <Icon icon={g.icon} size={12} /> {g.label}
                 <span className="tabular-nums text-ink-500">{g.items.filter((h) => h.status === 'done').length}/{g.items.length}</span>
               </div>
@@ -245,7 +245,7 @@ export function HabitsJournal({ board }: { board: HabitsBoard }) {
           {offDuty.length > 0 && (
             <div>
               <button onClick={() => setShowOffDuty((v) => !v)} aria-expanded={showOffDuty}
-                className="focus-ring flex items-center gap-1.5 rounded-sm py-1 text-caption text-ink-500 transition-colors hover:text-ink-800">
+                className="focus-ring flex items-center gap-1 rounded-sm py-1 text-caption text-ink-500 transition-colors hover:text-ink-800">
                 <Icon icon={ChevronDown} size={12} className={cn('transition-transform duration-fast ease-standard', !showOffDuty && '-rotate-90')} />
                 {offDuty.length} not scheduled {isToday ? 'today' : 'that day'}
               </button>
@@ -260,9 +260,11 @@ export function HabitsJournal({ board }: { board: HabitsBoard }) {
             </div>
           )}
 
-          {!board.supported && (
-            <p className="text-caption text-ink-500">Apply migration 0025 for repeat schedules, goal counting, time-of-day grouping and skipped days.</p>
-          )}
+          {/* No migration notice here. This line used to read "Apply migration 0025 for repeat
+              schedules…" to every user — an instruction only the developer can act on, shown to
+              people who cannot, and it made the page read as unfinished (user, 2026-09-30). Without
+              the v2 columns the journal still works: every habit is daily, under "Any time". The
+              loader tells the DEVELOPER what failed, with the real column name, in the console. */}
         </div>
       )}
 
@@ -301,7 +303,7 @@ export function HabitsJournal({ board }: { board: HabitsBoard }) {
 /** "4d" · "2w" · "3/5 this week" — the unit the habit is actually judged in. */
 function streakText(h: BoardHabit): string {
   if (h.schedule.kind === 'weekly') return `${h.weekDone}/${h.weekTarget} this week`;
-  return h.streak > 0 ? `${h.streak}d` : '—';
+  return h.streak > 0 ? `${h.streak}d` : '–';
 }
 
 function HabitRow({ h, last, isFuture, offDuty, onOpen, onStatus, onCount }: {
@@ -365,7 +367,7 @@ function HabitRow({ h, last, isFuture, offDuty, onOpen, onStatus, onCount }: {
         </span>
         <span className="whitespace-nowrap tabular-nums text-meta text-ink-500">
           {streakText(h)}
-          <span className="sr-only"> — last seven days: {h.last7.join(', ')}</span>
+          <span className="sr-only">, last seven days: {h.last7.join(', ')}</span>
         </span>
       </span>
     </div>
@@ -487,14 +489,14 @@ function HabitDetail({ habit, endISO, onClose, onPatch, onArchive, onDelete }: {
 
         <div className="flex items-center gap-6 border-t border-line-soft pt-4">
           <Stat label={habit.schedule.kind === 'weekly' ? 'This week' : 'Current streak'} value={streakText(habit)} />
-          <Stat label="Best" value={habit.bestStreak > 0 ? `${habit.bestStreak}${habit.streakUnit === 'week' ? 'w' : 'd'}` : '—'} />
+          <Stat label="Best" value={habit.bestStreak > 0 ? `${habit.bestStreak}${habit.streakUnit === 'week' ? 'w' : 'd'}` : '–'} />
           <Stat label="Last 30 days" value={`${habit.consistency30}%`} />
         </div>
 
         <div>
           <div className="mb-2 text-overline text-ink-500">Last 26 weeks</div>
           {habit.doneDates.length === 0 && habit.skippedDates.length === 0 ? (
-            <EmptyLine className="py-0">Nothing logged yet — the grid fills in as you go.</EmptyLine>
+            <EmptyLine className="py-0">Nothing logged yet. The grid fills in as you go.</EmptyLine>
           ) : (
             <div className="overflow-x-auto">
               <HabitHeat weeks={buildHeat({ endISO, weeks: 26, doneDates: habit.doneDates, skippedDates: habit.skippedDates, createdAt: habit.createdAt, schedule: habit.schedule })} />

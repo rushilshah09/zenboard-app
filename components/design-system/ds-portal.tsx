@@ -98,7 +98,7 @@ const GROUPS: Group[] = [
     label: 'Foundations',
     items: [
       {
-        name: 'Color tokens', keys: [], desc: 'B&G surfaces and ink — black canvas, #121212 panels, white-alpha fills. Color is reserved for status and priority.',
+        name: 'Color tokens', keys: [], desc: 'B&G surfaces and ink: black canvas, #121212 panels, white-alpha fills. Color is reserved for status and priority.',
         render: () => (
           <div className="flex flex-col gap-5">
             <div className="flex flex-wrap gap-3">
@@ -157,7 +157,7 @@ const GROUPS: Group[] = [
     label: 'Primitives',
     items: [
       {
-        name: 'Button', keys: ['Button'], desc: 'The foundation control — 11 variants, one interaction model. Primary = ink solid (one per view); secondary = 12% fill (default); outline is the one bordered variant; danger is the only color. Sizes on the 24/28/32/36/40 grid; touch ≥44px. Full spec: components/design-system/button-spec.md.',
+        name: 'Button', keys: ['Button'], desc: 'The foundation control: 11 variants, one interaction model. Primary = ink solid (one per view); secondary = 12% fill (default); outline is the one bordered variant; danger is the only color. Sizes on the 24/28/32/36/40 grid; touch ≥44px. Full spec: components/design-system/button-spec.md.',
         render: () => (
           <div className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center gap-3">
@@ -180,7 +180,7 @@ const GROUPS: Group[] = [
         ),
       },
       {
-        name: 'IconButton', keys: ['IconButton'], desc: 'Icon-only control — always carries a label (tooltip + aria) and a ≥44×44 touch target. selected = monochrome toggled wash + aria-pressed. Full spec: button-spec.md §5.',
+        name: 'IconButton', keys: ['IconButton'], desc: 'Icon-only control: always carries a label (tooltip + aria) and a ≥44×44 touch target. Selected = monochrome toggled wash + aria-pressed. Full spec: button-spec.md §5.',
         render: () => (
           <div className="flex items-center gap-3">
             <IconButton label="Search" icon={<Search className="size-4" />} />
@@ -203,7 +203,7 @@ const GROUPS: Group[] = [
         ),
       },
       {
-        name: 'Inline confirm', keys: ['InlineConfirm'], desc: 'Row-level destructive confirm — swaps a row’s actions for “Delete? [Delete] [Keep]” in place. Confirm is dangerGhost (solid danger stays in dialogs); both xs so 36px rows never stretch.',
+        name: 'Inline confirm', keys: ['InlineConfirm'], desc: 'Row-level destructive confirm, swaps a row’s actions for “Delete? [Delete] [Keep]” in place. Confirm is dangerGhost (solid danger stays in dialogs); both xs so 36px rows never stretch.',
         render: () => (
           <div className="flex items-center gap-6">
             <InlineConfirm onConfirm={() => {}} onCancel={() => {}} />
@@ -233,10 +233,10 @@ const GROUPS: Group[] = [
         ),
       },
       {
-        name: 'TaskMeta', keys: ['TaskMeta', 'task facts', 'FigmaTag', 'chips'], desc: 'The facts of a task, drawn one way on every surface — glyph and word, never capsules, in one order; only what is set. Words give way to glyphs in a narrow container.',
+        name: 'TaskMeta', keys: ['TaskMeta', 'task facts', 'FigmaTag', 'chips'], desc: 'The facts of a task, drawn one way on every surface: glyph and word, never capsules, in one order; only what is set. Words give way to glyphs in a narrow container.',
         render: () => (
           <div className="flex flex-col gap-3">
-            <TaskMeta project={{ name: 'TechSpark', color: 'amber' }} priority="high" sub={{ done: 2, total: 5 }} estimate={90} />
+            <TaskMeta project={{ name: 'Northwind', color: 'amber' }} priority="high" sub={{ done: 2, total: 5 }} estimate={90} />
             <TaskMeta blocked labels={[{ name: 'Errand', color: 'teal' }]} priority="med" recurring when="2026-09-24" estimate={30} highlight />
           </div>
         ),
@@ -252,7 +252,7 @@ const GROUPS: Group[] = [
         ),
       },
       {
-        name: 'Avatar', keys: ['Avatar'], desc: 'Neutral fills, rounded square. Letters over ink washes — never colored.',
+        name: 'Avatar', keys: ['Avatar'], desc: 'Neutral fills, rounded square. Letters over ink washes, never colored.',
         render: () => (
           <div className="flex items-center gap-3">
             <Avatar name="Rushil Shah" size="sm" />
@@ -274,7 +274,7 @@ const GROUPS: Group[] = [
         ),
       },
       {
-        name: 'Icon', keys: ['Icon'], desc: 'One icon seam (components/ds/icons) — 16px in rows and buttons, 18–20px in headers.',
+        name: 'Icon', keys: ['Icon'], desc: 'One icon seam (components/ds/icons): 16px in rows and buttons, 18–20px in headers.',
         render: () => (
           <div className="flex items-center gap-4">
             <Icon icon={Search} size={16} />
@@ -299,13 +299,13 @@ const GROUPS: Group[] = [
         ),
       },
       {
-        name: 'Textarea', keys: ['Textarea'], desc: 'Multiline input — same field grammar.',
+        name: 'Textarea', keys: ['Textarea'], desc: 'Multiline input, same field grammar.',
         render: () => (
           <div className="w-[320px]"><Field label="Notes"><Textarea placeholder="Write something…" rows={3} /></Field></div>
         ),
       },
       { name: 'Select', keys: ['Select'], desc: 'Radix select styled to the B&G popover spec.', render: () => <SelectDemo /> },
-      { name: 'Checkbox · Switch', keys: ['Checkbox', 'Switch', 'Toggle', 'SwitchTrack'], desc: 'Square checkboxes (tasks are never radio circles). Toggles are monochrome — ink track when on.', render: () => <StatefulDemos /> },
+      { name: 'Checkbox · Switch', keys: ['Checkbox', 'Switch', 'Toggle', 'SwitchTrack'], desc: 'Square checkboxes (tasks are never radio circles). Toggles are monochrome, ink track when on.', render: () => <StatefulDemos /> },
     ],
   },
   {
@@ -315,7 +315,7 @@ const GROUPS: Group[] = [
       { name: 'Segmented', keys: ['SegmentedControl', 'Segmented'], desc: 'All view toggles (List/Board/Calendar…) use the segmented control.', render: () => <SegmentedDemo /> },
       {
         name: 'Breadcrumbs', keys: ['Breadcrumbs'], desc: 'Quiet path trail in panel headers.',
-        render: () => <Breadcrumbs items={[{ label: 'Projects', href: '#' }, { label: 'TechSpark', href: '#' }, { label: 'Invoice' }]} />,
+        render: () => <Breadcrumbs items={[{ label: 'Projects', href: '#' }, { label: 'Northwind', href: '#' }, { label: 'Invoice' }]} />,
       },
     ],
   },
@@ -371,7 +371,7 @@ const GROUPS: Group[] = [
               <PanelHeader icon={<Icon icon={Star} size={20} />} title="Panel title" count={3} />
               <PanelBody>
                 <div className="p-4 text-[14px] leading-5" style={{ color: 'var(--color-ink-800)' }}>
-                  Inner card body — surfaces separate by contrast, not borders.
+                  Inner card body: surfaces separate by contrast, not borders.
                 </div>
               </PanelBody>
             </Panel>
@@ -379,7 +379,7 @@ const GROUPS: Group[] = [
         ),
       },
       {
-        name: 'Skeleton', keys: ['Skeleton'], desc: 'Loading placeholders — quiet ink washes, no shimmer color.',
+        name: 'Skeleton', keys: ['Skeleton'], desc: 'Loading placeholders: quiet ink washes, no shimmer color.',
         render: () => (
           <div className="flex w-[280px] flex-col gap-2">
             <Skeleton className="h-4 w-3/4" />

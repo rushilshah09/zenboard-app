@@ -472,10 +472,10 @@ describe('content on Home', () => {
 
 describe('a finished project becoming content', () => {
   it('carries the project into every piece, so nothing is retyped', () => {
-    const out = contentFromProject('TechSpark rebrand', ['case-study', 'reel']);
+    const out = contentFromProject('Northwind rebrand', ['case-study', 'reel']);
     expect(out.map((p) => p.title)).toEqual([
-      'TechSpark rebrand — case study',
-      'TechSpark rebrand — reel',
+      'Northwind rebrand · case study',
+      'Northwind rebrand · reel',
     ]);
     expect(out.map((p) => [p.meta.format, p.meta.channel])).toEqual([
       ['article', 'Blog'],
@@ -507,7 +507,7 @@ describe('a finished project becoming content', () => {
 
   it('makes nothing from nothing, and survives an unnamed project', () => {
     expect(contentFromProject('X', [])).toEqual([]);
-    expect(contentFromProject('   ', ['reel'])[0].title).toBe('Untitled project — reel');
+    expect(contentFromProject('   ', ['reel'])[0].title).toBe('Untitled project · reel');
   });
 });
 

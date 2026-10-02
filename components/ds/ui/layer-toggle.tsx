@@ -85,8 +85,8 @@ export function LayerToggle({
       <button
         type="button" role="checkbox" aria-checked={on} aria-label={label}
         onClick={onToggle}
-        className="focus-ring grid size-[18px] shrink-0 place-items-center rounded-xs border transition-colors duration-fast"
-        // OFF takes the control tier (>=3:1), not the field tier: an 18px box
+        className="focus-ring grid size-4 shrink-0 place-items-center rounded-xs border transition-colors duration-fast"
+        // OFF takes the control tier (>=3:1), not the field tier: a 16px box
         // with no text inside is the whole control, so its edge is the only
         // thing saying it is there. -strong is the edge for things that also
         // carry a label — see the tier note in app/tokens-light.css.
@@ -106,8 +106,25 @@ export function LayerToggle({
         <span className="min-w-0 flex-1 truncate text-ui">{name}</span>
       )}
 
-      {count ? <span className="shrink-0 text-caption tabular-nums text-ink-500">{count}</span> : null}
-      {actions}
+      {/* ONE TRAILING SLOT. The count and the row's actions take turns in the same cell: the count at
+          rest, the actions under the pointer, on keyboard focus, or while their menu is open. They used
+          to sit side by side, so a list that could be managed pushed its counts 32px left of the
+          project counts above it — two columns of numbers in one rail. */}
+      {count || actions ? (
+        <span className="grid shrink-0 items-center justify-items-end">
+          {count ? (
+            <span className={cn(
+              "col-start-1 row-start-1 text-caption tabular-nums text-ink-500 transition-opacity duration-fast",
+              actions && "group-hover/layer:opacity-0 group-focus-within/layer:opacity-0 group-has-[[data-state=open]]/layer:opacity-0 [@media(pointer:coarse)]:hidden",
+            )}>{count}</span>
+          ) : null}
+          {actions ? (
+            <span className="col-start-1 row-start-1 flex opacity-0 transition-opacity duration-fast group-hover/layer:opacity-100 group-focus-within/layer:opacity-100 has-[[data-state=open]]:opacity-100 [@media(pointer:coarse)]:opacity-100">
+              {actions}
+            </span>
+          ) : null}
+        </span>
+      ) : null}
     </div>
   );
 }

@@ -4,8 +4,19 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { credentialsSchema } from '@/lib/validation/auth';
+import { SIGNUPS_OPEN } from '@/lib/waitlist';
 
 export async function POST(req: Request) {
+  // THE GATE, not the auth screen. While the waitlist is the front door this route refuses outright,
+  // so hiding the form is a courtesy rather than the only thing standing between a stranger and an
+  // account. 403, and the same sentence the screen shows, so the two never tell different stories.
+  if (!SIGNUPS_OPEN) {
+    return NextResponse.json(
+      { error: 'Zenboard is invitation only right now. Join the waitlist to get a place.' },
+      { status: 403 },
+    );
+  }
+
   const body = await req.json().catch(() => null);
   const parsed = credentialsSchema.safeParse(body);
   if (!parsed.success) {
@@ -25,7 +36,7 @@ export async function POST(req: Request) {
 
   if (error) {
     const friendly = /already|registered|exists/i.test(error.message)
-      ? 'An account with this email already exists — sign in instead.'
+      ? 'An account with this email already exists. Sign in instead.'
       : error.message;
     return NextResponse.json({ error: friendly }, { status: 400 });
   }

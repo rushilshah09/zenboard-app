@@ -36,7 +36,7 @@ export function PickerPanel({ label, width, align = 'left', onClose, children }:
   }, []);
   return (
     <div ref={ref} role="dialog" aria-label={label} className="zb-enter"
-      style={{ position: 'absolute', top: 'calc(100% + 6px)', [align]: 0, zIndex: 'var(--z-dropdown)', width: `min(${width}px, calc(100vw - 32px))`, ...(shift ? (align === 'left' ? { marginLeft: shift } : { marginRight: -shift }) : {}), background: 'var(--paper-3)', borderRadius: 'var(--r-xl)', boxShadow: 'var(--shadow-panel)', animation: 'zb-pop-in var(--duration-fast) var(--ease-out-quiet)', transformOrigin: `top ${align}` }}>
+      style={{ position: 'absolute', top: 'calc(100% + 6px)', [align]: 0, zIndex: 'var(--z-dropdown)', width: `min(${width}px, calc(100vw - 32px))`, ...(shift ? (align === 'left' ? { marginLeft: shift } : { marginRight: -shift }) : {}), background: 'var(--paper-3)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-lift-2)', animation: 'zb-pop-in var(--duration-fast) var(--ease-out-quiet)', transformOrigin: `top ${align}` }}>
       {children}
     </div>
   );

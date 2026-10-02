@@ -45,7 +45,7 @@ import {
 import { Icon } from "./icon";
 import { IconButton } from "./icon-button";
 // The DS already owns breadcrumbs, including the >4-level collapse into a "…"
-// menu — which `Projects / Balluji / Packaging / Task` will hit the moment a
+// menu — which `Projects / Ridgeline / Packaging / Task` will hit the moment a
 // task sits two folders deep. Reused, not re-implemented.
 import { Breadcrumbs, type Crumb } from "./breadcrumbs";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from "./dropdown-menu";
@@ -65,7 +65,7 @@ export interface PageViewProps {
   /** Decides the default mode and which preference bucket the choice is saved in. */
   contentType: ContentType;
   title: string;
-  /** Projects / Balluji / Packaging / Task. The last crumb is the record itself. */
+  /** Projects / Ridgeline / Packaging / Task. The last crumb is the record itself. */
   breadcrumbs?: Crumb[];
   /** The record's canonical URL. Enables "Open in new tab"; omit and it hides. */
   href?: string;
@@ -151,9 +151,13 @@ const keepEscapeInside = (e: KeyboardEvent) => {
  * A toast is not "outside" a page — it is the app talking ABOUT it. Radix read a press on one as a click away and
  * closed the page it was about: pressing Undo on "Your change was undone" shut the task it concerned (found
  * 2026-09-21, proving task editing). Everything else outside still closes a peek, as the spec asks.
+ *
+ * A COMPANION is not outside either (`<Drawer companion>`, Ask's panel): it works ALONGSIDE the page, and
+ * usually about it. Clicking into Ask's composer to ask a meeting about itself closed the meeting and took the
+ * answer's subject with it (found 2026-09-29, MEETINGS_PLAN M3).
  */
 const keepToastsInside = (e: Event) => {
-  if ((e.target as Element | null)?.closest?.("[data-toaster]")) e.preventDefault();
+  if ((e.target as Element | null)?.closest?.("[data-toaster], [data-companion]")) e.preventDefault();
 };
 
 export function PageView({

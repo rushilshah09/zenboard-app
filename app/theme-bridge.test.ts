@@ -249,26 +249,43 @@ describe('the ink ramp', () => {
   // 3.51:1 in dark: below the 4.5:1 floor for body text in BOTH themes.
   const STEPS = ['900', '800', '700', '600', '500', '400', '300', '200'];
 
+  // THREE TEXT LEVELS (2026-10-02). The ramp had five text steps inside 0.17 of lightness — #37352F,
+  // #44423C, #52504A, #5B5953, #64625C — and they were used interchangeably, so one screen painted
+  // six greys of text with no hierarchy anyone could name. Now: primary (900, with 800 as its
+  // ALIAS — titles and body share an ink, size and weight separate them), secondary (700, with 600
+  // as its alias), tertiary (500). Below that, tints that never carry a sentence.
+  const ALIAS: Record<string, string> = { '800': '900', '600': '700' };
+  const LEVELS = ['700', '500', '400', '300', '200'];
+  const lineOf = (step: string) => bridge.split('\n').find((l) => l.trim().startsWith(`--color-ink-${step}:`))!;
+  /** The percentage a step resolves to, following its alias (900 is the ink itself, 100%). */
+  const pctOf = (step: string): number => {
+    if (step === '900') return 100;
+    if (ALIAS[step]) return pctOf(ALIAS[step]);
+    return Number(lineOf(step).match(/var\(--foreground\) (\d+)%/)![1]);
+  };
+
   it('is one derived family, so monotonicity is structural', () => {
-    // Every step below 900 mixes the SAME anchor. A second anchor is what let
+    // Every LEVEL below primary mixes the SAME anchor. A second anchor is what let
     // the order invert without anything failing.
-    for (const step of STEPS.slice(1)) {
-      const line = LIGHT.split('\n').concat(bridge.split('\n'))
-        .find((l) => l.trim().startsWith(`--color-ink-${step}:`))!;
-      expect(line, `ink-${step} is not derived from --foreground`).toMatch(
+    for (const step of LEVELS) {
+      expect(lineOf(step), `ink-${step} is not derived from --foreground`).toMatch(
         /color-mix\(in oklab, var\(--foreground\) \d+%, var\(--background\)\)/,
       );
     }
+    // An alias says which level it IS — never a near-copy of it.
+    for (const [step, level] of Object.entries(ALIAS)) {
+      expect(lineOf(step), `ink-${step} is an alias of ink-${level}`).toMatch(new RegExp(`var\\(--color-ink-${level}\\)`));
+    }
   });
 
-  it('mixes descending percentages', () => {
-    const pct = STEPS.slice(1).map((step) => {
-      const line = bridge.split('\n').find((l) => l.trim().startsWith(`--color-ink-${step}:`))!;
-      return Number(line.match(/var\(--foreground\) (\d+)%/)![1]);
-    });
+  it('mixes descending percentages, with gaps a reader can see', () => {
+    const pct = LEVELS.map(pctOf);
     for (let i = 1; i < pct.length; i++) {
-      expect(pct[i], `ink-${STEPS[i + 1]} is not below ink-${STEPS[i]}`).toBeLessThan(pct[i - 1]);
+      expect(pct[i], `ink-${LEVELS[i]} is not below ink-${LEVELS[i - 1]}`).toBeLessThan(pct[i - 1]);
     }
+    // The three TEXT levels are evenly and visibly spaced (primary 100 → secondary → tertiary).
+    expect(100 - pctOf('700'), 'secondary sits a visible step under primary').toBeGreaterThanOrEqual(10);
+    expect(pctOf('700') - pctOf('500'), 'tertiary sits a visible step under secondary').toBeGreaterThanOrEqual(10);
   });
 
   it('every TEXT step actually clears AA, in both themes, on card AND band', () => {
@@ -338,13 +355,7 @@ describe('the ink ramp', () => {
         grounds['inner-raised'] = oklchToOklab(Number(paper4[1]), Number(paper4[2] ?? 0), Number(paper4[3] ?? 0));
       }
       for (const step of TEXT_STEPS) {
-        const pct =
-          step === 900
-            ? 100
-            : Number(
-                bridge.split('\n').find((l) => l.trim().startsWith(`--color-ink-${step}:`))!
-                  .match(/var\(--foreground\) (\d+)%/)![1],
-              );
+        const pct = pctOf(String(step));
         const p = pct / 100;
         const ink = fg.map((v, i) => v * p + bg[i] * (1 - p));
         const inkLum = lumOfOklab(ink);
@@ -500,8 +511,12 @@ describe('the edge tiers', () => {
     const v = h.replace('#', '');
     return [0, 2, 4].map((i) => parseInt(v.slice(i, i + 2), 16) / 255);
   };
-  const surface = (b: string, name: string) => {
+  const surface = (b: string, name: string): number[] => {
     const raw = decl(b, name)!;
+    // One var hop, inside the same block: dark declares `--tint: var(--foreground)`
+    // because its washes are made of its own ink, and that is a value, not a typo.
+    const ref = raw.match(/^var\(--([\w-]+)\)$/);
+    if (ref) return surface(b, ref[1]);
     const m = raw.match(/oklch\(\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)/);
     expect(m, `${name} is not a plain oklch: ${raw}`).not.toBeNull();
     return oklchToRgb(+m![1], +m![2], +m![3]);
@@ -574,8 +589,8 @@ describe('the edge tiers', () => {
     // block states soft and strong as ONE percentage of the theme ink.
     for (const [name, b] of [['light', LIGHT], ['dark', DARK]] as const) {
       const pct = (t: string) => {
-        const m = decl(b, `color-border-${t}`)!.match(/var\(--foreground\)\s+([\d.]+)%/);
-        expect(m, `${name}: --color-border-${t} is not ink at a percentage`).not.toBeNull();
+        const m = decl(b, `color-border-${t}`)!.match(/var\(--tint(?:-line)?\)\s+([\d.]+)%/);
+        expect(m, `${name}: --color-border-${t} is not the theme tint at a percentage`).not.toBeNull();
         return +m![1];
       };
       expect(pct('soft'), `${name}: soft < strong`).toBeLessThan(pct('strong'));
@@ -590,10 +605,40 @@ describe('the edge tiers', () => {
     // 16% — a divergence nothing recorded, so neither could be changed with
     // confidence. The washes were unified for the same reasons; the edges were
     // missed.
+    //
+    // ONE DECLARED EXCEPTION, added 2026-09-26: `panel`. It is not a slip and it is not a second
+    // dialect — both themes still write the ink at a percentage, which is what this guard is
+    // really for. They write DIFFERENT percentages because the two themes do not separate
+    // surfaces the same way, and that is measurable rather than a matter of taste:
+    //
+    //   light  panel shell L .945 → sidebar .968 → sheet 1.000, every step a visible FILL
+    //   dark   .125 → .169 → .184 → .200, the whole ladder inside a quarter of light's room,
+    //          with the panel body sitting 1.07:1 above its own shell
+    //
+    // A fill that faint cannot carry a raised surface, so in dark the EDGE has to (which is what
+    // Linear and Calendly both do). 5% of the dark ink over a panel composites to 1.12:1 — nothing
+    // — and 9% to 1.19:1. Light keeps 5%: there the fills already separate, and a heavier edge
+    // reads as a box drawn round a card.
+    const SPLIT: Record<string, string> = {
+      panel: 'dark separates raised surfaces with the edge, because its fill steps cannot',
+    };
     for (const t of ['soft', 'strong', 'panel', 'focus']) {
       const l = decl(LIGHT, `color-border-${t}`)!;
       const d = decl(DARK, `color-border-${t}`)!;
       expect(d, `dark --color-border-${t} is a raw literal`).not.toMatch(/rgba?\(|#[0-9a-f]{3,8}/i);
+      // Whatever the percentage, both themes say it the same WAY: the theme's own
+      // TINT, mixed. (Was "the theme's ink" until 2026-09-30. Light's edges and
+      // washes are made of a warm tint now — the ink at 6% composites to chroma
+      // ZERO on a white card, which was the second, grey tone the user saw — and
+      // each theme declares what its tint is: light the warm source, dark its own
+      // ink, Paper its own ink. Same dialect everywhere; the colour is the theme's.)
+      for (const [theme, v] of [['light', l], ['dark', d]] as const) {
+        expect(v, `${theme} --color-border-${t} is not the theme tint at a percentage`).toMatch(/color-mix\(in oklab, var\(--tint(?:-line)?\) [\d.]+%, transparent\)/);
+      }
+      if (SPLIT[t]) {
+        expect(d, `--color-border-${t} is a declared split, so it must NOT match light`).not.toBe(l);
+        continue;
+      }
       expect(d, `--color-border-${t} differs between themes`).toBe(l);
     }
   });
@@ -609,8 +654,10 @@ describe('the edge tiers', () => {
     return bridge.slice(at);
   };
   const pctOf = (b: string, token: string) => {
-    const m = decl(b, token)?.match(/var\(--foreground\)\s+([\d.]+)%/);
-    expect(m, `--${token} is not the theme ink at a percentage`).toBeTruthy();
+    // An ink STEP mixes the ink into the ground; a WASH is the theme's tint at
+    // alpha. Either way the number this returns is the percentage.
+    const m = decl(b, token)?.match(/var\(--(?:foreground|tint|tint-line)\)\s+([\d.]+)%/);
+    expect(m, `--${token} is not the theme ink/tint at a percentage`).toBeTruthy();
     return +m![1] / 100;
   };
   // An ink STEP is an OKLAB mix of two opaque anchors; a WASH is the ink at
@@ -644,7 +691,12 @@ describe('the edge tiers', () => {
     // every surface under every wash, in both themes.
     const forward = pctOf(bridge, 'color-ink-700');
     for (const [name, sh] of [['light', SH_LIGHT], ['dark', SH_DARK]] as const) {
-      const fg = surface(sh, 'foreground');
+      // The wash is composited from the theme's TINT — what it is actually made
+      // of — not from --foreground. In light those differ (warm source vs ink),
+      // and a guard that washed with the ink would be checking a colour the page
+      // never paints. Same lightness, so the ratio moves by hundredths; it is
+      // still the honest number.
+      const fg = surface(sh, 'tint');
       const ink = inkStep(sh, forward);
       for (const s of ['background', 'card', 'muted', 'popover']) {
         const ground = surface(sh, s);
@@ -660,7 +712,7 @@ describe('the edge tiers', () => {
     // THE CONTROL, and the reason the rule exists. If this ever stops failing
     // the forward step is no longer needed and the rows can go back to ink-500
     // — until then it is why they cannot.
-    const darkFg = surface(SH_DARK, 'foreground');
+    const darkFg = surface(SH_DARK, 'tint');
     const pop = surface(SH_DARK, 'popover');
     const pressed = pctOf(themeBlock('dark'), 'wash-2');
     const faint = inkStep(SH_DARK, pctOf(bridge, 'color-ink-500'));

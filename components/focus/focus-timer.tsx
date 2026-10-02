@@ -28,6 +28,7 @@ import {
   Play, Pause, RotateCcw, SkipForward, Minus, Maximize2, Minimize2, ExternalLink, X, Settings,
   ChevronUp, ChevronDown, Plus, Ellipsis, Trash, Inbox, Volume2, VolumeX, Folder,
 } from '@/components/ds/icons';
+import { scopeFill } from '@/lib/entity-color';
 
 // ── Model ─────────────────────────────────────────────────────────────────────
 type Mode = 'pomodoro' | 'countdown' | 'stopwatch';
@@ -273,7 +274,7 @@ function TaskItem({ t, proj, active, onToggle, onSelect, onDelete, onInbox }: {
           <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {proj && (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--color-ink-500)' }}>
-                <Icon icon={Folder} size={12} style={{ color: proj.color ?? 'var(--color-ink-500)' }} />
+                <Icon icon={Folder} size={12} style={{ color: scopeFill(proj.color, 'var(--color-ink-500)') }} />
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120 }}>{proj.name}</span>
               </span>
             )}
@@ -695,7 +696,7 @@ export function FocusTimer({ activeSpaceId, embedded = false, demoTasks }: { act
           <IconButton label="Dock back into window" tooltip="Pop back in · Esc" icon={<Icon icon={Minimize2} size={16} />} size="sm" variant="ghost" onClick={popIn} />
         ) : (
           <>
-            {pipSupported && <IconButton label="Float over other apps" tooltip="Pop out — stays on top of everything" icon={<Icon icon={ExternalLink} size={16} />} size="sm" variant="ghost" onClick={popOut} />}
+            {pipSupported && <IconButton label="Float over other apps" tooltip="Pop out, stays on top of everything" icon={<Icon icon={ExternalLink} size={16} />} size="sm" variant="ghost" onClick={popOut} />}
             <IconButton label={`Resize (${st.size})`} icon={<Icon icon={Maximize2} size={16} />} size="sm" variant="ghost" onClick={cycleSize} />
             <IconButton label="Minimize" tooltip="Minimize · Esc" icon={<Icon icon={Minus} size={16} />} size="sm" variant="ghost" onClick={minimize} />
           </>

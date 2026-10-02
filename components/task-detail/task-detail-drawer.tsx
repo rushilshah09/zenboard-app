@@ -598,7 +598,7 @@ export function TaskDetailDrawer() {
                     return (
                       <Pop width={220} label="Project" trigger={(_o, p) => (
                         <button {...p} className={chipClass(!!cur)}>
-                          <Icon icon={Folder} size={14} weight={cur ? 'fill' : 'regular'} style={cur ? { color: scopeFill(cur.color, 'var(--color-ink-500)') } : undefined} />
+                          <Icon icon={Folder} size={14} state={!!cur} style={cur ? { color: scopeFill(cur.color, 'var(--color-ink-500)') } : undefined} />
                           {cur?.name ?? 'Project'}
                         </button>
                       )}>

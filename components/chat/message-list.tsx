@@ -20,14 +20,15 @@
 // times a day (Emil's frequency rule). The only transitions are the house's colour washes.
 
 import * as React from 'react';
-import { ArrowDown, Copy, Pencil, Trash } from '@/components/ds/icons';
+import { ArrowDown, Copy, Pencil, Smile, Trash } from '@/components/ds/icons';
 import { Avatar, Button, Icon, IconButton, Textarea } from '@/components/ds/ui';
 import { OVERLAY_CLASS } from '@/components/ds/ui/menu';
 import { ROW_TRANSITION, rowWash } from '@/components/ds/ui/row-state';
 import { cn } from '@/lib/cn';
 import { useFocusReturn } from '@/lib/use-focus-return';
 import { formatClock, formatDayTime } from '@/lib/date';
-import { canEdit, layoutMessages, normalizeBody, type ChatAuthor, type ChatItem, type ChatMessage } from '@/lib/chat';
+import { REACTION_NAMES, canEdit, layoutMessages, normalizeBody, type ChatAuthor, type ChatItem, type ChatMessage } from '@/lib/chat';
+import { QUICK_REACTIONS, ReactionPicker, ReactionPills, mineOf, type ReactionNames } from './reactions';
 
 /** How close to the bottom still counts as "at the bottom" — one short message's worth. */
 const AT_BOTTOM_PX = 80;
@@ -54,12 +55,17 @@ export type MessageListProps = {
   hasMore?: boolean;
   loadingOlder?: boolean;
   onLoadOlder?: () => void;
+  // ── C3 ──
+  /** Both sides' names, for "You and Acme reacted". */
+  names?: ReactionNames;
+  /** Toggle MY side on an emoji. Absent until reactions are available (0044). */
+  onReact?: (m: ChatMessage, emoji: string) => void;
 };
 
 export function MessageList({
   messages, me, lastReadAt, tz, onRetry, empty, className,
   editingId = null, onEditStart, onEditSave, onEditCancel, onDelete, onCopy,
-  hasMore = false, loadingOlder = false, onLoadOlder,
+  hasMore = false, loadingOlder = false, onLoadOlder, names = { team: 'Team', client: 'Client' }, onReact,
 }: MessageListProps) {
   const scroller = React.useRef<HTMLDivElement>(null);
   const atBottom = React.useRef(true);
@@ -165,7 +171,10 @@ export function MessageList({
         {/* A conversation grows UPWARD from the composer, as every chat does: when it does not fill
             the pane, it sits at the bottom, nearest where you type, and new history arrives above
             without moving the newest line. A document starts at the top; a conversation does not. */}
-        <div className="flex min-h-full flex-col justify-end">
+        {/* A READING COLUMN, centred (2026-10-02 brief: "conversation content should breathe … highly
+            readable"). Lines ran the full width of the pane — 160 characters on a laptop — which no
+            one reads comfortably; `--measure` keeps a message near the measure prose is set at. */}
+        <div className="mx-auto flex min-h-full w-full max-w-[var(--measure)] flex-col justify-end">
         {loadingOlder && <p className="py-3 text-center text-caption text-ink-500">Loading earlier messages…</p>}
         {items.map((item) => (
           <Item
@@ -180,6 +189,8 @@ export function MessageList({
             onEditCancel={onEditCancel}
             onDelete={onDelete}
             onCopy={onCopy}
+            names={names}
+            onReact={onReact}
           />
         ))}
         </div>
@@ -209,6 +220,8 @@ type ItemProps = {
   onEditCancel?: () => void;
   onDelete?: (m: ChatMessage) => void;
   onCopy?: (m: ChatMessage) => void;
+  names: ReactionNames;
+  onReact?: (m: ChatMessage, emoji: string) => void;
 };
 
 function Item({ item, ...rest }: ItemProps) {
@@ -233,24 +246,31 @@ function Item({ item, ...rest }: ItemProps) {
   return <Message message={item.message} startsRun={item.startsRun} {...rest} />;
 }
 
-function Message({ message: m, startsRun, me, tz, editing, onRetry, onEditStart, onEditSave, onEditCancel, onDelete, onCopy }:
+function Message({ message: m, startsRun, me, tz, editing, onRetry, onEditStart, onEditSave, onEditCancel, onDelete, onCopy, names, onReact }:
   Omit<ItemProps, 'item'> & { message: ChatMessage; startsRun: boolean }) {
   const time = formatClock(m.createdAt, tz);
   const full = formatDayTime(m.createdAt);
   const mine = canEdit(m, me);
+  const live = !m.deleted && !m.pending && !m.failed;
   // A message you can ACT on washes under the pointer — the wash promises the toolbar. A deleted or
   // unsent one does nothing, so it does not light up (the row vocabulary's rule).
-  const actionable = !m.deleted && !m.pending && !m.failed && !editing && (!!onCopy || mine);
+  const actionable = live && !editing && (!!onCopy || mine || !!onReact);
+  // Which picker is open, if any: the toolbar's, or the one beside the pills. While one is open the
+  // message holds its hover state and the toolbar stays put — a picker floating over a toolbar that
+  // faded out from under it reads as detached.
+  const [picker, setPicker] = React.useState<'toolbar' | 'pills' | null>(null);
+  const myReactions = mineOf(m.reactions, me);
+  const react = onReact ? (emoji: string) => onReact(m, emoji) : null;
 
   return (
     <article
       data-message-id={m.id}
       aria-label={`${m.authorName}, ${full ?? ''}`}
       className={cn(
-        'group relative grid grid-cols-[32px_minmax(0,1fr)] gap-x-3 px-5',
+        'group relative grid grid-cols-[32px_minmax(0,1fr)] gap-x-3 rounded-sm px-5',
         startsRun ? 'mt-2 pb-0.5 pt-1.5' : 'py-0.5',
         ROW_TRANSITION,
-        editing ? 'bg-surface-selected' : rowWash(false, actionable),
+        editing ? 'bg-surface-selected' : picker ? 'bg-surface-hover' : rowWash(false, actionable),
       )}
     >
       <div className="pt-0.5">
@@ -274,10 +294,11 @@ function Message({ message: m, startsRun, me, tz, editing, onRetry, onEditStart,
         {editing && onEditSave && onEditCancel ? (
           <InlineEditor initial={m.body} onSave={(body) => onEditSave(m, body)} onCancel={onEditCancel} />
         ) : m.deleted ? (
-          <p className="text-body text-ink-500">This message was deleted.</p>
+          <p className="text-body-lg text-ink-500">This message was deleted.</p>
         ) : (
           // TEXT, never HTML: a message is rendered exactly as typed, line breaks included.
-          <p className={cn('whitespace-pre-wrap break-words text-body', m.pending ? 'text-ink-500' : 'text-ink-900')}>
+          // 15px, the reading size: a conversation is read, not scanned like a list row.
+          <p className={cn('whitespace-pre-wrap break-words text-body-lg', m.pending ? 'text-ink-500' : 'text-ink-900')}>
             {m.body}
             {m.editedAt && <span className="ms-1 text-caption text-ink-500">(edited)</span>}
           </p>
@@ -288,13 +309,47 @@ function Message({ message: m, startsRun, me, tz, editing, onRetry, onEditStart,
             {onRetry && <Button size="xs" variant="ghost" onClick={() => onRetry(m)}>Retry</Button>}
           </div>
         )}
+        {live && react && m.reactions && (
+          <ReactionPills
+            reactions={m.reactions}
+            me={me}
+            names={names}
+            onToggle={react}
+            pickerOpen={picker === 'pills'}
+            onPickerOpenChange={(open) => setPicker(open ? 'pills' : null)}
+          />
+        )}
         {m.author === me && m.pending && !m.failed && <span className="sr-only">Sending</span>}
       </div>
 
       {actionable && (
         // Slack's floating toolbar. `reveal-on-hover` also shows it on :focus-within and always on a
         // touch screen, so the keyboard and a thumb reach every action the pointer does.
-        <div className={cn(OVERLAY_CLASS, 'reveal-on-hover absolute -top-3 end-4 flex items-center gap-0.5 p-0.5')}>
+        <div className={cn(OVERLAY_CLASS, 'absolute -top-3 end-4 flex items-center gap-0.5 p-0.5', picker !== 'toolbar' && 'reveal-on-hover')}>
+          {react && (
+            <>
+              {/* Slack's one-click reactions, then the rest behind the smiley. */}
+              {QUICK_REACTIONS.map((emoji) => (
+                <IconButton
+                  key={emoji}
+                  label={`React with ${REACTION_NAMES[emoji]}`}
+                  size="xs"
+                  selected={myReactions.includes(emoji)}
+                  icon={<span aria-hidden className="text-ui leading-none">{emoji}</span>}
+                  onClick={() => react(emoji)}
+                />
+              ))}
+              <ReactionPicker
+                open={picker === 'toolbar'}
+                onOpenChange={(open) => setPicker(open ? 'toolbar' : null)}
+                mine={myReactions}
+                onPick={react}
+              >
+                <IconButton label="Add reaction" size="xs" icon={<Icon icon={Smile} size={14} />} />
+              </ReactionPicker>
+              {(onCopy || mine) && <span aria-hidden className="mx-0.5 h-4 w-px bg-line-soft" />}
+            </>
+          )}
           {onCopy && <IconButton label="Copy text" size="xs" icon={<Icon icon={Copy} size={14} />} onClick={() => onCopy(m)} />}
           {mine && onEditStart && <IconButton label="Edit message" tooltip="Edit message · ↑ edits your last" size="xs" icon={<Icon icon={Pencil} size={14} />} onClick={() => onEditStart(m)} />}
           {mine && onDelete && <IconButton label="Delete message" size="xs" icon={<Icon icon={Trash} size={14} />} onClick={() => onDelete(m)} />}

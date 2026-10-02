@@ -15,9 +15,10 @@ import { FocusEdge } from './focus-edge';
 const shell = readFileSync('components/shell/app-shell.tsx', 'utf8');
 const css = readFileSync('app/globals.css', 'utf8');
 const keys = readFileSync('components/shell/keyboard-shortcuts.tsx', 'utf8');
-// The edge's own rules only — the toggle's glyph rules live after the keyframes and do animate
-// transform and filter, which is Emil's icon crossfade and not this element's business.
-const edgeCss = css.slice(css.indexOf('.zb-focus-edge {'), css.indexOf("/* ── THE FOCUS TOGGLE'S MARK"));
+// The edge's own rules only. The end marker is the note left where the toggle's glyph CSS used
+// to be (deleted 2026-09-28 — the labelled switch says the mode itself). Keep the two in step: an
+// indexOf that misses returns -1 and this slice silently becomes the whole stylesheet.
+const edgeCss = css.slice(css.indexOf('.zb-focus-edge {'), css.indexOf("/* THE FOCUS TOGGLE'S MARK is gone"));
 
 describe('the focus edge', () => {
   it('is mounted always, so it can animate OUT as well as in', () => {
@@ -60,21 +61,30 @@ describe('the focus edge', () => {
 });
 
 describe('the focus toggle', () => {
-  it('states the mode with one glyph in two weights, crossfaded', () => {
-    // better-ui: outline is the default, fill marks the active state — one SVG, recoloured.
-    expect(shell).toMatch(/<Icon icon=\{Circle\} size=\{14\} className="zb-focus-glyph-off" \/>/);
-    expect(shell).toMatch(/<Icon icon=\{Circle\} size=\{14\} weight="fill" className="zb-focus-glyph-on" \/>/);
-    // Emil's contextual icon values, exactly: scale 0.25 → 1, opacity 0 → 1, blur 4px → 0.
-    const glyph = css.slice(css.indexOf('.zb-focus-glyph {'), css.indexOf('/* Reduced motion keeps the SIGNAL'));
-    expect(glyph).toMatch(/\.zb-focus-glyph-on \{ opacity: 0; transform: scale\(0\.25\); filter: blur\(4px\);/);
-    expect(glyph).toMatch(/\.zb-focus-toggle\[data-on\] \.zb-focus-glyph-on \{ opacity: 1; transform: scale\(1\); filter: blur\(0\); \}/);
-    // Both glyphs stay in the DOM, stacked in one grid cell — a swap would pop.
-    expect(glyph).toMatch(/grid-area: 1 \/ 1;/);
+  // 2026-10-02, the user: "i dont like focus button make it like linear", with Linear's "Agent"
+  // button as the reference: a glyph and a word, ghost at rest, pressed while it is on. It replaced
+  // the labelled sliding switch, whose own tests now live in components/ui/switch-track.test.ts.
+  const parts = readFileSync('components/shell/shell-parts.tsx', 'utf8');
+  const demo = readFileSync('components/demo/demo-shell.tsx', 'utf8');
+
+  it('is the DS ghost button in its toggle variant, so it presses like every other toggle', () => {
+    // `toggle` is the Button's opt-in pressed style (a wash, never an elevation); it keys off
+    // aria-pressed, so the state a screen reader hears and the state you see are one attribute.
+    expect(parts).toMatch(/<Button variant="ghost" size="sm" toggle aria-pressed=\{on\} aria-label="Focus mode" onClick=\{onToggle\}/);
+    // One glyph and one word. The glyph cross-fades to its filled cut while the mode is on, the
+    // nav rule for a selected row ("one weight, two cuts"), through `state` and never a weight swap.
+    expect(parts).toMatch(/icon=\{<Icon icon=\{FocusMode\} state=\{on\} \/>\}>\s*Focus\s*<\/Button>/);
   });
 
-  it('is a switch with a name, and says which key does it', () => {
-    expect(shell).toMatch(/role="switch" aria-checked=\{on\} aria-label="Focus mode"/);
-    expect(shell).toMatch(/content=\{on \? 'Leave focus mode · F' : 'Focus mode · F'\}/);
+  it('is one part, drawn by the app and by the website demo', () => {
+    expect(shell).toMatch(/return <FocusModeButton on=\{on\} onToggle=\{go\} \/>;/);
+    expect(demo).toMatch(/<FocusModeButton on=\{false\} onToggle=\{onFocus\} \/>/);
+    for (const src of [shell, demo]) expect(src, 'the sliding switch is out of the top bar').not.toMatch(/SwitchTrack/);
+  });
+
+  it('has a name, and says which key does it', () => {
+    expect(parts).toMatch(/aria-label="Focus mode"/);
+    expect(parts).toMatch(/content=\{on \? 'Leave focus mode · F' : 'Focus mode · F'\}/);
   });
 });
 

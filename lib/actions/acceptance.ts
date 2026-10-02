@@ -7,6 +7,7 @@
 // the timestamp are all read or produced HERE, from the row the token proves
 // access to. A signature assembled out of fields the signer posted would prove
 // only that someone could post fields.
+import { notReady } from '@/lib/not-ready';
 import { createHash } from 'crypto';
 import { headers } from 'next/headers';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
@@ -248,7 +249,7 @@ export async function invoiceForAcceptance(acceptanceId: string): Promise<{ erro
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'Not authenticated' };
-  if (!await crossingSupported(supabase)) return { error: 'Invoicing from a proposal needs migration 0035.' };
+  if (!await crossingSupported(supabase)) return notReady('Invoicing from a proposal isn’t available yet.', '0035');
 
   const { data: acc } = await supabase.from('acceptances')
     .select('id, page_id, project_id, signer_name, invoice_id').eq('id', acceptanceId).maybeSingle();

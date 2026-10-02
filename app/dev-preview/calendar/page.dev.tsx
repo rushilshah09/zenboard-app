@@ -80,9 +80,9 @@ const dayISO = (n: number) => {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 };
 const DEMO_MILESTONES: CalendarMilestone[] = [
-  { id: 'ms1', title: 'Design sign-off', done: false, due_date: dayISO(-2), sort_order: 0, projectId: 'life', projectName: 'Balluji rebrand', projectColor: '#9A1B6F' },
+  { id: 'ms1', title: 'Design sign-off', done: false, due_date: dayISO(-2), sort_order: 0, projectId: 'life', projectName: 'Ridgeline rebrand', projectColor: '#9A1B6F' },
   { id: 'ms2', title: 'Beta to client', done: false, due_date: dayISO(0), sort_order: 1, projectId: 'aurora', projectName: 'Aurora', projectColor: '#3F82D6' },
-  { id: 'ms3', title: 'Public launch', done: false, due_date: dayISO(3), sort_order: 2, projectId: 'life', projectName: 'Balluji rebrand', projectColor: '#9A1B6F' },
+  { id: 'ms3', title: 'Public launch', done: false, due_date: dayISO(3), sort_order: 2, projectId: 'life', projectName: 'Ridgeline rebrand', projectColor: '#9A1B6F' },
   { id: 'ms4', title: 'Kickoff call', done: true, due_date: dayISO(-4), sort_order: 3, projectId: 'aurora', projectName: 'Aurora', projectColor: '#3F82D6' },
 ];
 

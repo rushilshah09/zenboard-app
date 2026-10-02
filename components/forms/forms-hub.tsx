@@ -76,13 +76,13 @@ export function FormsHub({ items, projects, clients }: { items: FormHubItem[]; p
   return (
     <PageLayout
       tabs={<SegmentedControl aria-label="Filter forms by status" options={FILTERS} value={filter} onValueChange={(v) => setFilter(v as Filter)} fit="content" />}
-      actions={<Button size="sm" variant="secondary" icon={<Icon icon={Plus} size={16} />} onClick={() => setNewOpen(true)}>New form</Button>}
+      actions={<Button size="sm" variant="primary" icon={<Icon icon={Plus} size={16} />} onClick={() => setNewOpen(true)}>New form</Button>}
     >
       {items.length === 0 ? (
         <EmptyState
           illustration={<Icon icon={FormsIcon} size={20} />}
           title="No forms yet"
-          description="Collect a brief or feedback — no account needed."
+          description="Collect a brief or feedback, no account needed."
           primary={<Button variant="primary" icon={<Icon icon={Plus} size={16} />} onClick={() => setNewOpen(true)}>New form</Button>}
         />
       ) : shown.length === 0 ? (
@@ -190,7 +190,7 @@ function NewFormModal({ open, onOpenChange, projects, clients }: {
 
   const hasHomes = projects.length + clients.length > 0;
   const groups: SelectGroup[] = [
-    { options: [{ value: 'none', label: 'Drafts — no client or project' }] },
+    { options: [{ value: 'none', label: 'Drafts, no client or project' }] },
     ...(projects.length ? [{ label: 'Projects', options: projects.map((p) => ({ value: `project:${p.id}`, label: p.name })) }] : []),
     ...(clients.length ? [{ label: 'Clients', options: clients.map((c) => ({ value: `client:${c.id}`, label: c.name })) }] : []),
   ];

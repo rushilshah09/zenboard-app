@@ -64,7 +64,7 @@ export function Connections({ connected, lastSynced, eventCount }: { connected: 
     setBusy(false);
     if ('error' in res) setNote({ kind: 'error', text: res.error });
     else if ('ok' in res) { setNote({ kind: 'ok', text: `Synced ${res.count} events from Google.` }); router.refresh(); }
-    else setNote({ kind: 'error', text: 'Not connected — connect first.' });
+    else setNote({ kind: 'error', text: 'Not connected. Connect first.' });
   }
 
   async function disconnect() {
@@ -86,7 +86,7 @@ export function Connections({ connected, lastSynced, eventCount }: { connected: 
           description={
             connected
               ? <>Connected{lastSynced ? ` · synced ${ago(lastSynced)}` : ''}{eventCount != null ? ` · ${eventCount} events` : ''}</>
-              : 'Two-way — events sync between Zenboard and Google.'
+              : 'Two-way: events sync between Zenboard and Google.'
           }
           control={
             connected ? (
@@ -194,7 +194,7 @@ function AiToolsRow() {
       await navigator.clipboard.writeText(token);
       setCopied(true);
       setTimeout(() => setCopied(false), 1600);
-    } catch { setErr('Could not copy — select the key and copy it by hand.'); }
+    } catch { setErr('Could not copy. Select the key and copy it by hand.'); }
   };
 
   return (
@@ -204,7 +204,7 @@ function AiToolsRow() {
         title="Claude and other AI tools"
         description={
           token
-            ? 'Connected — your AI tools can capture thoughts and read what is on.'
+            ? 'Connected: your AI tools can capture thoughts and read what is on.'
             : 'Say a thought to your AI and have it land here. Reads and writes your workspace.'
         }
         control={

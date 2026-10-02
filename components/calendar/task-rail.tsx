@@ -186,7 +186,7 @@ function RailRow({
           {task.title}
         </button>
 
-        <span className="inline-flex shrink-0 items-center gap-0.5 text-caption tabular-nums text-ink-500" title="Block length">
+        <span className="inline-flex shrink-0 items-center gap-1 text-caption tabular-nums text-ink-500" title="Block length">
           <Icon icon={Clock} size={12} aria-hidden />
           {formatMinutes(mins)}
         </span>

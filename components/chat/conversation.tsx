@@ -145,7 +145,7 @@ export function Conversation({
       await navigator.clipboard.writeText(m.body);
       toast({ message: 'Copied' });
     } catch {
-      toast({ message: 'Could not copy — your browser blocked the clipboard.', variant: 'error' });
+      toast({ message: 'Could not copy. Your browser blocked the clipboard.', variant: 'error' });
     }
   };
 

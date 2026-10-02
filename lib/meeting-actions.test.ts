@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseActionLines, meetingActions, promotable, meetingDestination,
-  actionsSummary, actionKey, type MeetingTask,
+  actionsSummary, actionKey, appendActionLines, type MeetingTask,
 } from './meeting-actions';
 
 const task = (over: Partial<MeetingTask> & Pick<MeetingTask, 'title'>): MeetingTask => ({
@@ -103,8 +103,8 @@ describe('where a meeting task is filed', () => {
   const proj = (id: string, name: string, status = 'active') => ({ id, name, status });
 
   it('one running project — file it there', () => {
-    expect(meetingDestination([proj('p1', 'Balluji rebrand')]))
-      .toEqual({ projectId: 'p1', label: 'Balluji rebrand' });
+    expect(meetingDestination([proj('p1', 'Ridgeline rebrand')]))
+      .toEqual({ projectId: 'p1', label: 'Ridgeline rebrand' });
   });
 
   // Wrong project > Inbox in cost: it is counted in a progress bar and may be
@@ -150,5 +150,30 @@ describe('the summary line', () => {
 describe('actionKey', () => {
   it('collapses case and whitespace and nothing else', () => {
     expect(actionKey('  Send   the Palette. ')).toBe('send the palette.');
+  });
+});
+
+describe('appendActionLines — how an accepted suggestion becomes an action item', () => {
+  it('adds `[ ]` lines after the last word, keeping everything before', () => {
+    expect(appendActionLines('Talked pricing.\n\n', ['Send the quote', 'Book the shoot']))
+      .toBe('Talked pricing.\n[ ] Send the quote\n[ ] Book the shoot');
+  });
+
+  it('writes lines the parser reads back as unticked action items, in order', () => {
+    const notes = appendActionLines('Kickoff', ['Send the quote', '  Book   the shoot ']);
+    expect(parseActionLines(notes).map((l) => [l.text, l.checked])).toEqual([
+      ['Send the quote', false],
+      ['Book the shoot', false],
+    ]);
+  });
+
+  it('starts empty notes with the lines themselves', () => {
+    expect(appendActionLines(null, ['Send the quote'])).toBe('[ ] Send the quote');
+    expect(appendActionLines('', ['Send the quote'])).toBe('[ ] Send the quote');
+  });
+
+  it('changes nothing when there is nothing to add', () => {
+    expect(appendActionLines('Kickoff  ', [])).toBe('Kickoff  ');
+    expect(appendActionLines('Kickoff', ['   '])).toBe('Kickoff');
   });
 });

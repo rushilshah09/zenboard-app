@@ -64,7 +64,7 @@ export const AUTOMATIONS: Automation[] = [
     id: 'recurrence',
     title: 'Repeating tasks',
     trigger: 'When you complete one',
-    body: 'The next occurrence appears with its dates moved on. Only ever one ahead — Zenboard never fills your calendar with a year of copies, and never back-fills the ones you missed.',
+    body: 'The next occurrence appears with its dates moved on. Only ever one ahead: Zenboard never fills your calendar with a year of copies, and never back-fills the ones you missed.',
     status: 'on',
     source: 'lib/recurrence.ts · lib/actions/tasks.ts',
     fn: 'nextOccurrence',
@@ -82,7 +82,7 @@ export const AUTOMATIONS: Automation[] = [
     id: 'timebox-twin',
     title: 'Timeboxes and their tasks stay in step',
     trigger: 'When you drag a task onto the calendar',
-    body: 'The block and the task are two views of one thing: finish either and both are done. Twins never sync out to Google — they are your plan, not a meeting.',
+    body: 'The block and the task are two views of one thing: finish either and both are done. Twins never sync out to Google: they are your plan, not a meeting.',
     status: 'gated',
     needs: '0030',
     source: 'lib/actions/timebox.ts · lib/timebox.ts',
@@ -100,7 +100,7 @@ export const AUTOMATIONS: Automation[] = [
     id: 'goal-rollup',
     title: 'Goals settle at review time',
     trigger: 'When you start the weekly review',
-    body: 'Progress is recomputed from the work actually linked to each goal — once, at review, rather than a number that twitches all week.',
+    body: 'Progress is recomputed from the work actually linked to each goal, once, at review, rather than a number that twitches all week.',
     status: 'on',
     source: 'lib/goal-rollup.ts · lib/actions/goals.ts',
     fn: 'recomputeGoalProgress',
@@ -118,7 +118,7 @@ export const AUTOMATIONS: Automation[] = [
     id: 'digest',
     title: 'Morning digest',
     trigger: 'Once a morning, if you switch it on',
-    body: 'Today, what is late, and anything your clients sent overnight — in one email, and none at all on a morning with nothing to say.',
+    body: 'Today, what is late, and anything your clients sent overnight, in one email, and none at all on a morning with nothing to say.',
     status: 'on',
     source: 'lib/digest.ts · app/api/cron/digest',
   },
@@ -135,7 +135,7 @@ export const AUTOMATIONS: Automation[] = [
     id: 'invoice-reminders',
     title: 'Invoice nudges to the client',
     trigger: 'When an invoice goes past due',
-    body: 'A polite reminder on a schedule you choose, addressed to them rather than to you — chasing is the part of freelancing everyone hates.',
+    body: 'A polite reminder on a schedule you choose, addressed to them rather than to you, because chasing is the part of freelancing everyone hates.',
     status: 'planned',
     source: 'lib/money.ts',
   },
@@ -143,8 +143,8 @@ export const AUTOMATIONS: Automation[] = [
 
 /** The clerk (§7Q) — a different doctrine, and deliberately listed apart. */
 export const CLERK_MOMENTS: { title: string; body: string }[] = [
-  { title: 'Filing suggestions', body: 'New captures get a suggested list — as a suggestion you confirm, never a silent move.' },
-  { title: 'Drafts at six defined moments', body: 'A follow-up after a meeting, an invoice from logged time — drafted for your review, never sent.' },
+  { title: 'Filing suggestions', body: 'New captures get a suggested list, as a suggestion you confirm, never a silent move.' },
+  { title: 'Drafts at six defined moments', body: 'A follow-up after a meeting, an invoice from logged time, drafted for your review, never sent.' },
   { title: 'Recall in the command bar', body: 'Ask “what did I decide about this?” and get the answer with a link to where you said it.' },
 ];
 

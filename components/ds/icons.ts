@@ -75,7 +75,7 @@ const draw = (parts: readonly GlyphPart[]) => parts.map(([tag, attrs]) => React.
  */
 function glyph(name: string) {
   const def = GLYPHS[name];
-  if (!def) throw new Error(`Icon glyph "${name}" is not in the generated table — run: node scripts/gen-icon-glyphs.mjs`);
+  if (!def) throw new Error(`Icon glyph "${name}" is not in the generated table. Run: node scripts/gen-icon-glyphs.mjs`);
   const Glyph = React.forwardRef<SVGSVGElement, AdapterProps>(function Glyph(
     // `strokeWidth` is named only to keep it OUT of `rest` — see above.
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -142,6 +142,10 @@ export const SquarePen = glyph("CheckSquareOffset"); // Tasks
 export const Calendar = glyph("CalendarBlank");
 export const CalendarDays = glyph("CalendarBlank");
 export const Target = glyph("Target");               // Goals
+/** Focus mode — a reticle, the one thing in view. Outline outside the mode, the filled cut inside
+ *  it (the top bar's toggle, components/shell/shell-parts.tsx). Not `Target` (that is Goals) and
+ *  not `FrameCorners` (that is "fit the canvas"): one glyph, one meaning. */
+export const FocusMode = glyph("CrosshairSimple");
 export const Flame = glyph("Fire");                  // Habits
 export const Folder = glyph("FolderNotchIcon");      // Projects
 export const FolderOpen = glyph("FolderNotchOpenIcon");
@@ -330,6 +334,9 @@ export const ModeFullPage = glyph("CornersOut");
 export const PanelsTopLeft = glyph("Layout");
 export const Paperclip = glyph("Paperclip");
 export const Pause = glyph("Pause");
+// The meeting recorder (MEETINGS_PLAN.md M1): record from the microphone, stop the recording.
+export const Mic = glyph("Microphone");
+export const CircleStop = glyph("StopCircle");
 export const PenTool = glyph("PenNib");
 export const PencilRuler = glyph("Ruler");
 export const Phone = glyph("Phone");
@@ -353,6 +360,9 @@ export const Smile = glyph("Smiley");
 export const Sparkles = glyph("Sparkle");
 export const Square = glyph("Square");
 export const SquareCheck = glyph("CheckSquare");
+// A form's single-choice and yes/no questions (components/forms/block-icons.ts).
+export const RadioButton = glyph("RadioButton");
+export const ToggleLeft = glyph("ToggleLeft");
 export const SquareCheckBig = glyph("CheckSquare");
 export const SquareFunction = glyph("MathOperations");
 export const SquarePlus = glyph("PlusSquare");

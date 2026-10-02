@@ -99,7 +99,7 @@ export function HabitHeat({ weeks, className }: {
               key={cell.date}
               // `title` is the whole tooltip: the grid is decorative in
               // aggregate (one aria-label above) and precise on hover.
-              title={cell.state === 'before' ? undefined : `${formatDay(cell.date)} — ${WORD[cell.state]}`}
+              title={cell.state === 'before' ? undefined : `${formatDay(cell.date)}, ${WORD[cell.state]}`}
               className={cn('size-2 shrink-0 rounded-[2px]', CELL[cell.state])}
             />
           ))}

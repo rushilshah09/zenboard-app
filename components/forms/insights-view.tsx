@@ -109,7 +109,7 @@ export function InsightsView({ form, responses }: {
 
   return (
     <div className="mx-auto w-full max-w-[880px] px-5 py-8 sm:px-8">
-      {/* The headline four. `Stat` renders "—" rather than "0" for null, which
+      {/* The headline four. `Stat` renders "–" rather than "0" for null, which
           is why medianTime passes null when nothing has been timed: a form
           whose responses predate timing did not take zero seconds. */}
       <div className="grid grid-cols-2 gap-6 border-b border-line-soft pb-6 sm:grid-cols-4">

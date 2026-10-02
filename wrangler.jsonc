@@ -11,6 +11,25 @@
   "images": {
     "binding": "IMAGES"
   },
+  // ── THE FREE INFERENCE WE ALREADY OWN (2026-09-27) ────────────────────────
+  //
+  // Workers AI gives this account 10,000 Neurons a DAY, free, for ever, on the plan Zenboard is
+  // already on. No second vendor, no key to rotate, no card. It is the only free option that needs
+  // no hardware: Ollama wants a machine running all day and the leaderboard ASR models (Canary,
+  // Parakeet, Qwen3-ASR) want a GPU — "free to self-host" quietly means "free if you own a GPU".
+  //
+  // WHAT THE BUDGET ACTUALLY BUYS, and why it decides the architecture:
+  //   · Whisper is 41.14 neurons per AUDIO MINUTE → ~243 minutes a day, across every user. Eight
+  //     half-hour meetings. Hopeless for 5,000 people.
+  //   · A 30-minute meeting is only ~5,000 TOKENS of transcript. Llama 3.2 1B reads that for ~12
+  //     neurons → ~800 meetings a day. Comfortable.
+  // Transcribing costs a hundred times what thinking costs. So audio → text happens on the
+  // visitor's own device (Whisper via transformers.js: free, unlimited, and the recording never
+  // leaves their laptop, which is the honest answer for a call under an NDA), and text → notes
+  // happens here. Groq's free tier (8 audio-hours a day) is the overflow valve, not the floor.
+  "ai": {
+    "binding": "AI"
+  },
   // Run the Worker next to the database, not next to the visitor.
   //
   // Supabase (hctwmcqftwpefnisrhac) is in AWS ap-northeast-2, Seoul. Without
@@ -22,5 +41,27 @@
   // nearest the visitor. Once live, responses carry `cf-placement: remote-…`.
   "placement": {
     "region": "aws:ap-northeast-2"
-  }
+  },
+
+  // ── LIVE ON zenboard.life ─────────────────────────────────────────────────
+  //
+  // Workers custom domains require the zone to live on Cloudflare; there is no
+  // way to point a CNAME at workers.dev and have TLS work. So the nameservers
+  // moved to Cloudflare at the registrar (Hostinger), and the .life registry
+  // has delegated to them since 2026-09-28. There were no MX records, so the
+  // move broke no email.
+  //
+  // With `custom_domain: true` wrangler creates the DNS record AND the
+  // certificate itself. Nothing to add by hand in the Cloudflare DNS tab.
+  //
+  // `workers_dev` MUST stay spelled out. Wrangler's default for it is "on only
+  // when there are no routes" (`getSubdomainValues`), so these two routes
+  // would silently switch the workers.dev address OFF — and calendar feed
+  // subscriptions, MCP clients, links in emails already sent and the smoke
+  // probe in `npm run ship` all live on that address.
+  "workers_dev": true,
+  "routes": [
+    { "pattern": "zenboard.life", "custom_domain": true },
+    { "pattern": "www.zenboard.life", "custom_domain": true }
+  ]
 }

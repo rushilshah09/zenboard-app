@@ -15,7 +15,20 @@ export interface ProgressProps {
 
 export function Progress({ value, label, state = "active", size = "sm", valueText, className }: ProgressProps) {
   const indeterminate = value === undefined;
-  const fill = state === "complete" ? "bg-success-500" : state === "error" ? "bg-danger-500" : "bg-berry-500";
+  // A FULL BAR IS COMPLETE, whether or not the caller remembered to say so. The user's own
+  // screenshot (2026-09-30) read "19/19 done" over a still-sweeping fill: §4.44's complete state
+  // existed, and every caller had to opt into it, so the one moment the bar exists to mark was
+  // the moment it failed to mark. An explicit `error` still wins.
+  const shown = state === "active" && !indeterminate && value! >= 100 ? "complete" : state;
+  // NO GRADIENT IN THE PRODUCT (user, 2026-09-30: "no gradient in this loader ui in product").
+  // This was the brand sweep (`--brand-sweep`), from a 2026-09-26 decision after Calendly that
+  // every proportional thing be cut from one gradient. Inside the WORKSPACE that reads as
+  // decoration on a thing you look at many times a day, and berry on every bar would also spend
+  // the one filled accent each view is allowed on a status rather than an action. So the fill is
+  // the INK — the same uncoloured weight SegmentedProgress's `ink` has always used — and colour
+  // arrives only when the bar has something to SAY: complete (success) or failed (danger). The
+  // marketing site keeps its gradients; they are pictures there, not controls.
+  const fill = shown === "complete" ? "bg-success-500" : shown === "error" ? "bg-danger-500" : "bg-ink-800";
   return (
     <div className={cn("flex w-full flex-col gap-1", className)}>
       {label && (
@@ -30,10 +43,14 @@ export function Progress({ value, label, state = "active", size = "sm", valueTex
         aria-valuemax={100}
         aria-valuenow={indeterminate ? undefined : Math.round(value!)}
         aria-valuetext={valueText ?? label}
-        className={cn("relative w-full overflow-hidden rounded-full bg-paper-5", size === "sm" ? "h-1" : "h-2")}
+        className={cn("relative w-full overflow-hidden rounded-full bg-paper-5", indeterminate && "zb-busy", size === "sm" ? "h-1" : "h-2")}
       >
         {indeterminate ? (
-          <span className={cn("absolute h-full w-[30%] rounded-full", fill, "animate-[indeterminate_1.2s_ease-in-out_infinite]")} />
+          // Linear, and its duration is the sweep's: a bar crossing a track is
+          // constant motion, and `ease-in-out` made it hesitate at both ends of
+          // every pass. The whole bar is held back too, so a fast wait shows
+          // nothing rather than a bar that appears and vanishes.
+          <span className={cn("absolute h-full w-[30%] rounded-full", fill, "animate-[indeterminate_var(--duration-sweep)_linear_infinite]")} />
         ) : (
           <span
             // Full width and slid into place, not resized: `width` re-runs layout on every
@@ -53,7 +70,7 @@ export function Progress({ value, label, state = "active", size = "sm", valueTex
 // are not statuses — a day's load is not success or danger, it is just how full
 // it is. They also keep such a bar out of the accent budget (one filled-accent
 // element per view), which a `berry` fill would spend.
-export type SegmentColor = "success" | "warning" | "danger" | "info" | "berry" | "ink" | "neutral";
+export type SegmentColor = "success" | "warning" | "danger" | "info" | "berry" | "ink" | "neutral" | "sweep";
 
 export interface SegmentedProgressProps {
   segments: { value: number; color: SegmentColor; label: string }[];
@@ -82,12 +99,25 @@ export function SegmentedProgress({ segments, total, totalLabel, className }: Se
   const COLORS: Record<SegmentColor, string> = {
     success: "bg-success-500", warning: "bg-warning-500", danger: "bg-danger-500",
     info: "bg-info-500", berry: "bg-berry-500", ink: "bg-ink-800", neutral: "bg-ink-400",
+    // RETIRED 2026-09-30 with the gradient (see `Progress` above). Kept as a name so a caller that
+    // still asks for `sweep` compiles and paints the ink rather than breaking; new code writes `ink`.
+    sweep: "bg-ink-800",
   };
   const sum = segments.reduce((n, s) => n + s.value, 0);
   const capacity = total != null && total > 0 ? total : null;
   // The track holds whichever is bigger, so an overrun has somewhere to go.
   const scale = (capacity != null ? Math.max(capacity, sum) : sum) || 1;
   const over = capacity != null && sum > capacity;
+
+  // SLID, NOT RESIZED (Emil: transform and opacity only). Each segment is a FULL-WIDTH bar pushed
+  // left until its right edge lands on its cumulative share, and they are painted back to front,
+  // so each one covers the tail of the one behind it. Nothing lays out on a frame, nothing is
+  // scaled (which would distort the rounded ends), and the leading edge that shows is the real
+  // rounded end of the frontmost bar — the same trick `Progress` above uses for one fill.
+  const stack = segments.map((s, i) => ({
+    ...s,
+    to: segments.slice(0, i + 1).reduce((n, x) => n + x.value, 0) / scale,
+  }));
 
   return (
     <div
@@ -100,16 +130,21 @@ export function SegmentedProgress({ segments, total, totalLabel, className }: Se
         ...segments.map((s) => `${s.label}: ${s.value}`),
         capacity != null ? `capacity: ${totalLabel ?? capacity}` : null,
       ].filter(Boolean).join(", ")}
-      className={cn("relative flex h-2 w-full gap-0.5 overflow-hidden rounded-full bg-paper-5", className)}
+      className={cn("relative h-2 w-full overflow-hidden rounded-full bg-paper-5", className)}
     >
-      {segments.map((s, i) => (
-        <span key={i} className={cn("h-full first:rounded-s-full last:rounded-e-full", COLORS[s.color])} style={{ width: `${(s.value / scale) * 100}%` }} />
+      {stack.slice().reverse().map((s, i) => (
+        <span
+          key={stack.length - 1 - i}
+          aria-hidden
+          className={cn("absolute inset-y-0 left-0 w-full rounded-full transition-transform duration-base ease-standard", COLORS[s.color])}
+          style={{ transform: `translateX(-${(1 - Math.min(1, s.to)) * 100}%)` }}
+        />
       ))}
       {over && (
         <>
-          {/* The overrun, washed rather than filled: §7C calls for a warning,
-              and the plan's notification diet (§7O) is explicit that ordinary
-              overload is a planning signal, not an alarm. */}
+          {/* The overrun, washed rather than filled: §7C calls for a warning, and the plan's
+              notification diet (§7O) is explicit that ordinary overload is a planning signal, not
+              an alarm. */}
           <span
             aria-hidden
             className="pointer-events-none absolute inset-y-0 bg-warning-500/25"

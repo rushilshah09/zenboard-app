@@ -422,7 +422,7 @@ export function blocksToText(blocks: Block[]): string {
         const items = b.items ?? [];
         if (!items.length) return '';
         return [
-          ...items.map((i) => `${i.description || 'Item'} — ${i.quantity} × ${i.unitAmount.toFixed(2)} = ${lineTotal(i).toFixed(2)}`),
+          ...items.map((i) => `${i.description || 'Item'} · ${i.quantity} × ${i.unitAmount.toFixed(2)} = ${lineTotal(i).toFixed(2)}`),
           `Total ${itemsTotal(items).toFixed(2)}`,
         ].join('\n');
       }
@@ -558,8 +558,8 @@ export const BLOCK_MENU: BlockMenuItem[] = [
   { type: 'collection', label: 'List view', hint: 'A database seen as a quiet list', keywords: 'database list view rows simple minimal', group: 'Database', db: 'list' },
   { type: 'collection', label: 'Calendar view', hint: 'A database seen on a calendar by date', keywords: 'database calendar view dates month schedule', group: 'Database', db: 'calendar' },
   { type: 'collection', label: 'Timeline view', hint: 'A database seen as bars across time', keywords: 'database timeline view gantt roadmap schedule dates bars plan', group: 'Database', db: 'timeline' },
-  { type: 'collection', label: 'Database — Inline', hint: 'A new database inside this page', keywords: 'database inline collection table rows data new', group: 'Database', db: 'inline' },
-  { type: 'collection', label: 'Database — Full page', hint: 'A new database on a page of its own', keywords: 'database full page collection new subpage', group: 'Database', db: 'fullpage' },
+  { type: 'collection', label: 'Inline database', hint: 'A new database inside this page', keywords: 'database inline collection table rows data new', group: 'Database', db: 'inline' },
+  { type: 'collection', label: 'Full-page database', hint: 'A new database on a page of its own', keywords: 'database full page collection new subpage', group: 'Database', db: 'fullpage' },
   { type: 'collection', label: 'Linked view of database', hint: 'A view of a database that already exists', keywords: 'linked view database source sync existing reference', group: 'Database', db: 'linked' },
   { type: 'lineitems', label: 'Line items', hint: 'Services and prices, with a total', keywords: 'line items price quote proposal estimate services money invoice cost', group: 'Advanced blocks' },
   { type: 'accept', label: 'Accept', hint: 'A client agrees by typing their name', keywords: 'accept sign signature agree approve proposal contract esign terms', group: 'Advanced blocks' },
@@ -608,7 +608,7 @@ function slashRank(m: BlockMenuItem, q: string): number {
   const label = m.label.toLowerCase();
   if (label === q) return 0;
   if (label.startsWith(q)) return 1;
-  if (label.split(/[\s—-]+/).some((w) => w.startsWith(q))) return 2;
+  if (label.split(/[\s\u00B7\u2014-]+/).some((w) => w.startsWith(q))) return 2;
   if (label.includes(q)) return 3;
   const keywords = m.keywords.toLowerCase();
   if (keywords.split(/\s+/).some((w) => w.startsWith(q))) return 4;

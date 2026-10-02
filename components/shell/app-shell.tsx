@@ -5,7 +5,7 @@
 // foot) beside a 44px header panel and a paper-3 content panel. Active nav =
 // warm selected wash + 2×25 berry edge bar. Below 820px the sidebar becomes a
 // drawer and a bottom tab bar appears.
-import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { TaskDetailDrawer } from '@/components/task-detail/task-detail-drawer';
 import { RealtimeSync } from '@/components/shell/realtime-sync';
@@ -17,12 +17,12 @@ import { NotificationsBell } from '@/components/shell/notifications-bell';
 import { CommandPalette } from '@/components/shell/command-palette';
 import { GlobalShortcuts } from '@/components/shell/keyboard-shortcuts';
 import { QuickCapture } from '@/components/shell/quick-capture';
+import { AskPanel, openAsk } from '@/components/ask/ask-panel';
 import { NewSpaceModal } from '@/components/shell/new-space-modal';
 import { setActiveSpace } from '@/lib/actions/spaces';
 import { isFocusMode, FOCUS_PATH, FOCUS_EXIT_PATH } from '@/lib/focus-mode';
 import { ViewWidthProvider } from '@/components/shell/view-width';
 import { ThemeToggleItem } from '@/components/shell/theme-toggle';
-import { SwitchTrack } from '@/components/ui/switch-track';
 import { initTaskSound } from '@/lib/sound';
 import {
   DEFAULT_SIDEBAR_MODE, SIDEBAR_KEY, SIDEBAR_SESSION_KEY,
@@ -32,21 +32,26 @@ import { useNarrow } from '@/lib/use-narrow';
 import * as RDlg from '@radix-ui/react-dialog';
 import { RAIL_MOTION, railFade } from '@/components/shell/rail-motion';
 import { usePathname, useRouter } from 'next/navigation';
-import { Calendar, Target, Folder, Users, MessageCircle, Landmark, Scroll, Forms, Video, Search, ChevronDown, ChevronRight, Plus, Settings, LogOut, Keyboard, SquarePen, House, Flame, PanelLeft, List, Power, Timer, UnfoldHorizontal, FoldHorizontal, MousePointerClick, Circle, type IconType } from "@/components/ds/icons";
-import { Icon, Logo, Button, IconButton, Tooltip, Toaster, CONTENT_PANE_SURFACE } from "@/components/ds/ui";
+import { Calendar, Scroll, Search, ChevronDown, ChevronRight, Plus, Settings, LogOut, Keyboard, SquarePen, PanelLeft, List, Power, Timer, Sparkles, type IconType } from "@/components/ds/icons";
+import { Icon, Logo, Button, IconButton, Toaster, CONTENT_PANE_SURFACE } from "@/components/ds/ui";
 import { FocusEdge } from '@/components/shell/focus-edge';
 import { BootSplash } from '@/components/shell/boot-splash';
 import { navigateWithTransition } from '@/lib/view-transition';
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuRadioGroup, DropdownMenuRadioItem } from "@/components/ds/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuCheckboxItem } from "@/components/ds/ui/dropdown-menu";
+import { NAV_MODULES, CORE_IDS } from '@/lib/nav-modules';
+import { SidebarPrefsProvider, useSidebarPrefs } from '@/components/shell/sidebar-prefs';
+import { MY_DAY, WORK, HORIZON, ALL, SIDEBAR_MODES, type NavDef } from '@/components/shell/nav-defs';
 import { FocusTimer } from '@/components/focus/focus-timer';
+import { RecorderHost, RecordingIndicator } from '@/components/meetings/recorder-host';
 import { GuestFocusImport } from '@/components/shell/guest-focus-import';
 import { PinnedRail } from '@/components/shell/pinned-rail';
 import type { Pin } from '@/lib/pins';
 import { createClient } from '@/lib/supabase/client';
 import { useChanged } from "@/lib/use-changed";
+import { navRowStyle, NavDivider, NAV_GLYPH_SLOT, TOOLBAR_ICON_BUTTON, ToolbarActions, FocusModeButton, SPLIT_FRAME, SPLIT_MAIN, SPLIT_MENU, WORKSPACE_AVATAR } from '@/components/shell/shell-parts';
 
 type SpaceLite = { id: string; name: string; emoji: string | null; color: string; tag: string | null };
-type NavDef = { id: string; label: string; icon: IconType; href: string; weight?: 'regular' | 'bold' | 'fill' };
+
 
 // Sidebar behaviour — always expanded, always collapsed, or collapsed-with-hover-
 // expand (Notion-style). The "Sidebar control" popover manages two independent
@@ -54,81 +59,33 @@ type NavDef = { id: string; label: string; icon: IconType; href: string; weight?
 // DEFAULT STARTUP mode (right-hand radio indicator, persisted, restored on every
 // launch). Current lives in sessionStorage (per-tab, survives in-tab reloads);
 // default lives in a COOKIE so the server can render it — see lib/sidebar-mode.ts.
-const SIDEBAR_MODES: { id: SidebarMode; label: string; icon: IconType }[] = [
-  { id: 'expanded', label: 'Expanded', icon: UnfoldHorizontal },
-  { id: 'collapsed', label: 'Collapsed', icon: FoldHorizontal },
-  { id: 'hover', label: 'Expand on hover', icon: MousePointerClick },
-];
+// SIDEBAR_MODES lives in components/shell/nav-defs.ts: Settings → Sidebar offers the
+// same three choices, and two spellings of one list is how a label drifts.
 // The mode vocabulary lives in lib/sidebar-mode.ts so the SERVER layout can read
 // it too — see the note there for why a cookie and not just localStorage.
 
-// Nav groups — MASTER_PRODUCT_PLAN §6.1: three hat-shaped groups (no section
-// labels, just hairline dividers per the approved design). Route ids/hrefs are
-// stable; only display labels evolve (Horizon → Goals, Money → Finance,
-// Documents → Docs) so existing links, shortcuts and the palette keep working.
-// No Inbox row: the Inbox is the Tasks rail's first view, and a nav item one
-// group above it made the same list look like two different places. Capture (C)
-// and "g i" both still land in it — inside Tasks, where triaging it happens.
-const MY_DAY: NavDef[] = [
-  { id: 'today', label: 'Home', icon: House, href: '/today' },
-  { id: 'tasks', label: 'Tasks', icon: SquarePen, href: '/tasks' },
-  { id: 'calendar', label: 'Calendar', icon: Calendar, href: '/calendar' },
-];
-const WORK: NavDef[] = [
-  { id: 'projects', label: 'Projects', icon: Folder, href: '/projects' },
-  { id: 'clients', label: 'Clients', icon: Users, href: '/clients' },
-  // Beside Clients because that is who it is WITH: a conversation per project, shared with the
-  // client through its portal (CHAT_PLAN.md).
-  { id: 'messages', label: 'Messages', icon: MessageCircle, href: '/messages' },
-  { id: 'forms', label: 'Forms', icon: Forms, href: '/forms' },
-  // Content sits between the work you do FOR people and the knowledge you keep:
-  // it is the studio's own output, and PRODUCT_THINKING §9 is explicit that an
-  // agency's own content is not a second tool.
-  { id: 'content', label: 'Content', icon: Video, href: '/content' },
-  { id: 'documents', label: 'Docs', icon: Scroll, href: '/documents' },
-  { id: 'money', label: 'Finance', icon: Landmark, href: '/money' },
-];
-// Goals (where you are going) · Habits (what you repeat).
-//
-// MEMORY IS HIDDEN, NOT DELETED (user, 2026-09-07: "remove memory no need right
-// now"). The row below is the ONE place the module was reachable from, so
-// commenting it out takes Memory off the product surface while `/memory`, the
-// `components/memory/*` module, `lib/memory*` and the applied 0029 migration all
-// stay exactly as they are. Restoring it is this one line plus `Brain` back
-// in the icon import above.
-const HORIZON: NavDef[] = [
-  { id: 'horizon', label: 'Goals', icon: Target, href: '/horizon' },
-  { id: 'habits', label: 'Habits', icon: Flame, href: '/habits' },
-  // { id: 'memory', label: 'Memory', icon: Brain, href: '/memory' },
-];
-const ALL = [...MY_DAY, ...WORK, ...HORIZON];
+// The rail's rows — MY_DAY / WORK / HORIZON / ALL — are DERIVED from the one
+// module catalogue in components/shell/nav-defs.ts (which carries the grouping
+// rationale, the Inbox/Messages/Content placement notes, and how to restore
+// Memory). They were twelve hand-written rows here, and the settings pane would
+// have needed a thirteenth copy; a `Record<NavModuleId, …>` there now makes a
+// module without a glyph a compile error instead of a blank row.
 
 const useIsMobile = () => useNarrow(820);
 
-// THE nav row — one geometry, one selected state, for every row in the sidebar.
-//
-// The module rows and the project rows underneath them had the SAME 12-property
-// style object written out twice, which is how a list and the list below it end
-// up disagreeing about what "selected" looks like. One function now answers it
-// for both, so a change to the selected state cannot reach one and miss the other.
-function navRowStyle(active: boolean, collapsed?: boolean): React.CSSProperties {
-  return {
-    position: 'relative', display: 'flex', alignItems: 'center', gap: 'var(--nav-gap, 8px)', height: 'var(--row-nav, 32px)',
-    // ONE geometry in both states (components/shell/rail-motion.ts). The row
-    // stretches to its column, so in the 50px rail it is the 32px square by
-    // construction (no `34`, no literal width), and only its inset changes,
-    // gliding with the panel instead of the row re-centring on frame 0.
-    flexShrink: 0,
-    padding: collapsed ? '0 var(--nav-rail-px, 6px)' : '0 var(--nav-px, 8px)', justifyContent: 'flex-start',
-    // ONE radius, both states. It was 6 at rest and 8 when selected, so the
-    // row changed shape as you moved through the list.
-    borderRadius: 'var(--r-sm, 6px)', textDecoration: 'none',
-    background: active ? 'var(--color-surface-selected)' : undefined,
-    color: active ? 'var(--color-ink-900)' : 'var(--color-text-secondary)',
-    fontSize: 14, lineHeight: 1, fontWeight: active ? 500 : 400,
-    transition: `padding ${RAIL_MOTION}, background var(--duration-fast) var(--ease-hover), color var(--duration-fast) var(--ease-hover)`,
-  };
+// Browser-only sidebar mode, for useSyncExternalStore. Precedence matches the
+// effect this replaced: this tab's own switch (sessionStorage) over an old
+// install's default (localStorage) over the cookie the server already painted.
+function readBrowserSidebarMode(fallback: SidebarMode): SidebarMode {
+  try { const s = window.sessionStorage.getItem(SIDEBAR_SESSION_KEY); if (isSidebarMode(s)) return s; } catch { /* storage unavailable */ }
+  try { const l = window.localStorage.getItem(SIDEBAR_KEY); if (isSidebarMode(l)) return l; } catch { /* storage unavailable */ }
+  return fallback;
 }
+// Read once after hydration and never pushed: another tab changing ITS sidebar
+// must not reach into this one, which is what the effect's one-shot read did too.
+const noSubscribe = () => () => {};
+
+// THE nav row's geometry lives in shell-parts.tsx (`navRowStyle`), shared with the website's demo.
 
 // THE selected-nav icon weight. Selected rows render the FILLED cut of the same
 // Phosphor glyph; everything else renders the outline.
@@ -163,12 +120,6 @@ function NavItem({ def, active, onClick, collapsed }: { def: NavDef; active: boo
   );
 }
 
-// Group separator — spans the full sidebar width (negative margin cancels the
-// nav's horizontal padding), so it runs edge to edge with no side gaps.
-function NavDivider() {
-  return <div aria-hidden style={{ height: 1, background: 'var(--color-elements-1)', flexShrink: 0, margin: '4px calc(-1 * var(--nav-inset, 8px))' }} />;
-}
-
 // The sidebar mode picker.
 //
 // ── ONE CONTROL PER ROW (2026-09-08, user: "remove this radio button") ──────
@@ -196,6 +147,11 @@ function SidebarControl({ mode, onModeChange, collapsed }: {
   onModeChange: (m: SidebarMode) => void;
   collapsed: boolean;
 }) {
+  // The same state Settings → Sidebar edits (components/shell/sidebar-prefs.tsx),
+  // so a tick here and a switch there can never disagree.
+  const prefs = useSidebarPrefs();
+  const router = useRouter();
+  const isOn = (id: string) => prefs?.isOn(id) ?? true;
   return (
     <div style={{ padding: '6px var(--nav-inset, 8px) 0', display: 'flex' }}>
       <DropdownMenu>
@@ -210,7 +166,7 @@ function SidebarControl({ mode, onModeChange, collapsed }: {
           >
             <Icon icon={PanelLeft} size={20} style={{ color: 'var(--color-text-tertiary)', flexShrink: 0 }} />
             <span style={{ flex: 1, minWidth: 0, fontSize: 14, lineHeight: 1, color: 'var(--color-text-tertiary)', textAlign: 'left', whiteSpace: 'nowrap', ...railFade(collapsed) }}>Sidebar control</span>
-            <Icon icon={ChevronRight} size={20} style={{ color: 'var(--color-icon-quiet)', flexShrink: 0, ...railFade(collapsed) }} />
+            <span style={{ ...NAV_GLYPH_SLOT, ...railFade(collapsed) }}><Icon icon={ChevronRight} size={16} style={{ color: 'var(--color-icon-quiet)' }} /></span>
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent side="top" align="start" sideOffset={6} className="w-[230px]">
@@ -223,6 +179,44 @@ function SidebarControl({ mode, onModeChange, collapsed }: {
               </DropdownMenuRadioItem>
             ))}
           </DropdownMenuRadioGroup>
+
+          {/* MODULES — the answer to "twelve front doors, none of them yours".
+              Onboarding already asks what someone is here for; this is where
+              that answer stops being decoration and where it can be changed
+              later, which matters more: what a freelancer needs in month six is
+              not what they needed on day one.
+
+              Hiding is a NAV decision only. Every route, deep link, pin and ⌘K
+              entry keeps working, because a module you switched off last month
+              still owns the invoice somebody just emailed you a link to. */}
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel>Modules</DropdownMenuLabel>
+          {NAV_MODULES.map((m) => (
+            <DropdownMenuCheckboxItem
+              key={m.id}
+              checked={isOn(m.id)}
+              // The spine cannot be switched off: a sidebar must always be able
+              // to get you home. Disabled rather than hidden so the rule is
+              // legible — you can see that Home/Tasks/Calendar/Docs are fixed
+              // rather than wondering why they are missing from the list.
+              disabled={CORE_IDS.includes(m.id)}
+              onCheckedChange={(v) => prefs?.toggle(m.id, v === true)}
+              // Radix closes on select; a settings list you have to reopen for
+              // every row is the wrong shape for turning three things on.
+              onSelect={(e) => e.preventDefault()}
+            >
+              <span className="flex-1 truncate">{m.label}</span>
+            </DropdownMenuCheckboxItem>
+          ))}
+          {/* The quick list above is for the one-tick change; the full screen —
+              every module with what it is for, the sets, the behaviour — lives in
+              Settings. Linear draws the same line between its sidebar menu and its
+              Customize screen. */}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={() => router.push('/settings?section=sidebar')}>
+            <Icon icon={Settings} size={16} />
+            <span className="flex-1 truncate">Customize sidebar</span>
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
@@ -232,6 +226,11 @@ function SidebarControl({ mode, onModeChange, collapsed }: {
 function Sidebar({ name, email, spaces, pins, current, activeSpaceId, onNavigate, mode, onModeChange, collapsed, floating }: {
   name: string; email: string; spaces: SpaceLite[]; pins: Pin[]; current: string; activeSpaceId?: string; onNavigate?: () => void; mode?: SidebarMode; onModeChange?: (m: SidebarMode) => void; collapsed?: boolean; floating?: boolean;
 }) {
+  // Which modules are in the rail. No provider (a harness rendering the sidebar
+  // on its own) means no preference, which means ALL — never none; see
+  // lib/nav-modules.ts for why that distinction is load-bearing.
+  const prefs = useSidebarPrefs();
+  const shows = (m: NavDef) => prefs?.isOn(m.id) ?? true;
   const [activeId, setActiveId] = useState(activeSpaceId ?? spaces[0]?.id);
   const [newSpace, setNewSpace] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -271,12 +270,12 @@ function Sidebar({ name, email, spaces, pins, current, activeSpaceId, onNavigate
           className="zb-press"
           style={{ width: collapsed ? 'var(--row-nav)' : 'auto', height: 'var(--row-nav)', flexShrink: 0, display: 'flex', alignItems: 'center', padding: 0, overflow: 'visible', border: 'none', background: 'transparent', borderRadius: 'var(--r-sm)', cursor: collapsed ? 'pointer' : 'default', pointerEvents: collapsed ? undefined : 'none' }}
         >
-          <Logo height={20} style={{ color: 'var(--ink)', marginLeft: collapsed ? 6 : 4, transition: `margin-left ${RAIL_MOTION}` }} wordmarkStyle={railFade(collapsed)} />
+          <Logo height={20} style={{ color: 'var(--ink)', marginLeft: collapsed ? 'var(--nav-rail-px, 6px)' : 'var(--nav-px, 8px)', transition: `margin-left ${RAIL_MOTION}` }} wordmarkStyle={railFade(collapsed)} />
         </button>
         {onModeChange && (
           <button onClick={() => onModeChange('collapsed')} aria-label="Collapse sidebar" title="Collapse sidebar" className="zb-nav-item"
             tabIndex={collapsed ? -1 : undefined} aria-hidden={collapsed || undefined}
-            style={{ marginLeft: 'auto', flexShrink: 0, width: 32, height: 32, display: 'grid', placeItems: 'center', border: 'none', background: 'transparent', borderRadius: 6, cursor: 'pointer', color: 'var(--color-icon-default)', pointerEvents: collapsed ? 'none' : undefined, ...railFade(collapsed, 'background var(--duration-fast) var(--ease-hover), transform var(--duration-fast) var(--ease-out-quiet)') }}>
+            style={{ ...TOOLBAR_ICON_BUTTON, marginLeft: 'auto', pointerEvents: collapsed ? 'none' : undefined, ...railFade(collapsed, 'background var(--duration-fast) var(--ease-hover), transform var(--duration-fast) var(--ease-out-quiet)') }}>
             <Icon icon={PanelLeft} size={16} weight="regular" />
           </button>
         )}
@@ -284,12 +283,16 @@ function Sidebar({ name, email, spaces, pins, current, activeSpaceId, onNavigate
       <div aria-hidden style={{ height: 1, background: 'var(--color-elements-1)', flexShrink: 0 }} />
 
       {/* Nav */}
-      <nav style={{ padding: 'var(--nav-inset, 8px)', display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 'var(--nav-row-gap, 2px)', flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
-        {MY_DAY.map((m) => <NavItem key={m.id} def={m} active={current === m.id} onClick={onNavigate} collapsed={collapsed} />)}
-        <NavDivider />
-        {WORK.map((m) => <NavItem key={m.id} def={m} active={current === m.id} onClick={onNavigate} collapsed={collapsed} />)}
-        <NavDivider />
-        {HORIZON.map((m) => <NavItem key={m.id} def={m} active={current === m.id} onClick={onNavigate} collapsed={collapsed} />)}
+      <nav style={{ padding: 'var(--nav-inset, 8px)', display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 'var(--nav-row-gap, 6px)', flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+        {/* A GROUP THAT LOST EVERY ROW LOSES ITS DIVIDER TOO. An individual turns
+            off Projects, Clients, Messages, Forms, Content and Finance, and
+            without this the rail draws two hairlines with nothing between them —
+            the emptiness of a group is exactly what a divider is there to deny. */}
+        {MY_DAY.filter(shows).map((m) => <NavItem key={m.id} def={m} active={current === m.id} onClick={onNavigate} collapsed={collapsed} />)}
+        {WORK.some(shows) && <NavDivider />}
+        {WORK.filter(shows).map((m) => <NavItem key={m.id} def={m} active={current === m.id} onClick={onNavigate} collapsed={collapsed} />)}
+        {HORIZON.some(shows) && <NavDivider />}
+        {HORIZON.filter(shows).map((m) => <NavItem key={m.id} def={m} active={current === m.id} onClick={onNavigate} collapsed={collapsed} />)}
         {/* PINNED — was a hard-coded list of active projects. A project is not a
             special kind of record: what belongs one click away is whatever you
             are living in, which is as often a brief or an invoice. The rail
@@ -327,12 +330,12 @@ function Sidebar({ name, email, spaces, pins, current, activeSpaceId, onNavigate
         >
           {/* One button in both states: the avatar sits 13px in either way, so only
               the name and the caret fade (components/shell/rail-motion.ts). */}
-          <div style={{ borderTop: '1px solid var(--color-elements-1)', marginTop: 8, padding: 8, display: 'flex' }}>
+          <div style={{ borderTop: '1px solid var(--color-elements-1)', marginTop: 'var(--nav-row-gap, 6px)', padding: 'var(--nav-inset, 8px)', display: 'flex' }}>
             <DropdownMenuTrigger asChild>
-              <button aria-label={collapsed ? name : undefined} title={collapsed ? name : undefined} className="zb-nav-item" style={{ display: 'flex', alignItems: 'center', gap: 4, padding: 4, borderRadius: 6, background: menuOpen ? 'var(--hover)' : 'transparent', border: 'none', cursor: 'pointer', width: '100%', overflow: 'hidden' }}>
-                <div style={{ width: 24, height: 24, borderRadius: 6, background: 'var(--color-paper-5)', color: 'var(--color-ink-700)', display: 'grid', placeItems: 'center', fontSize: 14, fontWeight: 400, flexShrink: 0 }}>{[...avatar][0]}</div>
+              <button aria-label={collapsed ? name : undefined} title={collapsed ? name : undefined} className="zb-nav-item" style={{ ...navRowStyle(false, collapsed), width: '100%', background: menuOpen ? 'var(--hover)' : 'transparent', border: 'none', cursor: 'pointer', overflow: 'hidden' }}>
+                <span style={NAV_GLYPH_SLOT}><span style={WORKSPACE_AVATAR}>{[...avatar][0]}</span></span>
                 <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 400, color: 'var(--color-ink-700)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left', ...railFade(collapsed) }} title={email}>{name}&apos;s workspace</span>
-                <Icon icon={ChevronDown} size={20} style={{ color: 'var(--color-icon-quiet)', flexShrink: 0, transform: menuOpen ? 'rotate(180deg)' : 'none', ...railFade(collapsed, 'transform var(--duration-base) var(--ease-standard)') }} />
+                <span style={{ ...NAV_GLYPH_SLOT, ...railFade(collapsed) }}><Icon icon={ChevronDown} size={16} style={{ color: 'var(--color-icon-quiet)', transform: menuOpen ? 'rotate(180deg)' : 'none', transition: 'transform var(--duration-base) var(--ease-standard)' }} /></span>
               </button>
             </DropdownMenuTrigger>
           </div>
@@ -401,12 +404,6 @@ function Sidebar({ name, email, spaces, pins, current, activeSpaceId, onNavigate
   );
 }
 
-// Vertical hairline between the topbar's right-cluster controls (Figma Line 7:
-// 12px tall, elements-1).
-function TopBarDivider() {
-  return <span aria-hidden style={{ width: 1, height: 12, background: 'var(--color-elements-1)', flexShrink: 0 }} />;
-}
-
 // The "+ New" split control (DS v2): main half fires quick capture, the chevron
 // half opens a small create menu.
 function NewSplit() {
@@ -422,11 +419,10 @@ function NewSplit() {
           every single screen ("+ New" over "+ New invoice"). One filled accent
           is visible at a time (constitution), and the one that earns it is the
           page's action, not the permanent one. */}
-      <span style={{ display: 'inline-flex', alignItems: 'stretch', background: 'transparent', border: '1px solid var(--color-border-strong)', borderRadius: 8, overflow: 'hidden' }}>
-        <button onClick={() => window.dispatchEvent(new Event('zb:capture'))} className="zb-nav-item zb-press"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '6px 8px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--ink)' }}>
+      <span style={SPLIT_FRAME}>
+        <button onClick={() => window.dispatchEvent(new Event('zb:capture'))} className="zb-nav-item zb-press" style={SPLIT_MAIN}>
           <Icon icon={Plus} size={16} style={{ flexShrink: 0 }} />
-          <span style={{ fontSize: 14, lineHeight: '16px', fontWeight: 400, letterSpacing: '-0.084px', whiteSpace: 'nowrap' }}>New</span>
+          <span>New</span>
         </button>
         {/* Only the chevron half opens the menu; the main half is a direct
             action. Radix owns the half that opens — it brings Escape, roving
@@ -436,8 +432,7 @@ function NewSplit() {
             an absolutely-positioned one can. */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button aria-label="New options" className="zb-nav-item zb-press"
-              style={{ display: 'inline-flex', alignItems: 'center', padding: '6px 8px', border: 'none', borderLeft: '1px solid var(--color-border-strong)', background: 'transparent', cursor: 'pointer', color: 'var(--ink)' }}>
+            <button aria-label="New options" className="zb-nav-item zb-press" style={SPLIT_MENU}>
               <Icon icon={ChevronDown} size={16} />
             </button>
           </DropdownMenuTrigger>
@@ -496,10 +491,10 @@ function TopBar({ current, isMobile, onOpenNav, focus = false }: { current: stri
       {isMobile ? (
         <IconButton icon={<Icon icon={List} size={20} />} label="Open navigation" onClick={onOpenNav} />
       ) : (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, padding: 'var(--app-header-lead-px, 4px)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--nav-gap, 8px)', minWidth: 0, padding: 'var(--app-header-lead-px, 4px)' }}>
           {/* 16, not 20: every other icon in this row is 16 and the label
               beside it is 14px text, so a 20px glyph out-weighed the word it
-              belongs to. PageHeader's lead was already 16 — this was the row's
+              belongs to. PageHeader's lead was already 16: this was the row's
               one outlier. */}
           {mod && <Icon icon={mod.icon} size={16} weight={mod.weight ?? 'regular'} style={{ color: 'var(--color-text-tertiary)' }} />}
           <span style={{ fontSize: 14, lineHeight: 1, fontWeight: 400, color: 'var(--color-text-tertiary)', textTransform: fallbackLabel ? 'capitalize' : 'none', whiteSpace: 'nowrap' }}>{mod?.label ?? fallbackLabel}</span>
@@ -508,47 +503,45 @@ function TopBar({ current, isMobile, onOpenNav, focus = false }: { current: stri
 
       <div style={{ flex: 1 }} />
 
-      {/* Right cluster (Figma 455:11812) — search · power · bell · focus · new,
-          separated by 12px hairlines. */}
+      {/* Right cluster (Figma 455:11812): search · plan · bell · ask · timer · focus · new, with a
+          hairline between every one (`ToolbarActions` places them). */}
       {/* Same inset as the lead, so the row's two ends sit on one grid.
           Only the lead used to carry it: content began 16px from the left
           and ended 12px from the right, on every screen. */}
       {/* The cluster carries a view-transition name so that entering focus MOVES it rather than
-          cross-fading it: in focus it is one control, here it is six, and the browser animates
+          cross-fading it: in focus it is one control, here it is seven, and the browser animates
           the box between those two states instead of painting both on top of each other. */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingInline: 'var(--app-header-lead-px, 4px)', viewTransitionName: 'zb-topbar-actions' }}>
-        {/* Compact icon button — opens the command palette (⌘K). A persistent
-            search field ate the header; the icon keeps chrome minimal and
-            matches its power/bell/focus neighbours. */}
-        <button aria-label="Search" title="Search (⌘K)" onClick={() => window.dispatchEvent(new Event('zb:open-command'))} className="zb-nav-item zb-press"
-          style={{ width: 28, height: 28, display: 'grid', placeItems: 'center', background: 'transparent', border: 'none', borderRadius: 8, cursor: 'pointer', color: 'var(--color-icon-default)', flexShrink: 0 }}>
+      <ToolbarActions style={{ paddingInline: 'var(--app-header-lead-px, 4px)', viewTransitionName: 'zb-topbar-actions' }}>
+        {/* Opens the command palette (⌘K). */}
+        <button aria-label="Search" title="Search (⌘K)" onClick={() => window.dispatchEvent(new Event('zb:open-command'))} className="zb-nav-item zb-press" style={TOOLBAR_ICON_BUTTON}>
           <Icon icon={Search} size={16} />
         </button>
-
-        {!isMobile && <TopBarDivider />}
-
         {!isMobile && (() => { const evening = new Date().getHours() >= 17; return (
-          <Link href={`/rituals?type=${evening ? 'daily_shutdown' : 'daily_plan'}`} className="zb-nav-item" aria-label={evening ? 'Shutdown' : 'Plan day'} title={evening ? 'Shutdown' : 'Plan day'}
-            style={{ width: 28, height: 28, display: 'grid', placeItems: 'center', borderRadius: 6, color: 'var(--color-icon-default)', textDecoration: 'none', flexShrink: 0 }}>
+          <Link href={`/rituals?type=${evening ? 'daily_shutdown' : 'daily_plan'}`} className="zb-nav-item" aria-label={evening ? 'Shutdown' : 'Plan day'} title={evening ? 'Shutdown' : 'Plan day'} style={TOOLBAR_ICON_BUTTON}>
             <Icon icon={Power} size={16} />
           </Link>
         ); })()}
-
-        {!isMobile && <TopBarDivider />}
-
         {!isMobile && <NotificationsBell />}
-
-        {!isMobile && <TopBarDivider />}
-
+        {!isMobile && <AskButton />}
         {!isMobile && <FocusTimerButton />}
-
+        {/* A meeting recording in progress: the time, and the way back to it. Nothing otherwise. */}
+        {!isMobile && <RecordingIndicator />}
         {!isMobile && <FocusToggle />}
-
-        {!isMobile && <TopBarDivider />}
-
         <NewSplit />
-      </div>
+      </ToolbarActions>
     </div>
+  );
+}
+
+// Launcher for Ask. The same quiet ghost icon as its neighbours — an assistant that arrived
+// wearing a filled accent button would be the loudest thing in a 44px row that also holds your
+// notifications and a running meeting, and the rule is one filled-accent element per view.
+function AskButton() {
+  return (
+    <button aria-label="Ask" title="Ask · A" onClick={() => openAsk()}
+      className="zb-nav-item zb-press" style={TOOLBAR_ICON_BUTTON}>
+      <Icon icon={Sparkles} size={16} />
+    </button>
   );
 }
 
@@ -557,8 +550,7 @@ function TopBar({ current, isMobile, onOpenNav, focus = false }: { current: stri
 function FocusTimerButton() {
   return (
     <button aria-label="Focus timer" title="Focus timer" onClick={() => window.dispatchEvent(new Event('zb:toggle-focus'))}
-      className="zb-nav-item zb-press"
-      style={{ width: 28, height: 28, display: 'grid', placeItems: 'center', background: 'transparent', border: 'none', borderRadius: 8, cursor: 'pointer', color: 'var(--color-icon-default)', flexShrink: 0 }}>
+      className="zb-nav-item zb-press" style={TOOLBAR_ICON_BUTTON}>
       <Icon icon={Timer} size={16} />
     </button>
   );
@@ -576,33 +568,18 @@ function FocusToggle() {
     navigateWithTransition(() => router.push(dest), () => window.location.pathname === dest);
   }, [on, router]);
 
-  // Focus mode is a toggle, so it wears the ONE toggle language — the DS switch (accent on /
-  // recessed off). What it gained is what the switch could never say on its own: the glyph beside
-  // it STATES the mode (a filled circle you are inside of, a hollow one you are not), the label
-  // says which way the press goes, and the whole control is the seed the ambient edge light grows
-  // from (`FocusEdge`). The icon swap is Emil's contextual crossfade — both glyphs in the DOM, one
-  // absolutely positioned, scale 0.25→1 with a 4px blur — so the change reads as one mark
-  // transforming rather than two marks swapping.
-  return (
-    <Tooltip content={on ? 'Leave focus mode · F' : 'Focus mode · F'}>
-      <button onClick={go} role="switch" aria-checked={on} aria-label="Focus mode" className="zb-nav-item zb-press zb-focus-toggle" data-on={on || undefined}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 8, height: 28, padding: '6px 10px', borderRadius: 8, border: 'none', background: 'transparent', cursor: 'pointer' }}>
-        <span aria-hidden className="zb-focus-glyph">
-          <Icon icon={Circle} size={14} className="zb-focus-glyph-off" />
-          <Icon icon={Circle} size={14} weight="fill" className="zb-focus-glyph-on" />
-        </span>
-        <span style={{ fontSize: 14, lineHeight: 1, fontWeight: 400, color: 'var(--color-ink-700)' }}>Focus</span>
-        <SwitchTrack on={on} size="sm" />
-      </button>
-    </Tooltip>
-  );
+  // A toggle BUTTON, in Linear's grammar (`FocusModeButton`, shell-parts.tsx): the glyph and the
+  // word, pressed while the mode is on. Since 2026-09-28 it had been a labelled sliding switch
+  // ("Off / Focus / on"), which the user asked to replace on 2026-10-02. The mode's loud signal is
+  // the room's edge light (`FocusEdge`), so the control that starts it can stay quiet.
+  return <FocusModeButton on={on} onToggle={go} />;
 }
 
 function BottomTabs({ current, onOpenNav }: { current: string; onOpenNav: () => void }) {
   // Mobile carries the My Day hat (capture · today · plan) — everything else via More.
   const tabs = MY_DAY;
   return (
-    <nav style={{ display: 'flex', gap: 2, flexShrink: 0, padding: 4, background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 'var(--r-xl)' }}>
+    <nav style={{ display: 'flex', gap: 2, flexShrink: 0, padding: 4, background: 'var(--paper)', border: '1px solid var(--color-border-panel)', borderRadius: 'var(--r-lg)' }}>
       {tabs.map((t) => {
         const on = current === t.id;
         return (
@@ -620,12 +597,17 @@ function BottomTabs({ current, onOpenNav }: { current: string; onOpenNav: () => 
   );
 }
 
-export function AppShell({ name, email, spaces, pins, activeSpaceId, timezone = null, initialSidebarMode = DEFAULT_SIDEBAR_MODE, children }: {
+export function AppShell({ name, email, spaces, pins, activeSpaceId, timezone = null, initialSidebarMode = DEFAULT_SIDEBAR_MODE, enabledModules = null, children }: {
   name: string; email: string; spaces: SpaceLite[]; pins: Pin[]; activeSpaceId?: string;
   /** The zone stored on the profile; <TimezoneSync> corrects it when it's wrong. */
   timezone?: string | null;
   /** Read from the cookie by the layout, so the first paint is already right. */
   initialSidebarMode?: SidebarMode;
+  /** Enabled module ids from the profile, or null for an account that has never
+   *  configured them — which renders every module, exactly as before the setting
+   *  existed. Read on the SERVER for the same reason the sidebar mode is: the
+   *  rail must not paint twelve rows and drop six a frame later. */
+  enabledModules?: string[] | null;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -648,8 +630,19 @@ export function AppShell({ name, email, spaces, pins, activeSpaceId, timezone = 
   // Seeded from the server's cookie read, so the FIRST paint already has the
   // right sidebar. These used to start 'expanded' and be corrected by an effect,
   // which reflowed the page one frame in for anyone not on the default.
-  const [mode, setMode] = useState<SidebarMode>(initialSidebarMode);
+  // What the browser alone knows — a per-tab switch (sessionStorage) and an old
+  // install's default (localStorage) — read through useSyncExternalStore rather
+  // than copied into state from an effect. Storage IS an external store: the
+  // server snapshot is the cookie's mode, so hydration matches the server, and
+  // React re-renders with the browser's value straight after — no mismatch, no
+  // setState-in-an-effect (react-hooks/set-state-in-effect flagged the old
+  // version, which cascaded a second render on every page load).
+  const storedMode = useSyncExternalStore(noSubscribe, () => readBrowserSidebarMode(initialSidebarMode), () => initialSidebarMode);
+  // A choice made in THIS render tree outranks what storage said at load.
+  const [picked, setPicked] = useState<SidebarMode | null>(null);
+  const mode = picked ?? storedMode;
   const [hovering, setHovering] = useState(false);
+
 
   // Preload/unlock the task-completion sound on the first user interaction so it
   // plays instantly (and isn't blocked by the browser autoplay policy).
@@ -662,21 +655,15 @@ export function AppShell({ name, email, spaces, pins, activeSpaceId, timezone = 
   //   · a localStorage default from before the cookie existed, for an install
   //     that has not switched modes since.
   useEffect(() => {
+    // An older install whose default lived only in localStorage: mirror it
+    // forward into the cookie so the NEXT server render paints it first time.
+    // A write to an external system — which is what an effect is for; the
+    // reading half moved to useSyncExternalStore above.
     try {
-      const saved = window.localStorage.getItem(SIDEBAR_KEY);
-      if (isSidebarMode(saved) && saved !== initialSidebarMode) {
-        // Older install: adopt it and mirror it forward so the next render is
-        // server-correct too.
-        setMode(saved);
-        writeSidebarCookie(saved);
-      }
+      const legacy = window.localStorage.getItem(SIDEBAR_KEY);
+      if (isSidebarMode(legacy) && legacy !== initialSidebarMode) writeSidebarCookie(legacy);
     } catch { /* storage unavailable */ }
-    try {
-      const session = window.sessionStorage.getItem(SIDEBAR_SESSION_KEY);
-      if (isSidebarMode(session)) setMode(session);
-    } catch { /* storage unavailable */ }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initialSidebarMode]);
   /**
    * Change the sidebar mode — and KEEP it.
    *
@@ -694,7 +681,7 @@ export function AppShell({ name, email, spaces, pins, activeSpaceId, timezone = 
    * cookie is cleared.
    */
   const changeMode = (m: SidebarMode) => {
-    setMode(m);
+    setPicked(m);
     writeSidebarCookie(m);
     try { window.sessionStorage.setItem(SIDEBAR_SESSION_KEY, m); } catch { /* storage unavailable */ }
     try { window.localStorage.setItem(SIDEBAR_KEY, m); } catch { /* storage unavailable */ }
@@ -704,12 +691,26 @@ export function AppShell({ name, email, spaces, pins, activeSpaceId, timezone = 
   const collapsed = mode === 'collapsed' || (mode === 'hover' && !hovering);
 
   return (
+    // Module visibility + the sidebar mode, shared by the rail, its popover and
+    // Settings → Sidebar (components/shell/sidebar-prefs.tsx). Provided ONCE, here,
+    // so the settings pane is a view of the same state rather than a copy of it.
+    <SidebarPrefsProvider initialModules={enabledModules} mode={mode} onModeChange={changeMode}>
     <ViewWidthProvider>
-      {/* Figma HIfi shell frame (node 467:2295): canvas bg, 4px outer margin,
-          4px gutters between the floating panels. */}
+      {/* Figma HIfi shell frame (node 467:2295): 4px outer margin, 4px gutters
+          between the floating panels.
+          THE GROUND IS THE DESK (2026-09-25). This shell has always been panels
+          floating on a ground — and the ground was `--canvas`, which measures
+          **1.04:1** against the white panels lying on it in light. The
+          architecture was right and invisible: nothing looked like it was
+          floating because nothing was distinguishable from what it floated on.
+          `--color-surface-desk` is one rung lower (Notion's #E9E9E7 in light,
+          #191919 in dark — both already in the palette), which is what makes the
+          sidebar, the header and the page read as separate objects. It is the
+          same ground the sign-up and onboarding sheets lie on, so the product
+          and its own first screens agree. */}
       <BootSplash />
       <FocusEdge on={focusMode} />
-      <div style={{ height: '100dvh', display: 'flex', gap: 'var(--app-gutter)', padding: 'var(--app-gutter)', background: 'var(--canvas)' }}>
+      <div style={{ height: '100dvh', display: 'flex', gap: 'var(--app-gutter)', padding: 'var(--app-gutter)', background: 'var(--color-surface-desk)' }}>
         {/* Sidebar (desktop) — absent in Focus mode. */}
         {!isMobile && !focusMode && (
           mode === 'hover' ? (
@@ -795,6 +796,10 @@ export function AppShell({ name, email, spaces, pins, activeSpaceId, timezone = 
             screen has a session timer of its own, and two clocks disagreeing by
             a second is worse than either alone. */}
         {!isMobile && !focusMode && <FocusTimer activeSpaceId={activeSpaceId} />}
+        {/* The meeting recorder (MEETINGS_PLAN.md M1) — mounted ONCE, like the focus timer, so a
+            meeting keeps recording across every navigation, and pieces a closed tab left behind
+            are finished by the next one. Renders nothing. */}
+        <RecorderHost />
         <RealtimeSync />
         {/* The mutation queue's worker — mounted ONCE, like the toaster above
             and the scheduler below. It picks up anything the last tab failed to
@@ -813,8 +818,13 @@ export function AppShell({ name, email, spaces, pins, activeSpaceId, timezone = 
         <CommandPalette />
         <GlobalShortcuts />
         <QuickCapture />
+        {/* Ask (the natural-language command spine) — mounted ONCE for the same reason as the
+            recorder and the focus timer above: the whole point is that a sentence lands while you
+            stay on the page you were reading, which a router-unmounted transcript cannot do. */}
+        <AskPanel />
         {/* .zb-nav-item hover/transition now lives in globals.css (shared with in-page rails). */}
       </div>
     </ViewWidthProvider>
+    </SidebarPrefsProvider>
   );
 }

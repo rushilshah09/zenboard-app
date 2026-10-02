@@ -39,7 +39,7 @@ const fmtWhen = (iso: string) => formatDayTime(iso) ?? '';
 // took a minute — so the seconds branch is local; everything above a minute goes
 // through the vocabulary, which is where the hour arithmetic belongs.
 const fmtDuration = (s?: number) => {
-  if (!s || s < 1) return '—';
+  if (!s || s < 1) return '–';
   if (s < 60) return `${s}s`;
   return formatMinutes(Math.floor(s / 60));
 };
@@ -108,7 +108,7 @@ export function ResponsesView({ form, responses: initial, demo = false }: {
     const title = suggestTaskTitle(r, questions, form.title);
     if (demo) {
       setResponses((rs) => rs.map((x) => (x.id === r.id ? { ...x, taskId: 'demo-task' } : x)));
-      toast({ message: `Task created — “${title}”.` });
+      toast({ message: `Task created, “${title}”.` });
       return;
     }
     setLinking(true);
@@ -116,7 +116,7 @@ export function ResponsesView({ form, responses: initial, demo = false }: {
     setLinking(false);
     if ('error' in res) { toast({ message: res.error, variant: 'error' }); return; }
     setResponses((rs) => rs.map((x) => (x.id === r.id ? { ...x, taskId: res.taskId } : x)));
-    toast({ message: `Task created — “${title}”.` });
+    toast({ message: `Task created, “${title}”.` });
     router.refresh();
   }
 
@@ -205,7 +205,7 @@ export function ResponsesView({ form, responses: initial, demo = false }: {
                     </TableCell>
                     {questions.slice(0, 2).map((q) => (
                       <TableCell key={q.id} className="max-w-[260px] truncate text-ink-700">
-                        {answerToText(q, r.answers[q.id] ?? null) || <span className="text-ink-500">—</span>}
+                        {answerToText(q, r.answers[q.id] ?? null) || <span className="text-ink-500">–</span>}
                       </TableCell>
                     ))}
                     <TableCell className="num whitespace-nowrap text-ink-500">{fmtDuration(r.meta.duration_s)}</TableCell>
@@ -296,7 +296,7 @@ function FileAnswer({ block, path, name, demo }: { block: FormBlock; path: strin
   const [busy, setBusy] = useState(false);
   async function openFile() {
     if (!path) return;
-    if (demo) { toast({ message: 'Preview — downloads are disabled here.' }); return; }
+    if (demo) { toast({ message: 'Preview, downloads are disabled here.' }); return; }
     setBusy(true);
     const res = await signFormUpload(path);
     setBusy(false);
@@ -328,7 +328,7 @@ function FileAnswer({ block, path, name, demo }: { block: FormBlock; path: strin
  */
 function suggestTaskTitle(r: ResponseRecord, questions: FormBlock[], formTitle: string): string {
   const who = r.respondent?.name?.trim() || r.respondent?.email?.trim();
-  if (who) return `Follow up with ${who} — ${formTitle}`;
+  if (who) return `Follow up with ${who}, ${formTitle}`;
   for (const q of questions) {
     const text = answerToText(q, r.answers[q.id] ?? null).trim();
     if (text.length > 2) return `${formTitle}: ${text.slice(0, 80)}`;

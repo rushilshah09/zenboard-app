@@ -57,7 +57,7 @@ export function ProjectMilestones({
       <SectionHeading count={total > 0 ? `${done}/${total}` : undefined}>Milestones</SectionHeading>
 
       {ordered.length === 0 ? (
-        <EmptyLine className="py-0">No checkpoints yet — add the first date that matters.</EmptyLine>
+        <EmptyLine className="py-0">No checkpoints yet. Add the first date that matters.</EmptyLine>
       ) : (
         <div className="flex flex-col">
           {ordered.map((mile) => (

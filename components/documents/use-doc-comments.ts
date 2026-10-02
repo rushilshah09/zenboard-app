@@ -11,6 +11,7 @@
 // disappears the day the migration lands — they simply cannot be replied to or
 // resolved (they have no thread), and deleting one patches the document instead
 // of the table. `lib/comments.ts` marks them; this file routes them.
+import { notReady } from '@/lib/not-ready';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from '@/components/ds/ui';
 import { addComment, deleteComment, listComments, setThreadResolved } from '@/lib/actions/comments';
@@ -85,7 +86,7 @@ export function useDocComments({ pageId, enabled, blockIds, legacy, authorName, 
   const post = useCallback((blockId: string | null, threadId: string | null, raw: string) => {
     const body = normalizeBody(raw);
     if (!body || !pageId) return;
-    if (!enabled) { toast({ message: 'Comments need migration 0037.', variant: 'error' }); return; }
+    if (!enabled) { toast({ message: notReady('Comments aren’t available yet.', '0037').error, variant: 'error' }); return; }
 
     // Optimistic, with a real rollback. An appearing-then-vanishing comment with
     // no explanation is worse than a spinner (§the optimistic-creation rule).
@@ -111,7 +112,7 @@ export function useDocComments({ pageId, enabled, blockIds, legacy, authorName, 
       // A reply to a thread whose opening comment has not been written yet has
       // no id to join. Rare (it needs a reply inside the round trip) and cheap
       // to refuse honestly rather than silently starting a second thread.
-      if (isTempId(threadId)) { toast({ message: 'Still saving — try again in a moment.' }); return; }
+      if (isTempId(threadId)) { toast({ message: 'Still saving. Try again in a moment.' }); return; }
       const anchor = threads.find((t) => t.id === threadId)?.blockId ?? null;
       post(anchor, threadId, body);
     },

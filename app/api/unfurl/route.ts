@@ -114,7 +114,7 @@ export async function GET(req: Request) {
         signal: AbortSignal.timeout(TIMEOUT_MS),
         headers: {
           // Some sites serve a stub to unknown agents; say what we are and accept HTML.
-          'user-agent': 'Mozilla/5.0 (compatible; ZenboardBot/1.0; +https://zenboard.app)',
+          'user-agent': 'Mozilla/5.0 (compatible; ZenboardBot/1.0; +https://zenboard.life)',
           accept: 'text/html,application/xhtml+xml',
         },
       });

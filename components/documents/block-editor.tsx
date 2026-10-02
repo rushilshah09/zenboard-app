@@ -1680,7 +1680,7 @@ function copyBlockLink(pageId: string, blockId: string) {
   const url = `${window.location.origin}${path}`;
   navigator.clipboard?.writeText(url)
     .then(() => toast({ message: 'Link to block copied.' }))
-    .catch(() => toast({ message: `Copy failed — the link is ${url}`, variant: 'error' }));
+    .catch(() => toast({ message: `Copy failed: the link is ${url}`, variant: 'error' }));
 }
 
 // Rows are memoized on their data props only — callback identity is ignored,
@@ -2653,7 +2653,7 @@ function TableBlock({ rows, onChange }: { rows: string[][]; onChange: (rows: str
               <tr key={r} className="tbl-tr group">
                 {row.map((cell, c) => (
                   <td key={c} className={cn('min-w-[120px]', r < rows.length - 1 && 'border-b border-line-soft', c < cols - 1 && 'border-r border-line-soft')}>
-                    <input value={cell} onChange={(e) => setCell(r, c, e.target.value)} placeholder="—" className={cellInput()} autoComplete="off" data-1p-ignore data-lpignore="true" />
+                    <input value={cell} onChange={(e) => setCell(r, c, e.target.value)} placeholder="–" className={cellInput()} autoComplete="off" data-1p-ignore data-lpignore="true" />
                   </td>
                 ))}
                 <td className="w-[34px] text-center">
@@ -2683,7 +2683,7 @@ function DropIndicator({ top, left }: { top: number; left: number }) {
 function BlockDragGhost({ block, count }: { block: Block; count: number }) {
   return (
     <DragGhost icon={<Icon icon={GripVertical} size={14} />} count={{ n: count, noun: 'blocks' }}
-      label={block.type === 'divider' ? '— divider —' : (block.text || 'Empty block')} />
+      label={block.type === 'divider' ? ', divider, ' : (block.text || 'Empty block')} />
   );
 }
 

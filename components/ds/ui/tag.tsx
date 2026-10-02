@@ -29,7 +29,7 @@ export function Tag({ color = "stone", size = "md", icon, onRemove, removeLabel,
   return (
     <span
       className={cn(
-        "inline-flex max-w-[160px] items-center rounded-sm font-medium",
+        "inline-flex max-w-[160px] items-center rounded-xs font-medium",
         size === "sm" ? "h-5 gap-1 px-1.5 text-caption" : "h-6 gap-1 px-2 text-meta",
         onRemove && "-me-0.5 pe-1",
         LABEL_FILL[color],

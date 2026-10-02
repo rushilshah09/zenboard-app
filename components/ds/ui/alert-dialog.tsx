@@ -36,7 +36,7 @@ function AlertDialogOverlay({
     <AlertDialogPrimitive.Overlay
       data-slot="alert-dialog-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-black/50",
+        "fixed inset-0 z-50 bg-[var(--color-scrim)] backdrop-blur-[2px]",
         className
       )}
       {...props}

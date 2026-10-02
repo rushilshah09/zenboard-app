@@ -48,6 +48,7 @@ import { useFocusReturn } from '@/lib/use-focus-return';
 import * as RP from '@radix-ui/react-popover';
 import { Clock } from '@/components/ds/icons';
 import { cn } from '@/lib/cn';
+import { inputBox } from './input';
 import { formatClock } from '@/lib/date';
 import { MENU_PANEL_CLASS } from './menu';
 import { useFieldProps } from './field';
@@ -168,12 +169,12 @@ export function TimePicker({
             if (e.key === 'ArrowDown') { e.preventDefault(); setOpen(true); }
           }}
           className={cn(
-            // Matches DS TextInput's `sm` field exactly — this is a text field
-            // that happens to open a list, not a control of its own kind.
-            'h-8 w-full rounded-md border border-line-strong bg-surface-raised ps-2.5 pe-8',
-            'text-ui tabular-nums text-ink-900 placeholder:text-ink-500',
-            'transition-colors duration-instant hover:border-ink-300 focus-ring',
-            'disabled:cursor-not-allowed disabled:border-transparent disabled:bg-surface-disabled disabled:text-ink-500',
+            // THE field recipe, not a copy of it: this is a text field that happens to open a
+            // list, so when the field changes (a wash instead of a box, 2026-09-25) this changes
+            // with it. It used to spell the old chrome out, and stayed bordered among washed
+            // fields on the one screen that shows both.
+            inputBox({ size: 'sm' }),
+            'ps-2.5 pe-8 tabular-nums disabled:cursor-not-allowed',
           )}
         />
         <span className="absolute inset-y-0 end-0.5 flex items-center">

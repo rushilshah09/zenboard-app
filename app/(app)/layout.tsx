@@ -9,6 +9,7 @@ import { currentProfile } from '@/lib/profile';
 import { SIDEBAR_COOKIE, toSidebarMode } from '@/lib/sidebar-mode';
 import { AppShell } from '@/components/shell/app-shell';
 import { readPins } from '@/lib/pins';
+import { readEnabledModules } from '@/lib/nav-modules';
 import { ENTITY_TYPES } from '@/lib/connected';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -41,13 +42,22 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // there and not in a table of their own).
   const pins = readPins(profile?.preferences, ENTITY_TYPES);
 
+  // WHICH MODULES THIS PERSON USES. Same jsonb, same round trip as the pins
+  // above — `profile` is already loaded, so this costs nothing.
+  //
+  // null means "never configured", and the shell renders ALL modules for it.
+  // That is what keeps this migration-free: every account that onboarded before
+  // the setting existed has no key, so nobody logs in to find six modules gone.
+  // See lib/nav-modules.ts.
+  const enabledModules = readEnabledModules(profile?.preferences);
+
   // The sidebar's saved mode, so the FIRST paint already has the right one.
   // Read here rather than in the shell because only the server sees cookies
   // before render — the shell used to start expanded and reflow one frame later.
   const sidebarMode = toSidebarMode((await cookies()).get(SIDEBAR_COOKIE)?.value);
 
   return (
-    <AppShell name={name} email={user.email ?? ''} spaces={spaces} pins={pins} activeSpaceId={sid} timezone={timezone} initialSidebarMode={sidebarMode}>
+    <AppShell name={name} email={user.email ?? ''} spaces={spaces} pins={pins} activeSpaceId={sid} timezone={timezone} initialSidebarMode={sidebarMode} enabledModules={enabledModules}>
       {children}
     </AppShell>
   );

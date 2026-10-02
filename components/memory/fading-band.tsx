@@ -90,7 +90,7 @@ export function FadingBand({ facts }: { facts: Memory[] }) {
   return (
     <section aria-label="About to fade" className="pb-6">
       <BandHeading icon={Clock} title="About to fade" count={open.length}>
-        You haven’t needed these in a while. Nothing is ever deleted — letting go
+        You haven’t needed these in a while. Nothing is ever deleted: letting go
         moves it to the archive below.
       </BandHeading>
       <ul className="divide-y divide-line-soft">

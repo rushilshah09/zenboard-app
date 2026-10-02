@@ -74,13 +74,16 @@ describe('how it plays', () => {
   const globals = readFileSync('app/globals.css', 'utf8');
 
   it('is decided before the page paints, on the site\'s own pages only', () => {
-    for (const f of ['components/site/site-home.tsx', 'components/site/legal.tsx']) {
-      const src = readFileSync(f, 'utf8');
-      const script = src.indexOf('<script dangerouslySetInnerHTML={{ __html: siteLoaderScript }} />');
-      expect(script, f).toBeGreaterThan(0);
-      // Before the navigation and everything under it.
-      expect(script, f).toBeLessThan(src.indexOf('<SiteNav />'));
-      expect(src, f).toMatch(/<SiteLoader \/>/);
+    // ONE frame for every page of the site (site-shell.tsx), so a new page cannot leave it out.
+    const f = 'components/site/site-shell.tsx';
+    const src = readFileSync(f, 'utf8');
+    const script = src.indexOf('<script dangerouslySetInnerHTML={{ __html: siteLoaderScript }} />');
+    expect(script, f).toBeGreaterThan(0);
+    // Before the navigation and everything under it.
+    expect(script, f).toBeLessThan(src.indexOf('<SiteNav />'));
+    expect(src, f).toMatch(/<SiteLoader \/>/);
+    for (const page of ['components/site/site-home.tsx', 'components/site/legal.tsx']) {
+      expect(readFileSync(page, 'utf8'), page).toMatch(/<SiteShell /);
     }
   });
 

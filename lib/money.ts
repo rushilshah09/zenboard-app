@@ -32,9 +32,9 @@ export type MoneyOpts = {
 export function formatMoney(n: number | null | undefined, opts: MoneyOpts = {}): string {
   // `Number(null)` is 0, not NaN — without this guard a missing amount renders
   // as "$0", which is a different claim from "we don't have a figure".
-  if (n === null || n === undefined) return '—';
+  if (n === null || n === undefined) return '–';
   const v = Number(n);
-  if (!Number.isFinite(v)) return '—';
+  if (!Number.isFinite(v)) return '–';
   const cents = opts.exact && !Number.isInteger(v);
   return '$' + (cents ? v : Math.round(v)).toLocaleString(opts.locale, {
     minimumFractionDigits: cents ? 2 : 0,
@@ -49,9 +49,9 @@ export function formatMoney(n: number | null | undefined, opts: MoneyOpts = {}):
 export function formatMoneyCompact(n: number | null | undefined, opts: MoneyOpts = {}): string {
   // `Number(null)` is 0, not NaN — without this guard a missing amount renders
   // as "$0", which is a different claim from "we don't have a figure".
-  if (n === null || n === undefined) return '—';
+  if (n === null || n === undefined) return '–';
   const v = Number(n);
-  if (!Number.isFinite(v)) return '—';
+  if (!Number.isFinite(v)) return '–';
   const abs = Math.abs(v);
   if (abs < 1000) return formatMoney(v, opts);
   const [div, suffix] = abs >= 1_000_000 ? [1_000_000, 'M'] : [1000, 'k'];

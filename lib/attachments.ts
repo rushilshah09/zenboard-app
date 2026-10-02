@@ -90,7 +90,7 @@ export function formatBytes(n: number | null | undefined): string {
 /** Why an upload was refused, as a sentence, or null when it is fine. */
 export function rejectReason(file: { size: number; name: string }): string | null {
   if (file.size > ATTACHMENT_MAX_BYTES) {
-    return `“${file.name}” is ${formatBytes(file.size)} — the limit is ${formatBytes(ATTACHMENT_MAX_BYTES)}.`;
+    return `“${file.name}” is ${formatBytes(file.size)}, and the limit is ${formatBytes(ATTACHMENT_MAX_BYTES)}.`;
   }
   if (file.size === 0) return `“${file.name}” is empty.`;
   return null;

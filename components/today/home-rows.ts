@@ -11,5 +11,5 @@ export const HOME_SECTION = 'mt-6';
 
 /** One Home list row: `--row-task` tall, the panel inset, a hairline between rows, the row wash. */
 export function homeRow(last: boolean) {
-  return rowSurface({ last, heightClass: 'h-[var(--row-task)]', padding: 'items-center gap-3 px-[var(--panel-px)]' });
+  return rowSurface({ last, heightClass: 'h-[var(--row-task)]', padding: 'items-center gap-3' });
 }

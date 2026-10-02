@@ -37,7 +37,7 @@ export default function InboxPreviewPage() {
       <TasksView
         initialTasks={TASKS}
         projects={{
-          p1: { id: 'p1', name: 'Balluji', color: '#9A1B6F' },
+          p1: { id: 'p1', name: 'Ridgeline', color: '#9A1B6F' },
           p2: { id: 'p2', name: 'New life', color: '#3B6E8F' },
         }}
         subByParent={{}}

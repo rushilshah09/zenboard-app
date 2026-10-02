@@ -17,6 +17,7 @@ import { type IconType } from '@/components/ds/icons';
 import { Icon } from '@/components/ds/ui';
 import { cn } from '@/lib/cn';
 import { Halftone, type Fade, type MarkPlacement } from './halftone';
+import { Sheen } from './sheen';
 
 /** The page's lattice: twelve columns on a wide screen; on a phone every cell is a row of its own.
     (It carried a light that followed the pointer along its lines for a day; the user, 2026-09-26:
@@ -28,9 +29,9 @@ export function Grid({ className, children }: { className?: string; children: Re
 
 /** A section whose cells take the grid's own columns, so every line on the page is one line. Its rule
     draws out to the window's edges as it comes into view (`data-reveal="rule"`). */
-export function Row({ className, children, ...rest }: React.HTMLAttributes<HTMLElement>) {
+export function Row({ className, children, ref, ...rest }: React.HTMLAttributes<HTMLElement> & { ref?: React.Ref<HTMLElement> }) {
   return (
-    <section data-reveal="rule" {...rest} className={cn('site-row col-span-full grid scroll-mt-20 grid-cols-subgrid gap-px', className)}>
+    <section ref={ref} data-reveal="rule" {...rest} className={cn('site-row col-span-full grid scroll-mt-20 grid-cols-subgrid gap-px', className)}>
       <Joints />
       {children}
     </section>
@@ -49,10 +50,16 @@ export function Joints({ foot = false }: { foot?: boolean }) {
   );
 }
 
-/** One cell: the page's own ground with its corners rounded, which is what makes the joints stars. */
-export function Cell({ className, pad = false, children, ...rest }: React.HTMLAttributes<HTMLDivElement> & { pad?: boolean }) {
+/** One cell: the page's own ground with its corners rounded, which is what makes the joints stars.
+ *  `sheen` gives it a light that follows the pointer and a rim that lights with it (sheen.tsx) —
+ *  for a cell you CONSIDER, which on this page means the ones you choose between. */
+export function Cell({ className, pad = false, sheen = false, children, ...rest }: React.HTMLAttributes<HTMLDivElement> & { pad?: boolean; sheen?: boolean }) {
   return (
-    <div {...rest} className={cn('relative col-span-full min-w-0 rounded-lg bg-background', pad && 'site-pad', className)}>
+    <div {...rest} className={cn('relative col-span-full min-w-0 rounded-lg bg-background', pad && 'site-pad', sheen && 'zb-sheen-host overflow-hidden', className)}>
+      {/* The layers sit at z-index -1 inside the host's own stacking context, which paints them
+          above the card's background and below everything in it: the card's own layout is
+          untouched and nothing has to be wrapped. */}
+      {sheen && <Sheen />}
       {children}
     </div>
   );
@@ -61,7 +68,7 @@ export function Cell({ className, pad = false, children, ...rest }: React.HTMLAt
 /** The gradient a picture stands on: one per part of the page (globals.css `.site-field-*`). */
 export type Field = 'hero' | 'how' | 'day' | 'projects' | 'portal' | 'money';
 /** A tile's colour: one of the illustration fields, with that field's own deep ink for the glyph. */
-export type Hue = 'petal' | 'apricot' | 'butter' | 'sage' | 'sky' | 'periwinkle';
+export type Hue = 'petal' | 'apricot' | 'butter' | 'sage' | 'sky' | 'periwinkle' | 'neutral';
 
 const FIELD: Record<Field, string> = {
   hero: 'site-field-hero',
@@ -81,30 +88,92 @@ export const HUE: Record<Hue, string> = {
   sage: 'site-hue-sage',
   sky: 'site-hue-sky',
   periwinkle: 'site-hue-periwinkle',
+  neutral: 'site-hue-neutral',
 };
 
-/** A picture's colour, painted the way Calendly paints theirs (globals.css "the pictures are painted"):
-    soft organic shapes of the area's hues blurred into one another, a glow of the brand's berry, the
-    light behind the product, and a fine grain. `flip` mirrors it, for a picture on the other side. */
+/**
+ * THE ONE PLACE A PLACE'S COLOUR IS DECIDED (the colour system, globals.css "the website's colour
+ * system"). Each of the product's four places owns one hue, and every part of the site that stands
+ * for that place (its menu card, its section's tag, its feature tiles, its person) reads it from
+ * here, so the same place can never wear two colours again (Finance was pink in the menu and green
+ * on the page). A section that is not one place is `neutral`.
+ */
+/**
+ * THE ILLUSTRATION STAGE — every picture on the site stands on this, and only this.
+ *
+ * User, 2026-09-28: "the Client Portal section and the Details section have completely different
+ * visual treatments. I really like the treatment used in the Client Portal section. Keep that
+ * treatment consistent across all illustrations." It was the portal's, so it lived in
+ * portal-section.tsx and its classes were called `portal-*`; now it is everyone's, so it lives
+ * here and they are called `plot-*`. A name that says where a thing was born is how the second
+ * copy gets written.
+ *
+ * The treatment is two things: a DOTTED GROUND, masked to an ellipse so it has no edge to end on,
+ * and optionally the area's hue blooming behind whatever the picture is about. The drawing sits on
+ * top. `label` makes the picture meaningful to a screen reader; without one it is decorative and
+ * is hidden, which is the right answer for a drawing whose card already says the same thing.
+ */
+export function Plot({ label, glow, story, className, children, ...rest }: React.HTMLAttributes<HTMLDivElement> & {
+  label?: string;
+  /** Bloom the area's hue behind the drawing. */
+  glow?: boolean;
+  /** The picture tells a story on a loop (use-story.ts), so it is a LOOPED picture and its cards do
+   *  not fan under the pointer: a picture is looped or interactive, never both. */
+  story?: boolean;
+  /** The story's clock watches the stage (React 19 passes `ref` as a prop). */
+  ref?: React.Ref<HTMLDivElement>;
+}) {
+  return (
+    <div
+      // `...rest` and not a fixed prop list: the stage has to carry `data-reveal` through, and a
+      // component that silently swallows it breaks the section's choreography with no error.
+      {...rest}
+      {...(label ? { role: 'img', 'aria-label': label } : { 'aria-hidden': true })}
+      className={cn('relative min-h-0', className)}
+    >
+      {/* WHAT REACTS IS THE CARDS, not the picture. A hover parallax that leaned the whole drawing
+          against the ground shipped here for about an hour, and the user named it exactly: "on
+          hover the entire illustration is dancing". It failed Emil's second test — moving every
+          plane together has no purpose, it is a slide, not depth. The reaction lives in CSS on the
+          cards inside instead (globals.css, "a stack of cards fans"), which is cheaper, runs off
+          the main thread, and says something: there are more of these than you can see. */}
+      <span className="plot-life absolute inset-0" data-story={story || undefined}>
+        <span aria-hidden className="plot-ground absolute inset-0" />
+        {glow && <span aria-hidden className="plot-glow absolute inset-[18%]" />}
+        {children}
+      </span>
+    </div>
+  );
+}
+
+export const CHAPTER = { day: 'butter', projects: 'sky', portal: 'periwinkle', money: 'sage' } as const satisfies Record<string, Hue>;
+
+/** THE GRAIN over a picture. It was five blurred colour shapes and a grain; six pastels blurred
+    together average to grey, which is what the user was looking at when they said the gradients
+    "look so bad in black and white" (2026-09-26). The colour is now the field's own two-anchor
+    background (globals.css "the pictures") and this layer is only what stops
+    a wash that wide from banding. `flip` mirrors it, for a picture on the other side. */
 export function Mesh({ flip = false }: { flip?: boolean }) {
   return (
     <span aria-hidden className="site-mesh" data-flip={flip || undefined}>
-      {(['top', 'bottom', 'side', 'deep', 'light'] as const).map((b) => <span key={b} className="site-blob" data-b={b} />)}
       <span className="site-grain" />
     </span>
   );
 }
 
-/** A picture in three layers: its area's painted colour, the mark printed over it in light, and the product on top. */
+/** A picture in the one recipe (globals.css "the pictures"): its chapter's arc painted edge to edge,
+    the mark printed over it in light, and the product on top. */
 export function Stage({ field, mark, fade, flip, className, children, ...rest }: React.HTMLAttributes<HTMLDivElement> & { field: Field; mark: MarkPlacement; fade?: Fade; flip?: boolean }) {
   return (
     <Cell {...rest} className={cn('site-field grid place-items-center overflow-hidden p-5 sm:p-10 lg:p-12', FIELD[field], className)}>
       <Mesh flip={flip} />
-      {/* A FINER, SOFTER print on a picture (user, 2026-09-26: "a bit smaller and detailed … blend
-          mode … make it subtle", then "the dither's spacing is too wide, bring it closer"): 8px between
-          glyphs where the page's own print uses 10, and `soft-light`, so the light sits IN the colour
-          instead of on top of it, which is the difference between a print and a sticker. */}
-      <Halftone mark={mark} fade={fade} pitch={8} className="[mix-blend-mode:soft-light]" />
+      {/* THE PRINT TAKES THE FIELD'S COLOUR THROUGH THE BLEND, which is the whole trick in the
+          user's reference (2026-09-26): its glyphs are red over the amber and blue over the
+          lavender, and they are all ONE ink. `overlay` is what does that — it darkens under a dark
+          ink and lightens under a light one, and carries the backdrop's hue either way. So the
+          screen is black and white, exactly as asked, and comes out in the picture's colours
+          (`site-screen`). The pitch is the reference's: a dense screen, 7px between glyphs. */}
+      <Halftone mark={mark} fade={fade} pitch={7} className="site-screen" />
       <TrimMarks />
       {/* The product lifts onto its picture as it comes into view; the picture itself is already there. */}
       <div data-reveal="lift" className="relative grid w-full grid-cols-1 place-items-center">{children}</div>
@@ -122,6 +191,24 @@ export function Eyebrow({ hue, icon, children, className, ...rest }: React.HTMLA
       </span>
       {children}
     </p>
+  );
+}
+
+/**
+ * A CARD'S TITLE WITH ITS LINE (the type canvas, 2026-09-28, measured on Ramp): one run of 18/24
+ * type, the title in ink and the line after it in the card's second tone, so what a card is and why
+ * it matters read as one sentence at two volumes rather than a bold label over small print.
+ *
+ * The second tone here is `ink-500`, NOT the title's `--site-second`: this is 18px, where text must
+ * clear 4.5:1, and ink-500 does on the ground and on a card (5.6:1 and 6.1:1). The title stays the
+ * card's heading, its own element set inline, so the outline of the page is unchanged.
+ */
+export function CardLine({ title, body, as: Heading = 'h3', className }: { title: string; body: string; as?: 'h3' | 'p'; className?: string }) {
+  return (
+    <div className={cn('text-h3 leading-6', className)}>
+      <Heading className="inline text-ink-900">{title}.</Heading>{' '}
+      <p className="inline text-ink-500">{body}</p>
+    </div>
   );
 }
 

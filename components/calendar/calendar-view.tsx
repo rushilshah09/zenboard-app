@@ -54,7 +54,11 @@ const DEMO_PROJECTS: RailProject[] = [
   { id: 'aurora', name: 'Aurora', color: '#3F82D6' },
 ];
 
-export function CalendarView({ connected = false, spaceId, demoEvents, demoTasks, demoMilestones }: { connected?: boolean; spaceId?: string; demoEvents?: CalEvent[]; demoTasks?: RailTask[]; demoMilestones?: CalendarMilestone[] }) {
+export function CalendarView({ connected = false, spaceId, demoEvents, demoTasks, demoMilestones, demoProjects = DEMO_PROJECTS }: {
+  connected?: boolean; spaceId?: string; demoEvents?: CalEvent[]; demoTasks?: RailTask[]; demoMilestones?: CalendarMilestone[];
+  /** The rail's projects in demo mode. The website's demo passes its own studio's; the harness keeps the default. */
+  demoProjects?: RailProject[];
+}) {
   // THE VIEW IS A CHOICE OR A DEFAULT, never a stored guess. On a phone the
   // week grid squeezes seven days into 375px — measured, every event label was
   // cut to ~28px ("K…", "C.") — so a narrow screen opens on the Day view and a
@@ -175,7 +179,7 @@ export function CalendarView({ connected = false, spaceId, demoEvents, demoTasks
 
   // Rail's PROJECTS list — the user's active projects (or demo samples).
   useEffect(() => {
-    if (demo) { setProjects(DEMO_PROJECTS); return; }
+    if (demo) { setProjects(demoProjects); return; }
     (async () => {
       const sb = createClient();
       let q = sb.from('projects').select('id, name, color').eq('status', 'active');
@@ -183,7 +187,7 @@ export function CalendarView({ connected = false, spaceId, demoEvents, demoTasks
       const { data } = await q.order('created_at');
       if (data) setProjects(data.map((p) => ({ id: p.id as string, name: p.name as string, color: (p.color as string) ?? '' })));
     })();
-  }, [demo, spaceId]);
+  }, [demo, spaceId, demoProjects]);
 
   // The rail's tasks: open, top-level, NOT already timeboxed — a task with a
   // block is on the grid, and showing it in both places would invite dragging a
@@ -466,7 +470,7 @@ export function CalendarView({ connected = false, spaceId, demoEvents, demoTasks
         <>
           {connected && !demo && (
             <IconButton size="sm" variant="ghost" onClick={syncNow} disabled={syncing} label="Sync with Google Calendar"
-              icon={<Icon icon={RefreshCw} size={16} className={syncing ? 'motion-safe:animate-spin' : undefined} />} />
+              icon={<Icon icon={RefreshCw} size={16} className={syncing ? 'zb-spin' : undefined} />} />
           )}
           <Button size="sm" variant="outline" onClick={goToday}>Today</Button>
 

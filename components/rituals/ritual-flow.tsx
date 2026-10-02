@@ -269,7 +269,7 @@ export function RitualFlow({ type, todayTasks, goals, habits = [], todayISO, tom
       <Frame type={type}>
         {at === 'highlight' && (
           <Step n={no('highlight')} total={total} title="Pick today's highlight" sub="The one task that matters most today." onNext={next} onPrev={idx > 0 ? prev : undefined} canNext={open.length === 0 || !!highlightId}>
-            {open.length === 0 ? <EmptyLine className="py-0">Nothing scheduled today yet — add tasks on Today first.</EmptyLine> :
+            {open.length === 0 ? <EmptyLine className="py-0">Nothing scheduled today yet. Add tasks on Today first.</EmptyLine> :
               open.map((t) => (
                 <button key={t.id} style={pickRow(highlightId === t.id)} onClick={() => setHighlightId(t.id)}>
                   <Icon icon={Flame} size={16} style={{ color: highlightId === t.id ? 'var(--ink)' : 'var(--text-secondary)' }} />
@@ -296,7 +296,7 @@ export function RitualFlow({ type, todayTasks, goals, habits = [], todayISO, tom
               : cap.plannedMinutes === 0 ? (cap.unestimated > 0 ? 'How long will these take?' : 'Nothing planned yet')
                 : 'It fits'}
             sub={!cap.fits
-              ? 'Nothing moves unless you say so — here are the quietest things to let go of.'
+              ? 'Nothing moves unless you say so, here are the quietest things to let go of.'
               : cap.plannedMinutes === 0 && cap.unestimated > 0
                 ? 'Nothing here has an estimate yet, so there is nothing to weigh.'
                 : 'Your plan against the hours you keep.'}
@@ -305,7 +305,7 @@ export function RitualFlow({ type, todayTasks, goals, habits = [], todayISO, tom
             <CapacityLine c={cap} bar className="mb-5" />
 
             {open.length === 0 ? (
-              <EmptyLine className="py-0">Only meetings today — no tasks to weigh against them.</EmptyLine>
+              <EmptyLine className="py-0">Only meetings today, no tasks to weigh against them.</EmptyLine>
             ) : (
               <>
                 {open.map((t) => {
@@ -326,7 +326,7 @@ export function RitualFlow({ type, todayTasks, goals, habits = [], todayISO, tom
                         <span style={{ fontSize: 'var(--text-label-size)', color: 'var(--amber-text)' }}>Suggested</span>
                       )}
                       <span className="num" style={{ fontSize: 'var(--text-caption-size)', color: 'var(--text-secondary)', minWidth: 42, textAlign: 'right' }}>
-                        {t.estimate_minutes != null ? formatMinutes(t.estimate_minutes) : '—'}
+                        {t.estimate_minutes != null ? formatMinutes(t.estimate_minutes) : '–'}
                       </span>
                       <button
                         onClick={() => toggleDefer(t.id)}
@@ -375,7 +375,7 @@ export function RitualFlow({ type, todayTasks, goals, habits = [], todayISO, tom
                 )}
                 {cap.unestimated > 0 && deferIds.size === 0 && (
                   <p style={{ marginTop: 12, fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)' }}>
-                    Tasks without an estimate aren&rsquo;t counted above — they still take time.
+                    Tasks without an estimate aren&rsquo;t counted above, and they still take time.
                   </p>
                 )}
               </>
@@ -459,7 +459,7 @@ export function RitualFlow({ type, todayTasks, goals, habits = [], todayISO, tom
         {idx === 1 && (
           <Step n={2} total={total} title="Carry the rest forward?" sub={`${open.length} unfinished task${open.length === 1 ? '' : 's'}. Untick anything that shouldn't follow you into tomorrow.`} onNext={next} onPrev={prev}>
             {open.length === 0 ? (
-              <EmptyLine className="py-0">Nothing left open — the day closed itself.</EmptyLine>
+              <EmptyLine className="py-0">Nothing left open. The day closed itself.</EmptyLine>
             ) : (
               <>
                 {open.map((t) => {
@@ -477,7 +477,7 @@ export function RitualFlow({ type, todayTasks, goals, habits = [], todayISO, tom
                 })}
                 <p style={{ marginTop: 12, fontSize: 'var(--text-small-size)', color: 'var(--text-secondary)' }}>
                   {carrying.length === 0
-                    ? 'Nothing moves — all of these stay on today and show up as rollover tomorrow morning.'
+                    ? 'Nothing moves: all of these stay on today and show up as rollover tomorrow morning.'
                     : <>Moving <b style={{ color: 'var(--ink)' }}>{carrying.length}</b> to tomorrow{carrying.length < open.length && <>; the other {open.length - carrying.length} {open.length - carrying.length === 1 ? 'stays' : 'stay'} on today</>}.</>}
                 </p>
               </>
@@ -518,7 +518,7 @@ export function RitualFlow({ type, todayTasks, goals, habits = [], todayISO, tom
       )}
       {idx === 1 && (
         <Step n={2} total={total} title="What needs a next action?" sub="Each active project should have one clear next move." onNext={next} onPrev={prev} nextLabel="Next">
-          {activeProjects.length === 0 ? <EmptyLine className="py-0">No active projects with open work — nothing waiting on you.</EmptyLine> :
+          {activeProjects.length === 0 ? <EmptyLine className="py-0">No active projects with open work. Nothing waiting on you.</EmptyLine> :
             activeProjects.map((p) => (
               <button key={p.id} style={pickRow(false)} onClick={() => router.push(`/projects/${p.id}`)}>
                 <Icon icon={Kanban} size={16} style={{ color: 'var(--text-secondary)' }} />
@@ -529,8 +529,8 @@ export function RitualFlow({ type, todayTasks, goals, habits = [], todayISO, tom
         </Step>
       )}
       {idx === 2 && (
-        <Step n={3} total={total} title="Where do your goals stand?" sub="One question each: is it still true? Keeping is the default — say so and move on." onNext={next} onPrev={prev} nextLabel="Reflect">
-          {goals.length === 0 ? <EmptyLine className="py-0">No goals yet — set some in Goals.</EmptyLine> :
+        <Step n={3} total={total} title="Where do your goals stand?" sub="One question each: is it still true? Keeping is the default: say so and move on." onNext={next} onPrev={prev} nextLabel="Reflect">
+          {goals.length === 0 ? <EmptyLine className="py-0">No goals yet. Set some in Goals.</EmptyLine> :
             goals.filter((g) => !dropped.has(g.id) && !paused.has(g.id)).map((g) => {
               const linked = g.linkedTotal ?? 0;
               return (
@@ -547,7 +547,7 @@ export function RitualFlow({ type, todayTasks, goals, habits = [], todayISO, tom
                     <span style={{ fontSize: 'var(--text-label-size)', color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
                       {linked > 0
                         ? `${g.linkedDone ?? 0}/${linked} linked ${linked === 1 ? 'task' : 'tasks'} done`
-                        : 'Nothing linked — link some work, or drop it.'}
+                        : 'Nothing linked: link some work, or drop it.'}
                     </span>
                     {kept.has(g.id) ? (
                       <span style={{ fontSize: 'var(--text-label-size)', color: 'var(--green-text)' }}>Still true</span>
@@ -589,7 +589,7 @@ export function RitualFlow({ type, todayTasks, goals, habits = [], todayISO, tom
         // editor into a ritual, because rewording a fact is a writing task and
         // this step is a triage one.
         <Step n={4} total={total} title="Are these still true?"
-          sub="The things Zenboard is least sure of. Keeping is the default — say so and move on."
+          sub="The things Zenboard is least sure of. Keeping is the default: say so and move on."
           onNext={next} onPrev={prev} nextLabel="Reflect">
           {memories.map((m) => {
             const said = answered.get(m.id);
@@ -601,7 +601,7 @@ export function RitualFlow({ type, todayTasks, goals, habits = [], todayISO, tom
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
                   {said ? (
                     <span style={{ fontSize: 'var(--text-label-size)', color: said === 'kept' ? 'var(--green-text)' : 'var(--text-secondary)' }}>
-                      {said === 'kept' ? 'Still true' : 'Let go — reversible in Memory'}
+                      {said === 'kept' ? 'Still true' : 'Let go, reversible in Memory'}
                     </span>
                   ) : (
                     <>

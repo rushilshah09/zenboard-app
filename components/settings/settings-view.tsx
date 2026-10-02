@@ -5,7 +5,7 @@
 // profile (name + default hourly rate); Appearance hosts theme/density/accent/
 // sound; Keyboard documents the real wired shortcuts; About is app info.
 import { Fragment, useEffect, useRef, useState } from 'react';
-import { User, Palette, Keyboard as KeyboardIcon, Info, Plug, Settings, Check, Download, Upload, Sparkles, Tag as TagIcon, Link as LinkIcon, Bell, type IconType } from "@/components/ds/icons";
+import { User, Palette, PanelLeft, Keyboard as KeyboardIcon, Info, Plug, Settings, Check, Download, Upload, Sparkles, Tag as TagIcon, Link as LinkIcon, Bell, type IconType } from "@/components/ds/icons";
 import { PageHeader } from '@/components/ui/page-header';
 import { PageLayout } from '@/components/ui/page-layout';
 import {
@@ -25,13 +25,14 @@ import { parseTasksCsv, type ImportResult } from '@/lib/import-tasks';
 import { parseNotionMarkdown, isImportableDoc, type ImportedDoc } from '@/lib/import-docs';
 import { importDocs } from '@/lib/actions/library';
 import { Appearance } from '@/components/settings/appearance';
+import { SidebarPane } from '@/components/settings/sidebar-pane';
 import { Connections } from '@/components/settings/connections';
 import { LabelsPane } from '@/components/settings/labels-pane';
 import { SHORTCUT_GROUPS } from '@/components/shell/keyboard-shortcuts';
 
 export type GcalStatus = { connected: boolean; lastSynced: string | null; eventCount: number | null };
 
-type SectionId = 'account' | 'notifications' | 'appearance' | 'connections' | 'labels' | 'automations' | 'import' | 'export' | 'keyboard' | 'about';
+type SectionId = 'account' | 'notifications' | 'appearance' | 'sidebar' | 'connections' | 'labels' | 'automations' | 'import' | 'export' | 'keyboard' | 'about';
 const NAV_GROUPS: { label: string; items: { id: SectionId; label: string; icon: IconType }[] }[] = [
   {
     label: 'Account',
@@ -39,6 +40,10 @@ const NAV_GROUPS: { label: string; items: { id: SectionId; label: string; icon: 
       { id: 'account', label: 'Account', icon: User },
       { id: 'notifications', label: 'Notifications', icon: Bell },
       { id: 'appearance', label: 'Appearance', icon: Palette },
+      // Which modules are in the rail and how it behaves — beside Appearance
+      // because both are "how Zenboard looks to me", and above Connections,
+      // which is about other apps.
+      { id: 'sidebar', label: 'Sidebar', icon: PanelLeft },
       { id: 'connections', label: 'Connections', icon: Plug },
     ],
   },
@@ -69,8 +74,12 @@ export function SettingsView({ email, initialName, initialRate, gcal, workHours 
   // reading window.location during render is a hydration mismatch.
   useEffect(() => {
     const s = new URLSearchParams(window.location.search).get('section');
-    const valid: SectionId[] = ['account', 'notifications', 'appearance', 'connections', 'labels', 'automations', 'import', 'export', 'keyboard', 'about'];
-    if (s && (valid as string[]).includes(s)) setSection(s as SectionId);
+    // DERIVED from the rail, not a second list. It was a hand-written copy of the
+    // ids, so adding the Sidebar pane put it in the rail and left the deep link
+    // dead — `?section=sidebar` (the "Customize sidebar" item in the sidebar's own
+    // menu) silently opened Account instead.
+    const valid = NAV_GROUPS.flatMap((g) => g.items.map((i) => i.id as string));
+    if (s && valid.includes(s)) setSection(s as SectionId);
   }, []);
 
   // No header row: Settings has no page-level actions, so the band would be a
@@ -111,6 +120,7 @@ export function SettingsView({ email, initialName, initialRate, gcal, workHours 
           {section === 'account' && <AccountPane email={email} initialName={initialName} initialRate={initialRate} initialHours={workHours} />}
           {section === 'notifications' && <NotificationsPane initial={digest} />}
           {section === 'appearance' && <Appearance />}
+          {section === 'sidebar' && <SidebarPane />}
           {section === 'connections' && <Connections connected={gcal.connected} lastSynced={gcal.lastSynced} eventCount={gcal.eventCount} />}
           {section === 'automations' && <AutomationsPane />}
           {section === 'import' && <ImportPane />}
@@ -199,7 +209,7 @@ function AccountPane({ email, initialName, initialRate, initialHours }: {
                 <Icon icon={Check} size={14} /> Saved
               </span>
             )}
-            {state === 'error' && <span className="text-meta text-danger-600" role="alert">Couldn&apos;t save — try again.</span>}
+            {state === 'error' && <span className="text-meta text-danger-600" role="alert">Couldn&apos;t save. Try again.</span>}
           </div>
         </div>
       </SettingsSection>
@@ -245,7 +255,7 @@ function NotificationsPane({ initial }: { initial: DigestPrefs }) {
       <SettingsSection title="Morning digest">
         <SettingsRow
           title="Send a morning digest"
-          description="What's on today, what's late, and anything your clients sent overnight — in one email."
+          description="What's on today, what's late, and anything your clients sent overnight, in one email."
           control={<Switch checked={enabled} onCheckedChange={(v) => save({ enabled: v })} aria-label="Send a morning digest" />}
         />
         {enabled && (
@@ -276,7 +286,7 @@ function NotificationsPane({ initial }: { initial: DigestPrefs }) {
           // A DATE, not a toggle: a vacation switch is the kind of thing you
           // forget to turn back on, and then the product is quietly broken in a
           // way that looks like it is working.
-          description="Pauses the digest until the date passes, then resumes on its own. Nothing is lost — it is all still on Today when you get back."
+          description="Pauses the digest until the date passes, then resumes on its own. Nothing is lost: it is all still on Today when you get back."
           control={(
             <div className="flex items-center gap-2">
               {onVacation ? (
@@ -300,7 +310,7 @@ function NotificationsPane({ initial }: { initial: DigestPrefs }) {
             <Icon icon={Check} size={14} /> Saved
           </span>
         )}
-        {state === 'error' && <span className="text-meta text-danger-600" role="alert">Couldn&apos;t save — try again.</span>}
+        {state === 'error' && <span className="text-meta text-danger-600" role="alert">Couldn&apos;t save. Try again.</span>}
       </div>
     </div>
   );
@@ -426,7 +436,7 @@ function ImportPane() {
           <Icon icon={Check} size={14} /> Imported {docCount} document{docCount === 1 ? '' : 's'} to Docs.
         </span>
       )}
-      {docState === 'error' && <span className="text-meta text-danger-600" role="alert">Couldn’t import those files — try again.</span>}
+      {docState === 'error' && <span className="text-meta text-danger-600" role="alert">Couldn’t import those files. Try again.</span>}
 
       {result && (
         <div className="rounded-lg border border-line-soft bg-surface-sunken p-4">
@@ -462,7 +472,7 @@ function ImportPane() {
           <Icon icon={Check} size={14} /> Imported {count} task{count === 1 ? '' : 's'} to your Inbox.
         </span>
       )}
-      {state === 'error' && <span className="text-meta text-danger-600" role="alert">Couldn’t import — check the file and try again.</span>}
+      {state === 'error' && <span className="text-meta text-danger-600" role="alert">Couldn’t import. Check the file and try again.</span>}
     </div>
   );
 }
@@ -471,7 +481,7 @@ function ImportPane() {
 // stance, stated in-app before the engine ships. Honest "Planned" status on each
 // moment; nothing here claims to run yet.
 const AUTOMATION_PRINCIPLES: { title: string; body: string }[] = [
-  { title: 'Draft, never send', body: 'Zenboard prepares the message, the task, the invoice — nothing leaves or changes until you say yes.' },
+  { title: 'Draft, never send', body: 'Zenboard prepares the message, the task, the invoice: nothing leaves or changes until you say yes.' },
   { title: 'Scoped, not autonomous', body: 'Every automation has one trigger and one narrow job. No open-ended agent roaming your data.' },
   { title: 'One quiet nudge a day', body: 'We aim for roughly one notification a day. If an automation can’t stay calm, we don’t ship it.' },
   { title: 'Always reversible', body: 'Anything Zenboard does on your behalf can be undone in a click.' },
@@ -483,7 +493,7 @@ function AutomationsPane() {
     <div className="flex flex-col gap-10">
       <SettingsPaneHeader
         title="Automations"
-        description="Zenboard automates the busywork — never the thinking. There is no rule builder, and this is the whole list."
+        description="Zenboard automates the busywork, never the thinking. There is no rule builder, and this is the whole list."
       />
 
       <SettingsSection title="How Zenboard automates">
@@ -504,7 +514,7 @@ function AutomationsPane() {
           none of which it handled — including one that had shipped that morning.
           The claim is now in the present tense because it is now true, and the
           count is derived rather than written, so it cannot go stale. */}
-      <SettingsSection title={`What it does — ${live} running`}>
+      <SettingsSection title={`What it does, ${live} running`}>
         {AUTOMATIONS.map((a) => (
           <SettingsRow
             key={a.id}
@@ -522,7 +532,7 @@ function AutomationsPane() {
             would be a lie in a different direction. */}
         {AUTOMATIONS.some((a) => a.status === 'gated') && (
           <p className="pt-3 text-caption leading-relaxed text-ink-500">
-            <b className="font-medium text-ink-700">Ready</b> means built and waiting on a database update — it starts working on its own once that is applied, with nothing to switch on.
+            <b className="font-medium text-ink-700">Ready</b> means built and waiting on a database update, and it starts working on its own once that is applied, with nothing to switch on.
           </p>
         )}
       </SettingsSection>
@@ -539,11 +549,11 @@ function AutomationsPane() {
 function ExportPane() {
   return (
     <div className="flex flex-col gap-10">
-      <SettingsPaneHeader title="Export" description="Your work is yours — take it anywhere, any time." />
+      <SettingsPaneHeader title="Export" description="Your work is yours. Take it anywhere, any time." />
       <SettingsSection title="Download">
         <SettingsRow
           title="Tasks"
-          description="Every task as a CSV — dates, projects, labels, notes."
+          description="Every task as a CSV: dates, projects, labels, notes."
           control={
             <Button variant="secondary" size="sm" icon={<Icon icon={Download} size={14} />}
               onClick={() => { window.location.href = '/api/export/tasks'; }}>
@@ -553,7 +563,7 @@ function ExportPane() {
         />
         <SettingsRow
           title="Projects"
-          description="Every project as Markdown — sections, checklists, subtasks."
+          description="Every project as Markdown: sections, checklists, subtasks."
           control={
             <Button variant="secondary" size="sm" icon={<Icon icon={Download} size={14} />}
               onClick={() => { window.location.href = '/api/export/projects'; }}>
@@ -563,7 +573,7 @@ function ExportPane() {
         />
         <SettingsRow
           title="Calendar"
-          description="Every event as an .ics file — import into Apple, Google, or Outlook Calendar."
+          description="Every event as an .ics file. Import into Apple, Google, or Outlook Calendar."
           control={
             <Button variant="secondary" size="sm" icon={<Icon icon={Download} size={14} />}
               onClick={() => { window.location.href = '/api/export/calendar'; }}>
@@ -577,7 +587,7 @@ function ExportPane() {
             three a bookkeeper actually opens. */}
         <SettingsRow
           title="Finance"
-          description="For your accountant — invoices with totals and balances, their line items, and payments received."
+          description="For your accountant: invoices with totals and balances, their line items, and payments received."
           control={
             <span className="flex flex-wrap gap-2">
               <Button variant="secondary" size="sm" icon={<Icon icon={Download} size={14} />}
@@ -648,7 +658,7 @@ function CalendarFeedRow() {
     <>
       <SettingsRow
         title="Calendar feed"
-        description="A private link your calendar app keeps in sync — events and scheduled tasks, updating about once an hour. Anyone with the link can see your schedule."
+        description="A private link your calendar app keeps in sync: events and scheduled tasks, updating about once an hour. Anyone with the link can see your schedule."
         control={
           token ? (
             <span className="flex flex-wrap items-center justify-end gap-2">

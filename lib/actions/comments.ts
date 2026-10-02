@@ -11,6 +11,7 @@
 // portal guest cannot write through it. `author_name` is stored rather than
 // joined precisely so guest comments can arrive later through the service role
 // without a schema change.
+import { notReady } from '@/lib/not-ready';
 import { createClient } from '@/lib/supabase/server';
 import { activeSpaceId } from '@/lib/active-space';
 import { requireSession } from '@/lib/auth';
@@ -33,7 +34,7 @@ export async function commentsSupported(db?: DB): Promise<boolean> {
   }
 }
 
-const NOT_READY = { error: 'Comments need migration 0037.' } as const;
+const NOT_READY = () => notReady('Comments aren’t available yet.', '0037');
 
 const COLUMNS = 'id,thread_id,block_id,body,author_name,created_at,resolved_at';
 
@@ -89,7 +90,7 @@ export async function addComment(input: {
   }
 
   const { supabase, user } = await requireSession();
-  if (!await commentsSupported(supabase)) return NOT_READY;
+  if (!await commentsSupported(supabase)) return NOT_READY();
 
   const sid = await activeSpaceId(supabase, user.id);
   const { data: profile } = await supabase
@@ -122,7 +123,7 @@ export async function addComment(input: {
  */
 export async function setThreadResolved(threadId: string, resolved: boolean): Promise<{ error: string } | { ok: true }> {
   const { supabase } = await requireSession();
-  if (!await commentsSupported(supabase)) return NOT_READY;
+  if (!await commentsSupported(supabase)) return NOT_READY();
 
   const { error } = await supabase
     .from('comments')
@@ -136,7 +137,7 @@ export async function setThreadResolved(threadId: string, resolved: boolean): Pr
  *  thread is only ever the rows that share an id. */
 export async function deleteComment(id: string): Promise<{ error: string } | { ok: true }> {
   const { supabase } = await requireSession();
-  if (!await commentsSupported(supabase)) return NOT_READY;
+  if (!await commentsSupported(supabase)) return NOT_READY();
 
   const { error } = await supabase.from('comments').delete().eq('id', id);
   if (error) return { error: error.message };

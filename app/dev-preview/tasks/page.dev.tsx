@@ -10,6 +10,7 @@
 import { notFound } from 'next/navigation';
 import { TasksView, type TaskItem } from '@/components/tasks/tasks-view';
 import type { Scope } from '@/lib/task-scopes';
+import type { FileProposals } from '@/lib/inbox-file';
 import { Suspense } from 'react';
 import { Toaster } from '@/components/ds/ui';
 import { ActionFailureNet } from '@/components/shell/action-failure-net';
@@ -26,7 +27,31 @@ const TASKS: TaskItem[] = [
   // The case rule 3 exists for: in a project AND a list, so switching either
   // off has to silence it even though its board column is the list.
   { id: 't4', title: 'Send the deposit invoice', done: false, priority: 'med', highlight: false, estimate_minutes: 20, scheduled_date: null, is_inbox: true, project_id: 'p1', list_id: 'L2', recurrence: null, parent_task_id: null, created_at: hoursAgo(3) },
+  { id: 't6', title: 'Colour proof on Thursday', done: false, priority: 'low', highlight: false, estimate_minutes: null, scheduled_date: null, is_inbox: true, project_id: null, list_id: null, recurrence: null, parent_task_id: null, created_at: hoursAgo(9) },
+  { id: 't7', title: 'Renew the domain', done: false, priority: 'low', highlight: false, estimate_minutes: null, scheduled_date: null, is_inbox: true, project_id: null, list_id: null, recurrence: null, parent_task_id: null, created_at: hoursAgo(2) },
   { id: 't5', title: 'Archive last quarter’s files', done: true, priority: 'low', highlight: false, estimate_minutes: null, scheduled_date: null, is_inbox: true, project_id: null, list_id: 'L1', recurrence: null, parent_task_id: null, created_at: hoursAgo(30) },
+];
+
+// §7Q *File* — the clerk's answer, staged. The action itself needs a session and spends the shared
+// free pool, so what is stubbed here is the SHAPE it returns; every rule and every verifier that
+// produced it is tested for real in lib/inbox-file.test.ts and lib/ai/inbox-file.live.test.ts.
+// One of each kind is present on purpose: a filing the rules made, one a model guessed, one that
+// only names a day, and a duplicate warning with no filing at all.
+// The staged date and the words under it have to agree: `saidDate` derives both from ONE parse of
+// the title, so a harness that made them up separately would preview a lie ("You wrote 'Thursday'"
+// over "Schedule for Wed 30 Sep") and teach the wrong thing about the feature.
+const nextThursday = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + (((4 - d.getDay() + 6) % 7) + 1));
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+const FILING: FileProposals[] = [
+  { thoughtId: 't1', project: { projectId: 'p1', projectName: 'Ridgeline', confidence: 0.72, evidence: '3 tasks in Ridgeline mention \u201claunch\u201d.', source: 'history' } },
+  { thoughtId: 't2', project: { projectId: 'p2', projectName: 'New life', confidence: 0.5, evidence: 'From \u201cweekly update\u201d in what you wrote.', source: 'model' },
+    label: { labelId: 'l1', labelName: 'Waiting', confidence: 0.6, evidence: '2 tasks labelled Waiting mention \u201cupdate\u201d.' },
+    duplicate: { taskId: 't9', title: 'Draft the weekly client update' } },
+  { thoughtId: 't6', scheduled: { date: nextThursday(), evidence: 'You wrote \u201cThursday\u201d.' } },
 ];
 
 const LISTS: Scope[] = [
@@ -47,7 +72,7 @@ export default function TasksPreviewPage() {
       <TasksView
         initialTasks={TASKS}
         projects={{
-          p1: { id: 'p1', name: 'Balluji', color: '#9A1B6F' },
+          p1: { id: 'p1', name: 'Ridgeline', color: '#9A1B6F' },
           p2: { id: 'p2', name: 'New life', color: '#7B8B5F' },
         }}
         subByParent={{}}
@@ -58,6 +83,10 @@ export default function TasksPreviewPage() {
         hiddenScopes={[]}
         savedViewsSupported
         savedViews={[{ id: 'sv1', name: 'Waiting on clients', filter: { view: 'inbox', filter: 'all', labelId: 'l1' } }]}
+        onSuggestFiling={async () => {
+          await new Promise((r) => setTimeout(r, 400)); // the real one is a model call; show the wait
+          return { proposals: FILING, modelFailed: false };
+        }}
       />
       {/* Its own <Toaster/>: dev-preview renders OUTSIDE AppShell, which owns the
           app's single one. Without it every toast this harness raises is

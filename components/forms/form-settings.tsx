@@ -97,7 +97,7 @@ export function FormSettingsPage({ formId, initial, status: initialStatus, quest
         <SettingsRow
           title="Layout"
           description={settings.mode === 'focus'
-            ? 'One question at a time — best for anything longer than a few questions.'
+            ? 'One question at a time, best for anything longer than a few questions.'
             : 'The whole form on one calm page.'}
           control={
             <SegmentedControl

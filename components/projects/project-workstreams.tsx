@@ -55,7 +55,7 @@ export function ProjectWorkstreams({ streams, tasks, onOpen }: {
       <SectionHeading count={groups.length > 0 ? `${done}/${groups.length}` : undefined}>Workstreams</SectionHeading>
 
       {groups.length === 0 ? (
-        <EmptyLine className="py-0">No workstreams yet — bigger jobs split into Identity, Motion, Web.</EmptyLine>
+        <EmptyLine className="py-0">No workstreams yet: bigger jobs split into Identity, Motion, Web.</EmptyLine>
       ) : (
         <div className="flex flex-col">
           {groups.map((g) => {

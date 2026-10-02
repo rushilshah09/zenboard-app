@@ -1,112 +1,14 @@
 'use client';
-// ── THE COMPOSER ───────────────────────────────────────────────────────────
-//
-// Slack's keyboard, exactly: Enter sends, Shift+Enter starts a new line. It opens ONE line tall and
-// grows as you write (the DS Textarea's `compact` mode), because a chat box that opens three lines
-// tall reads as a form to fill in.
-//
-// Enter does NOT send while an input method is composing. Someone typing Japanese, Chinese or
-// Korean presses Enter to CONFIRM a character; sending on that key would post half a word every
-// time. `isComposing` (and keyCode 229, which some browsers report instead) is the standard check.
-//
-// Nothing here waits for the server. The parent appends the message optimistically and clears the
-// box at once; if the send fails, the message stays in the list with a Retry — what you wrote is
-// never thrown away.
-
+// The project conversation's composer — THE DS `MessageComposer` with chat's two bindings on it:
+// the body check that matches 0043's check constraint (so the person is told before a round trip,
+// not after one), and nothing else. The box, the keyboard and the send button moved to the design
+// system when Ask needed the same ones; a second copy would be a second answer to "what does Enter
+// do", which is the one question a person must never have to ask twice in one product.
 import * as React from 'react';
-import { ArrowUp } from '@/components/ds/icons';
-import { Icon, IconButton, Textarea } from '@/components/ds/ui';
+
+import { MessageComposer, type MessageComposerProps } from '@/components/ds/ui';
 import { normalizeBody } from '@/lib/chat';
 
-export function Composer({
-  placeholder,
-  onSend,
-  disabled,
-  autoFocus,
-  onEditLast,
-  inputRef,
-}: {
-  placeholder: string;
-  /** Hand the checked body up. Returns nothing: the parent owns the optimistic row. */
-  onSend: (body: string) => void;
-  disabled?: boolean;
-  autoFocus?: boolean;
-  /**
-   * Slack's ↑: in an EMPTY box, Up edits your last message. Only when empty — in a draft, Up has to
-   * keep moving the caret between lines, or the shortcut would steal the key it is named after.
-   */
-  onEditLast?: () => boolean;
-  /** Lets the conversation put the caret back here — after an edit or a delete closes. */
-  inputRef?: React.RefObject<HTMLTextAreaElement | null>;
-}) {
-  const [text, setText] = React.useState('');
-  const [error, setError] = React.useState<string | null>(null);
-  const ownRef = React.useRef<HTMLTextAreaElement>(null);
-  const box = inputRef ?? ownRef;
-  const canSend = !disabled && text.trim().length > 0;
-
-  const send = () => {
-    const checked = normalizeBody(text);
-    if (!checked.ok) {
-      setError(checked.error);
-      return;
-    }
-    setError(null);
-    onSend(checked.body);
-    setText('');
-    box.current?.focus();
-  };
-
-  return (
-    <div className="border-t border-line-soft px-5 pb-4 pt-3">
-      <div className="relative">
-        <Textarea
-          ref={box}
-          compact
-          value={text}
-          autoFocus={autoFocus}
-          disabled={disabled}
-          placeholder={placeholder}
-          aria-label={placeholder}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={error ? 'composer-error' : undefined}
-          onChange={(e) => {
-            setText(e.target.value);
-            if (error) setError(null);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'ArrowUp' && !text && !e.shiftKey && !e.altKey && !e.metaKey && !e.ctrlKey && onEditLast) {
-              // Only swallow the key when there WAS something to edit.
-              if (onEditLast()) e.preventDefault();
-              return;
-            }
-            if (e.key !== 'Enter' || e.shiftKey) return;
-            if (e.nativeEvent.isComposing || e.keyCode === 229) return; // an IME is confirming a character
-            e.preventDefault();
-            if (canSend) send();
-          }}
-          // Room on the right for the send button, so a long line never runs under it.
-          className="pe-11"
-        />
-        <div className="absolute bottom-1.5 end-1.5">
-          <IconButton
-            label="Send"
-            size="sm"
-            variant={canSend ? 'primary' : 'ghost'}
-            disabled={!canSend}
-            icon={<Icon icon={ArrowUp} size={16} />}
-            onClick={send}
-          />
-        </div>
-      </div>
-      {error ? (
-        <p id="composer-error" className="mt-1.5 text-caption text-danger-600" role="alert">{error}</p>
-      ) : (
-        // The keyboard is taught once, quietly, where you are already looking.
-        <p className="mt-1.5 text-caption text-ink-500">
-          <kbd className="font-sans">Enter</kbd> to send · <kbd className="font-sans">Shift</kbd> + <kbd className="font-sans">Enter</kbd> for a new line
-        </p>
-      )}
-    </div>
-  );
+export function Composer(props: Omit<MessageComposerProps, 'check'>) {
+  return <MessageComposer check={normalizeBody} {...props} />;
 }

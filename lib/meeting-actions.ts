@@ -108,6 +108,19 @@ export function meetingActions(notes: string | null | undefined, tasks: MeetingT
   return rows;
 }
 
+/**
+ * The notes with new action lines at the end — how an accepted suggestion (lib/meeting-suggest.ts)
+ * becomes an action item. It is written as a line, in the one `[ ]` form this file parses, rather
+ * than as a task or a side list: the notes stay the single place a commitment is written down, and
+ * everything downstream (the list, "Make task", the pairing) already knows what to do with a line.
+ */
+export function appendActionLines(notes: string | null | undefined, texts: string[]): string {
+  const lines = texts.map((t) => t.replace(/\s+/g, ' ').trim()).filter(Boolean).map((t) => `[ ] ${t}`);
+  const base = (notes ?? '').replace(/\s+$/, '');
+  if (!lines.length) return notes ?? '';
+  return base ? `${base}\n${lines.join('\n')}` : lines.join('\n');
+}
+
 /** The ones a click would turn into tasks: not yet a task, not already ticked. */
 export function promotable(rows: MeetingAction[]): MeetingAction[] {
   return rows.filter((r) => !r.task && !r.done);

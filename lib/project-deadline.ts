@@ -18,7 +18,7 @@
 //   TASK       a scheduled piece of work
 //
 // On the same day the LARGEST container wins, because that is the one whose
-// name means the most in a sentence like "next: 12 Sep — Balluji rebrand".
+// name means the most in a sentence like "next: 12 Sep — Ridgeline rebrand".
 // A task called "Send file" beating "Project deadline" on the same date told
 // you the least useful true thing available.
 import { todayISO } from '@/lib/date';

@@ -183,7 +183,7 @@ function ToastCard({ t }: { t: ToastData }) {
       // `before:` bridges the 8px gap above the card, so the pointer never "leaves" the
       // stack between two toasts: it used to, which resumed every clock and collapsed
       // an expanded "+N more" stack mid-reach (Sonner fills the gaps the same way).
-      className={`flex w-[360px] relative items-start gap-3 rounded-lg border border-line-soft bg-surface-raised px-4 py-3 shadow-lift-2 before:absolute before:inset-x-0 before:-top-2 before:h-2 before:content-[''] transition-[opacity,translate,scale] ease-out-quiet starting:translate-y-2 starting:scale-[0.98] starting:opacity-0 ${t.leaving ? "pointer-events-none translate-y-2 scale-[0.98] opacity-0 duration-fast" : "pointer-events-auto duration-slow"}`}
+      className={`flex w-[360px] relative items-start gap-3 rounded-md border border-line-soft bg-surface-raised px-4 py-3 shadow-lift-2 before:absolute before:inset-x-0 before:-top-2 before:h-2 before:content-[''] transition-[opacity,translate,scale] ease-out-quiet starting:translate-y-2 starting:scale-[0.98] starting:opacity-0 ${t.leaving ? "pointer-events-none translate-y-2 scale-[0.98] opacity-0 duration-fast" : "pointer-events-auto duration-slow"}`}
     >
       <span aria-hidden className={`w-[3px] shrink-0 self-stretch rounded-full ${BAR[t.variant]}`} />
       <p className="min-w-0 flex-1 text-body text-ink-800">

@@ -36,7 +36,7 @@ const piece = (
 ): Piece => ({ id, title, meta: readContent({ blocks: [], pipeline }), ...extra });
 
 const PROJECTS = [
-  { id: 'pr1', name: 'TechSpark rebrand' },
+  { id: 'pr1', name: 'Northwind rebrand' },
   { id: 'pr2', name: 'Studio marketing' },
 ];
 
@@ -53,10 +53,10 @@ const PIECES: Piece[] = [
   piece('c5', 'August recap', { stage: 'edit', format: 'short', channel: 'TikTok', publishAt: at(-3) }),
   // WITH THE CLIENT: a real `approvals` row, which is what actually makes the
   // next move someone else's — the review stage alone never did.
-  piece('c6', 'Client spotlight — TechSpark', { stage: 'review', format: 'post', channel: 'LinkedIn', publishAt: at(3) },
+  piece('c6', 'Client spotlight — Northwind', { stage: 'review', format: 'post', channel: 'LinkedIn', publishAt: at(3) },
     { projectId: 'pr1', approval: { id: 'ap1', status: 'awaiting', createdAt: at(-2) } }),
   // They answered, and the answer was no. This outranks every date on the board.
-  piece('c10', 'TechSpark case study film', { stage: 'review', format: 'video', channel: 'YouTube', publishAt: at(12) },
+  piece('c10', 'Northwind case study film', { stage: 'review', format: 'video', channel: 'YouTube', publishAt: at(12) },
     { projectId: 'pr1', approval: { id: 'ap2', status: 'changes_requested', note: 'Love it — can we cut the intro to 10s and swap the logo shot for the new mark?', createdAt: at(-1) } }),
   // In review with NOBODY asked: your own homework, and it must NOT read as
   // waiting on anyone.

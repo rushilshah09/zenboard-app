@@ -6,12 +6,13 @@
 // state come from DS tokens. The rail is a bg-paper panel that collapses on narrow
 // viewports and via the toolbar toggle.
 import { useState } from 'react';
-import { ChevronDown, Search, Plus } from "@/components/ds/icons";
+import { Search, Plus } from "@/components/ds/icons";
 import { Icon, IconButton, LayerToggle } from "@/components/ds/ui";
-import { cn } from "@/lib/cn";
 import { MiniMonth, type DateRange } from '@/components/calendar/mini-month';
 import { MY_CALENDARS, type Cal } from '@/lib/calendar-cats';
 import { palette, paletteFor } from '@/lib/palette';
+import { scopeFill } from '@/lib/entity-color';
+import { RailSectionHeading } from '@/components/ui/rail-section-heading';
 
 export type RailProject = { id: string; name: string; color: string };
 
@@ -25,11 +26,7 @@ function Section({ title, defaultOpen = true, children }: { title: string; defau
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div className="flex flex-col gap-0.5">
-      <button type="button" onClick={() => setOpen((v) => !v)}
-        className="focus-ring flex h-6 items-center gap-1.5 rounded-xs px-2 text-ink-500 hover:text-ink-700">
-        <Icon icon={ChevronDown} size={12} weight="bold" className={cn('transition-transform duration-base ease-standard', !open && '-rotate-90')} />
-        <span className="text-overline">{title}</span>
-      </button>
+      <RailSectionHeading label={title} open={open} onToggle={() => setOpen((v) => !v)} />
       {open && <div className="flex flex-col gap-px">{children}</div>}
     </div>
   );
@@ -59,7 +56,10 @@ export function CalendarSidebar({ selected, onPick, range, onSelectRange, projec
       {projects.length > 0 && (
         <Section title="Projects">
           {projects.map((p) => {
-            const dot = p.color || paletteFor(p.id).dot;
+            // Through the ONE resolver (lib/entity-color.ts): a project's colour is stored as a scope name
+            // ('plum', the default) or a legacy hex, and painting it raw drew CSS's named colour "plum"
+            // for every new project. Anything the resolver cannot read is painted as it was stored.
+            const dot = p.color ? scopeFill(p.color, p.color) : paletteFor(p.id).dot;
             return <LayerToggle key={p.id} id={p.id} name={p.name} color={dot} on={!hidden.has(p.id)} onToggle={() => onToggle(p.id)} />;
           })}
         </Section>

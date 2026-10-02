@@ -41,7 +41,14 @@ export function AccordionTrigger({ className, children, icon, ...props }: React.
 export function AccordionContent({ className, children, ...props }: React.ComponentPropsWithoutRef<typeof RA.Content>) {
   return (
     <RA.Content
-      className="overflow-hidden zb-enter data-[state=open]:animate-[reveal-down_var(--duration-slow)_var(--ease-out-quiet)] data-[state=closed]:animate-[reveal-up_var(--duration-fast)_var(--ease-out-quiet)]"
+      // OPEN AND CLOSE ON THE DRAWER CURVE (user, 2026-09-28: "make this open close smooth").
+      // `--ease-out-quiet` is the ARRIVAL curve: it front-loads almost all of its travel, which is
+      // right for something appearing in place and wrong for a box changing SIZE — the answer
+      // snapped to nearly full height and then crawled the last few pixels. `--ease-drawer` is the
+      // iOS curve, built for exactly this, and the open is a quarter longer than the ladder's top
+      // rung because a paragraph of height has further to go than a menu does. The close stays at
+      // `--duration-slow`, so leaving is still quicker than arriving.
+      className="overflow-hidden zb-enter data-[state=open]:animate-[reveal-down_calc(var(--duration-slow)*1.25)_var(--ease-drawer)] data-[state=closed]:animate-[reveal-up_var(--duration-slow)_var(--ease-drawer)]"
       {...props}
     >
       <div className={cn("px-3 pb-3 ps-8 text-body text-ink-700", className)}>{children}</div>

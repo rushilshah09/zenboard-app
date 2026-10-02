@@ -89,7 +89,7 @@ export function FormsPanel({ forms, clientId, projectId, className }: {
       </div>
 
       {forms.length === 0 ? (
-        <EmptyLine>No forms yet. Collect a brief or feedback — they fill it in without an account.</EmptyLine>
+        <EmptyLine>No forms yet. Collect a brief or feedback. They fill it in without an account.</EmptyLine>
       ) : (
         forms.map((f) => (
           <div key={f.id} className="group flex items-center gap-3 border-b border-line-soft py-2 last:border-0">

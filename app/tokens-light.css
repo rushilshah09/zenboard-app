@@ -1,94 +1,63 @@
 /* ============================================================================
-   THE BRIDGE — Zenboard's primitives, derived from shadcn's semantic tokens.
+   THE BRIDGE — Zenboard's names, mapped onto the palette, per theme.
    ============================================================================
-   `theme-shadcn.css` holds the VALUES (light in `:root`, dark in
-   `html[data-theme='dark']`). This file holds the MAPPING: every Zenboard
-   primitive re-pointed at one of them, for both themes at once.
+   `theme-shadcn.css` holds the VALUES. This file holds the MAPPING (the shared
+   rule) and the per-theme families that have no shadcn name: the ink ramp's
+   shape, washes, edges, shadows, status, the data and label palettes.
 
-   Nothing here invents a colour. That is the point — "use shadcn colors with
-   tones, only use colors from shadcn" means one palette, and a second
-   hand-tuned set living alongside it is the fragmentation this whole pass
-   exists to remove. Zenboard's 558 semantic tokens are DERIVED
-   (`--color-surface-panel: var(--color-paper)`), so re-pointing ~30 primitives
-   re-colours all of them.
+   `html[data-theme=…]` (0,1,1), not `:root`: the legacy token files are plain
+   `:root` blocks imported later, and a `:root` here would tie on specificity
+   and lose on order.
 
-   ── WHY `html[data-theme=…]` AND NOT `:root` ──────────────────────────────
-   `tokens.generated.css` and `tokens.css` set these same primitives in plain
-   `:root` blocks and are imported LATER, so a `:root` here would tie on
-   specificity and lose on order. `html[…]` is (0,1,1) and wins outright. This
-   is not hypothetical — it is exactly how `color-scheme: dark` in globals.css
-   kept winning while the page rendered light.
-
-   ── THE INK RAMP ──────────────────────────────────────────────────────────
-   shadcn ships two ink steps (`foreground`, `muted-foreground`); Zenboard's
-   type hierarchy uses seven. Collapsing seven into two would flatten every
-   heading/body/meta relationship in the product. So the middle steps are mixed
-   along the SAME neutral axis with `color-mix` — still only shadcn colours, and
-   still one source: change `--foreground` and the whole ramp follows.
+   Every family is declared in BOTH theme blocks below. A token that only one
+   theme declares is how dark values leaked into light five times; the older
+   files no longer carry any colour literal to leak (see their headers).
    ========================================================================= */
 
 html[data-theme='light'],
 html[data-theme='dark'] {
   /* ── Surfaces ── */
   --color-canvas: var(--background);
+  /* THE DESK — the ground the shell's panels lie on (app-shell.tsx). One rung
+     below the canvas in both themes, so a panel reads as an object. */
+  --color-surface-desk: var(--desk);
   --color-paper: var(--card);
   --color-paper-2: var(--muted);
   --color-paper-3: var(--popover);
+  /* A card's head (`<Panel>`'s band, a composer footer) — NOT the recessed fill
+     (`--color-surface-sunken`), which steps down from whatever holds it. */
+  --color-surface-band: var(--band);
   --color-tan: var(--border);
   --color-elements-1: var(--border);
 
-  /* ── Ink ──
-     ONE derived family, and that is the point. The ramp used to mix the top
-     four steps from `--foreground` and the bottom three from
-     `--muted-foreground`, two anchors that do not sit at the same place in the
-     two themes — so in DARK the ramp inverted: ink-600 measured 5.85:1 while
-     ink-500 measured 7.13:1, and the "stronger" token was the fainter one.
-     Deriving every step from one anchor makes monotonicity structural rather
-     than something to re-check by hand. ink-500 is the lowest step that is
-     TEXT (meta, timestamps) so it is tuned to clear AA in both themes; 400 and
-     below are tints — rules, disabled glyphs, toggle tracks — and must never
-     carry a sentence.
-
-     RE-TUNED 2026-09-08 when the palette moved to Notion's. The percentages
-     are RELATIVE to the anchors, so changing --foreground silently rescales
-     every derived step: Notion's ink (#37352F) is much lighter than the
-     #0A0A0A it replaced (oklch L 0.329 vs 0.145), and the old 56%/62% mixes
-     that used to clear AA landed at 3.31:1 and 3.86:1 on a band — 45 elements
-     measured failing on one page. The comment above still CLAIMED they cleared
-     AA, which is the trap: a derived ramp's guarantees live in its anchors,
-     not in its formula.
-
-     700/600/500 went 76/62/56 -> 84/79/74, the lowest values that clear 4.5:1
-     on EVERY surface that carries text — card, band, sunken in light; card,
-     band, inner-raised and popover in dark. Measured after (worst surface,
-     light/dark): 900 10.09/8.52 · 800 8.26/7.17 · 700 6.62/5.96 ·
-     600 5.75/5.31 · 500 5.01/4.72. Contrast still falls monotonically, so the
-     hierarchy reads. Guarded in app/theme-bridge.test.ts.
-
-     The FIRST pass at this only checked card+band and passed, while the
-     popover and the inner raised card were still failing — the ramp has to be
-     solved against the LIGHTEST ground it ever lands on, not the common one. */
+  /* ── Ink — THREE TEXT LEVELS ─────────────────────────────────────────────
+       primary    900 = 800   titles AND body. Size and weight separate a title
+                              from its body (Notion, Linear and Claude all set
+                              them in one ink); a second near-identical black
+                              (#44423C beside #37352F) was noise, not hierarchy.
+       secondary  700 = 600   labels, descriptions, inactive navigation.
+       tertiary   500         meta, timestamps, placeholders. The faintest TEXT.
+     Below that are TINTS, never text: 400 (disabled glyphs, quiet icons),
+     300 (rules, tracks), 200 (faint decoration).
+     Derived from the ink over the canvas, so the hierarchy follows the ink.
+     Solved against the LIGHTEST ground each level meets, washes included
+     (app/theme-bridge.test.ts resolves the mix for real): secondary 86% is
+     5.8:1 on a hovered recessed row in light and 4.5:1 on a pressed row inside
+     the dark popover; tertiary 72% is 4.6:1 on the light recessed fill and on
+     the dark popover. Gaps between the three are even (ΔL ≈ 0.09). */
   --color-ink-900: var(--foreground);
-  --color-ink-800: color-mix(in oklab, var(--foreground) 92%, var(--background));
-  --color-ink-700: color-mix(in oklab, var(--foreground) 84%, var(--background));
-  --color-ink-600: color-mix(in oklab, var(--foreground) 79%, var(--background));
-  --color-ink-500: color-mix(in oklab, var(--foreground) 74%, var(--background));
+  --color-ink-800: var(--color-ink-900);
+  --color-ink-700: color-mix(in oklab, var(--foreground) 86%, var(--background));
+  --color-ink-600: var(--color-ink-700);
+  --color-ink-500: color-mix(in oklab, var(--foreground) 72%, var(--background));
   --color-ink-400: color-mix(in oklab, var(--foreground) 42%, var(--background));
   --color-ink-300: color-mix(in oklab, var(--foreground) 28%, var(--background));
   --color-ink-200: color-mix(in oklab, var(--foreground) 18%, var(--background));
   --color-ink-100: var(--muted);
   --color-ink-050: var(--muted);
 
-  /* ── State surfaces — RELATIVE, and that distinction is the whole point.
-     An ELEVATION is absolute: a card is one specific tone. A STATE is not —
-     the same hover lands on the sidebar (--card), on a card header band
-     (--muted) and on a floating menu (--popover), three different grounds.
-     Pinning it to one solid tone made hover DARKER than the popover it sat
-     in, and `.zb-press::after` paints its wash OVER the row, so an opaque
-     value erased the icon and label outright (user, on the account menu:
-     "its hover when i hove its looks a like this" — an empty grey block).
-     A translucent wash composites onto whatever is underneath, so one token
-     is correct on all three. Elevation stays solid; state stays a wash. ── */
+  /* ── State surfaces — RELATIVE. An elevation is one tone; a state lands on a
+     card, a band, a popover and a sheet, so it must composite (a wash). ── */
   --color-surface-hover: var(--wash-1);
   --color-surface-active: var(--wash-2);
   --color-surface-selected: var(--wash-3);
@@ -97,272 +66,215 @@ html[data-theme='dark'] {
   --color-surface-fill-hover: var(--wash-fill-hover);
   --color-surface-row: var(--wash-row);
 
+  /* The accent pressed harder: toward the theme's own ink (darker in light,
+     lighter in dark), so one declaration serves both and follows any accent. */
+  --accent-hover: color-mix(in oklab, var(--accent) 86%, var(--foreground));
+
   /* ── Edges ── */
   --line: var(--border);
   --line-2: color-mix(in oklab, var(--border) 60%, var(--background));
   --line-3: color-mix(in oklab, var(--border) 100%, var(--foreground) 8%);
 
-  /* ── The primary solid, and the one token an inverted theme cannot inherit:
-     text ON that solid. Left to the dark theme's value, the primary button
-     rendered near-black on near-black — measured, on the sign-up screen. ── */
+  /* ── The primary solid, and text ON it ── */
   --primary: var(--primary-solid);
   --color-text-onsolid: var(--primary-solid-foreground);
   --on-primary: var(--primary-solid-foreground);
-
-  /* `--ink-base` feeds every `--ink-a-*` alpha and `--ink-disable` is a raw
-     white-alpha: the only two in the legacy layer that do not derive. */
   --ink-disable: var(--color-ink-300);
 
-  /* The monochrome fallback for the brand accent, which the appearance switcher
-     overrides inline when the user picks a colour. */
+  /* The monochrome fallback for the accent, which the appearance switcher
+     overrides inline with the person's choice (lib/theme.ts). */
   --accent: var(--foreground);
   --on-accent: var(--background);
-  --scrim-color: var(--foreground);
 }
 
-/* ── What each theme still has to say for itself ─────────────────────────── */
+/* ── What each theme says for itself ─────────────────────────────────────── */
 
 html[data-theme='light'] {
+  /* The accent as TEXT: the light accents all clear 5:1 on white, so the hue
+     is used unchanged. Dark lifts it toward its own ink (below). */
+  --accent-text: var(--accent);
   color-scheme: light;
-  --ink-base: 10, 10, 10;
-  --tip-text: oklch(0.985 0 0);
+  /* The ink as an RGB triplet, for the legacy `--ink-a-*` alpha names. */
+  --ink-base: 55, 53, 47;
 
-  /* Light runs OUT of headroom upward: --card is already white, so a "more
-     raised" surface cannot be lighter. Above the card, elevation is carried by
-     the border and the shadow instead (see below), and paper-4 stays white.
-     The well is the one that still has somewhere to go — down. */
+  /* Light has no headroom above white: a "more raised" surface IS the card, and
+     the border and shadow carry the lift. The well is the recessed fill. */
   --color-paper-4: var(--card);
-  --color-paper-5: color-mix(in oklab, var(--background) 96%, var(--foreground));
+  --color-paper-5: var(--muted);
 
-  /* State washes: ink over the ground, so the step is the same wherever it
-     lands. Kept at the same tonal strength as the solids they replace — 5%
-     black on white is #f0f0f0, within a hair of the --secondary it supersedes,
-     so no filled control gets quieter than it already was. */
-  /* Edges. `--line`/`--border` were bridged; this family was NOT, so it stayed
-     on the legacy dark's warm white-alpha and went invisible on a white page —
-     measured on a card: line-soft 1.009:1 (212 usages: every divider), line-
-     strong 1.017:1 (88 usages: every popover border), focus 1.052:1, which is
-     a straight accessibility failure. That, far more than the surfaces, is why
-     light read flat. A hairline is the one thing that SHOULD stay relative:
-     ink over whatever it is drawn on, so it reads the same on card and popover
-     alike. Focus clears 3:1 by rule, not by taste. */
-  --color-border-soft: color-mix(in oklab, var(--foreground) 7%, transparent);
-  --color-border-strong: color-mix(in oklab, var(--foreground) 28%, transparent);
-  --color-border-panel: color-mix(in oklab, var(--foreground) 5%, transparent);
-  --color-border-focus: color-mix(in oklab, var(--foreground) 45%, transparent);
-
-  /* ── THE BOUNDARY THAT *IS* THE CONTROL ────────────────────────────────
-     A divider and a checkbox were drawn with the same token, and they are not
-     the same job. Measured (2026-09-08): an unchecked checkbox came out at
-     1.07:1 in light and 1.3:1 in dark, and a text field's edge at 1.13:1 —
-     i.e. no visible box and no visible field. Three tiers now, each with a
-     bar it must clear and a test that measures it:
-
-       decorative  -soft / --border   dividers, card edges. Subtle on purpose.
-       field       -strong  ≥ 1.6:1   an input/select/popover edge. The control
-                                      also carries a label, a placeholder and a
-                                      value, so the edge is an affordance, not
-                                      the sole identifier — which is why every
-                                      reference product ships these under 3:1.
-                                      16% → 28% because 1.33:1 was not an edge.
-       control     -control  ≥ 3:1    a checkbox, radio, switch track or slider
-                                      thumb. There is no text inside and no
-                                      label within the shape: if you cannot see
-                                      the box, the control does not exist.
-                                      WCAG 1.4.11, and CLAUDE.md's own
-                                      "hover/selected/focus states present".
-
-     -control is a SOLID, and deliberately so: every other edge here is ink at
-     a percentage, which reads the same on any ground — but a *guarantee* must
-     not depend on what is behind it. A translucent dark edge nearly vanishes
-     on the sunken well, which is exactly the ground a control sits in most
-     often. The worst ground differs by theme (light: the well, the darkest
-     surface; dark: the popover, the lightest), because the hardest ground is
-     always the one nearest the border's own luminance. Both values below are
-     solved against all five surfaces and clear 3.3:1 on the worst of them —
-     ~10% headroom, so moving a surface cannot silently break the promise.
-     Warmth tracks the ink family (light ink is #37352F, dark is neutral).
-
-     The VALUE lives in theme-shadcn.css as `--border-control`, beside every
-     other value, so the no-attribute case (:root === light, before the boot
-     script stamps data-theme) resolves it too. This is the bridge. */
+  /* Edges: the tint at a percentage, so a hairline reads the same on a card, a
+     band and a popover. Focus clears 3:1 by rule (45% of the line tint). */
+  --color-border-soft: color-mix(in oklab, var(--tint) 7%, transparent);
+  --color-border-strong: color-mix(in oklab, var(--tint) 28%, transparent);
+  --color-border-panel: color-mix(in oklab, var(--tint) 5%, transparent);
+  --color-border-focus: color-mix(in oklab, var(--tint-line) 45%, transparent);
+  /* The control tier is a SOLID: a ≥3:1 promise must not depend on the ground. */
   --color-border-control: var(--border-control);
 
-  /* The glyph ON a palette dot — a tick, a small icon. There was no such
-     token, so LayerToggle hardcoded `text-white`, which is right for the
-     LIGHT dots (they are deep hues) and wrong for every DARK one (they are
-     light hues): white on dark-mode yellow measured 1.88:1. One token per
-     theme is enough because the nine flip together. */
+  /* The glyph on a palette dot or a scope fill. */
   --pal-on: #FFFFFF;
-
-  /* The surface of a control RAISED OUT of a well (segmented thumb, switch
-     knob). Light has no headroom above the card, so the thumb IS the card and
-     the border plus shadow carry the lift; dark has room, so it steps up. */
+  /* A control raised OUT of a well (segmented thumb, switch knob): in light it
+     IS the card, and its shadow carries the lift. */
   --color-surface-thumb: var(--card);
 
-  /* Mixed from the theme's OWN ink, not from pure black. A black wash over warm
-     paper desaturates it — the secondary button measured #f0f0ee (near-neutral)
-     while its own border was #e3dfd8 (clearly warm), which is the "some places
-     warm, some places black and white" the user saw. Mixing the foreground in
-     DEEPENS the paper instead of greying it, and the formula needs no per-theme
-     copy: each theme supplies its own ink. */
-  --wash-1: color-mix(in oklab, var(--foreground) 5%, transparent);
-  --wash-2: color-mix(in oklab, var(--foreground) 9%, transparent);
-  --wash-3: color-mix(in oklab, var(--foreground) 7%, transparent);
-  --wash-row: color-mix(in oklab, var(--foreground) 2.5%, transparent);
-  --wash-fill: color-mix(in oklab, var(--foreground) 6%, transparent);
-  --wash-fill-hover: color-mix(in oklab, var(--foreground) 10%, transparent);
+  /* Washes, made of the theme's tint at ONE set of strengths (dark matches). */
+  --wash-1: color-mix(in oklab, var(--tint) 5%, transparent);
+  --wash-2: color-mix(in oklab, var(--tint) 9%, transparent);
+  --wash-3: color-mix(in oklab, var(--tint) 7%, transparent);
+  --wash-row: color-mix(in oklab, var(--tint) 2.5%, transparent);
+  --wash-fill: color-mix(in oklab, var(--tint) 6%, transparent);
+  --wash-fill-hover: color-mix(in oklab, var(--tint) 10%, transparent);
 
-  /* Depth. A white card on a white page has no luminance step to fall back on,
-     so in light the shadow and the border together ARE the separation — which
-     is why these are stronger than their dark counterparts rather than a
-     mirrored copy of them. */
-  /* A pale surface has no specular edge to catch — see --edge-light in globals.css. */
+  /* The scrim behind a modal layer, and the tooltip — warm, never pure black. */
+  --scrim-color: oklch(0.25 0.012 95);
+  --color-scrim: oklch(0.25 0.012 95 / 0.22);
+  --tip-bg: oklch(0.29 0.009 95);                    /* #2D2C28 */
+  --tip-text: oklch(0.975 0.004 95);
+
+  /* ── ELEVATION ────────────────────────────────────────────────────────────
+     Shadows are the ink's own warm black, layered so they fall off smoothly
+     instead of stopping at a hard edge (Kobra's sheet: five stacked layers at
+     2–6%, the light falling off over 80px). Four rungs:
+       xs/sm    a control's contact (thumb, raised chip)
+       lift-1   a panel lying on the desk — contact only, no bloom
+       lift-2   a popover, a menu, a select list, a hover card
+       lift-3   a dialog, a drawer, a sheet, the command palette
+       lift-4   the thing being dragged */
   --edge-light: inset 0 0 0 0 transparent;
-  --shadow-lift-1: 0 1px 2px rgba(0,0,0,0.05);
-  --shadow-lift-2: 0 1px 2px rgba(0,0,0,0.05), 0 8px 16px -6px rgba(0,0,0,0.10);
-  --shadow-lift-3: 0 2px 4px rgba(0,0,0,0.06), 0 24px 48px -12px rgba(0,0,0,0.14);
-  --shadow-lift-4: 0 12px 32px -8px rgba(0,0,0,0.12);
-  --shadow-toast: 0 4px 8px -2px rgba(0,0,0,0.07), 0 16px 32px -8px rgba(0,0,0,0.12);
-  --shadow-xs: rgba(0,0,0,0.05) 0px 1px 2px 0px;
-  --shadow-sm: rgba(0,0,0,0.07) 0px 1px 2px 0px;
-  --shadow-crisp: rgba(0,0,0,0.09) 0px 1px 1px -0.5px;
+  --shadow-xs: 0 1px 2px oklch(0.25 0.012 95 / 0.05);
+  --shadow-sm: 0 1px 2px oklch(0.25 0.012 95 / 0.08), 0 1px 1px oklch(0.25 0.012 95 / 0.04);
+  --shadow-crisp: 0 1px 1px -0.5px oklch(0.25 0.012 95 / 0.09);
+  --shadow-lift-1: 0 1px 2px oklch(0.25 0.012 95 / 0.04);
+  --shadow-lift-2: 0 1px 2px oklch(0.25 0.012 95 / 0.04), 0 4px 8px -2px oklch(0.25 0.012 95 / 0.05), 0 12px 28px -6px oklch(0.25 0.012 95 / 0.10);
+  --shadow-lift-3: 0 2px 4px oklch(0.25 0.012 95 / 0.03), 0 6px 12px oklch(0.25 0.012 95 / 0.04), 0 14px 28px oklch(0.25 0.012 95 / 0.05), 0 32px 64px oklch(0.25 0.012 95 / 0.07);
+  --shadow-lift-4: 0 4px 8px oklch(0.25 0.012 95 / 0.06), 0 16px 32px -8px oklch(0.25 0.012 95 / 0.16);
+  --shadow-toast: 0 2px 4px oklch(0.25 0.012 95 / 0.04), 0 8px 16px -4px oklch(0.25 0.012 95 / 0.08), 0 20px 40px -12px oklch(0.25 0.012 95 / 0.12);
 
-  /* Status and label hues: the same families, tuned for a light ground — a
-     saturated dot, a pale fill, a deep text step that clears AA on that fill. */
-  --color-success-700: #14532D; --color-success-600: #166534;
-  --color-success-500: #16A34A; --color-success-300: #86EFAC; --color-success-100: #F0FDF4;
-  --color-warning-700: #78350F; --color-warning-600: #92400E;
-  --color-warning-500: #D97706; --color-warning-300: #FCD34D; --color-warning-100: #FFFBEB;
-  --color-danger-700: #7F1D1D; --color-danger-600: #B91C1C;
-  --color-danger-500: var(--destructive); --color-danger-300: #FCA5A5; --color-danger-100: #FEF2F2;
-  --color-info-700: #1E3A8A; --color-info-600: #1D4ED8;
-  --color-info-500: #3B82F6; --color-info-300: #93C5FD; --color-info-100: #EFF6FF;
+  /* ── STATUS — one recipe, four hues (success 150° · warning 72° · danger 27°
+     · info 245°). Per role: 700 deep text · 600 text (≥ 5.2:1 on the hardest
+     ground) · 500 solid (dots, bars, fills; ≥ 4.5:1 on white) · 300 soft edge ·
+     100 soft fill (a whisper, 1.1:1 off the card). Danger's solid IS the
+     destructive red, so a "Delete" word and a "Delete" button are one colour. */
+  --color-success-700: #1B552C; --color-success-600: #206B38;
+  --color-success-500: #238744; --color-success-300: #B8DCBE; --color-success-100: #E9F7EB;
+  --color-warning-700: #633F03; --color-warning-600: #7D5002;
+  --color-warning-500: #9B6403; --color-warning-300: #E8CCAA; --color-warning-100: #FCF0E3;
+  --color-danger-700: #70322C; --color-danger-600: #8E3E38;
+  --color-danger-500: var(--destructive); --color-danger-300: #F3C4BE; --color-danger-100: #FFEEEC;
+  --color-info-700: #114B75; --color-info-600: #125F94;
+  --color-info-500: #0B77BA; --color-info-300: #B4D6F3; --color-info-100: #E9F4FE;
 
-  /* ── The ten-colour data palette (dot · chip fill · chip text) ───────────
-     THIRD instance of the bridge's one failure mode, and the most visible yet:
-     these thirty tokens live in tokens.css tuned for dark only (`--gray-bg` is
-     #2A2825, a near-black), and nothing carried them across. In light they
-     painted a near-black card onto a white calendar grid — the user's own
-     screenshot: a "New event" block rendered dark on a light week view — and
-     did the same to every coloured tag, label and status chip in the app.
-     Same recipe as --color-label-* directly above: a saturated dot, a pale
-     fill, a deep text step that clears AA on that fill (all ≥ 7:1).
-
-     DE-TINTED 2026-09-08 with the theme. These neutral rungs (`default`, `gray`,
-     and the `stone` label) had been warmed to sit on warm paper — #F4F2EC etc.
-     Light is true neutral now, so a warm rung would render a BEIGE chip on a
-     white card: exactly the "some places warm, some places black and white"
-     mismatch the user reported. Converted preserving OKLCH lightness exactly,
-     so every ratio above is unchanged (text-on-fill measures 9.41:1).
-
-     `clay` was #78716C — a warm grey one JND from `stone` (#767471). Two label
-     colours a user cannot tell apart is a broken palette, so with stone going
-     neutral, clay took the warm slot properly as terracotta (8.08:1). */
-  --default-dot: #525252; --default-bg: #F2F2F2; --default-text: #3F3F3F;
-  --gray-dot:    #747474; --gray-bg:    #F2F2F2; --gray-text:    #3F3F3F;
-  /* How much accent the DEFAULT event's fill carries (globals.css --event-accent-bg): pale, like the fills above. */
+  /* ── THE DATA PALETTE (events, tags, select options) — dot · fill · text ──
+     One recipe (dot L 0.62 · fill L 0.955 · text L 0.45) across nine hues, so
+     no tag is louder than another; Notion's hues, Zenboard's lightness. Every
+     text clears 6.3:1 on its own fill; every dot 3.4:1 on white. `default` is
+     the ink's own neutral and `gray` a step deeper, both on the 95° axis like every
+     other neutral (a gray fill solved at the recipe's chroma rounded to #F0F0EF —
+     chroma zero, a second tone — so the neutral rungs carry the frame's chroma). */
+  --default-dot: #575550; --default-bg: #F1F0EC; --default-text: #3F3D37;
+  --gray-dot:    #888680; --gray-bg:    #EBEAE6; --gray-text:    #57554F;
+  --brown-dot:   #A77B62; --brown-bg:   #F8EEE8; --brown-text:   #6C4D3C;
+  --orange-dot:  #BD7138; --orange-bg:  #FEECE1; --orange-text:  #7B461E;
+  --yellow-dot:  #A68024; --yellow-bg:  #F7EFDF; --yellow-text:  #6B510F;
+  --green-dot:   #529863; --green-bg:   #E7F5E9; --green-text:   #31623D;
+  --blue-dot:    #3E8CC9; --blue-bg:    #E4F2FE; --blue-text:    #225984;
+  --purple-dot:  #9772C0; --purple-bg:  #F4ECFE; --purple-text:  #61477D;
+  --pink-dot:    #BB6690; --pink-bg:    #FEEAF2; --pink-text:    #7A3F5C;
+  --red-dot:     #C46761; --red-bg:     #FFEBE9; --red-text:     #803F3B;
+  /* How much accent the DEFAULT event's fill carries (globals.css --event-accent-bg). */
   --event-tint: 7%;
-  --brown-dot:   #854D0E; --brown-bg:   #F5EFE6; --brown-text:   #713F12;
-  --orange-dot:  #EA580C; --orange-bg:  #FFF7ED; --orange-text:  #9A3412;
-  --yellow-dot:  #A97404; --yellow-bg:  #FEFCE8; --yellow-text:  #854D0E;  /* was #CA8A04 — 2.94:1 on a card, the one dot failing its own ground */
-  --green-dot:   #16A34A; --green-bg:   #F0FDF4; --green-text:   #166534;
-  --blue-dot:    #2563EB; --blue-bg:    #EFF6FF; --blue-text:    #1E40AF;
-  --purple-dot:  #9333EA; --purple-bg:  #FAF5FF; --purple-text:  #6B21A8;
-  --pink-dot:    #DB2777; --pink-bg:    #FDF2F8; --pink-text:    #9D174D;
-  --red-dot:     #DC2626; --red-bg:     #FEF2F2; --red-text:     #991B1B;
 
-  --color-label-stone: #747474; --color-label-stone-fill: #F2F2F2; --color-label-stone-text: #3F3F3F;
-  --color-label-berry: #C41C72; --color-label-berry-fill: #FCE7F3; --color-label-berry-text: #831843;
-  --color-label-rust: #C2410C; --color-label-rust-fill: #FFEDD5; --color-label-rust-text: #7C2D12;
-  --color-label-ochre: #A16207; --color-label-ochre-fill: #FEF3C7; --color-label-ochre-text: #713F12;
-  --color-label-moss: #15803D; --color-label-moss-fill: #DCFCE7; --color-label-moss-text: #14532D;
-  --color-label-teal: #0F766E; --color-label-teal-fill: #CCFBF1; --color-label-teal-text: #134E4A;
-  --color-label-slate: #1D4ED8; --color-label-slate-fill: #DBEAFE; --color-label-slate-text: #1E3A8A;
-  --color-label-indigo: #4F46E5; --color-label-indigo-fill: #E0E7FF; --color-label-indigo-text: #312E81;
-  --color-label-plum: #9333EA; --color-label-plum-fill: #F3E8FF; --color-label-plum-text: #581C87;
-  --color-label-clay: #9A5B3F; --color-label-clay-fill: #F7EDE8; --color-label-clay-text: #6B3A24;
+  /* ── LABELS — the same recipe, ten hues (stone is the neutral). ── */
+  --color-label-stone: #888680;  --color-label-stone-fill: #EBEAE6;  --color-label-stone-text: #57554F;
+  --color-label-berry: #BD658A;  --color-label-berry-fill: #FEEAF1;  --color-label-berry-text: #7B3E58;
+  --color-label-rust: #C26B4C;   --color-label-rust-fill: #FEECE5;   --color-label-rust-text: #7F422D;
+  --color-label-ochre: #AA7D26;  --color-label-ochre-fill: #F8EFDF;  --color-label-ochre-text: #6E4F11;
+  --color-label-moss: #5A975C;   --color-label-moss-fill: #E8F4E7;   --color-label-moss-text: #366138;
+  --color-label-teal: #1A9994;   --color-label-teal-fill: #E2F5F3;   --color-label-teal-text: #04635F;
+  --color-label-slate: #3E8CC9;  --color-label-slate-fill: #E4F2FE;  --color-label-slate-text: #225984;
+  --color-label-indigo: #727FCE; --color-label-indigo-fill: #ECEFFE; --color-label-indigo-text: #475087;
+  --color-label-plum: #A16FB8;   --color-label-plum-fill: #F6ECFC;   --color-label-plum-text: #684577;
+  --color-label-clay: #A77B62;   --color-label-clay-fill: #F8EEE8;   --color-label-clay-text: #6C4D3C;
 }
 
 html[data-theme='dark'] {
+  --accent-text: color-mix(in oklab, var(--accent) 62%, var(--foreground));
   color-scheme: dark;
-  --ink-base: 250, 250, 250;
-  --tip-text: oklch(0.145 0 0);
+  --ink-base: 223, 222, 218;
 
-  /* Dark has headroom in both directions, so both ends of the ladder are real
-     tones: the well sits between the page and the card, the inner raised card
-     one step above the popover. */
-  /* paper-4 is the INNER RAISED CARD. It was oklch(0.40) = #484848 — ABOVE the
-     popover, which contradicts the rule stated two blocks up ("a popover is the
-     MOST raised surface") and made it the brightest thing in the app, well
-     outside Notion's dark family (which tops out around #2F2F2F). Text on it
-     could not clear AA: ink-600 measured 2.53:1 there, 32 elements on Home.
-     Folded back into the ladder below the popover, at Notion's own elevated
-     tone. Ladder now: page .213 -> card .244 -> band .289 -> paper-4 .305 ->
-     popover .321. */
-  --color-paper-4: oklch(0.305 0 0);          /* Notion #2F2F2F */
-  --color-paper-5: oklch(0.155 0 0);
+  /* Dark has headroom both ways: the inner raised card sits just under the
+     popover, the well between the desk and the canvas — a gentle recess, not a
+     hole (it was #0C0C0C, a black slot cut into every segmented control). */
+  --color-paper-4: oklch(0.305 0.005 95);            /* #302F2C */
+  --color-paper-5: oklch(0.198 0.004 95);            /* #161614 */
 
-  /* The dark half of the same family. It has always lived in tokens.css :root;
-     stating it here too means neither theme is the silent default, which is the
-     condition that let light go unnoticed.
-     The neutral rungs are DE-TINTED here too (2026-09-08): dark's surfaces are
-     chroma 0, so a warm `gray` chip was the same mismatch light had, just less
-     obvious. Lightness preserved, so the ratios are unchanged. */
-  --default-dot: #A3A3A3; --default-bg: #272727; --default-text: #C3C3C3;
-  --gray-dot:    #9F9F9F; --gray-bg:    #282828; --gray-text:    #C2C2C2;
-  /* The default event's accent fill in dark — a step stronger, as the dark palette's fills are. */
-  --event-tint: 12%;
-  --brown-dot:   #C08A5E; --brown-bg:   #2F261E; --brown-text:   #DBB089;
-  --orange-dot:  #DBA45A; --orange-bg:  #332518; --orange-text:  #ECC084;
-  --yellow-dot:  #D8BB5A; --yellow-bg:  #302B16; --yellow-text:  #E8D588;
-  --green-dot:   #6FB35F; --green-bg:   #1F2C1A; --green-text:   #9CCF8E;
-  --blue-dot:    #5E92DE; --blue-bg:    #1A2740; --blue-text:    #93BEF5;
-  --purple-dot:  #B173C4; --purple-bg:  #2A1E30; --purple-text:  #D2A6E0;
-  --pink-dot:    #E06FB3; --pink-bg:    #321E2B; --pink-text:    #ECA0CC;
-  --red-dot:     #FF6B66; --red-bg:     #361E1D; --red-text:     #F5A8A4;
-
-  /* The SAME four percentages light uses, off the same anchor. These were raw
-     `rgb(255 255 255 / …)` — the last place in the file where a family spoke
-     two dialects, which is the one failure mode this bridge exists to prevent.
-     Two concrete problems, not just tidiness:
-       · pure #FFF is not this theme's ink (--foreground is #D4D4D4), so every
-         edge in dark was fractionally brighter and cooler than the brightest
-         text in the app;
-       · -strong was 18% against light's 16% — a divergence nothing recorded,
-         so neither number could be changed with confidence.
-     The washes were unified for exactly these reasons; the edges were missed. */
-  --color-border-soft: color-mix(in oklab, var(--foreground) 7%, transparent);
-  --color-border-strong: color-mix(in oklab, var(--foreground) 28%, transparent);
-  --color-border-panel: color-mix(in oklab, var(--foreground) 5%, transparent);
-  --color-border-focus: color-mix(in oklab, var(--foreground) 45%, transparent);
-
-  /* See the light block for why this one is a solid and where the value is. */
+  /* The SAME percentages light uses, off the same tint — except the panel edge,
+     9% here against light's 5%: dark separates surfaces with EDGES (its whole
+     ladder fits in a quarter of light's room), light with fills. */
+  --color-border-soft: color-mix(in oklab, var(--tint) 7%, transparent);
+  --color-border-strong: color-mix(in oklab, var(--tint) 28%, transparent);
+  --color-border-panel: color-mix(in oklab, var(--tint) 9%, transparent);
+  --color-border-focus: color-mix(in oklab, var(--tint-line) 45%, transparent);
   --color-border-control: var(--border-control);
-  --pal-on: #191919;
-
+  --pal-on: #171614;
   --color-surface-thumb: var(--color-paper-3);
 
-  /* Derived from --foreground, at the SAME percentages light uses.
-     These were raw `rgb(255 255 255 / …)` literals at 7/11/9/4/12/16% — pure
-     white, and close to double light's 5/9/7/2.5/6/10%. Two problems:
+  --wash-1: color-mix(in oklab, var(--tint) 5%, transparent);
+  --wash-2: color-mix(in oklab, var(--tint) 9%, transparent);
+  --wash-3: color-mix(in oklab, var(--tint) 7%, transparent);
+  --wash-row: color-mix(in oklab, var(--tint) 2.5%, transparent);
+  --wash-fill: color-mix(in oklab, var(--tint) 6%, transparent);
+  --wash-fill-hover: color-mix(in oklab, var(--tint) 10%, transparent);
 
-       1. A wash LIGHTENS the ground under it, and text is then measured
-          against that new ground. At 12% over the popover the fill composited
-          to #4B4B4B, where NO ink step below 900 clears AA — so a chip or a
-          filled button could not have readable secondary text anywhere in
-          dark. The ink ramp was not the fault; the wash was.
-       2. Pure #FFF is not this theme's ink. --foreground is #D4D4D4, so a
-          white wash was lighter than the brightest text in the app.
+  --scrim-color: oklch(0 0 0);
+  --color-scrim: oklch(0 0 0 / 0.48);
+  --tip-bg: oklch(0.37 0.006 95);                    /* #46453F — above the popover */
+  --tip-text: oklch(0.95 0.004 95);
 
-     Notion's own dark hover is rgba(255,255,255,0.055) — subtle, and it leans
-     on borders for separation. Matching light's percentages off the shared
-     anchor gives the same restraint, keeps ONE rule for both themes, and lets
-     the fill land at #3D3D3D where ink-600 clears 4.5:1. */
-  --wash-1: color-mix(in oklab, var(--foreground) 5%, transparent);
-  --wash-2: color-mix(in oklab, var(--foreground) 9%, transparent);
-  --wash-3: color-mix(in oklab, var(--foreground) 7%, transparent);
-  --wash-row: color-mix(in oklab, var(--foreground) 2.5%, transparent);
-  --wash-fill: color-mix(in oklab, var(--foreground) 6%, transparent);
-  --wash-fill-hover: color-mix(in oklab, var(--foreground) 10%, transparent);
+  /* A black bloom on a dark ground is invisible work; dark's edges and its 1px
+     top light (--edge-light, globals.css) carry the lift, the shadows the depth. */
+  --edge-light: inset 0 1px 0 0 oklch(1 0 0 / 0.045);
+  --shadow-xs: 0 1px 2px oklch(0 0 0 / 0.24);
+  --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.3);
+  --shadow-crisp: 0 1px 2px oklch(0 0 0 / 0.28);
+  --shadow-lift-1: 0 1px 2px oklch(0 0 0 / 0.24);
+  --shadow-lift-2: 0 1px 2px oklch(0 0 0 / 0.24), 0 8px 16px -6px oklch(0 0 0 / 0.4);
+  --shadow-lift-3: 0 2px 4px oklch(0 0 0 / 0.2), 0 12px 24px oklch(0 0 0 / 0.24), 0 32px 64px oklch(0 0 0 / 0.36);
+  --shadow-lift-4: 0 12px 32px -8px oklch(0 0 0 / 0.48);
+  --shadow-toast: 0 4px 8px -2px oklch(0 0 0 / 0.28), 0 16px 32px -8px oklch(0 0 0 / 0.4);
+
+  /* ── STATUS (dark) — the same recipe, lifted: 700 L .88 · 600 L .80 ·
+     500 L .70 · 300 L .42 · 100 L .295. Text ≥ 5.7:1 on a washed popover. ── */
+  --color-success-700: #B7E5BF; --color-success-600: #8ED09C;
+  --color-success-500: #63B376; --color-success-300: #34563B; --color-success-100: #203124;
+  --color-warning-700: #F5D1A5; --color-warning-600: #E6B374;
+  --color-warning-500: #CC9140; --color-warning-300: #614826; --color-warning-100: #372A19;
+  --color-danger-700: #FEC9C2; --color-danger-600: #F8A59B;
+  --color-danger-500: var(--destructive); --color-danger-300: #6A403B; --color-danger-100: #3C2623;
+  --color-info-700: #B6DDFE; --color-info-600: #86C5FA;
+  --color-info-500: #58A5E4; --color-info-300: #30506C; --color-info-100: #1E2E3D;
+
+  /* ── THE DATA PALETTE (dark) — dot L 0.70 · fill L 0.305 · text L 0.83. ── */
+  --default-dot: #A6A5A0; --default-bg: #302F2C; --default-text: #D2D1CD;
+  --gray-dot:    #A09E99; --gray-bg:    #363532; --gray-text:    #C8C7C2;
+  --brown-dot:   #BE947D; --brown-bg:   #382C26; --brown-text:   #DEC0B0;
+  --orange-dot:  #D38B59; --orange-bg:  #3D2A1D; --orange-text:  #EEBB99;
+  --yellow-dot:  #BC994C; --yellow-bg:  #372E1B; --yellow-text:  #DDC492;
+  --green-dot:   #70B07D; --green-bg:   #233426; --green-text:   #A9D4B0;
+  --blue-dot:    #5FA5DE; --blue-bg:    #1F3140; --blue-text:    #9FCDF5;
+  --purple-dot:  #AE8CD5; --purple-bg:  #332A3E; --purple-text:  #D2BCEF;
+  --pink-dot:    #D281A8; --pink-bg:    #3D2832; --pink-text:    #EEB4CE;
+  --red-dot:     #DA827B; --red-bg:     #402826; --red-text:     #F5B5AF;
+  --event-tint: 12%;
+
+  --color-label-stone: #A09E99;  --color-label-stone-fill: #363532;  --color-label-stone-text: #C8C7C2;
+  --color-label-berry: #D481A2;  --color-label-berry-fill: #3E2730;  --color-label-berry-text: #F0B4CA;
+  --color-label-rust: #D88669;   --color-label-rust-fill: #3F2921;   --color-label-rust-text: #F3B7A3;
+  --color-label-ochre: #C0974D;  --color-label-ochre-fill: #382D1B;  --color-label-ochre-text: #E0C393;
+  --color-label-moss: #76AF78;   --color-label-moss-fill: #253425;   --color-label-moss-text: #ADD4AD;
+  --color-label-teal: #4DB1AB;   --color-label-teal-fill: #1C3432;   --color-label-teal-text: #97D5D0;
+  --color-label-slate: #5FA5DE;  --color-label-slate-fill: #1F3140;  --color-label-slate-text: #9FCDF5;
+  --color-label-indigo: #8A99E3; --color-label-indigo-fill: #2A2E41; --color-label-indigo-text: #B9C4F9;
+  --color-label-plum: #B889CD;   --color-label-plum-fill: #362A3C;   --color-label-plum-text: #DAB9E9;
+  --color-label-clay: #BE947D;   --color-label-clay-fill: #382C26;   --color-label-clay-text: #DEC0B0;
 }

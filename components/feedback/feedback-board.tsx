@@ -167,7 +167,7 @@ export function FeedbackBoard({ items, onRequestNew, onSetStatus, onShip }: {
           "Log feedback" in the empty state, both filled, both on screen at
           once). One name, one action, one primary. */}
       <p className="mb-4 text-ui text-ink-500">
-        What customers are asking for, ranked by the deals that want it — build the top of the list first.
+        What customers are asking for, ranked by the deals that want it. Build the top of the list first.
       </p>
       {/* Property strip */}
       <div className="mb-4 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-ui text-ink-500">

@@ -268,40 +268,33 @@ describe('galleries are fluid, not fixed', () => {
   });
 });
 
-describe('the palette is Notion\'s — a whisper of tint on surfaces, never a cast', () => {
-  // User, 2026-09-08, in order, all three on the same day:
-  //   1. "a little bit of warmness and paper, not too harsh yellow"  -> we warmed it
-  //   2. "totally fucked up ... not 100% black and white ... remove warmth paper"
-  //   3. "all color inspiration from notion directly copy this colors"
+describe('the palette is one warm whisper — chroma scales with AREA, on ONE hue', () => {
+  // THE RULE (2026-10-02, user: "clean, consistent, minimal, human-feeling … the subtle, calm quality
+  // of Claude's interface", no restrictions on the colours). Every neutral sits on ONE hue — 95°, the
+  // axis Claude's ivory (#FAF9F5) and Notion's ink (#37352F) share — and its chroma is capped by how
+  // much of the screen it covers:
   //
-  // Reading only #2 gives pure grey; reading only #1 gives the beige they
-  // rejected. Notion resolves both, and MEASURING Notion says why:
+  //            large surfaces   frame & fills   edges     ink
+  //   cap         0.005            0.007        0.010    0.012
+  //   Claude      0.0054 ivory     0.011 parchment
+  //   beige pass  0.0070 page                   0.0104 border   (2026-09-08, rejected on sight)
   //
-  //            surface chroma        ink chroma
-  //   ours     0.0070 page           0.004
-  //   (beige)  0.0104 border         <- 3-4x Notion on the BIGGEST areas
-  //   Notion   0.0026 page           0.0107
-  //            0.0027 border
-  //
-  // The tint was never the problem — the AREA it was spread across was. A
-  // 0.007 chroma over a full canvas is a visible khaki cast; the same warmth
-  // in text is just ink that is not clinically blue-black. So the rule is not
-  // "no colour", it is: LARGE SURFACES STAY AT A WHISPER, ink may carry more.
-  //
-  // These caps are the guard. Surfaces at Notion's 0.0027 pass; the 0.0070
-  // page and 0.0104 border that caused the complaint do not.
+  // The tint was never the problem — the AREA it was spread over was. A 0.007 cast over the whole
+  // canvas is khaki; the same warmth in a 4px desk frame, a header band or a hover wash is "ivory".
+  // These caps pass Claude's own ground and fail the page that caused the 2026-09-08 complaint.
   const themeCss = readFileSync('app/theme-shadcn.css', 'utf8');
   const light = themeCss.split(/\n\s*html\[data-theme='dark'\]\s*\{/)[0];
-  const SURFACE_MAX = 0.004;   // Notion's surfaces measure 0.0026-0.0027
-  const INK_MAX = 0.012;       // Notion's #37352F measures 0.0107
-  const SURFACES = ['--background', '--card', '--popover', '--muted', '--secondary', '--border', '--input'];
+  const LARGE = ['--background', '--card', '--popover', '--band'];
+  const FRAME = ['--muted', '--secondary', '--accent-surface', '--desk'];
+  const EDGES = ['--border', '--input'];
   const INK = ['--foreground', '--card-foreground', '--muted-foreground', '--popover-foreground'];
-  // ASSERT THE PROPERTY, NOT THE SPELLING. This used to require the token to
-  // be written as `oklch(L C H)`, and it broke the moment --input stopped being
-  // a literal and became `var(--border-control)` — a correct change (--input is
-  // shadcn's CONTROL edge, and it had been a copy of --border, so every
-  // registry checkbox measured 1.07:1). The cap is about the colour, not the
-  // syntax, so resolve whichever form the token takes and follow one var hop.
+  const CAP: Record<string, number> = {
+    ...Object.fromEntries(LARGE.map((t) => [t, 0.005])),
+    ...Object.fromEntries(FRAME.map((t) => [t, 0.007])),
+    ...Object.fromEntries(EDGES.map((t) => [t, 0.010])),
+    ...Object.fromEntries(INK.map((t) => [t, 0.012])),
+  };
+  // ASSERT THE PROPERTY, NOT THE SPELLING: resolve hex, oklch, or one var hop.
   const srgbToLin = (c: number) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
   const hexToOklch = (hex: string) => {
     const [r, g, b] = [0, 2, 4].map((i) => srgbToLin(parseInt(hex.slice(1 + i, 3 + i), 16) / 255));
@@ -311,17 +304,15 @@ describe('the palette is Notion\'s — a whisper of tint on surfaces, never a ca
     const L = 0.2104542553 * l + 0.7936177850 * m2 - 0.0040720468 * s;
     const A = 1.9779984951 * l - 2.4285922050 * m2 + 0.4505937099 * s;
     const B = 0.0259040371 * l + 0.7827717662 * m2 - 0.8086757660 * s;
-    return { L, c: Math.hypot(A, B) };
+    return { L, c: Math.hypot(A, B), h: ((Math.atan2(B, A) * 180) / Math.PI + 360) % 360 };
   };
-  // Comments first: `[^;]+` happily matches PROSE — the file explains the
-  // palette in sentences that contain "--border" and a number, so the first
-  // three runs of this read a comment and reported a token as malformed.
+  // Comments first: `[^;]+` happily matches PROSE.
   const lightCode = light.replace(/\/\*[\s\S]*?\*\//g, '');
-  const chromaOf = (token: string, depth = 0): { L: number; c: number } => {
+  const chromaOf = (token: string, depth = 0): { L: number; c: number; h: number } => {
     const raw = lightCode.match(new RegExp(`${token}:\\s*([^;]+);`))?.[1]?.trim();
     expect(raw, `${token} is not declared in light`).toBeTruthy();
-    const ok = raw!.match(/oklch\(([\d.]+)\s+([\d.]+)/);
-    if (ok) return { L: Number(ok[1]), c: Number(ok[2]) };
+    const ok = raw!.match(/oklch\(([\d.]+)\s+([\d.]+)(?:\s+([\d.]+))?/);
+    if (ok) return { L: Number(ok[1]), c: Number(ok[2]), h: Number(ok[3] ?? 0) };
     const hex = raw!.match(/^#([0-9a-fA-F]{6})$/);
     if (hex) return hexToOklch(raw!);
     const ref = raw!.match(/^var\((--[\w-]+)\)$/);
@@ -330,15 +321,19 @@ describe('the palette is Notion\'s — a whisper of tint on surfaces, never a ca
     return chromaOf(ref![1], depth + 1);
   };
 
-  it.each(SURFACES)('%s is at most a whisper of tint', (token) => {
-    expect(chromaOf(token).c, `${token} tints the whole surface — that is the beige`)
-      .toBeLessThanOrEqual(SURFACE_MAX);
+  it.each(Object.keys(CAP))('%s stays inside the chroma its area allows', (token) => {
+    expect(chromaOf(token).c, `${token} out-tints its area — that is the beige`).toBeLessThanOrEqual(CAP[token]);
   });
 
-  it.each(INK)('%s stays within Notion\'s ink warmth', (token) => {
-    expect(chromaOf(token).c, `${token} is more tinted than Notion's ink`)
-      .toBeLessThanOrEqual(INK_MAX);
-  });
+  it.each([...LARGE, ...FRAME, ...EDGES, ...INK].filter((t) => t !== '--card' && t !== '--popover'))(
+    '%s sits on the one neutral hue',
+    (token) => {
+      const { c, h } = chromaOf(token);
+      if (c < 0.001) return; // no chroma, no hue to hold
+      expect(h, `${token} is off the 95° axis (${h.toFixed(0)}°) — that is a second tone`).toBeGreaterThanOrEqual(90);
+      expect(h).toBeLessThanOrEqual(100);
+    },
+  );
 
   it('the elevation ladder is strictly ordered in both themes', () => {
     // The user rejected a FLAT light theme twice, so these must stay distinct.
@@ -348,6 +343,15 @@ describe('the palette is Notion\'s — a whisper of tint on surfaces, never a ca
     expect(chromaOf('--background').L).toBeLessThan(chromaOf('--card').L);
     expect(chromaOf('--muted').L).toBeLessThan(chromaOf('--card').L);
     expect(chromaOf('--border').L).toBeLessThan(chromaOf('--muted').L);
+    // A CARD'S BAND IS NOT A FILL, and light proved it by rendering them as one.
+    // `--band` ran off `--muted` (0.950) against a page of 0.968, so every card's
+    // own header sat BELOW the ground the card lies on and four stacked cards
+    // read as stripes painted on the page. The band has to ascend out of the
+    // page and stop short of the body — the ladder dark has always had.
+    expect(chromaOf('--background').L, 'a card that sinks into the page is not a card')
+      .toBeLessThan(chromaOf('--band').L);
+    expect(chromaOf('--band').L, 'a band level with the body is one white rectangle')
+      .toBeLessThan(chromaOf('--card').L);
 
     const dark = themeCss.slice(themeCss.search(/html\[data-theme='dark'\]\s*\{/));
     const dl = (t: string) => Number(dark.match(new RegExp(`${t}:\\s*oklch\\(([\\d.]+)`))![1]);
@@ -357,6 +361,10 @@ describe('the palette is Notion\'s — a whisper of tint on surfaces, never a ca
     expect(dl('--background')).toBeLessThan(dl('--card'));
     expect(dl('--card')).toBeLessThan(dl('--muted'));
     expect(dl('--muted')).toBeLessThan(dl('--popover'));
+    // Dark needed no new rung: its band IS the `--muted` that already sat above
+    // the card. Pinned so a later pass cannot "tidy" the two themes into one
+    // literal and re-break the theme that was never broken.
+    expect(dark, "dark's band is the --muted rung it already had").toMatch(/--band: var\(--muted\);/);
   });
 });
 
@@ -513,44 +521,41 @@ describe('a card is the raised surface, not the recessed one', () => {
   // card, header and body separated by a hairline. The list row had the same
   // fill and the same result, and is fixed with it. Full guards live in
   // components/documents/doc-surface.test.ts.
-  const raw = readFileSync('components/documents/documents-view.tsx', 'utf8');
-  // COMMENTS STRIPPED before any colour scan. The rule is "no raw hex in a
-  // COMPONENT" — a comment recording a measured value is documentation, and a
-  // guard that reads it as code punishes exactly the notes this codebase wants
-  // written. (This test failed on the paragraph above it.)
+  // ── RE-ANCHORED 2026-09-30, when the index was redesigned (components/documents/doc-index.tsx).
+  // The card is a landscape TILE now: a drawn miniature of the page on a thumbnail band, the title
+  // and its place underneath. The rule did not change — one card surface, header and body split by
+  // a hairline, no fill that vanishes into the gallery — so these assert the same properties in the
+  // new file's spelling. The thumbnail band IS a second tone, deliberately, and it is the one this
+  // guard exists to keep honest: measured on the rendered gallery (light), band #FAF8F7 on the
+  // gallery ground #EEEBE9 is 1.121:1 — against the 1.02 of the preview fill that failed — and the
+  // card itself is 1.187:1, so neither half of a tile can dissolve into the page.
+  const raw = readFileSync('components/documents/doc-index.tsx', 'utf8');
+  // Comments stripped before any scan: a comment recording a measured value is documentation.
   const src = raw.replace(/\/\*[\s\S]*?\*\//g, '').split('\n').filter((l) => !l.trim().startsWith('//')).join('\n');
-  // Anchored on CODE, not on a comment banner — the banner is stripped above,
-  // and a guard whose region marker vanishes silently measures an empty string
-  // and passes. `aspectRatio` is the grid card's first distinctive style.
-  const cardRegion = () => {
-    const i = src.indexOf("aspectRatio: '220 / 280'");
-    expect(i, 'the grid card moved; re-anchor this region').toBeGreaterThan(-1);
-    return src.slice(i, src.indexOf('function DocMenu'));
+  const tileRegion = () => {
+    const i = src.indexOf('function DocTile(');
+    expect(i, 'the tile moved; re-anchor this region').toBeGreaterThan(-1);
+    const j = src.indexOf('function DocMiniature(', i);
+    expect(j, 'the miniature moved; re-anchor this region').toBeGreaterThan(i);
+    return src.slice(i, j);
   };
 
-  it('the grid card sits on the card surface', () => {
-    expect(cardRegion(), 'a card painted --paper-2 disappears into the canvas')
-      .toMatch(/background: 'var\(--paper\)'/);
+  it('the grid card sits on the card surface — THE openable card recipe', () => {
+    expect(tileRegion(), 'a tile is the house card, not a hand-spelled one').toMatch(/cardInteractiveClass\(/);
   });
 
-  it('nothing INSIDE the card paints a second fill', () => {
-    // Replaces a test that required `--paper-2` to be present. It passed for
-    // the wrong reason — the card-menu chip also uses it — while the fill it
-    // was actually guarding made the card edgeless.
-    const body = cardRegion();
-    const preview = body.slice(body.indexOf('flex: 1, minHeight: 0'));
-    expect(preview.slice(0, 200), 'the preview rides the card surface').not.toMatch(/background:/);
+  it('nothing INSIDE the card paints a fill but the declared thumbnail band', () => {
+    const fills = [...tileRegion().matchAll(/\bbg-([\w-]+)/g)].map((m) => m[1]);
+    expect(fills, 'the only fill inside a tile is the band its picture lies on').toEqual(['surface-band']);
   });
 
   it('header and body are separated by a hairline, not by a fill', () => {
-    expect(cardRegion()).toMatch(/borderBottom: '1px solid var\(--color-line-soft\)'/);
+    expect(tileRegion()).toMatch(/border-b border-line-soft/);
   });
 
   it('the card region introduces no raw colour', () => {
-    // §12: every changed colour must come from the token system.
-    const card = cardRegion();
-    expect(card.match(/#[0-9a-fA-F]{3,6}\b/g) ?? [], 'raw hex in the card').toEqual([]);
-    expect(card.match(/\brgba?\(/g) ?? [], 'raw rgb in the card').toEqual([]);
+    expect(src.match(/#[0-9a-fA-F]{3,6}\b/g) ?? [], 'raw hex in the index').toEqual([]);
+    expect(src.match(/\brgba?\(/g) ?? [], 'raw rgb in the index').toEqual([]);
   });
 });
 
@@ -576,36 +581,52 @@ describe('one surface, one ink — the light bridge stays on the theme axis', ()
     return bare.slice(open, bare.indexOf('\n}', open));
   })();
 
-  it('the palette\'s NEUTRAL rungs are truly neutral, in both themes', () => {
-    // Superseded assertion: this used to REJECT dead-neutral hex, because on
-    // warm paper a chroma-0 grey was the visible mismatch. The theme is neutral
-    // now, so that guard is exactly backwards — a grey is correct, and a TINT
-    // is the bug. (It cannot simply ban raw hex either: the ten-colour data
-    // palette is categorical and must be literal values.)
+  it('the palette\'s NEUTRAL rungs sit on the warm axis in light', () => {
+    // THIRD reversal of this guard, and the reason it exists at all. The rungs
+    // must match whatever the THEME is, and the theme has moved twice:
+    //   · warm paper, 2026-08 — the rungs were warmed (#F4F2EC …)
+    //   · true neutral, 2026-09-08 — de-tinted, and this guard flipped to reject
+    //     any tint ("a grey is correct, and a TINT is the bug")
+    //   · the 68° warm axis, 2026-09-28 — and NOBODY FLIPPED IT BACK. For two
+    //     days it actively enforced the bug: every default tag chip rendered
+    //     #F2F2F2 on a warm page, and the user's report on 2026-09-30 was "we are
+    //     using 2 tone, warm tone and gray tone, in light mode".
+    // So it now asserts the axis rather than a colour: fills on the SURFACE axis
+    // (the page's own hue and chroma band), dots and text on the INK's.
     //
-    // So it guards the rungs that are supposed to carry no colour at all. These
-    // were #F4F2EC / #767471 / #A8A39A etc. — warmed to sit on paper — and a
-    // beige chip on a white card is the "some places warm, some places black
-    // and white" mismatch the user reported.
-    const NEUTRAL_RUNGS = [
-      '--default-dot', '--default-bg', '--default-text',
-      '--gray-dot', '--gray-bg', '--gray-text',
-      '--color-label-stone', '--color-label-stone-fill', '--color-label-stone-text',
-    ];
-    const bare = bridge.replace(/\/\*[\s\S]*?\*\//g, '');
-    for (const token of NEUTRAL_RUNGS) {
-      // Every declaration of it — light AND dark both live in this file.
-      const found = [...bare.matchAll(new RegExp(`${token}:\\s*(#[0-9a-fA-F]{6})`, 'g'))];
-      expect(found.length, `${token} is not declared in the light bridge`).toBeGreaterThan(0);
-      for (const [, hex] of found) {
-        const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
-        expect(`${token}=${hex} r${r} g${g} b${b}`, `${token} carries a tint`)
-          .toBe(`${token}=${hex} r${r} g${r} b${r}`);
-      }
+    // Dark's rungs (#272727 / #C3C3C3) are still chroma zero and are NOT asserted
+    // here — the brief was light mode. A guard that required them neutral would
+    // be locking in the same mismatch on the dark side.
+    const hexToOklch = (hex: string) => {
+      const lin = (c: number) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+      const [r, g, b] = [1, 3, 5].map((i) => lin(parseInt(hex.slice(i, i + 2), 16) / 255));
+      const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+      const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+      const s2 = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+      const A = 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s2;
+      const B = 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s2;
+      return { C: Math.hypot(A, B), H: ((Math.atan2(B, A) * 180) / Math.PI + 360) % 360 };
+    };
+    const FILLS = ['--default-bg', '--gray-bg', '--color-label-stone-fill'];
+    const MARKS = ['--default-dot', '--default-text', '--gray-dot', '--gray-text', '--color-label-stone', '--color-label-stone-text'];
+    for (const token of [...FILLS, ...MARKS]) {
+      const hex = lightBlock.match(new RegExp(`${token}:\\s*(#[0-9a-fA-F]{6})`))?.[1];
+      expect(hex, `${token} is not a hex in the light block`).toBeTruthy();
+      const { C, H } = hexToOklch(hex!);
+      const fill = FILLS.includes(token);
+      expect(C, `${token}=${hex} has no tone — that is the grey chip`).toBeGreaterThan(fill ? 0.002 : 0.006);
+      expect(C, `${token}=${hex} out-tints its tier`).toBeLessThanOrEqual(fill ? 0.007 : 0.012);
+      expect(H, `${token}=${hex} is off the warm axis (${H.toFixed(0)}°)`).toBeGreaterThanOrEqual(85);
+      expect(H, `${token}=${hex} is off the warm axis (${H.toFixed(0)}°)`).toBeLessThanOrEqual(110);
     }
   });
 
-  it('washes are derived from the theme ink in BOTH themes, at the same strengths', () => {
+  it('washes are derived from the theme TINT in both themes, at the same strengths', () => {
+    // Was "from the theme ink" until 2026-09-30. Light's ink at a few percent
+    // composites to chroma zero on a white card — the grey half of the user's
+    // "two tones" — so each theme now declares a `--tint` its washes are made of
+    // (theme-shadcn.css: light a warm source at the ink's lightness, dark its own
+    // ink, Paper its own ink) and every wash is spelled against THAT.
     // Light was already derived. DARK was six raw `rgb(255 255 255 / …)`
     // literals at 7/11/9/4/12/16% — pure white, and close to double light's
     // 5/9/7/2.5/6/10%. A wash lightens the ground beneath it and text is then
@@ -629,10 +650,10 @@ describe('one surface, one ink — the light bridge stays on the theme axis', ()
       for (const [w, pct] of Object.entries(WASHES)) {
         const line = body.split('\n').find((l) => l.trim().startsWith(`${w}:`));
         expect(line, `${w} missing from the ${theme} theme`).toBeDefined();
-        expect(line, `${theme} ${w} is a raw wash — derive it from --foreground`)
-          .toMatch(/color-mix\(in oklab, var\(--foreground\)/);
+        expect(line, `${theme} ${w} is a raw wash — derive it from --tint`)
+          .toMatch(/color-mix\(in oklab, var\(--tint\)/);
         expect(
-          Number(line!.match(/var\(--foreground\)\s*([\d.]+)%/)![1]),
+          Number(line!.match(/var\(--tint\)\s*([\d.]+)%/)![1]),
           `${theme} ${w} is not at the shared strength — the two themes must wash equally`,
         ).toBe(pct);
       }
@@ -812,11 +833,15 @@ describe('a header row is square on all four sides', () => {
 describe('a rail divider is not cut short by the scrollbar gutter', () => {
   // `scrollbar-gutter: stable` reserves space on ONE side, so a full-bleed child
   // inside a rail was flush left and stopped 7px short of the right — measured:
-  // 223px dividers in a 230px rail, leaving a notch where the horizontal rule
-  // should meet the rail's vertical border. `both-edges` makes it symmetric.
-  it('the rail reserves its gutter on both edges', () => {
+  // 223px dividers in a 230px rail. `both-edges` then made it symmetric, which only
+  // moved the problem: every rule in every rail stopped an equal 6px from BOTH edges
+  // on any machine with classic scrollbars (user, 2026-10-02: "divider lines should
+  // connect properly to the edges … instead of looking randomly inset").
+  it('the rail reserves no gutter, so its rules meet both edges', () => {
     const hub = readFileSync('components/ui/hub-layout.tsx', 'utf8');
-    expect(hub).toMatch(/\[scrollbar-gutter:stable_both-edges\]/);
+    const rail = hub.slice(hub.indexOf('export const HUB_RAIL_CLASS'), hub.indexOf('export function HubLayout'));
+    expect(rail).toMatch(/\[scrollbar-gutter:auto\]/);
+    expect(rail).not.toMatch(/scrollbar-gutter:stable/);
   });
 });
 
@@ -1074,7 +1099,26 @@ describe('no action fails in silence', () => {
         // "Not sent · Retry" — Slack's pattern, attached to the words that failed rather than floated
         // off in a toast. `lib/chat-ui.test.ts` proves that alert really renders, so this entry
         // cannot become a way to mark an error handled while showing nothing.
-        const speaks = /toastReverted\(|toast\(|flash\(|fail\(|note\(|setHint\(|setErr\(|setError\(|setFormError\(|setNote\(|setMsg\(|setState\('error'\)|setDocState\('error'\)|throw new Error\(|failed: true/.test(branch);
+        // `set…({ kind: 'bad', … })` is the username field's channel: the reason becomes the Field's
+        // error and is announced in the `aria-live` line under the input, where a person is already
+        // looking while they type. Matched by its PAYLOAD rather than by one setter's name — the
+        // payload is what makes it a failure, and `kind: 'bad'` cannot be written by accident, where
+        // a bare `setSomething(` would cover every other state and become a way to mark a failure
+        // handled while showing nothing.
+        // `components/site/waitlist/waitlist.test.ts` proves that hint really renders the reason.
+        // `setWriteUp(… reason: …)` is the meeting panel's channel, and it belongs on this list
+        // rather than in an exemption: the reason is mapped to a sentence through `NOTES_MESSAGES`,
+        // rendered inside an `aria-live="polite"` region, and carries a "Try again" button whenever
+        // `retryableNotes(reason)` says the failure is worth repeating
+        // (`components/meetings/meeting-writeup.tsx`). Matched WITH its `reason:` payload, never as
+        // a bare `setWriteUp(`, so the entry can only ever cover the failure branch — this list
+        // must not become a way to mark an error handled while showing nothing.
+        //
+        // `setReading({ status: 'failed' … })` is the same channel in two other places: the triage
+        // clerk (`components/tasks/triage.tsx`, §7Q *File*), and the meeting panel before the
+        // write-up (MEETINGS_PLAN.md M2) absorbed its flow. Both are on the list for the same
+        // reason and under the same restriction — the failed payload, never the bare setter.
+        const speaks = /toastReverted\(|toast\(|flash\(|fail\(|note\(|setHint\(|setErr\(|setError\(|setFormError\(|setNote\(|setMsg\(|setReading\(\{ status: 'failed'|setWriteUp\([^;]*reason:|set\w+\([^;]*kind: 'bad'|setState\('error'\)|setDocState\('error'\)|throw new Error\(|failed: true/.test(branch);
         // Handing the error back to a caller that renders it counts too.
         const propagates = /return (res|r|checked)(\.error)?;|return \{ error/.test(branch);
         const justified = /\/\/ silent:/.test([raw[i - 1], raw[i - 2], raw[i - 3]].join(' '));
@@ -1211,12 +1255,19 @@ describe('a colour class names a colour the theme declares', () => {
     const src = [
       `<div className="bg-danger-50 active:bg-danger-700 border-t-danger-200" />`,      // a step the ramp lacks
       `cn('data-[state=open]:ring-berry-alpha-20', "text-success-700/80")`,              // variant brackets, opacity
-      "const card = `rounded-lg border bg-surface bg-paper-1`;",                         // a family's undeclared base
+      // A family's undeclared MEMBER. This line used to read `bg-surface`, which
+      // stopped being dead on 2026-09-30 when `--color-surface` was finally
+      // declared (CLAUDE.md's own card recipe names it, and it had been compiling
+      // to nothing). A control whose fixture gets FIXED silently stops proving
+      // anything, so it is restated with `bg-surface-secondary` — the canonical
+      // dead class in this codebase's history, the one that painted the page
+      // behind a sidebar and is still declared nowhere.
+      "const card = `rounded-lg border bg-surface-secondary bg-paper-1`;",
     ].join('\n');
     expect(tokens(src)).toEqual([
       'bg-danger-50', 'active:bg-danger-700', 'border-t-danger-200',
       'data-[state=open]:ring-berry-alpha-20', 'text-success-700/80',
-      'bg-surface', 'bg-paper-1',
+      'bg-surface-secondary', 'bg-paper-1',
     ]);
   });
 
@@ -1382,10 +1433,30 @@ describe('one duration ladder', () => {
   // uses folded into the ladder the other 178 already spoke.
   const dsRaw = readFileSync('app/ds-theme.css', 'utf8');
   const strip = (css: string) => css.replace(/\/\*[\s\S]*?\*\//g, '');
-  const rungs = [...strip(dsRaw).matchAll(/--duration-([a-z]+):\s*(\d+)ms/g)].map((m) => ({ name: m[1], ms: Number(m[2]) }));
+  // WAITING IS ITS OWN FAMILY, and deliberately not a rung (ds-theme.css, "waiting"). The ladder
+  // is for things that start and FINISH; these are for things that repeat until the work is done,
+  // and putting them on the same scale is how an app ends up spinning at "slow".
+  const WAITING = new Set(['spin', 'sweep', 'think']);
+  const all = [...strip(dsRaw).matchAll(/--duration-([a-z]+):\s*(\d+)ms/g)].map((m) => ({ name: m[1], ms: Number(m[2]) }));
+  const rungs = all.filter((r) => !WAITING.has(r.name));
 
   it('reads the ladder it guards (control)', () => {
     expect(rungs.map((r) => r.name)).toEqual(['instant', 'fast', 'base', 'slow']);
+  });
+
+  it('names the waiting durations too, so no call site writes one', () => {
+    // The app had TWO spinner speeds and neither was written down: a private ring at 600ms beside
+    // the DS's `animate-spin`, which is Tailwind's 1000ms. Emil Kowalski: a faster spinner makes
+    // an app feel like it loads faster at an identical load time, which is why 600 is the one.
+    expect(all.find((r) => r.name === 'spin')?.ms).toBe(600);
+    expect(all.find((r) => r.name === 'sweep')?.ms).toBeGreaterThan(600);
+    expect(dsRaw).toMatch(/--delay-busy: \d+ms;/);
+    expect(dsRaw).toMatch(/--duration-spin-calm: \d+ms;/);
+    // And nothing writes its own: no `animate-[…0.6s…]`, no bare `animate-spin`.
+    const offenders = FILES.filter((f) => /\.tsx$/.test(f) && !f.startsWith('app/dev-preview/'))
+      .flatMap((f) => code(f).map((l, i) => (/\banimate-spin\b|animate-\[(?:spin|shimmer|indeterminate)_[\d.]+m?s/.test(l) ? `${f}:${i + 1}` : null)))
+      .filter(Boolean);
+    expect(offenders, 'use <Spinner>, `zb-spin` or `zb-sweep`: a duration in a class is a second ladder').toEqual([]);
   });
 
   it('gives every rung a different number', () => {
@@ -1393,6 +1464,26 @@ describe('one duration ladder', () => {
     for (const r of rungs) byMs.set(r.ms, [...(byMs.get(r.ms) ?? []), r.name]);
     const twins = [...byMs.entries()].filter(([, names]) => names.length > 1);
     expect(twins, 'two names for one wait is how a scale drifts back into two').toEqual([]);
+  });
+
+  it('every rung on the ladder COMPILES', () => {
+    // The ladder was right, the tokens were right, and for every component that
+    // wrote `duration-base` it may as well not have existed. `--ease-*` is a
+    // Tailwind v4 theme NAMESPACE, so `ease-out-quiet` becomes a utility on its
+    // own; there is no `--duration-*` namespace, so `duration-<name>` matched
+    // nothing and silently fell back to `--default-transition-duration`.
+    // Measured on the served stylesheet: 364 KB, six `.ease-*` rules, ZERO
+    // `.duration-*` rules — while the segmented thumb, class list
+    // `duration-base ease-out-quiet`, reported the curve right and `0.1s` for
+    // the wait. 342 classes; the 102 that asked for instant/base/slow were all
+    // running at fast. A name in `@theme` is not a utility.
+    const utilities = [...dsRaw.matchAll(/@utility duration-([a-z]+)\s*\{/g)].map((m) => m[1]);
+    expect([...utilities].sort(), 'a rung with no @utility is a class that does nothing')
+      .toEqual(rungs.map((r) => r.name).sort());
+    // and each one hands over its own token, not a neighbour's
+    for (const name of utilities) {
+      expect(dsRaw).toMatch(new RegExp(`@utility duration-${name}\\s*\\{[^}]*transition-duration: var\\(--duration-${name}\\)`));
+    }
   });
 
   it('keeps no rung nobody asks for', () => {
@@ -1610,7 +1701,12 @@ describe('reduced motion keeps the fade and takes the movement', () => {
 
   const globals = strip(readFileSync('app/globals.css', 'utf8'));
   const ds = strip(readFileSync('app/ds-theme.css', 'utf8'));
-  const reduced = reducedBlocks(globals).join('\n');
+  // BOTH stylesheets, because `moving` above reads keyframes from both. It used to read twins from
+  // globals alone, so a twin written correctly BESIDE its keyframe in ds-theme.css was reported
+  // missing — the guard could only be satisfied by splitting one idea across two files. Found
+  // 2026-09-29 adding `think` (the mark's breath), whose keyframe and `@utility` both live in
+  // ds-theme.css, which already keeps a reduced-motion block for `.zb-spin` and `.zb-sweep`.
+  const reduced = [...reducedBlocks(globals), ...reducedBlocks(ds)].join('\n');
   const outside = (css: string) => { let o = css; for (const b of reducedBlocks(css)) o = o.replace(b, ''); return o; };
   const moving = [...keyframes(outside(ds)), ...keyframes(outside(globals))].filter((k) => MOVES.test(k.body) && !EXEMPT.has(k.name));
   const twins = new Map(keyframes(reduced).map((k) => [k.name, k.body]));
@@ -1899,9 +1995,27 @@ describe('nothing a keyboard opens animates', () => {
   });
 
   it('the motion seam lets what a key created simply be there', () => {
-    // Appear, Move and IconSwap: each reads the hand before it animates.
+    // EVERY primitive in the seam reads the hand before it animates. This used to assert the
+    // COUNT (3), which is a magic number that fails the moment the seam gains a primitive — as it
+    // did when `ViewSwap` arrived — and fails in a way that says nothing about what is wrong. It
+    // now names them and checks each one's own body, so a new primitive that FORGETS the check is
+    // caught, and a new primitive that remembers it just passes.
     const seam = readFileSync('components/ds/ui/motion.tsx', 'utf8');
-    expect(seam.match(/lastInput\(\) === 'keyboard'/g)?.length).toBe(3);
+    const bodies = new Map<string, string>();
+    for (const m of seam.matchAll(/export function (\w+)\(/g)) {
+      const start = m.index!;
+      const next = seam.indexOf('\nexport ', start + 1);
+      bodies.set(m[1], seam.slice(start, next === -1 ? seam.length : next));
+    }
+    // The ones that put something on screen. `Presence` is AnimatePresence itself — it animates
+    // nothing of its own, so it has no hand to read.
+    const ANIMATING = ['Appear', 'Move', 'IconSwap', 'ViewSwap'];
+    expect([...bodies.keys()], 'the seam gained or lost a primitive — decide whether it animates')
+      .toEqual(expect.arrayContaining(ANIMATING));
+    for (const name of ANIMATING) {
+      expect(bodies.get(name), `${name} animates without asking whether a key did it`)
+        .toMatch(/lastInput\(\) === 'keyboard'/);
+    }
   });
 });
 
@@ -2011,6 +2125,37 @@ describe("transitions take Emil's curves and the ladder's numbers", () => {
   });
 });
 
+describe('what a key opens is simply there', () => {
+  // CLAUDE.md: "Nothing a KEYBOARD opens animates: ⌘K and the capture composer never do."
+  // Emil's frequency table says the same in stronger words — 100+ times a day is "no animation,
+  // ever", which is why Raycast opens instantly.
+  //
+  // The command palette said so in a comment ("NO entrance animation, deliberately … The panel
+  // never animated") and animated anyway: `animation: 'slideUp var(--duration-slow) …'` was on
+  // the very next line, a 12px rise and a fade, 200ms, on every ⌘K. Measured in the browser with
+  // `html[data-input="keyboard"]` already stamped, so this was not the modality switch failing to
+  // fire — that switch is `html[data-input="keyboard"] .zb-enter { animation: none !important }`
+  // and it matches on a CLASS, which an inline-styled panel does not have. The one rule written
+  // to prevent this could not see it.
+  //
+  // So the guard reads the SOURCE of the surfaces a key owns, not the modality machinery.
+  const KEY_OPENED = ['components/shell/command-palette.tsx'];
+
+  it('reads the shape it guards (control)', () => {
+    const ANIM = /animation:\s*['"`][a-zA-Z-]+ /;
+    expect(ANIM.test("overflow: 'hidden', animation: 'slideUp var(--duration-slow) var(--ease-out-quiet)' }}")).toBe(true);
+    expect(ANIM.test("overflow: 'hidden' }}")).toBe(false);
+  });
+
+  it.each(KEY_OPENED)('%s gives its panel no entrance', (file) => {
+    const body = code(file).join('\n');
+    const offenders = body.split('\n')
+      .map((l, i) => (/animation:\s*['"`][a-zA-Z-]+ /.test(l) ? `${file}:${i + 1}` : null))
+      .filter(Boolean);
+    expect(offenders, 'a surface a key opens must be there already, not arrive').toEqual([]);
+  });
+});
+
 describe('a fill or a thumb moves with transform', () => {
   // Emil Kowalski: animate transform and opacity only. Progress fills transitioned
   // `width` and the shell's switch thumbs `left`, re-running layout on every frame of
@@ -2020,9 +2165,15 @@ describe('a fill or a thumb moves with transform', () => {
   const LAYOUT = /\btransition-\[[^\]]*\b(?:width|height|left|top|right|bottom|margin[a-z-]*|padding[a-z-]*|grid-template-[a-z]+)\b[^\]]*\]|transition:\s*['"`][^'"`]*\b(?:width|min-width|height|left|top|margin[a-z-]*|padding[a-z-]*|grid-template-[a-z]+) (?:var|\d|\$\{)/;
   const DECLARED: Record<string, string> = {
     'components/shell/app-shell.tsx': 'the desktop sidebar collapse: the content beside it has to reflow',
+    // The nav row's own inset, shared by every sidebar row in the app and the demo (2026-10-02): the row
+    // glides from its expanded inset to the rail's as the panel narrows — the same collapse.
+    'components/shell/shell-parts.tsx': "the nav row's inset glides with the sidebar collapse",
+    // The same collapse, drawn again around the product's views for the website's demo (the real
+    // shell cannot run on a public page), so it moves exactly as the app's does.
+    'components/demo/demo-shell.tsx': "the app's sidebar collapse, in the website's demo: the content beside it has to reflow",
     // Inside that same collapse, which already lays the rail out on every frame: the
-    // pinned indent glides and its heading folds, rather than jumping on frame 0.
-    'components/shell/pinned-rail.tsx': 'the pinned indent and heading fold with the sidebar collapse',
+    // pinned heading folds, rather than jumping the list up on frame 0.
+    'components/shell/pinned-rail.tsx': 'the pinned heading folds with the sidebar collapse',
     'components/ds/ui/drawer.tsx': "the bottom sheet's detent height",
     // Out-of-flow indicators whose width follows the item under them. `scaleX` would
     // distort their rounded ends, and an absolutely positioned, childless element lays
@@ -2030,6 +2181,9 @@ describe('a fill or a thumb moves with transform', () => {
     'components/ds/ui/segmented.tsx': 'the sliding thumb takes the width of the item it sits under',
     'components/ds/ui/tabs.tsx': 'the sliding underline takes the width of the tab it sits under',
   };
+  // No CSS case any more: the site's people strip gave the room to whichever panel was showing by
+  // animating its grid's columns, and its successor (the ring, 2026-09-28) moves by transform alone.
+  const DECLARED_CSS: string[] = [];
 
   it('reads the shapes it guards (control)', () => {
     expect(LAYOUT.test('"block h-full rounded-full transition-[width] duration-base"')).toBe(true);
@@ -2046,6 +2200,73 @@ describe('a fill or a thumb moves with transform', () => {
 
   it('keeps no stale exception', () => {
     expect(Object.keys(DECLARED).filter((f) => !code(f).some((l) => LAYOUT.test(l)))).toEqual([]);
+    const css = readFileSync('app/globals.css', 'utf8');
+    for (const rule of DECLARED_CSS) expect(css, 'a declared CSS exception that no longer exists').toContain(rule);
+  });
+
+  it('animates no layout property in CSS but the declared one', () => {
+    const css = readFileSync('app/globals.css', 'utf8');
+    const offenders = [...css.matchAll(/transition:[^;]*\b(?:grid-template-[a-z]+|width|height|left|top|margin[a-z-]*|padding[a-z-]*)\b[^;]*;/g)]
+      .map((m) => m[0].trim())
+      .filter((r) => !DECLARED_CSS.some((d) => d.includes(r)));
+    expect(offenders).toEqual([]);
+  });
+});
+
+describe('an icon that is ACTIVE lights up, and one that POINTS moves', () => {
+  // User, 2026-09-26: "I want all icons animated." Emil's first question decides the budget, and
+  // for a nav glyph the answer is "a hundred times a day" — so this is the hover-and-colour
+  // budget, not the entrance budget, and it is TWO gestures with no third. An icon whose MEANING
+  // changes is `IconSwap` below, and it keeps better-ui's fuller recipe.
+  const icon = readFileSync('components/ds/ui/icon.tsx', 'utf8');
+  const css = readFileSync('app/globals.css', 'utf8');
+
+  it('draws both cuts in one cell, so lighting up has no width', () => {
+    expect(icon).toMatch(/state\?: boolean;/);
+    expect(icon).toMatch(/className="zb-icon-line col-start-1 row-start-1"/);
+    expect(icon).toMatch(/className="zb-icon-fill col-start-1 row-start-1"/);
+    expect(icon).toMatch(/data-state=\{state \? "active" : "inactive"\}/);
+  });
+
+  it('cross-fades on the hover budget, and only opacity and transform', () => {
+    const rule = css.match(/\.zb-icon-line, \.zb-icon-fill \{([^}]*)\}/)?.[1] ?? '';
+    expect(rule).toMatch(/opacity var\(--duration-fast\) var\(--ease-hover\)/);
+    expect(rule).toMatch(/transform var\(--duration-base\) var\(--ease-out-quiet\)/);
+    expect(rule, 'no raw ms, no hand-written curve').not.toMatch(/\d+ms|cubic-bezier/);
+    expect(rule, 'a 16px glyph gains nothing from a blur and pays paint for it').not.toMatch(/filter|blur/);
+  });
+
+  it('gives a glyph that does not point nothing at all', () => {
+    // The named directions are the whole vocabulary: a nudge on a glyph that does not point is
+    // decoration, which is the reason "animate all the icons" needed a rule and not a sweep.
+    expect(icon).toMatch(/nudge\?: "end" \| "down" \| "up" \| "turn";/);
+    for (const d of ['end', 'down', 'up', 'turn']) expect(css).toContain(`.zb-nudge-${d}`);
+    expect(css).toMatch(/\[dir='rtl'\] \.group:hover \.zb-nudge-end/);
+  });
+
+  it('keeps the static cue and drops the movement when less motion is asked for', () => {
+    const still = css.slice(css.indexOf('.zb-icon-line, .zb-icon-fill'));
+    const reduce = still.match(/@media \(prefers-reduced-motion: reduce\) \{([\s\S]*?)\n\}/)?.[1] ?? '';
+    expect(reduce).toMatch(/\.zb-icon-fill, \.zb-icon-state\[data-state='active'\] \.zb-icon-line \{ transform: none; \}/);
+    expect(reduce).toMatch(/\.zb-nudge \{ transition: none; \}/);
+    // The fill itself is the cue, and it is an opacity, so it survives.
+    expect(reduce).not.toMatch(/opacity/);
+  });
+
+  it('is what the app uses, rather than each screen swapping a weight', () => {
+    // ONE declared exception. A cut that marks a TYPE rather than a STATE never changes while
+    // anyone is looking at it, so there is nothing to cross-fade and `state` would only wrap it in
+    // a span. The test names it so the distinction stays a decision.
+    const STATIC_CUT: Record<string, string> = {
+      'components/documents/doc-properties.tsx': 'filled marks a COMPUTED property type, which never toggles',
+    };
+    const swapped = FILES.filter((f) => /\.tsx$/.test(f) && !STATIC_CUT[f])
+      .flatMap((f) => code(f).map((l, i) => (/weight=\{[^}]*\?\s*['"]fill['"]\s*:\s*['"]regular['"]/.test(l) ? `${f}:${i + 1}` : null)))
+      .filter(Boolean);
+    expect(swapped, 'use <Icon state={…}>: a cut that changes in one frame is a flicker').toEqual([]);
+    for (const f of Object.keys(STATIC_CUT)) {
+      expect(code(f).some((l) => /weight=\{[^}]*\?\s*['"]fill['"]/.test(l)), `${f} no longer needs its exception`).toBe(true);
+    }
   });
 });
 
@@ -2080,6 +2301,8 @@ describe('the sidebar collapses in place', () => {
   // the icons slid ~90px left as it narrowed; the pinned icons, losing a 12px indent
   // too, travelled further, and the "Pinned" heading's unmount jumped the list up.
   const shell = code('components/shell/app-shell.tsx').join('\n');
+  // The nav row's geometry is shared by the app, the demo and the pinned rows (2026-10-02).
+  const parts = code('components/shell/shell-parts.tsx').join('\n');
   const pinned = code('components/shell/pinned-rail.tsx').join('\n');
   const RECENTRES = /(?:justifyContent|alignItems): collapsed \? 'center'/;
   const UNMOUNTS_A_LABEL = /\{!collapsed && \(?\s*<span\b/;
@@ -2091,7 +2314,7 @@ describe('the sidebar collapses in place', () => {
   });
 
   it('nothing re-centres and no label unmounts when the rail collapses', () => {
-    for (const [file, src] of [['app-shell.tsx', shell], ['pinned-rail.tsx', pinned]] as const) {
+    for (const [file, src] of [['app-shell.tsx', shell], ['shell-parts.tsx', parts], ['pinned-rail.tsx', pinned]] as const) {
       expect(src, `${file} re-centres on collapse`).not.toMatch(RECENTRES);
       expect(src, `${file} unmounts a label on collapse`).not.toMatch(UNMOUNTS_A_LABEL);
     }
@@ -2103,9 +2326,11 @@ describe('the sidebar collapses in place', () => {
     const motion = readFileSync('components/shell/rail-motion.ts', 'utf8');
     expect(motion).toMatch(/export const RAIL_MOTION = 'var\(--duration-slow\) var\(--ease-standard\)';/);
     expect(shell).toMatch(/width \$\{RAIL_MOTION\}, min-width \$\{RAIL_MOTION\}/);
+    // Every row's inset glides on the rail's timing — the shared nav row, which the pinned rows take too.
+    expect(parts).toMatch(/padding \$\{RAIL_MOTION\}/);
     expect(shell).toMatch(/padding \$\{RAIL_MOTION\}/);
+    expect(pinned, 'pinned rows are nav rows, so they glide with them').toMatch(/\.\.\.navRowStyle\(active, collapsed\)/);
     expect(shell).toMatch(/margin-left \$\{RAIL_MOTION\}/);
-    expect(pinned).toMatch(/padding-left \$\{RAIL_MOTION\}/);
     expect(pinned).toMatch(/grid-template-rows \$\{RAIL_MOTION\}/);
   });
 });
@@ -2134,5 +2359,190 @@ describe('a resize drag moves the element and commits once', () => {
       expect(src, `${file} uses the shared handle`).toMatch(/<PanelResizeHandle\b/);
       expect(src, `${file} carries its own separator again`).not.toMatch(/role="separator"/);
     }
+  });
+});
+
+// ── THE TWO RULES SET ON 2026-09-30 ────────────────────────────────────────
+//
+// Both are rules a screenshot review cannot hold, and both had already been
+// broken once by a local decision that looked reasonable in its own file.
+describe('the accent does real work, and only a theme knows a colour', () => {
+  const read = (f: string) => readFileSync(f, 'utf8');
+
+  // 1. PRIMARY IS THE BRAND FILL.
+  //
+  // It was `bg-ink-900` under a B&G-era rule ("no colorful buttons"), which is
+  // how a product with a distinctive accent came to show ONE accent pixel on a
+  // whole Home screen. CLAUDE.md §Hard layout rules 2 has always called primary
+  // "the filled-accent button", so the component contradicted the constitution
+  // it cited. Asserting the PROPERTY (it resolves to the accent), not a
+  // spelling — a guard that matched the literal string would pass the day
+  // someone re-points it at ink through a new alias.
+  it('the primary button variant fills with the accent, not ink', () => {
+    const src = read('components/ds/ui/button.tsx');
+    const m = src.match(/^\s*primary:\s*\n?\s*"([^"]+)"/m);
+    expect(m, 'the primary variant is still declared').toBeTruthy();
+    const recipe = m![1];
+    expect(recipe, 'primary must fill with the accent').toMatch(/bg-\[var\(--accent\)\]/);
+    expect(recipe, 'primary must not go back to the ink solid').not.toMatch(/bg-ink-\d00/);
+  });
+
+  // The control: `neutral` is the ink solid and MUST stay that way, or the
+  // assertion above is just checking that some string exists somewhere.
+  it('keeps the ink solid available under its own name (control)', () => {
+    const src = read('components/ds/ui/button.tsx');
+    const m = src.match(/^\s*neutral:\s*\n?\s*"([^"]+)"/m);
+    expect(m, 'neutral is still declared').toBeTruthy();
+    expect(m![1], 'neutral is the ink solid').toMatch(/bg-ink-\d00/);
+  });
+
+  // 2. A STORED COLOUR IS NEVER PAINTED RAW.
+  //
+  // A project's/list's colour lives in the database as a legacy hex, and a hex
+  // cannot know which theme it is being drawn in. `scopeFill()` snaps it to the
+  // nearest --scope-* and hands back a token. Three call sites still painted the
+  // stored value straight onto the page; measured on the calendar harness a
+  // milestone dot rendered rgb(154,27,111) — --scope-plum's LIGHT value — and
+  // stayed there when the theme flipped.
+  /** Stored-colour paints in one chunk of source. Shared by the sweep and its
+   *  control, so the control exercises the SAME code the sweep runs — a control
+   *  with its own private copy of the rule proves only that the copy works. */
+  const rawColourPaints = (src: string): string[] => {
+    const out: string[] = [];
+    // A PROPERTY ACCESS, not a bare identifier. The hazard is a value read off a
+    // RECORD (`milestone.projectColor`, `s.color`) — that is what arrives from
+    // the database as a legacy hex. A local like `iconColor` is computed in the
+    // same file where its tokens are visible, and flagging it only taught people
+    // to rename the variable.
+    const re = /style=\{\{\s*(?:background|backgroundColor|color)\s*:\s*([A-Za-z_$][\w$]*(?:\?)?\.[\w$.?]*(?:[Cc]olou?r))\b(?![\w(])/g;
+    for (const m of src.matchAll(re)) {
+      // `block.color` feeding a ternary that returns `var(--pal-*)` is CORRECT.
+      // What is wrong is a style object that never reaches a token at all.
+      const stop = src.indexOf('}}', m.index!);
+      const obj = stop === -1 ? src.slice(m.index!, m.index! + 200) : src.slice(m.index!, stop);
+      if (/var\(--|scopeFill\(|scopeOn\(/.test(obj)) continue;
+      out.push(m[0].slice(0, 70));
+    }
+    return out;
+  };
+
+  it('catches a stored colour painted raw, and clears one routed through a token (control)', () => {
+    // Must FAIL on these — the three shapes actually found on 2026-09-30.
+    expect(rawColourPaints('<span style={{ background: milestone.projectColor }} />')).toHaveLength(1);
+    expect(rawColourPaints("<span style={{ background: s.color ?? 'red' }} />")).toHaveLength(1);
+    expect(rawColourPaints("<Icon style={{ color: proj.color ?? '#888' }} />")).toHaveLength(1);
+    // Must PASS these — the two false positives an earlier version of this guard raised.
+    expect(rawColourPaints('<span style={{ background: scopeFill(milestone.projectColor) }} />')).toEqual([]);
+    expect(rawColourPaints('<span style={{ background: block.color ? `var(--pal-${block.color})` : undefined }} />')).toEqual([]);
+    expect(rawColourPaints('<Icon style={{ color: iconColor, flexShrink: 0 }} />')).toEqual([]);
+  });
+
+  it('no component paints a stored entity colour straight onto the page', () => {
+    const offenders: string[] = [];
+    // `code()`, not the raw file: these guards' own explanations quote the
+    // pattern they forbid, and a scan that read comments would find itself.
+    for (const file of walk('components')) {
+      for (const hit of rawColourPaints(code(file).join('\n'))) offenders.push(`${file}: ${hit}`);
+    }
+    expect(offenders, 'route it through scopeFill()/scopeOn() from lib/entity-color').toEqual([]);
+  });
+});
+
+// ── ONE TONE, MEASURED AS IT PAINTS (2026-09-30) ───────────────────────────
+//
+// The chroma guard above checks a fixed list of eight SURFACES and four INKS.
+// No wash and no hairline was ever in it — which is how every one of them could
+// be built from a near-neutral ink and render grey beside warm surfaces for two
+// days without a single test noticing. This composites each light wash and edge
+// over a white card EXACTLY the way the browser does — the tint at alpha,
+// blended in gamma-encoded sRGB, rounded to 8 bits — and asserts the pixel that
+// results is on the warm axis, inside the cap for its job.
+describe('light has one tone — every wash and edge paints on the warm axis', () => {
+  const shadcn = readFileSync('app/theme-shadcn.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const bridge = readFileSync('app/tokens-light.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const lightRoot = shadcn.split(/html\[data-theme='dark'\]\s*\{/)[0];
+  const lightBridge = (() => {
+    const m = bridge.match(/\}\s*html\[data-theme='light'\]\s*\{/)!;
+    const open = bridge.indexOf('{', m.index! + m[0].length - 1);
+    return bridge.slice(open, bridge.indexOf('\n}', open));
+  })();
+
+  const oklchOf = (block: string, token: string) => {
+    const m = block.match(new RegExp(`${token}:\\s*oklch\\(\\s*([\\d.]+)\\s+([\\d.]+)\\s+([\\d.]+)`));
+    expect(m, `${token} is not an oklch literal in light`).toBeTruthy();
+    return [+m![1], +m![2], +m![3]] as const;
+  };
+  const toSrgb = ([L, C, H]: readonly [number, number, number]) => {
+    const a = C * Math.cos((H * Math.PI) / 180), b = C * Math.sin((H * Math.PI) / 180);
+    const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+    const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+    const s = (L - 0.0894841775 * a - 1.2914855480 * b) ** 3;
+    const enc = (x: number) => { x = Math.min(1, Math.max(0, x)); return x <= 0.0031308 ? 12.92 * x : 1.055 * x ** (1 / 2.4) - 0.055; };
+    return [
+      enc(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s),
+      enc(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s),
+      enc(-0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s),
+    ].map((v) => v * 255);
+  };
+  const toOklch = (rgb: number[]) => {
+    const lin = (c: number) => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+    const [r, g, b] = rgb.map(lin);
+    const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+    const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+    const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+    const L = 0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s;
+    const A = 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s;
+    const B = 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s;
+    return { L, C: Math.hypot(A, B), H: ((Math.atan2(B, A) * 180) / Math.PI + 360) % 360 };
+  };
+  /** The source at `pct`% over a white card, as the page composites it. */
+  const onWhite = (src: readonly [number, number, number], pct: number) =>
+    toOklch(toSrgb(src).map((c) => Math.round(c * (pct / 100) + 255 * (1 - pct / 100))));
+
+  // Washes are AREA (a hovered row, a resting fill) → the surface cap.
+  // Edges are LINES → the ink cap. The area rule this file already enforces.
+  const JOBS: Record<string, { cap: number }> = {
+    '--wash-1': { cap: 0.007 }, '--wash-2': { cap: 0.007 }, '--wash-3': { cap: 0.007 },
+    '--wash-row': { cap: 0.007 }, '--wash-fill': { cap: 0.007 }, '--wash-fill-hover': { cap: 0.007 },
+    '--color-border-soft': { cap: 0.012 }, '--color-border-panel': { cap: 0.012 },
+    '--color-border-strong': { cap: 0.012 }, '--color-border-focus': { cap: 0.012 },
+  };
+  const recipe = (token: string) => {
+    const m = lightBridge.match(new RegExp(`${token}:\\s*color-mix\\(in oklab, var\\(--(tint|tint-line)\\)\\s*([\\d.]+)%, transparent\\)`));
+    expect(m, `${token} is not the light tint at a percentage`).toBeTruthy();
+    return { source: `--${m![1]}`, pct: +m![2] };
+  };
+
+  it('light declares the tint its washes are made of (control)', () => {
+    // A parser that found nothing would make the sweep below vacuous.
+    const [L, C, H] = oklchOf(lightRoot, '--tint');
+    const [inkL] = oklchOf(lightRoot, '--foreground');
+    expect(L, 'the tint sits at the ink\'s lightness, so every tuned contrast holds').toBeCloseTo(inkL, 3);
+    expect(H, 'on the one neutral axis').toBeCloseTo(95, 0);
+    expect(C).toBeGreaterThan(0.02);
+  });
+
+  it.each(Object.keys(JOBS))('%s paints warm on a white card', (token) => {
+    const { source, pct } = recipe(token);
+    // EXEMPT BY CAUSE, NOT BY LIGHTNESS. Below 3% alpha a wash moves white by at
+    // most ~5 units per channel, and the differences BETWEEN channels that
+    // encode a hue round to a single unit — `--wash-row` (2.5%) measured in the
+    // browser at a meaningless 17°, a hue chosen by rounding, not by the colour.
+    // An L threshold would have been the wrong tool: the grey the user saw was
+    // the 6% fill at L .964, and a "too light to judge" cutoff generous enough
+    // to excuse the row wash risks excusing that too. Alpha is the actual cause.
+    if (pct < 3) return;
+    const px = onWhite(oklchOf(lightRoot, source), pct);
+    expect(px.C, `${token} paints grey (C ${px.C.toFixed(4)})`).toBeGreaterThanOrEqual(0.0015);
+    expect(px.C, `${token} out-tints its job (C ${px.C.toFixed(4)})`).toBeLessThanOrEqual(JOBS[token].cap);
+    expect(px.H, `${token} is off the warm axis (${px.H.toFixed(0)}°)`).toBeGreaterThanOrEqual(40);
+    expect(px.H, `${token} is off the warm axis (${px.H.toFixed(0)}°)`).toBeLessThanOrEqual(110);
+  });
+
+  it('catches the grey it exists for (control)', () => {
+    // The recipe before 2026-09-30: the theme ink at 6%. Must come out GREY, or
+    // the sweep above could not tell the bug from the fix.
+    const px = onWhite(oklchOf(lightRoot, '--foreground'), 6);
+    expect(px.C, 'the old ink wash should have measured as grey').toBeLessThan(0.0015);
   });
 });

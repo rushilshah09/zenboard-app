@@ -18,7 +18,7 @@
 
 type ActionResult = { error: string } | { ok: true };
 
-const OFFLINE = 'Could not save that — check your connection and try again.';
+const OFFLINE = 'Could not save that. Check your connection and try again.';
 
 export async function applyShare(
   run: () => Promise<ActionResult>,

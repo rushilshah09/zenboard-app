@@ -43,7 +43,8 @@ export function RequestsTab({
     setRequests((rs) => rs.map((r) => (r.id === id ? { ...r, ...p } : r)));
 
   if (!portalSupported) {
-    return <Empty title="Requests" line="Apply migration 0006_portal.sql to receive client requests." />;
+    // Needs migration 0006 (the portal tables); the developer is told by the portal loader.
+    return <Empty title="Requests" line="Client requests aren’t available yet." />;
   }
   if (requests.length === 0) {
     return <Empty title="No requests yet" line="When your client sends a request from the portal, it lands here to approve, decline, or ask about." />;
@@ -104,7 +105,7 @@ function RequestCard({
 
   async function confirmDecline() {
     const reason = draft.trim();
-    if (reason.length < 2) return toast({ message: 'Write a reason first — your client sees it.' });
+    if (reason.length < 2) return toast({ message: 'Write a reason first. Your client sees it.' });
     setBusy(true);
     const res = await declineRequest(req.id, reason);
     setBusy(false);

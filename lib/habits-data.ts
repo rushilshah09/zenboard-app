@@ -113,6 +113,14 @@ export async function loadHabitsBoard(dateISO?: string): Promise<HabitsBoard> {
   ]);
   if (full.error) {
     supported = false;
+    // SAY WHAT ACTUALLY FAILED, to the person who can fix it. The page used to tell every USER
+    // "Apply migration 0025", which is both the wrong audience and quite possibly the wrong
+    // migration: this one select also reads `archived` and the three `schedule_*` columns, so a
+    // later migration missing makes it fail too — and the migration log records 0025 as applied.
+    // The error text names the real column. Users see only the working degraded view.
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn(`[habits] v2 columns unavailable, falling back to daily habits. Supabase said: ${full.error.message}`);
+    }
     const base = await supabase.from('habits').select('id, title').eq('space_id', sid).eq('active', true).order('created_at');
     if (base.error) return { habits: [], date, today, supported: false, error: true };
     rows = ((base.data as { id: string; title: string }[]) ?? []).map((r) => ({ ...r, time_of_day: 'any', goal_target: 1, goal_period: 'day', color: null }));

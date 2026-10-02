@@ -1,8 +1,9 @@
 import * as React from "react";
 import { cva } from "class-variance-authority";
-import { Loader2, Plus } from "@/lib/icons";
+import { Plus } from "@/lib/icons";
 import { cn } from "@/lib/cn";
 import { Icon } from "./icon";
+import { Spinner } from "./spinner";
 
 // The quiet "+ Add …" line at the foot of a list — Notion's "+ New" row, Linear's "Add sub-issues". A glyph and a
 // word in the placeholder's ink, on a list row's geometry: 36px tall (44 under a finger), the `sm` glyph a list row
@@ -15,7 +16,7 @@ import { Icon } from "./icon";
 // (Add a subtask…). They stack in the task panel, where two hand-spelled versions sat 4px apart, a weight step apart
 // and a type size apart (2026-09-21) — one class keeps their glyphs on one vertical and their words on another.
 export const addLine = cva(
-  "touch-row flex h-9 w-full min-w-0 items-center gap-2 rounded-md px-2 text-left text-ui text-ink-500",
+  "touch-row flex h-9 w-full min-w-0 items-center gap-2 rounded-sm px-2 text-left text-ui text-ink-500",
   {
     variants: {
       as: {
@@ -62,7 +63,7 @@ export const AddLine = React.forwardRef<HTMLButtonElement, AddLineProps>(functio
       {...props}
     >
       {loading ? (
-        <Loader2 aria-hidden className={cn("size-3.5 shrink-0 animate-spin motion-reduce:animate-[spin_1.4s_linear_infinite]", slot)} />
+        <Spinner size={14} delayed={false} className={slot} />
       ) : (
         <Icon icon={Plus} size={14} className={cn("shrink-0", slot)} />
       )}

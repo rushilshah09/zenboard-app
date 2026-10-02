@@ -129,7 +129,7 @@ describe('slashMenu — the ONE list the menu draws and Enter picks from', () =>
   it('ranks what you typed: the exact name, then names starting with it, then keywords', () => {
     const labels = slashMenu('table', []).map((r) => r.label);
     expect(labels.slice(0, 2)).toEqual(['Table', 'Table view']);
-    expect(labels.indexOf('Database — Inline')).toBeGreaterThan(1);
+    expect(labels.indexOf('Inline database')).toBeGreaterThan(1);
   });
 
   it('finds a layout by the word people use for it', () => {
@@ -169,7 +169,7 @@ describe('the database entries of the slash menu', () => {
   it('offer every layout that renders, and the three ways to place a database', () => {
     expect(db.map((m) => m.label)).toEqual([
       'Table view', 'Board view', 'Gallery view', 'List view', 'Calendar view', 'Timeline view',
-      'Database — Inline', 'Database — Full page', 'Linked view of database',
+      'Inline database', 'Full-page database', 'Linked view of database',
     ]);
   });
 

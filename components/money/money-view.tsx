@@ -26,7 +26,7 @@ export type UnbilledLog = { id: string; project_id: string | null; project_name:
 export type PaymentRow = { id: string; invoice_id: string; amount: number; paid_on: string; method: string | null; number: string; client_id: string | null };
 
 export const usd = (n: number) => formatMoney(n);
-export const fmtDate = (d: string | null) => formatDay(d) ?? '—';
+export const fmtDate = (d: string | null) => formatDay(d) ?? '–';
 
 // 'sent' past its due date reads as 'overdue' (underlying status stays 'sent').
 export function displayStatus(inv: { status: string; due_date: string | null }): string {
@@ -124,7 +124,7 @@ export function MoneyView({ invoices: initInvoices, clients, unbilled, payments,
   // the page's actions and the ••• menu, in the same place on every page.
   return (
     <PageLayout
-      actions={<Button variant="secondary" size="sm" icon={<Icon icon={Plus} size={16} />} onClick={() => setComposing(true)}>New invoice</Button>}
+      actions={<Button variant="primary" size="sm" icon={<Icon icon={Plus} size={16} />} onClick={() => setComposing(true)}>New invoice</Button>}
     >
 
       {/* KPIs — one bordered strip of hairline-divided cells (not four tiles). */}
@@ -263,7 +263,7 @@ function NewInvoiceModal({ clients, unbilled, rate, onClose, onCreate }: {
   const toggle = (id: string) => setPicked((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   const logItems = clientLogs.filter((t) => picked.has(t.id)).map((t) => ({
-    description: `${t.project_name ?? 'Time'} — ${fmtDate(t.started_at)} (${formatMinutes(t.minutes)})`,
+    description: `${t.project_name ?? 'Time'} · ${fmtDate(t.started_at)} (${formatMinutes(t.minutes)})`,
     quantity: Math.round((t.minutes / 60) * 100) / 100,
     unit_amount: rate,
     timeEntryId: t.id,

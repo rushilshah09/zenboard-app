@@ -66,12 +66,18 @@ describe('the card recipe', () => {
     // The reason the recipe names `surface-raised`, asserted at its source rather than agreed
     // between two constants: in dark `--color-paper` is the panel fill (L12.3) and
     // `--color-surface-raised` is the card fill (L21.2). Light makes them both white.
-    const dark = readFileSync('app/tokens.generated.css', 'utf8');
-    const paper = /^\s*--color-paper:\s*(#[0-9A-Fa-f]{6})/m.exec(dark)?.[1];
-    const paper3 = /^\s*--color-paper-3:\s*(#[0-9A-Fa-f]{6})/m.exec(dark)?.[1];
-    expect(paper, 'dark --color-paper').toBeTruthy();
-    expect(paper3, 'dark --color-paper-3 (= surface-raised)').toBeTruthy();
-    expect(paper).not.toBe(paper3);
-    expect(dark).toMatch(/--color-surface-raised:\s*var\(--color-paper-3\)/);
+    // Read at the source of the values (theme-shadcn.css): the bridge maps --color-paper onto
+    // --card and --color-paper-3 onto --popover, and in dark those are two different tones.
+    const theme = readFileSync('app/theme-shadcn.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    const dark = theme.slice(theme.search(/html\[data-theme='dark'\]\s*\{/));
+    const card = /--card:\s*(oklch\([^)]*\))/.exec(dark)?.[1];
+    const popover = /--popover:\s*(oklch\([^)]*\))/.exec(dark)?.[1];
+    expect(card, 'dark --card (= --color-paper)').toBeTruthy();
+    expect(popover, 'dark --popover (= --color-paper-3 = surface-raised)').toBeTruthy();
+    expect(card).not.toBe(popover);
+    const bridge = readFileSync('app/tokens-light.css', 'utf8');
+    expect(bridge).toMatch(/--color-paper:\s*var\(--card\)/);
+    expect(bridge).toMatch(/--color-paper-3:\s*var\(--popover\)/);
+    expect(readFileSync('app/tokens.generated.css', 'utf8')).toMatch(/--color-surface-raised:\s*var\(--color-paper-3\)/);
   });
 });

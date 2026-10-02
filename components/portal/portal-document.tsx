@@ -425,7 +425,7 @@ function RequestsSection({ view, token, preview, requests, refreshRequests, onSu
   const hasItems = requests.length > 0;
   return (
     <div>
-      <PageHeader title="Requests" caption="Ask for anything — you'll see the status here as we respond." />
+      <PageHeader title="Requests" caption="Ask for anything and you'll see the status here as we respond." />
       {hasItems && (
         <div className="grid gap-3">
           {requests.map((it) => <StatusCard key={it.id} item={it} token={token} preview={preview} onReplied={refreshRequests} />)}
@@ -676,7 +676,7 @@ function SignBlock({ pageId, accept, token, preview }: { pageId: string; accept:
       terms={accept.terms}
       acceptance={signed}
       onAccept={async (name, email) => {
-        if (preview) return { error: 'This is a preview — your client signs from their own link.' };
+        if (preview) return { error: 'This is a preview. Your client signs from their own link.' };
         if (!token) return { error: 'This link can’t record a signature.' };
         const res = await submitAcceptance(token, pageId, accept.blockId, name, email);
         if ('error' in res) return res;
@@ -708,7 +708,7 @@ function StatusCard({ item, token, preview, onReplied }: { item: PortalRequestSt
     // empty case was invisible anyway: the button was disabled, and the DS
     // renders that as a pale wash, so the action read as absent.
     if (text.length < 1) { setHint({ text: 'Write a reply first.', field: true }); document.getElementById(replyId)?.focus(); return; }
-    if (preview) { setHint({ text: 'This is a preview — your client replies from their own link.' }); return; }
+    if (preview) { setHint({ text: 'This is a preview. Your client replies from their own link.' }); return; }
     if (!token) { setHint({ text: 'This link can’t send a reply.' }); return; }
     setSending(true);
     const res = await submitClientReply(token, item.id, text);
@@ -759,7 +759,7 @@ function ApprovalCard({ approval, token, preview }: { approval: PortalApproval; 
   const draftId = useId();
 
   async function approve() {
-    if (preview) { setHint({ text: 'This is a preview — your client approves from their own link.' }); return; }
+    if (preview) { setHint({ text: 'This is a preview. Your client approves from their own link.' }); return; }
     if (!token) { setHint({ text: 'This link can’t record a decision.' }); return; }
     setBusy(true);
     const res = await submitApprovalDecision(token, approval.id, 'approved');
@@ -771,7 +771,7 @@ function ApprovalCard({ approval, token, preview }: { approval: PortalApproval; 
   async function requestChanges() {
     const text = draft.trim();
     if (text.length < 2) { setHint({ text: 'Say what needs changing.', field: true }); document.getElementById(draftId)?.focus(); return; }
-    if (preview) { setHint({ text: 'This is a preview — your client answers from their own link.' }); return; }
+    if (preview) { setHint({ text: 'This is a preview. Your client answers from their own link.' }); return; }
     if (!token) { setHint({ text: 'This link can’t record a decision.' }); return; }
     setBusy(true);
     const res = await submitApprovalDecision(token, approval.id, 'changes_requested', text);
@@ -856,7 +856,7 @@ function RequestForm({ token, preview, onSubmitted }: { token?: string; preview?
       <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Describe your request…" rows={4} />
       {error && <div style={{ fontSize: 'var(--text-caption-size)', color: 'var(--red-text)' }}>{error}</div>}
       <div className="flex items-center justify-between">
-        <span style={{ fontSize: 'var(--text-label-size)', color: 'var(--text-secondary)' }}>{preview ? 'Preview — sending is disabled here.' : ''}</span>
+        <span style={{ fontSize: 'var(--text-label-size)', color: 'var(--text-secondary)' }}>{preview ? 'Preview: sending is disabled here.' : ''}</span>
         <Button variant="primary" size="sm" onClick={send} disabled={preview || state === 'sending'} icon={<Icon icon={Send} size={14} />}>{state === 'sending' ? 'Sending…' : 'Send'}</Button>
       </div>
     </div>

@@ -2,6 +2,7 @@
 // Invoice detail — header, line-item table, totals, payments, and actions
 // (Edit draft · Mark sent · Record payment · Duplicate · Void). Totals computed
 // from items. Optimistic; reconciles via router.refresh. Built on DS primitives.
+import { notReady } from '@/lib/not-ready';
 import { useState } from 'react';
 import { PageLayout } from '@/components/ui/page-layout';
 import { todayISO } from '@/lib/date';
@@ -45,7 +46,7 @@ export function InvoiceDetail({ invoice, items: initItems, payments: initPayment
     setStatus('sent'); await updateInvoiceStatus(invoice.id, 'sent'); toast({ message: 'Marked as sent', variant: 'info' }); router.refresh();
   }
   async function doVoid() {
-    if (!voidSupported) { toast({ message: 'Voiding needs migration 0004', variant: 'error' }); return; }
+    if (!voidSupported) { toast({ message: notReady('Voiding isn’t available yet.', '0004').error, variant: 'error' }); return; }
     const prev = status; setStatus('void');
     const r = await voidInvoice(invoice.id);
     if ('error' in r) { setStatus(prev); toast({ message: 'Could not void', variant: 'error' }); } else { toast({ message: 'Invoice voided', variant: 'info' }); router.refresh(); }

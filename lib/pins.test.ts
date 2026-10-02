@@ -8,7 +8,7 @@ const pin = (type: string, id: string, label = 'X') => ({ type, id, label }) as 
 
 describe('readPins', () => {
   it('reads what was written', () => {
-    const pins = [pin('project', 'p1', 'Balluji'), pin('doc', 'd1', 'Brief')];
+    const pins = [pin('project', 'p1', 'Ridgeline'), pin('doc', 'd1', 'Brief')];
     expect(readPins(writePins(pins), TYPES)).toEqual(pins);
   });
 

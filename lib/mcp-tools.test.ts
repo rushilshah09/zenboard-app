@@ -42,7 +42,7 @@ describe('capture — a task', () => {
 
   it('claims nothing it was not told: no date, no priority, no Board status', async () => {
     const { c, queries } = ctx();
-    await capture(c, { text: 'Chase the TechSpark invoice' });
+    await capture(c, { text: 'Chase the Northwind invoice' });
     const row = inserted(queries, 'tasks');
     for (const k of ['scheduled_date', 'due_date', 'priority', 'status', 'highlight']) expect(row).not.toHaveProperty(k);
   });
@@ -139,7 +139,7 @@ describe('today', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-09-10T03:00:00Z'));
     const out = await today(c);
-    expect(out).toContain('Today — 1 task');
+    expect(out).toContain('Today · 1 task');
     expect(out).toContain('• 10:00 – 11:00  Kickoff');
   });
 
@@ -186,7 +186,7 @@ describe('list_projects', () => {
     ] });
     const out = await listProjects(c);
     expect(out).toContain(`• Acme rebrand · Acme\n  ${ORIGIN}/projects/p1`);
-    expect(out).toContain('• Old site — paused');
+    expect(out).toContain('• Old site · paused');
   });
 });
 

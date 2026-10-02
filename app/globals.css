@@ -4,6 +4,8 @@
 @import "./tokens.css";
 @import "./ds-theme.css"; /* additive shadcn design-system token/utility layer for @/components/ds */
 @import "./tokens-light.css"; /* THE BRIDGE: Zenboard primitives → shadcn tokens, both themes */
+@import "./site-board.css"; /* the website's illustration board, exactly as drawn, scoped to `.ib-scope` */
+@import "./ticket.css"; /* the waitlist's golden ticket — the ONE declared gold, scoped to `.zb-ticket` */
 @import "./theme-paper.css"; /* THE PAPER SKIN — html[data-skin='paper'], layered over the semantics; must stay LAST */
 
 /* ── THE DEFAULT BORDER COLOUR ─────────────────────────────────────────────
@@ -50,8 +52,19 @@
   --r-xl: var(--radius-xl);
   --r-2xl: 20px;
   --r-shell: var(--radius-lg);
-  /* The 4px the shell frame insets its floating panels by (app-shell.tsx). Named because the
-     focus edge has to add it to the panel radius to stay CONCENTRIC with the frame it hugs. */
+  /* The inset the shell frame gives its floating panels (app-shell.tsx), and the ground you can
+     SEE between them. (It was once also the focus edge's concentricity offset; that edge is
+     square and fixed to the window now, so it no longer depends on this.)
+
+     BACK TO 4px (user, 2026-09-28: "this is 4px, fix this gap", pointing at the seam between the
+     sidebar and the page). It was 4px originally, went to 8px on 2026-09-25 on the argument that
+     the desk had just arrived and the gap was finally doing real work, so it should be big enough
+     to read as deliberate. That argument was sound and still came out too wide once it was on
+     screen: the desk is what separates the panels, and the gap only has to let it through — past
+     a hairline of ground, more gap is just less page. It also read far worse than it was for a
+     while, because the panel shadow was briefly a wide bloom that filled this gutter with grey
+     (see --shadow-panel in ds-theme.css); that is fixed, and 4px is right on its own merits.
+     Judged side by side on screen, which is the only way this one can be judged. */
   --app-gutter: 4px;
   --r-full: var(--radius-pill);
 
@@ -73,8 +86,16 @@
      APP's, and a marketing page is read once, from further away. Set in the title face (Rubik,
      2026-09-25) at the weight the product's titles use; tracking continues the one optical curve
      (type-scale.test.ts: 40px is -0.025em), tightest at the largest size. */
-  --text-hero-size: 60px;     --text-hero-lh: 1.04;      --text-hero-weight: 500;   --text-hero-tracking: -0.032em;
-  --text-headline-size: 40px; --text-headline-lh: 1.1;   --text-headline-weight: 500; --text-headline-tracking: -0.025em;
+  /* MEASURED AGAINST RAMP (2026-09-28, the website's colour and type canvas): their page title is
+     64/64 and their section titles 48/50, both at the face's REGULAR weight. Ours were 60 and 40 at
+     500, which read louder and smaller at once. The titles are set at 400 now; the size carries
+     them, and a second clause in a quieter solid grey (`--site-second`) does what the extra weight
+     was trying to. Each has a phone step (`-sm`), because 64px on a 390px screen is four lines
+     for four words. Tracking stays on the one optical curve, tightest at the largest size. */
+  --text-hero-size: 64px;     --text-hero-lh: 1;         --text-hero-weight: 400;   --text-hero-tracking: -0.03em;
+  --text-headline-size: 48px; --text-headline-lh: 1.0417; --text-headline-weight: 400; --text-headline-tracking: -0.026em;
+  --text-hero-sm-size: 40px;  --text-hero-sm-lh: 1.1;    --text-hero-sm-weight: 400; --text-hero-sm-tracking: -0.025em;
+  --text-headline-sm-size: 32px; --text-headline-sm-lh: 1.125; --text-headline-sm-weight: 400; --text-headline-sm-tracking: -0.025em;
   --text-display-size: 32px; --text-display-lh: 1.15; --text-display-weight: 600; --text-display-tracking: -0.025em;
   --text-h1-size: 28px;      --text-h1-lh: 1.2;         --text-h1-weight: 500;     --text-h1-tracking: -0.021em;
   --text-stat-size: 24px;    --text-stat-lh: 1.1;       --text-stat-weight: 500;   --text-stat-tracking: -0.019em;
@@ -105,12 +126,29 @@
      COLUMNS beside a rail, which the reading column is too tight for. Named
      here so Clients and Projects stop hard-coding it (components/ui/view-container.tsx). */
   --view-maxw-wide: 1200px;
+  /* THE MEASURE — how wide a column of continuous READING may run: a conversation, an answer, and
+     the composer that sits under them. Not a fourth layout width (ViewContainer's three lay out
+     PAGES); a typographic limit, ~75 characters at 15px. Ask on Home ran its transcript across the
+     whole 978px reading column, so a question sat at the far right and its answer at the far left,
+     900px apart, and Messages ran lines 160 characters long (2026-10-02 brief: "conversation content
+     should breathe … highly readable"). */
+  --measure: 46rem;
   --section-gap: 28px; --card-pad: 16px;
   /* The one page-header row. Every screen's header is exactly this tall with
      exactly this gutter, so actions land in the same place on every page —
      change it here, not in a component. 48px fits a 32px control with 8px
      breathing above and below. */
   --page-header-h: var(--app-header-h, 44px); --page-header-gap: 8px;
+  /* THE FOLD, AS A NUMBER A PAGE CAN USE. The window, less the shell's two fixed
+     bars and the gutters around them — i.e. how tall a page's own column is
+     before anything scrolls. A page whose job is ONE THING in the middle of the
+     screen (Ask) sets `min-h-[var(--page-fill)]` on its column, turns the column
+     into a flex box and lets the thing take `flex-1`; the browser then centres
+     it in whatever the page's header and greeting have not used, at any window
+     height. Derived from the tokens that already describe the chrome, so a
+     taller header moves this with it — the alternative is a viewport fraction
+     like `60svh`, which is a guess that goes wrong on the next laptop. */
+  --page-fill: calc(100svh - 3 * var(--app-gutter) - var(--app-header-h) - var(--page-header-h) - var(--page-header-gap));
   /* Horizontal inset shared by the GLOBAL app header and the PAGE header, so the
      two rows' controls line up vertically. Both panels are the same width, so
      the same inset means "+ New" and the page's ••• sit on one axis. Used by
@@ -220,27 +258,44 @@
      user's report was "padding is not consistent".
 
      WHICH VALUES WON, and why: the 8px gap, because a 4px gap crowds a 20px
-     glyph; the 2px row gap, because 32px rows with 4px between them make a
-     36px pitch that fights `--row-nav`; and the 8px column inset, because 14
-     was the only unnamed number in the set. The radius is `--r-sm` in both
-     states — a row that changes shape when you select it is a row that
-     wobbles. */
+     glyph; and the 8px column inset, because 14 was the only unnamed number in
+     the set. The radius is `--r-sm` in both states — a row that changes shape
+     when you select it is a row that wobbles.
+
+     ── THE ROW GAP WAS 2px, AND THE HOVER GAVE IT AWAY (user, 2026-09-29) ───
+     "on hover i want 4 side equal spacing visually", with a screenshot of a
+     hovered row. Measured: a nav pill has 9px to the panel wall (8 inset + the
+     panel's 1px border) and had 2px to the pill above and below — a 4.5:1
+     imbalance, so the highlight read as floating horizontally and crushed
+     vertically. It was chosen for PITCH ("32px rows with 4px between them make
+     a 36px pitch that fights --row-nav"), which is arithmetic nobody can see;
+     the gap is the thing on the screen.
+     6px, not 4px, and not 9px to match the wall. Rendered at 2.6x against 2/4/6
+     and the wall gap: 6 is where the four sides read EQUAL, because the two
+     gaps are not the same kind of gap — the wall gap is bounded by a hard
+     border, which makes it read smaller than an open gap of the same size, so
+     an open 6 balances a bounded 9. The wall itself does not move: the same
+     screenshot said the content already "looks so close to the edge", and
+     taking the pill nearer the panel's 12px corner would have made that worse.
+     Pitch is now 38px. Guarded in app/design-system.test.ts. */
   --nav-inset: 8px;     /* the column's own padding */
   --nav-px: 8px;        /* the row's inset */
   --nav-gap: 8px;       /* glyph → label */
-  --nav-row-gap: 2px;   /* row → row */
+  --nav-row-gap: 6px;   /* row → row — see the hover note above */
 
   /* Dynamic accent. Settings → Appearance swaps ONLY --accent (lib/theme.ts),
      so the §6 accent derivatives are re-declared as color-mix() off --accent —
      tuned to land on §6's plum values — and recolor with it. --accent itself
      comes from tokens.css. The dark block re-tunes deep/text toward §6 dark. */
-  --accent-deep: color-mix(in srgb, var(--accent) 72%, #000);          /* dark-tuned deep */
-  --accent-text: color-mix(in srgb, var(--accent) 86%, #FFF);          /* lifted for dark contrast */
+  /* The accent pressed deeper — toward the theme's ink, like --accent-hover. */
+  --accent-deep: color-mix(in oklab, var(--accent) 80%, var(--foreground));
+  /* Per theme in tokens-light.css (light: the accent; dark: lifted toward the ink). */
+  --accent-text: var(--accent);
   --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);    /* §6 16% */
   --accent-border: color-mix(in srgb, var(--accent) 28%, transparent);  /* §6 28% */
   --accent-wash: color-mix(in srgb, var(--accent) 12%, transparent);
   --accent-wash-strong: color-mix(in srgb, var(--accent) 32%, transparent);
-  --on-accent: #121212;   /* B&G: text on the ink accent solid */
+  --on-accent: var(--background);   /* the monochrome fallback; lib/theme.ts pins the real one */
 
   /* Accent — Notion's three verified jobs ONLY (Master Prompt v3 §3). The plum
      is NOT default chrome: it appears on the logo, active indicators (sparingly),
@@ -308,7 +363,7 @@
      (#F2F1EB fill, #121212 text), hover lifts to pure white. Berry remains
      only for the notification dot / logo / rare selected-text emphasis. */
   --primary: var(--color-ink-900);
-  --primary-deep: #FFFFFF;
+  --primary-deep: color-mix(in oklab, var(--primary) 88%, var(--background));
   --on-primary: var(--color-text-onsolid);
 
   /* Neutral dark solid — alias of --primary, used by the `dark` button variant
@@ -325,7 +380,7 @@
   --nav-rail-px: calc((var(--sidebar-w-collapsed) - 2px - 2 * var(--nav-inset) - 20px) / 2);
 
   /* Deepest ink for rare emphasis; §6's ramp stops at --ink. */
-  --ink-deep: #FFFFFF;
+  --ink-deep: var(--color-ink-900);
 
   /* Recessed in-panel surfaces (Documents redesign): --well = grid canvas,
      --well-2 = neutral status-chip surface.
@@ -352,7 +407,7 @@
 
   /* Tooltip (DS §5.40): inverted paper — --surface-dark stays a dark surface
      in BOTH themes (tokens.css flips it to #45403A in dark), light text. */
-  --tip-bg: var(--surface-dark); --tip-text: #F2F2F2;
+  /* --tip-bg / --tip-text are declared per theme in tokens-light.css. */
 
   /* Selection — the word-processor blue (Notion idiom), derived from --blue so
      both themes adapt. --sel-text tints native ::selection; --sel-block is the
@@ -360,10 +415,12 @@
   --sel-text: color-mix(in srgb, var(--blue) 30%, transparent);
   --sel-block: color-mix(in srgb, var(--blue) 14%, transparent);
 
-  /* Raw status hues for lines/text/derivations — dark-tuned. */
-  --green: #7DBA6E; --blue: #6FA3E8; --red: #E0735C;
-  --amber: #D2A055; --purple: #9C8FE0; --olive: #A3B382;
-  --amber-text: #D9A86A;
+  /* Short names for the status hues, for lines and derivations. They were
+     dark-tuned literals read by BOTH themes (a #7DBA6E green line on white is
+     1.9:1); they are the per-theme status solids now. */
+  --green: var(--color-success-500); --blue: var(--color-info-500); --red: var(--color-danger-500);
+  --amber: var(--color-warning-500); --purple: var(--purple-dot); --olive: var(--color-label-moss);
+  --amber-text: var(--color-warning-600);
 
   /* Semantic event/tag palette — legacy --pal-* names aliased onto §6's
      status trios (values were already identical in light). See lib/palette.ts. */
@@ -391,7 +448,7 @@
   --pal-pink-wash: color-mix(in oklab, var(--pink-bg) 55%, transparent);
   --pal-red-wash: color-mix(in oklab, var(--red-bg) 55%, transparent);
 
-  --scrim-color: #000000;
+  /* --scrim-color / --color-scrim are declared per theme in tokens-light.css. */
 
   /* Legacy font names → §6 stacks (tokens.css wires next/font handles).
 
@@ -408,31 +465,23 @@
      surface, never UI chrome, on the neutral palette the user chose. It departs from CLAUDE.md's
      "one family" rule pending the user's confirmation; reverting it is this one line. */
   --font-body: var(--font-ui);
-  --font-editorial: var(--font-serif);
+  /* The editorial role is the TITLING face now, not a serif (user directive
+     2026-09-25). The serif is still loaded and still used where it was chosen
+     on purpose: Documents' reading mode, and the Paper skin's printed sheet,
+     both of which override this token themselves. */
+  --font-editorial: var(--font-title);
 
-  /* ── ELEVATION — B&G: borders define hierarchy, shadows are ambient-only.
-     A hairline ring + one soft black layer, never large, never colored. */
-  --shadow-xs:      0 1px 2px rgba(0,0,0,0.24);                                       /* flat/gallery cards */
-  --shadow-sm:      0 1px 2px rgba(0,0,0,0.30);                                       /* raised control */
-  --shadow-crisp:   0 1px 2px rgba(0,0,0,0.28);                                       /* switch thumb, tab pill */
-  --shadow-card:    0 0 0 1px var(--border-default), 0 1px 2px rgba(0,0,0,0.24);      /* base card */
-  /* ── THE SPECULAR EDGE ──────────────────────────────────────────────────
-     What separates "a grey rectangle" from "a material" in a dark interface is a single line of
-     light along the top, where a real surface would catch the room. Linear, Raycast, Vercel and
-     Arc all draw it; Notion (a document, lit like paper) does not, which is why Zenboard's dark
-     surfaces — Notion's palette, no highlight — read flat.
-     4.5% white, one pixel, inset: below that it disappears, above it becomes a stripe. It is a
-     LIGHT effect, so it exists only where there is a light to catch: in the light theme a raised
-     surface casts instead, and this is `none`. */
-  --edge-light: inset 0 1px 0 0 rgb(255 255 255 / 0.045);
-  --shadow-md:      0 0 0 1px var(--border-default), 0 2px 6px rgba(0,0,0,0.30), var(--edge-light);   /* raised panel */
-  --shadow-lg:      0 0 0 1px var(--border-default), 0 4px 12px rgba(0,0,0,0.36);     /* popover · menu · dropdown */
-  --shadow-overlay: 0 0 0 1px var(--border-default), 0 4px 12px rgba(0,0,0,0.36);     /* popover level */
-  --shadow-xl:      0 0 0 1px var(--border-default), 0 8px 24px rgba(0,0,0,0.44);     /* modal · dialog */
-  --shadow-panel:   0 0 0 1px var(--color-border-panel), 0 1px 2px rgba(0,0,0,0.04), var(--edge-light);  /* B&G floating panel (Figma Navigation/Header) */
+  /* ── ELEVATION — role names onto the per-theme scale in tokens-light.css
+     (xs · sm · crisp · lift-1..4 · toast, and --edge-light). No literal here:
+     these were black-alpha values tuned for dark (0.24–0.44) and read by light,
+     where a 36% shadow under a menu is a smudge. */
+  --shadow-card:    0 0 0 1px var(--border-default), var(--shadow-xs);
+  --shadow-md:      0 0 0 1px var(--border-default), var(--shadow-lift-1), var(--edge-light);   /* raised panel */
+  --shadow-lg:      var(--shadow-lift-2);                                                     /* popover · menu */
+  --shadow-overlay: var(--shadow-lift-2);                                                     /* popover level */
+  --shadow-xl:      var(--shadow-lift-3);                                                     /* dialog · sheet */
+  --shadow-panel:   0 0 0 1px var(--color-border-panel), var(--shadow-xs), var(--edge-light);
 
-
-  color-scheme: dark;
 }
 
 /* When a page renders <PageHeader>, that header owns the "•••" menu as its last
@@ -483,13 +532,16 @@ html[data-density="compact"] {
      behind a picture, an illustration (<Illustration>), never as a surface. (The website stopped
      standing its product on them: its grounds are the page itself, printed with the mark.) */
   --color-edge-image: var(--edge-image);
-  /* THE WEBSITE'S INK BLOCK — the footer's dark ground, the same in both themes (it is the site's
-     closing statement, not a theme surface). The marketing palette's own dark section: Ink as the
-     ground, Paper for copy on it (17:1), the dark theme's muted (6.4:1) and line. */
-  --color-site-ink: #191919;
-  --color-site-ink-fg: #FBFAF6;
-  --color-site-ink-muted: #9B9B9B;
-  --color-site-ink-line: #2F2F2F;
+  /* THE WEBSITE'S INK BLOCK — the one dark band a page is allowed and the footer that closes in the
+     same ink (globals.css, "the website's colour system"). Dark in BOTH themes: it is a statement,
+     not a theme surface. Its values live on `--site-band*`, so the dark theme can take it a step
+     BELOW its own ground rather than letting it melt into it. `--color-site-second` is the quieter
+     clause of a two-tone title. */
+  --color-site-ink: var(--site-band);
+  --color-site-ink-fg: var(--site-band-fg);
+  --color-site-ink-muted: var(--site-band-muted);
+  --color-site-ink-line: var(--site-band-line);
+  --color-site-second: var(--site-second);
   --color-field-petal: #EAB9CB;
   --color-field-apricot: #ECBF9B;
   --color-field-butter: #E5D494;
@@ -498,14 +550,14 @@ html[data-density="compact"] {
   --color-field-periwinkle: #B8BDEE;
   --color-field-sand: #EEE7D9;
   --color-field-mist: #E7EAEC;
-  /* THE SEMANTIC NAMES, made real. CLAUDE.md documents the vocabulary as
-     "success / warning / danger / info", and `accent` above has always worked
-     bare — but these four never existed as tokens, so `text-danger` generated no
-     CSS at all and silently inherited the surrounding ink. Measured 2026-09-14:
   /* The illustration's light: every light shape drawn on a field (the palette's "paper", #FBFAF6). Named
      for what it does rather than "paper": it is an ink of the illustrations, the same in both themes,
      not a surface of the app (theme-bridge.test.ts reads any "-paper" as a surface). */
   --color-illustration-light: #FBFAF6;
+  /* THE SEMANTIC NAMES, made real. CLAUDE.md documents the vocabulary as
+     "success / warning / danger / info", and `accent` above has always worked
+     bare — but these four never existed as tokens, so `text-danger` generated no
+     CSS at all and silently inherited the surrounding ink. Measured 2026-09-14:
      `.text-danger` had zero rules and computed to the body colour, while
      `.text-danger-600` was a real red. Seven error and late states rendered grey
      because of it, including the portal's `role="alert"` hints and the
@@ -618,6 +670,14 @@ html[data-density="compact"] {
   --text-headline--line-height: var(--text-headline-lh);
   --text-headline--font-weight: var(--text-headline-weight);
   --text-headline--letter-spacing: var(--text-headline-tracking);
+  --text-hero-sm: var(--text-hero-sm-size);
+  --text-hero-sm--line-height: var(--text-hero-sm-lh);
+  --text-hero-sm--font-weight: var(--text-hero-sm-weight);
+  --text-hero-sm--letter-spacing: var(--text-hero-sm-tracking);
+  --text-headline-sm: var(--text-headline-sm-size);
+  --text-headline-sm--line-height: var(--text-headline-sm-lh);
+  --text-headline-sm--font-weight: var(--text-headline-sm-weight);
+  --text-headline-sm--letter-spacing: var(--text-headline-sm-tracking);
   --text-h1: var(--text-h1-size);
   --text-h1--line-height: var(--text-h1-lh);
   --text-h1--font-weight: var(--text-h1-weight);
@@ -940,33 +1000,11 @@ html[data-vt] .zb-page-in { animation: none !important; }
   45%  { opacity: 1; }
   to   { opacity: 0.7; }
 }
-/* ── THE FOCUS TOGGLE'S MARK ───────────────────────────────────────────────
-   One glyph, two weights: an outline you are outside of, a filled disc you are inside. Both live
-   in the DOM with one absolutely positioned, and they CROSSFADE — scale 0.25→1, opacity 0→1,
-   blur 4px→0 — so the change reads as one mark transforming rather than two marks swapping. The
-   curve is the interface's colour/hover curve; the duration is the press's, because this happens
-   in the same breath as the press. */
-.zb-focus-glyph {
-  position: relative;
-  display: inline-grid;
-  place-items: center;
-  width: 14px;
-  height: 14px;
-  color: var(--color-ink-600);
-}
-.zb-focus-glyph > * {
-  grid-area: 1 / 1;
-  transition:
-    opacity var(--duration-base) var(--ease-hover),
-    transform var(--duration-base) var(--ease-hover),
-    filter var(--duration-base) var(--ease-hover);
-}
-.zb-focus-glyph-on { opacity: 0; transform: scale(0.25); filter: blur(4px); color: var(--accent); }
-.zb-focus-toggle[data-on] .zb-focus-glyph-on { opacity: 1; transform: scale(1); filter: blur(0); }
-.zb-focus-toggle[data-on] .zb-focus-glyph-off { opacity: 0; transform: scale(0.25); filter: blur(4px); }
-@media (prefers-reduced-motion: reduce) {
-  .zb-focus-glyph > * { transition-property: opacity; transform: none; filter: none; }
-}
+/* THE FOCUS TOGGLE'S MARK is gone from this file. Since 2026-10-02 the toggle is the DS ghost
+   `<Button>` in its toggle variant (`FocusModeButton`, components/shell/shell-parts.tsx): a glyph
+   and the word "Focus", pressed while the mode is on, with the glyph's filled cut. The Button and
+   the Icon own all of that, so nothing here styles it. (It was a labelled sliding switch from
+   2026-09-28, and before that a glyph crossfaded between two weights.) */
 
 /* Reduced motion keeps the SIGNAL and drops the bloom: the light is information, the rise is
    flourish (and the rise is the part that moves). */
@@ -1070,6 +1108,21 @@ html[data-vt] .zb-page-in { animation: none !important; }
 }
 /* A state swapping inside a product preview: the new state arrives, the old one is simply gone. */
 .site-swap { animation: fade-rise var(--duration-base) var(--ease-out-quiet) both; }
+
+/* THE COOKIE CARD (cookie-consent.tsx) arrives from the edge it lives on, and leaves back to it.
+   It is pinned to the foot of the window, so rising from there is what it actually did; a card that
+   faded in place reads as a layer switched on rather than a thing that came from somewhere. Asked
+   once a YEAR per visitor (lib/consent.ts), which is the one frequency that earns a real entrance —
+   the frequency table says rare events may carry delight, and a 100×-a-day control may not.
+   `--ease-drawer` because this is a bottom-anchored panel, the same curve every sheet here uses.
+   The exit is quicker than the entrance and travels the SAME way it came, so dismissing reads as
+   putting the card back rather than as a second, unrelated animation. Before this, the card simply
+   VANISHED on click: a disappearance with no transition is the thing Emil calls broken, and it was
+   the loudest problem on the surface. */
+@keyframes site-consent-in  { from { opacity: 0; transform: translateY(12px) scale(0.98); } }
+@keyframes site-consent-out { to   { opacity: 0; transform: translateY(8px) scale(0.99); } }
+.site-consent { animation: site-consent-in var(--duration-slow) var(--ease-drawer) both; }
+.site-consent[data-leaving] { animation: site-consent-out var(--duration-fast) var(--ease-out-quiet) both; }
 /* A page of the product preview arriving (app-demo.tsx): a quiet cross-fade at the site's pace, out of
    a little blur, as one of the app's own pages arrives. */
 @keyframes site-view-in { from { opacity: 0; transform: translateY(6px); filter: blur(4px); } }
@@ -1131,34 +1184,567 @@ html[data-vt] .zb-page-in { animation: none !important; }
    draws the joints; they are what the grid leaves, so they are always exactly where the lines cross.
 
    THE GRADIENTS ARE PRINTED (halftone.tsx): a screen of the mark's own glyphs, weighted by the mark
-   underneath, in these three inks. The soft ink is the page's own line; the strong one a step darker;
-   the accent is the brand's, for the rare glyph that catches it. */
+   underneath, in TWO inks and no more. Light and deep: the page's own line, and its ink at a
+   fraction. Never the brand's colour — the user, 2026-09-26, of the print reacting to the pointer:
+   "I don't want brand colour on that, I want only black and white, with a blend mode." A third,
+   coloured ink is also the one thing a screen cannot do and stay a screen. */
 :root {
   --site-glyph: var(--color-line-strong);
   --site-glyph-strong: color-mix(in oklab, var(--color-line-strong), var(--color-ink-500) 22%);
-  --site-glyph-accent: var(--accent);
+  --site-glyph-deep: color-mix(in oklab, var(--color-ink-900) 20%, transparent);
+  /* ── THE BRAND'S ONE GRADIENT ────────────────────────────────────────────
+     The user, 2026-09-26, of Calendly: "look how Calendly's colours look so fresh and seamless,
+     all part of one brand, I also want that in our product". Measured across their cards, the
+     thread is not a palette — it is ONE gradient. The progress fill, the gauge arc, the handle and
+     the sparkle are all cut from the same cyan-to-blue sweep, so four unrelated widgets read as
+     one family.
+
+     Ours is the accent's own short arc: berry, turning toward violet and lifting as it goes, which
+     is the mark's own: petal, through berry, into apricot. Set for real further down (search
+     "THE BRAND HAS ONE GRADIENT"); this is the flat accent a browser gets if that block never
+     applies, which is what it had before any of this. */
+  --brand-sweep: linear-gradient(90deg, var(--accent), var(--accent));
   /* One pass of the halftone's wave. */
   --site-shimmer: 8s;
   /* How long a feature or a step holds before the next takes over. */
   --site-dwell: 6s;
+  /* THE DWELL'S OWN CLOCK, and not the UI ladder's: these are not a control reacting to a hand,
+     they are the choreography of eighteen dots arriving and leaving, so they are stated here beside
+     the hold they belong to. The dots draw themselves in over `--site-dwell-draw` and the timer
+     runs for whatever is left of `--site-dwell`, so a marker's whole cycle is still one dwell,
+     exactly as a feature row's rule is. Leaving takes half of arriving: an exit is quicker than
+     its entrance. */
+  --site-dwell-draw: 0.6s;
+  --site-dwell-erase: 0.3s;
+  /* How many dots go round a marker, and the rect's own `pathLength` (use-auto-advance.tsx `DOTS`).
+     An INTEGER, so one slot is exactly 1/18th of the perimeter and the ring closes with no odd gap
+     at the seam, at any size. */
+  --site-dwell-dots: 18;
   /* One hop of the explanatory loop: a thing travelling from one part of Zenboard to the next. */
   --site-hop: 1.1s;
   /* One turn of the orbit around the mark in the loop. */
   --site-orbit: 14s;
-  /* The product lying on a printed cell: a long, soft shadow under it, and the dark theme's specular
-     edge on top, which a plain box-shadow would otherwise replace. */
-  --site-lift: var(--edge-light), 0 1px 2px rgb(25 25 25 / 0.05), 0 32px 56px -30px rgb(25 25 25 / 0.32);
+  /* The product lying on a printed cell: a long, soft shadow under it. */
+  --site-lift: 0 1px 2px rgb(25 25 25 / 0.05), 0 32px 56px -30px rgb(25 25 25 / 0.32);
 }
-html[data-theme='dark'] {
-  --site-lift: var(--edge-light), 0 1px 2px rgb(0 0 0 / 0.4), 0 32px 56px -26px rgb(0 0 0 / 0.75);
+/* ── THE NEUTRALS THAT CARRY THE PAGE (the colour system after Ramp, 2026-09-28) ─────────────
+   The user: "the goal is not less colour, it is colour designed as one system". Measured on Ramp,
+   what makes their page cohere is that NEUTRALS carry the structure and the colour is concentrated
+   where it means something. The website's own neutrals sit on the product's 68° warm axis
+   (theme-shadcn.css, "the warm axis") and inside its chroma cap:
+
+     · THE SECOND TONE, the quieter clause of a two-tone title. A SOLID colour derived exactly the
+       way the ink ramp is (tokens-light.css: ink mixed into the ground), never an opacity. 3.9:1,
+       which clears 3:1 for LARGE text only: it is for titles of 24px and up and nothing else
+       (site.test.ts guards where it is used). A card's second tone is `ink-500`, which clears 4.5:1;
+     · THE BAND: the one dark section a page is allowed, and the footer that closes in the same ink.
+       Its body text is a warm grey at 6.3:1 or better, its title the illustration light at 16.8:1.
+
+   There was a third, the STOCK every picture was printed on while a picture was one glow in a
+   corner of bare paper. The pictures are painted edge to edge again (".site-field"), so it went
+   with that recipe. Light only: the website has one appearance (lib/theme.ts `SITE_APPEARANCE`). */
+:root {
+  --site-second: color-mix(in oklab, var(--color-ink-900) 60%, var(--color-background));
+  --site-band: oklch(0.2134 0.004 68);                                 /* #1A1917 */
+  --site-band-fg: var(--color-illustration-light);                     /* #FBFAF6 · 16.8:1 */
+  --site-band-muted: oklch(0.69 0.004 68);                             /* #9D9B99 · 6.3:1 */
+  --site-band-line: oklch(0.29 0.004 68);                              /* #2D2B29 */
+  --site-band-raised: oklch(0.27 0.004 68);                            /* #282624 · a tag on the band */
+  --site-band-tile: oklch(0.31 0.004 68);                              /* #32302E · its tile */
 }
+/* WHO IT'S FOR: A RING OF PEOPLE (people.tsx). The chosen person stands in the middle at full size and
+   their neighbours stand smaller either side, cut by the cell's edges. Everything that moves is a
+   transform: a card's place in the ring (`--ring`, its distance from the chosen one) is a translate, and
+   its size is a scale from its foot, so every person stands on the same floor line and the names under
+   them never move. A card out of sight (`data-far`) jumps round the back without a transition. The
+   person is taller than their card (`--stand`), so their head clears its top edge. */
+.site-people {
+  --card-w: 16rem; --card-h: 12rem; --slot: 15.25rem;
+  height: calc(var(--card-h) * 1.34 + 7.5rem);
+}
+@media (min-width: 40rem) { .site-people { --card-w: 27rem; --card-h: 20rem; --slot: 26rem; } }
+@media (min-width: 64rem) { .site-people { --card-w: 34rem; --card-h: 24rem; --slot: 34rem; } }
+.site-person {
+  position: absolute; left: 50%; bottom: 2rem; width: var(--card-w);
+  transform: translateX(calc(-50% + var(--ring) * var(--slot)));
+  transition: transform var(--site-swap) var(--ease-standard), opacity var(--site-swap) var(--ease-standard);
+}
+.site-person[data-far] { opacity: 0; visibility: hidden; transition: none; }
+.site-person-card {
+  position: relative; display: block; width: 100%; height: var(--card-h);
+  transform: scale(0.8); transform-origin: 50% 100%;
+  transition: transform var(--site-swap) var(--ease-standard);
+}
+.site-person[data-active] .site-person-card { transform: none; }
+.site-person-photo {
+  position: absolute; bottom: 0; left: 50%; width: auto; max-width: none;
+  height: calc(var(--stand) * 100%); transform: translateX(-50%);
+  pointer-events: none; user-select: none;
+}
+.site-person-chip { position: absolute; bottom: 14%; }
+@media (prefers-reduced-motion: reduce) { .site-person, .site-person-card { transition: none; } }
+
+/* ── THE SHEEN: A SURFACE THAT KNOWS WHERE YOUR HAND IS ────────────────────
+   User, 2026-09-26: "all your animation is clean but not rich and premium." Correct, and the
+   diagnosis is in the audit that preceded it: 124 of the 180 moving elements on this page were
+   changing COLOUR and nothing else. A page of correct 100ms colour transitions is tidy; it is not
+   expensive-feeling. What the references have that this did not is a surface that RESPONDS — a
+   light that follows the pointer across a card, so the card reads as a physical thing catching a
+   lamp rather than a rectangle that darkens.
+
+   Two layers, and they are the whole trick:
+     · a soft round LIGHT that tracks the pointer across the card;
+     · a RIM that brightens on the edge the pointer is nearest, which is what sells it as glass and
+       not as a spotlight gimmick.
+
+   HOW IT IS MOVED MATTERS. The light is a leaf element moved with `translate3d`, never a custom
+   property set on the card: a variable set on an ancestor re-runs style for every descendant, and
+   these cards hold a hundred of them (Emil, on Vaul's swipe: update the transform on the element,
+   not a variable on the container). So a pointermove costs one composited transform and nothing
+   else. The rim is an opacity on a second leaf.
+
+   It is a HOVER, so it is on the hover budget and it is gone the moment the pointer leaves. Touch
+   never sees it: there is no pointer to follow, and a light stuck where a thumb last was is worse
+   than no light. */
+.zb-sheen-host {
+  position: relative;
+  isolation: isolate;
+  /* The lift is the honest half of this on paper, where a light can barely be seen: the card comes
+     a little off the page. Transform and shadow only, and 1px, which is a card noticing you rather
+     than jumping at you. */
+  transition: transform var(--duration-base) var(--ease-out-quiet), box-shadow var(--duration-base) var(--ease-hover);
+}
+@media (hover: hover) and (pointer: fine) {
+  .zb-sheen-host:hover { transform: translateY(-1px); box-shadow: var(--shadow-lift-2); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .zb-sheen-host:hover { transform: none; }
+}
+.zb-sheen, .zb-sheen-rim {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--duration-slow) var(--ease-hover);
+  /* Negative, inside the host's own stacking context (`isolation: isolate`): that paints above the
+     card's BACKGROUND and below its CONTENT, so nothing in the card needs wrapping or a z-index of
+     its own, and the rim still shows because the edges are where the content is not. */
+  z-index: -1;
+}
+.zb-sheen {
+  inset: 0;
+  /* Drawn once at a fixed size and MOVED, so following the pointer never repaints a gradient.
+     18rem, not 42: at 42 the light was wider than the card and the whole card changed colour,
+     which is a STAIN, not a highlight (user, 2026-09-26: "this looks so bad", of a card that went
+     pink under the pointer). A highlight has to be smaller than the thing it is on. */
+  width: 18rem; height: 18rem; inset: auto auto 0 0;
+  margin: -9rem 0 0 -9rem;
+  background: radial-gradient(closest-side, var(--color-sheen) 0%, transparent 100%);
+  will-change: transform;
+}
+.zb-sheen-rim {
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px var(--color-sheen-rim);
+}
+@media (hover: hover) and (pointer: fine) {
+  .zb-sheen-host:hover > .zb-sheen { opacity: 1; }
+  .zb-sheen-host:hover > .zb-sheen-rim { opacity: 1; }
+}
+.zb-sheen-host:focus-within > .zb-sheen-rim { opacity: 1; }
+:root {
+  /* ON PAPER THE LIGHT IS WHITE. A brand-tinted light on a near-white card does not read as a
+     lamp, it reads as the card changing state — and a pink card next to a white one looks
+     selected, or broken. The card's ground is #F7F7F5 and the light lifts it toward paper; that
+     is all a highlight on paper can honestly be, and the RIM plus the lift carry the rest. */
+  --color-sheen: color-mix(in oklab, var(--color-paper) 70%, transparent);
+  --color-sheen-rim: color-mix(in oklab, var(--color-ink-900) 9%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  /* The rim stays — it is a state, not a movement. The travelling light goes. */
+  .zb-sheen { display: none; }
+}
+
+/* ── THE PORTAL SECTION'S PICTURES ─────────────────────────────────────────
+   Every illustration in the client-portal section stands on the same ground: a plotted grid of
+   dots, faded out to nothing at its edges so it has no border of its own, with the area's own hue
+   blooming behind whatever the picture is about. It is drawn in CSS rather than shipped as an
+   image because a 16px lattice of 1px dots is 40 bytes of gradient and a 400KB PNG.
+
+   The mask is what makes it a ground rather than a panel: without it the dots stop on a hard
+   rectangle, and the eye reads that rectangle as the picture's frame instead of the cards inside
+   it. */
+.plot-ground {
+  background-image: radial-gradient(circle, var(--color-line-strong) 1px, transparent 1.5px);
+  background-size: 16px 16px;
+  -webkit-mask-image: radial-gradient(ellipse 64% 70% at 50% 42%, #000 20%, transparent 78%);
+  mask-image: radial-gradient(ellipse 64% 70% at 50% 42%, #000 20%, transparent 78%);
+}
+/* The bloom: the area's hue, behind the thing the picture is about. */
+.plot-glow {
+  background: radial-gradient(closest-side, color-mix(in oklab, var(--site-glow, var(--site-hue, var(--accent))) 52%, transparent), transparent);
+}
+/* The panel a portal picture is made of: white, a hairline, and a shadow long enough to lift it
+   off the dots without looking like a dialog. */
+.plot-panel {
+  background: var(--color-surface-raised);
+  box-shadow: 0 0 0 1px var(--color-border-panel), 0 1px 2px rgb(31 31 27 / 0.05), 0 18px 40px -14px rgb(31 31 27 / 0.18);
+}
+
+/* ── THE HUB ───────────────────────────────────────────────────────────────
+   The geometry of `hub-section.tsx`, from the user's design canvas. Its own handoff states how it
+   adapts, and these are those four rules; they are container queries on the section, not viewport
+   media queries, so the section is right wherever it is put.
+
+   THE BAND CAPS AT 1600 and the drawing keeps the canvas's 1440×640 proportion, so every tile's
+   place stays a percentage of the same field it was drawn on — which is what lets twelve absolute
+   positions survive the trip from a canvas to a page that can be any width. */
+.hub-stage { container-type: inline-size; width: 100%; max-width: 1600px; }
+.hub-field { width: 100%; aspect-ratio: 1440 / 640; }
+
+/* ── THE CENTRE: THE BRAND'S OWN PICTURE (2026-09-29) ─────────────────────────────────────────
+   The user, of the multi-colour centre that stood here ("like Calendly"): "fix this animation
+   gradient, make it in brand, make it look properly designed", and the same day, "use our original
+   gradient, in the current brand, and make it more cohesive". The fault was the colour, not the
+   motion. The tile, its glow and its ripple wore SIX hues from all round the wheel, which is a
+   rainbow, and a rainbow is the opposite of one brand; and they were pale where the pictures are
+   rich, so the centre looked as if it came from another site.
+
+   So the centre is painted exactly the way every picture on the page is (".site-field": one arc, a
+   picture's strength, deep at the lower left and blooming to the upper right), in the BRAND's own
+   arc: the mark's gradient (drawn-mark.tsx, `--brand-sweep`), berry through rose into apricot.
+     · THE TILE is that picture at the size of an app icon, with every picture's grain;
+     · THE GLOW behind it is the same arc, pale and wide, with its light on the same side;
+     · A RIPPLE is the tile's colour leaving it, painted along the same axis.
+   One arc, one light, one direction. The tiles round the fan keep their places' colours: the places
+   are the colours, and the centre is the brand.
+
+   IT MOVES BY ITS LIGHT. Two soft lights drift over the tile's fixed colour, one each way and at
+   different speeds, so the colour shifts through itself the way Calendly's panels do while the tile
+   never turns (a turning logo is a loading spinner). `rotate` only, which the compositor runs alone.
+
+   THE RIPPLE keeps everything asked of it before: it answers a dot's arrival, it is a soft BAND with
+   no edge to trace, it swells and fades through four stops with no abrupt frame, and it is fenced
+   out of the words. */
+:root { --hub-ripple-cycle: calc(var(--duration-slow) * 45); }
+.hub-field {
+  /* The brand's arc at a picture's strength: the mark's three stops, the rose and the apricot derived
+     exactly as `--f-ink-*` is (".site-field"), and the berry the brand itself. */
+  --hub-deep: var(--accent);
+  --hub-rose: var(--color-field-petal);
+  --hub-warm: var(--color-field-apricot);
+  /* The bloom: the arc's own light end at its lightest, never white. */
+  --hub-light: color-mix(in oklab, var(--hub-warm) 20%, var(--color-illustration-light));
+  --hub-glow-mix: 26%;
+}
+@supports (color: oklch(from white l c h)) {
+  .hub-field {
+    --hub-rose: oklch(from var(--color-field-petal) calc(l - 0.16) calc(c * 3.0) h);
+    --hub-warm: oklch(from var(--color-field-apricot) calc(l - 0.16) calc(c * 3.0) h);
+  }
+}
+
+/* SMOOTH, which is the whole point of it (user: "the ripple is not smooth, I want a smooth
+   ripple"). It swells and fades through four stops, so there is no frame where it arrives or
+   leaves abruptly, and the scale runs `linear` (a ripple is constant motion outward: Emil's tree). */
+@keyframes hub-ripple {
+  0%   { scale: 0.34; opacity: 0; }
+  12%  { opacity: 0.55; }
+  22%  { opacity: 0.85; }
+  34%  { opacity: 0.5; }
+  46%  { scale: 1.9; opacity: 0; }
+  100% { scale: 1.9; opacity: 0; }
+}
+/* THE FENCE. The stage is pulled UP under the lede (`-mt-8/-12/-16`), so a ripple free to expand
+   runs straight through the words — which is exactly what the user saw. Masking the layer rather
+   than trusting the numbers means it cannot come back: whatever a ripple does, it is invisible
+   before the top of the stage, and it is faded out at the rim so it never ends on a cut either. */
+.hub-ripples {
+  position: absolute; inset: 0; pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 28%),
+                      radial-gradient(closest-side, #000 44%, transparent 90%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 28%),
+              radial-gradient(closest-side, #000 44%, transparent 90%);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+/* A BAND, not a line: the tile's colour going out into the room, masked to a ring that is soft at
+   both edges so there is no outline to trace. Painted along the tile's own light, deep at the lower
+   left and warm at the upper right, so a ripple is recognisably the thing it left. */
+.hub-ripple {
+  left: 50%; top: 50%; width: 52%; aspect-ratio: 1;
+  margin-left: -26%; margin-top: -26%;
+  border-radius: 999px;
+  background: linear-gradient(45deg in oklab,
+    color-mix(in oklab, var(--hub-deep) 34%, transparent),
+    color-mix(in oklab, var(--hub-rose) 38%, transparent) 50%,
+    color-mix(in oklab, var(--hub-warm) 38%, transparent));
+  -webkit-mask-image: radial-gradient(closest-side, transparent 58%, #000 76%, transparent 94%);
+  mask-image: radial-gradient(closest-side, transparent 58%, #000 76%, transparent 94%);
+  animation: hub-ripple var(--hub-ripple-cycle) linear infinite both;
+}
+/* A few percent, and no more: this is the anchor of the whole picture, and an anchor that moves is
+   not one. */
+@keyframes hub-float { 50% { transform: scale(1.03); } }
+/* The tile lights as its dot leaves, inside the first tenth of the cycle — the departure, not a
+   pulse of its own. */
+@keyframes hub-depart { 0%, 14%, 100% { transform: none; } 5% { transform: scale(1.05); } }
+.hub-depart { animation: hub-depart var(--ease-out-quiet) infinite; }
+/* The light behind the centre: the same arc, pale and wide, the rose low on the left and the apricot
+   high on the right exactly as on the tile, with the berry at its heart. And it BREATHES (user,
+   2026-09-27: "the background round, I want a subtle animation"): twelve seconds a cycle, slower
+   than a person breathes and far too slow to watch. Scale and opacity only, so it composites. */
+@keyframes hub-breathe { 50% { transform: scale(1.06); opacity: 0.78; } }
+.hub-glow {
+  left: 28%; top: 14%; width: 44%; height: 72%;
+  background:
+    radial-gradient(closest-side at 40% 58%, color-mix(in oklab, var(--hub-rose) var(--hub-glow-mix), transparent), transparent),
+    radial-gradient(closest-side at 60% 42%, color-mix(in oklab, var(--hub-warm) var(--hub-glow-mix), transparent), transparent),
+    radial-gradient(closest-side at 50% 50%, color-mix(in oklab, var(--hub-deep) 12%, transparent), transparent);
+  animation: hub-breathe calc(var(--duration-slow) * 60) var(--ease-hover) infinite;
+}
+/* The lines fade into the page at all four edges rather than stopping on one, which is what keeps
+   the fan reading as something continuing past the frame instead of a drawing in a box. */
+.hub-lines {
+  -webkit-mask-image:
+    linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent),
+    linear-gradient(180deg, transparent, #000 18%, #000 82%, transparent);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(90deg, transparent, #000 16%, #000 84%, transparent),
+    linear-gradient(180deg, transparent, #000 18%, #000 82%, transparent);
+  mask-composite: intersect;
+}
+
+/* WHAT TRAVELS, riding IN: the picture's claim is that everything arrives at one place.
+   Each dot crosses in the first 34% of its cycle and rests for the other 66%, which is how twelve
+   feeds — one per feature, each in its own colour — still read as about four things moving. It
+   opens at 4% and closes by 34%, so it is invisible while it waits at the hub and invisible again
+   before it reappears at its tile; the jump back is never seen. */
+/* The fan's lines are drawn FROM the mark outward, so 0% is the hub and 100% is the field's edge.
+   `--hub-from` is where this tile sits along its line, so the dot leaves from behind its own tile
+   and runs IN to 0%. It rides a line the drawing already had; nothing is drawn for it. */
+@keyframes hub-feed {
+  0%   { offset-distance: var(--hub-from); opacity: 0; }
+  4%   { opacity: 1; }
+  30%  { opacity: 1; }
+  34%  { offset-distance: 0%; opacity: 0; }
+  100% { offset-distance: 0%; opacity: 0; }
+}
+.hub-feed { offset-distance: var(--hub-from); opacity: 0; animation: hub-feed var(--ease-standard) infinite; }
+/* The dot has a body: the light it casts on the line, the dot, and a bright core. One flat disc is
+   what read as basic. */
+.hub-feed-halo { opacity: 0.16; }
+.hub-feed-core { fill: var(--color-paper); opacity: 0.9; }
+
+/* THE PAINTED TILE: the pictures' recipe at the size of an app icon, in the brand's arc. Its corner
+   is the tiles' 28% at this size, so the family holds, and it wears a white rim like an app's icon
+   on a home screen — the thing that makes a gradient tile read as an object you could press rather
+   than as a hole into a sky. Its shadow is its own berry, not grey: a lit thing throws coloured
+   light. The mark on it is the illustrations' light. */
+.hub-mark {
+  left: 46.4%; top: 41.9%; width: 7.2%; aspect-ratio: 1;
+  border-radius: 28%;
+  overflow: hidden;
+  isolation: isolate;
+  --hub-mark-ink: var(--color-illustration-light);
+  /* The pictures' recipe, with its light held to the corner: on a tile this small a bloom as wide as a
+     picture's washed the mark's upper lobe out to 1.5:1 against its own white. */
+  background:
+    radial-gradient(64% 84% at 94% 2% in oklab,
+      var(--hub-light) 0%, color-mix(in oklab, var(--hub-light) 40%, transparent) 36%, transparent 60%),
+    radial-gradient(88% 126% at 90% 24% in oklab,
+      var(--hub-warm) 0%, color-mix(in oklab, var(--hub-warm) 46%, transparent) 44%, transparent 76%),
+    radial-gradient(84% 120% at 50% 94% in oklab,
+      var(--hub-rose) 0%, color-mix(in oklab, var(--hub-rose) 50%, transparent) 44%, transparent 76%),
+    radial-gradient(86% 128% at 2% 98% in oklab,
+      var(--hub-deep) 0%, color-mix(in oklab, var(--hub-deep) 56%, transparent) 46%, transparent 80%),
+    color-mix(in oklab, var(--hub-rose) 34%, var(--color-illustration-light));
+  box-shadow:
+    0 0 0 0.28cqw var(--color-paper),
+    0 0 0 calc(0.28cqw + 1px) var(--color-border-panel),
+    0 1.4cqw 3cqw -0.8cqw color-mix(in oklab, var(--hub-deep) 45%, transparent),
+    0 1px 2px rgb(31 31 27 / 0.12);
+  animation: hub-float calc(var(--duration-slow) * 36) var(--ease-hover) infinite;
+}
+.hub-mark-glyph { filter: drop-shadow(0 0.15cqw 0.4cqw rgb(25 25 25 / 0.28)); }
+/* THE LIGHTS. Each is one soft spot of the arc's own colour on a layer larger than the tile, turned
+   about the tile's centre, so it travels round the tile near its edge. The apricot turns one way and
+   the berry the other, slower, so the colour moves through itself and meets in a different place
+   every time. Colour, not white: a white light over the tile is what washes a gradient to pastel. */
+@keyframes hub-swirl { to { rotate: 360deg; } }
+.hub-paint { position: absolute; inset: -40%; z-index: -1; pointer-events: none; }
+.hub-paint-a {
+  background: radial-gradient(26% 26% at 66% 32% in oklab, color-mix(in oklab, var(--hub-warm) 70%, transparent), transparent 72%);
+  animation: hub-swirl calc(var(--duration-slow) * 90) linear infinite;
+}
+.hub-paint-b {
+  background: radial-gradient(28% 28% at 34% 66% in oklab, color-mix(in oklab, var(--hub-deep) 55%, transparent), transparent 72%);
+  animation: hub-swirl calc(var(--duration-slow) * 130) linear infinite reverse;
+}
+/* A tile: its glyph on a wash of its place's colour, over the card. The wash is a MIX rather than an
+   alpha, so the lines behind a tile never show through it; the glyph is the place's ink. */
+.hub-tile-box {
+  background: color-mix(in oklab, var(--site-hue) 40%, var(--color-surface-raised));
+  box-shadow: 0 0 0 1px var(--color-border-panel), 0 1px 2px rgb(31 31 27 / 0.05), 0 18px 40px -14px rgb(31 31 27 / 0.18);
+}
+/* What travels, in its place's colour: the halo it casts on the line, and the dot. */
+.hub-feed-halo, .hub-feed-dot { fill: var(--site-hue-ink); }
+.hub-tile-label { margin-top: 0.5cqw; }
+
+.hub-chip { background: color-mix(in oklab, var(--site-hue) 50%, transparent); }
+
+/* ── THE FOUR RULES THE CANVAS'S HANDOFF STATES ───────────────────────────── */
+/* Under 900: the labels go. Twelve names at that width collide with each other and with the
+   lines, and the chips below say the same twelve where there is room to read them. */
+@container (max-width: 56.25rem) { .hub-tile-label { display: none; } }
+/* Under 760 the fan STOPS SHRINKING and crops to its centre, because past that the tiles are too
+   small to recognise: better to show the mark and its nearest neighbours properly than all twelve
+   illegibly. The field keeps its drawn width and the stage clips it. */
+@container (max-width: 47.5rem) {
+  .hub-field { width: 760px; margin-inline: calc(50% - 380px); }
+}
+@media (min-width: 56.25rem) { .hub-chips { display: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  /* The drawing stands still; nothing about it was information. */
+  .hub-feed { animation: none; display: none; }
+}
+
+/* ── THE MENU'S DRAWINGS ───────────────────────────────────────────────────
+   The four classes `nav-art.tsx` asks for. They were referenced and never written, which is why
+   every pointer in the Product menu rendered BLACK: `fill: var(--art-pointer)` with no such
+   property is an invalid paint, and SVG's fallback for that is black. Found by looking at the
+   menu, not by a test — a missing custom property is valid CSS.
+
+   A drawing's pointer, and the one coloured mark in it, take the AREA's own hue, so the picture
+   in the menu and that section's tag on the page are the same colour. `--site-hue-ink` is that
+   hue at ink strength (the tile's pale field would disappear against white paper). */
+.site-art { --art-pointer: var(--site-hue-ink, var(--accent)); }
+
+/* A designer's layout guides: dashed, and fading out before they reach the words, so they read as
+   construction lines rather than as a border someone forgot to remove. */
+.site-art-guide {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 45%, #000 85%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 45%, #000 85%, transparent);
+}
+.site-art-guide[data-axis='y'] {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 40%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 40%, transparent);
+}
+
+/* The name on a pointer, when WHO is pointing is the point: the pointer's own colour, and paper
+   for the word, because the hue at ink strength is a fill and not a text colour. */
+.site-art-tag {
+  background: var(--art-pointer);
+  color: var(--color-paper);
+  box-shadow: 0 2px 6px -2px color-mix(in oklab, var(--color-ink-900) 35%, transparent);
+}
+/* …and the one that is YOU is the brand's own, wherever it appears. */
+.site-art-you { --art-pointer: var(--accent); }
+
+/* The caret in the Docs drawing: a page being written. Steps, not a fade, because a caret
+   blinks rather than pulses. */
+@keyframes zb-caret { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+
+
+/* ── AN ICON THAT LIGHTS UP, AND ONE THAT POINTS ───────────────────────────
+   User, 2026-09-26: "I want all icons animated." Emil's first question is how often a person sees
+   it, and the honest answer for a nav glyph is "a hundred times a day" — so the budget here is the
+   hover-and-colour budget, not the entrance budget. Two gestures, and no third:
+
+     · AN ICON LIGHTS UP when its thing becomes active. Both cuts are drawn (the icon seam has
+       exactly two) and cross-faded over 100ms, with the fill growing the last sixth of the way in
+       so it reads as one glyph filling rather than two glyphs swapping. better-ui: animate an icon
+       with opacity and scale, never by toggling visibility; outline rests, fill marks active.
+     · AN ICON THAT POINTS MOVES in the direction it points, while its row is hovered or focused.
+       A glyph that does not point gets nothing: that is decoration, and it is the whole reason
+       "animate all the icons" needs a rule rather than a sweep.
+
+   The static cue survives both: the fill is still the fill, and the arrow is still an arrow. */
+.zb-icon-line, .zb-icon-fill {
+  grid-area: 1 / 1;
+  transition:
+    opacity var(--duration-fast) var(--ease-hover),
+    transform var(--duration-base) var(--ease-out-quiet);
+}
+.zb-icon-fill { opacity: 0; transform: scale(0.84); }
+.zb-icon-state[data-state='active'] .zb-icon-fill { opacity: 1; transform: scale(1); }
+.zb-icon-state[data-state='active'] .zb-icon-line { opacity: 0; transform: scale(0.84); }
+
+.zb-nudge { transition: transform var(--duration-fast) var(--ease-out-quiet); }
+.group:hover .zb-nudge-end, .group:focus-visible .zb-nudge-end,
+.group:has(:focus-visible) .zb-nudge-end { transform: translateX(2px); }
+[dir='rtl'] .group:hover .zb-nudge-end,
+[dir='rtl'] .group:focus-visible .zb-nudge-end,
+[dir='rtl'] .group:has(:focus-visible) .zb-nudge-end { transform: translateX(-2px); }
+.group:hover .zb-nudge-down, .group:focus-visible .zb-nudge-down,
+.group:has(:focus-visible) .zb-nudge-down { transform: translateY(2px); }
+.group:hover .zb-nudge-up, .group:focus-visible .zb-nudge-up,
+.group:has(:focus-visible) .zb-nudge-up { transform: translateY(-2px); }
+.group:hover .zb-nudge-turn, .group:focus-visible .zb-nudge-turn,
+.group:has(:focus-visible) .zb-nudge-turn { transform: rotate(90deg); }
+@media (prefers-reduced-motion: reduce) {
+  /* The colour change stays; the movement goes. */
+  .zb-icon-fill, .zb-icon-state[data-state='active'] .zb-icon-line { transform: none; }
+  .zb-nudge { transition: none; }
+  .group:hover .zb-nudge-end, .group:hover .zb-nudge-down,
+  .group:hover .zb-nudge-up, .group:hover .zb-nudge-turn { transform: none; }
+}
+
 .site-lift { box-shadow: var(--site-lift); }
-/* The GLASS RING: a card of the product lying on a picture wears a band of the picture's own light
-   around it, as if seen through the edge of a pane (the user's reference, 2026-09-26). A spread
-   shadow, so it keeps the card's corner concentric at every radius, and it carries the lift under it. */
-:root { --site-glass-ring: color-mix(in oklab, var(--color-illustration-light) 46%, transparent); }
-html[data-theme='dark'] { --site-glass-ring: color-mix(in oklab, var(--color-illustration-light) 7%, transparent); }
-.site-glass { box-shadow: 0 0 0 10px var(--site-glass-ring), var(--site-lift); }
+/* ── THE BRAND HAS ONE GRADIENT, AND IT IS THE MARK'S ───────────────────────
+   User, 2026-09-28, pointing at the loader: "I want gradients like this."
+
+   That gradient already existed — `DrawnMark` (components/ds/ui/drawn-mark.tsx) paints the mark
+   petal → berry → apricot, and it is the best thing on the site. `--brand-sweep` meanwhile ran the
+   OTHER WAY, deriving berry → violet with relative colour. Two brand gradients pointing in opposite
+   directions is not one brand: the whole reason this token exists (see its note above) is that what
+   makes a page read as one family is one gradient reused, not a palette.
+
+   So the sweep is the mark's three stops now. Stated rather than derived, because the SVG cannot
+   consume a CSS gradient and the two must agree — `site.test.ts` checks they still do. The relative
+   -colour block it replaced is gone with it; there is nothing left to derive. */
+:root {
+  --brand-sweep: linear-gradient(100deg in oklab,
+    var(--color-field-petal) 0%,
+    var(--accent) 42%,
+    var(--color-field-apricot) 100%);
+}
+/* ── THE GLASS ─────────────────────────────────────────────────────────────
+   A card of the product lying on a picture is seen through the edge of a pane. It was one flat
+   10px band; the user, 2026-09-26: "all the UI behind glass UI, I want to add more detailing on
+   that". In the reference (Calendly's Notetaker card) a pane has FOUR things, and the band is only
+   one of them:
+
+     · a RIM — a hairline right at the card's edge, brighter than the band, where the light catches
+       the cut;
+     · the BAND itself, the thickness of the glass;
+     · an outer EDGE, one step down, where the pane stops and the picture resumes;
+     · and the BLOOM it throws onto the picture underneath.
+
+   Four tokens, one per idea, so each can be tuned without the others moving. */
+:root {
+  --site-glass-rim: color-mix(in oklab, var(--color-illustration-light) 88%, transparent);
+  --site-glass-ring: color-mix(in oklab, var(--color-illustration-light) 46%, transparent);
+  --site-glass-edge: color-mix(in oklab, var(--color-illustration-light) 20%, transparent);
+  --site-glass-bloom: color-mix(in oklab, var(--color-ink-900) 14%, transparent);
+}
+/* THE APP'S WINDOW (app-window.tsx): the desk the app lies on, edged like a panel, so the frame reads
+   as one object with the product inside it rather than a card around a picture. */
+.site-window {
+  background: var(--color-surface-desk);
+  box-shadow: 0 0 0 1px var(--color-border-panel);
+}
+/* Spread shadows, so every ring keeps the card's corner concentric at any radius, and the lift
+   carries under all of them. */
+.site-glass {
+  box-shadow:
+    0 0 0 1px var(--site-glass-rim),
+    0 0 0 11px var(--site-glass-ring),
+    0 0 0 12px var(--site-glass-edge),
+    0 20px 44px -14px var(--site-glass-bloom),
+    var(--site-lift);
+}
 
 /* THE LINES RUN ON (user, 2026-09-26: "extend the line", and then "I don't want a line and a shape:
    like this, extended"). The sections keep the page's measure; their lines do not stop at it. Each
@@ -1230,103 +1816,121 @@ html[data-site-loader] .site-loader {
 .site-pad { --cell-px: 20px; padding-inline: var(--cell-px); }
 @media (min-width: 40rem) { .site-pad { --cell-px: 32px; } }
 @media (min-width: 64rem) { .site-pad { --cell-px: 48px; } }
+/* A SECTION OPENS the same way everywhere (the type canvas, measured on Ramp 2026-09-28: 128
+   between their sections; ours was 80 to 112 depending on who built the section). 112 above a
+   section's name and 64 from its heading to what it introduces, at desktop; the phone steps keep
+   the same proportion. Inside the opening, each gap is twice the one inside the group it separates:
+   tag to title 24, title to lede 24, lede to buttons 32. */
+.site-head { padding-block: 64px 40px; }
+@media (min-width: 40rem) { .site-head { padding-block: 80px 48px; } }
+@media (min-width: 64rem) { .site-head { padding-block: 112px 64px; } }
 
-/* THE PICTURES ARE LAYERED (visual.tsx `Stage`): a gradient of the area's own colours at the bottom,
-   the mark printed over it in light, and the product's cards on top. The colours are the illustration
-   fields, so a picture on the site and an illustration in the app come from one palette. In the dark
-   each field keeps its hue and loses its light: its colour mixed into the page's own ground, so a
-   picture reads as tinted dark rather than as a pastel window cut into a black page. */
+/* ── THE PICTURES: ONE HUE THAT TRAVELS (restored 2026-09-29) ─────────────────────────────────
+   The user, 2026-09-29, of the pictures the Ramp pass made (warm stock with one glow in a corner):
+   "I like the previous gradient version; this looks faded, looks more empty". It did. Gathering the
+   colour into one corner left most of every picture bare stock, and a picture that is mostly stock
+   is a grey panel with a stain in it. So they are painted edge to edge again, in the recipe the user
+   chose on 2026-09-26 by holding ours against their moodboard:
+
+     · ONE ARC. Each picture is three stops of ADJACENT hues around its chapter's colour, deep at the
+       lower left and light at the upper right, never two opposites with the paper between them:
+       that is how a picture goes pale through the middle, and the middle is most of it;
+     · A PICTURE'S STRENGTH. The palette's tints are drawn for a 28px tile; at the size of a picture
+       a tint is a wash, and a wash on white is what "childish" named. `--f-ink-*` is the SAME hue at
+       `l − 0.16, c × 3.0`, jewel rather than pastel (the moodboard measures oklch .60–.68 / .18–.22),
+       derived rather than chosen, so the marketing palette is still the only place a hue is picked.
+       Yellow has less chroma headroom at that lightness, so the browser brings butter back to a deep
+       ochre; that is the right answer for it, and why the rule is stated once rather than per hue;
+     · ALL RADIAL, placed as fractions of the box, so the same stops read left to right in a wide
+       band and corner to corner in a square: one recipe, every aspect;
+     · A BLOOM, one long soft diagonal of the picture's own lightest hue, never white: light through
+       the picture rather than a hole in it;
+     · THE PRINT: the mark screened over the whole picture in light, through `overlay`
+       (`.site-screen`), and the grain.
+
+   The product lands on it as the moodboard's hard panel does: a crisp, flat, bright card on a soft
+   rich field. That contrast is the composition. Light only: the website has one appearance
+   (lib/theme.ts `SITE_APPEARANCE`). */
 .site-field {
   --f-petal: var(--color-field-petal); --f-apricot: var(--color-field-apricot); --f-butter: var(--color-field-butter);
   --f-sage: var(--color-field-sage); --f-sky: var(--color-field-sky); --f-periwinkle: var(--color-field-periwinkle);
-  --f-sand: var(--color-field-sand); --f-mist: var(--color-field-mist);
-  /* What opens between a field's two hues (see `.site-field-*`): the illustration's own light. */
+  /* The light a picture opens into. */
   --f-light: var(--color-illustration-light);
-  /* The print over a field is the illustration's light, not ink: the mark as light on the colour.
-     (User, 2026-09-26: "use white colour halftone … in blend mode, not in brand colour".) */
-  --site-glyph: color-mix(in oklab, var(--color-illustration-light) 60%, transparent);
-  --site-glyph-strong: color-mix(in oklab, var(--color-illustration-light) 92%, transparent);
+  /* A browser without relative colour gets the palette's tints as they are. */
+  --f-ink-petal: var(--f-petal); --f-ink-apricot: var(--f-apricot); --f-ink-butter: var(--f-butter);
+  --f-ink-sage: var(--f-sage); --f-ink-sky: var(--f-sky); --f-ink-periwinkle: var(--f-periwinkle);
+  /* The print over a picture is the illustration's light, never ink and never the brand: the mark
+     as light on the colour (user, 2026-09-26: "use white colour halftone … in blend mode"). */
+  --site-glyph: color-mix(in oklab, var(--color-illustration-light) 30%, transparent);
+  --site-glyph-strong: color-mix(in oklab, var(--color-illustration-light) 58%, transparent);
+  /* The second ink, and the only other one: the page's own, for the outline marks and for what the
+     pointer draws. Black and white, never the brand's colour (user, 2026-09-26). */
+  --site-glyph-deep: color-mix(in oklab, var(--color-ink-900) 13%, transparent);
 }
-html[data-theme='dark'] .site-field {
-  --f-petal: color-mix(in oklch, var(--color-field-petal) 30%, var(--color-background));
-  --f-apricot: color-mix(in oklch, var(--color-field-apricot) 30%, var(--color-background));
-  --f-butter: color-mix(in oklch, var(--color-field-butter) 24%, var(--color-background));
-  --f-sage: color-mix(in oklch, var(--color-field-sage) 28%, var(--color-background));
-  --f-sky: color-mix(in oklch, var(--color-field-sky) 28%, var(--color-background));
-  --f-periwinkle: color-mix(in oklch, var(--color-field-periwinkle) 30%, var(--color-background));
-  --f-sand: color-mix(in oklch, var(--color-field-sand) 10%, var(--color-background));
-  --f-mist: color-mix(in oklch, var(--color-field-mist) 10%, var(--color-background));
-  --f-light: var(--color-background);
-  --site-glyph: color-mix(in oklab, var(--color-illustration-light) 8%, transparent);
-  --site-glyph-strong: color-mix(in oklab, var(--color-illustration-light) 16%, transparent);
+@supports (color: oklch(from white l c h)) {
+  .site-field {
+    --f-ink-petal: oklch(from var(--color-field-petal) calc(l - 0.16) calc(c * 3.0) h);
+    --f-ink-apricot: oklch(from var(--color-field-apricot) calc(l - 0.16) calc(c * 3.0) h);
+    --f-ink-butter: oklch(from var(--color-field-butter) calc(l - 0.16) calc(c * 3.0) h);
+    --f-ink-sage: oklch(from var(--color-field-sage) calc(l - 0.16) calc(c * 3.0) h);
+    --f-ink-sky: oklch(from var(--color-field-sky) calc(l - 0.16) calc(c * 3.0) h);
+    --f-ink-periwinkle: oklch(from var(--color-field-periwinkle) calc(l - 0.16) calc(c * 3.0) h);
+  }
 }
-/* ── THE FIELDS ────────────────────────────────────────────────────────────
-   Restructured 2026-09-26 after studying Calendly's, at the user's request. Theirs are not clouds:
-   each is a VERTICAL ramp with real colour at the top and the bottom and the light opening through
-   the MIDDLE, which is where the product card sits — the card is backlit, and the panel reads as a
-   deliberate object rather than a blurred photograph. Ours were two corner radials on a neutral,
-   which is the airbrushed version: pretty, and saying nothing about where to look.
-
-   So: one recipe, two hues per area (the same pairs that were already chosen, for the same
-   reasons), and the illustration's own light between them. In the dark the light between them is
-   the page's ground, so a field reads as tinted dark rather than as a pastel window cut into a
-   black page — the rule `.site-field` has always followed. */
+/* THE RECIPE. `--f-a` is the deep anchor at the lower left, `--f-b` the middle of the arc along the
+   foot, `--f-c` its light end at the upper right, and the bloom is `--f-c` at its lightest. Everything
+   interpolates in oklab: an sRGB fade across a hue is the other half of grey. */
 .site-field-hero, .site-field-how, .site-field-day,
 .site-field-projects, .site-field-portal, .site-field-money {
+  --f-glow: color-mix(in oklab, var(--f-c) 20%, var(--f-light));
   background:
-    linear-gradient(180deg, var(--f-top) 0%, color-mix(in oklab, var(--f-top) 34%, var(--f-light)) 26%, transparent 52%),
-    linear-gradient(0deg, var(--f-bottom) 0%, color-mix(in oklab, var(--f-bottom) 30%, var(--f-light)) 24%, transparent 50%),
-    var(--f-light);
+    linear-gradient(108deg in oklab,
+      transparent 12%, color-mix(in oklab, var(--f-glow) 72%, transparent) 44%, transparent 78%),
+    radial-gradient(92% 128% at 92% 4% in oklab,
+      var(--f-glow) 0%, color-mix(in oklab, var(--f-glow) 50%, transparent) 46%, transparent 74%),
+    radial-gradient(88% 126% at 90% 24% in oklab,
+      var(--f-c) 0%, color-mix(in oklab, var(--f-c) 46%, transparent) 44%, transparent 76%),
+    radial-gradient(84% 120% at 50% 94% in oklab,
+      var(--f-b) 0%, color-mix(in oklab, var(--f-b) 50%, transparent) 44%, transparent 76%),
+    radial-gradient(86% 128% at 2% 98% in oklab,
+      var(--f-a) 0%, color-mix(in oklab, var(--f-a) 56%, transparent) 46%, transparent 80%),
+    color-mix(in oklab, var(--f-b) 34%, var(--f-light));
 }
-/* Petal is the homepage hero's; butter is the day, and the picture is Home. */
-.site-field-hero { --f-top: var(--f-petal); --f-bottom: var(--f-butter); --f-side: var(--f-apricot); }
-/* Her portal in apricot (people), your day in butter. */
-.site-field-how { --f-top: var(--f-apricot); --f-bottom: var(--f-butter); --f-side: var(--f-petal); }
-/* The day's own arc: butter where it starts, periwinkle (the evening shutdown) where it ends. */
-.site-field-day { --f-top: var(--f-butter); --f-bottom: var(--f-periwinkle); --f-side: var(--f-apricot); }
-/* Sky for time (the calendar), periwinkle for quiet work (the briefs). */
-.site-field-projects { --f-top: var(--f-sky); --f-bottom: var(--f-periwinkle); --f-side: var(--f-sage); }
-/* Apricot for people, the client; petal for the brand's own moment, the page she opens. */
-.site-field-portal { --f-top: var(--f-apricot); --f-bottom: var(--f-petal); --f-side: var(--f-butter); }
-/* Sage for growth (finance); sky for the tracked time an invoice is made of. */
-.site-field-money { --f-top: var(--f-sage); --f-bottom: var(--f-sky); --f-side: var(--f-butter); }
+/* THE RUNS: A CHAPTER'S PICTURE IS PAINTED IN ITS OWN HUE. Each run is one arc of about 40° round its
+   chapter's colour (visual.tsx `CHAPTER`), so the picture beside "Your day" is amber, the one beside
+   Projects is blue, and so on down the page. The two pictures about the whole product take TWO
+   chapters in the order the story runs: the showcase is the brand warming into the day, and how it
+   fits is the client's portal (violet) turning into the brand's rose. Adjacent, always, so a run
+   never passes through grey. */
+.site-field-hero { --f-a: var(--f-ink-petal); --f-b: var(--f-ink-apricot); --f-c: var(--f-ink-butter); }
+.site-field-how { --f-a: var(--f-ink-periwinkle); --f-b: color-mix(in oklch, var(--f-ink-periwinkle), var(--f-ink-petal)); --f-c: var(--f-ink-petal); }
+.site-field-day { --f-a: var(--f-ink-apricot); --f-b: color-mix(in oklch, var(--f-ink-apricot), var(--f-ink-butter)); --f-c: var(--f-ink-butter); }
+.site-field-projects { --f-a: color-mix(in oklch, var(--f-ink-sky) 70%, var(--f-ink-periwinkle)); --f-b: var(--f-ink-sky); --f-c: color-mix(in oklab, var(--f-ink-sky) 70%, var(--f-light)); }
+.site-field-portal { --f-a: color-mix(in oklch, var(--f-ink-periwinkle) 80%, var(--f-ink-petal)); --f-b: var(--f-ink-periwinkle); --f-c: color-mix(in oklab, var(--f-ink-periwinkle) 70%, var(--f-light)); }
+.site-field-money { --f-a: color-mix(in oklch, var(--f-ink-sage) 70%, var(--f-ink-sky)); --f-b: var(--f-ink-sage); --f-c: color-mix(in oklab, var(--f-ink-sage) 70%, var(--f-light)); }
+/* THE SCREEN TAKES THE PICTURE'S COLOUR THROUGH THE BLEND, which is the whole trick in the user's
+   reference (2026-09-26): its glyphs are red over the amber and blue over the lavender, and they are
+   all ONE ink. `overlay` does that: it darkens under a dark ink and lightens under a light one, and
+   carries the backdrop's hue either way. `soft-light` is too gentle to read over a rich field. */
+.site-screen { mix-blend-mode: overlay; }
 
-/* ── THE PICTURES ARE PAINTED, NOT RAMPED (visual.tsx `Mesh`) ───────────────
-   The user, 2026-09-26: "all the gradient execution looks so basic, I want it like Calendly's".
-   Measured on calendly.com the same day: theirs are not CSS gradients at all. Each is a pale ground
-   under six or seven large ORGANIC shapes, each one colour and blurred into its neighbours, a light
-   shape behind the product, and a fine fractal grain over the whole. The ramp above is two stops of
-   geometry; that is a painting. So each picture lays five soft shapes over its ramp: its top hue
-   leaning in from the top corner, its bottom hue from the far corner, a third hue at the side, a
-   small glow of the brand's berry low in the other corner (the one colour in every picture, as
-   Calendly's blue is in every one of theirs), and the illustration's light behind the product, which
-   is what backlights it. The grain turns the screen into a print.
-   Static on purpose: the shapes are painted once and cached; nothing here moves, so nothing costs. */
-.site-field { --f-deep: color-mix(in oklab, var(--accent) 52%, var(--f-light)); }
-html[data-theme='dark'] .site-field { --f-deep: color-mix(in oklch, var(--accent) 42%, var(--color-background)); }
+/* THE GRAIN. Not decoration and not subtle: in every reference the user sent, the grain is the
+   loudest thing about the picture after the colour — it is what says PRINT rather than CSS, and a
+   wash this wide also bands on an 8-bit screen without it. Grey, laid INTO the colour with
+   `soft-light` rather than over it, at two pitches: a fine one for the tooth of the paper and a
+   coarser one that gives it a cloud, so it does not read as a single uniform TV static. */
 .site-mesh { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 .site-mesh[data-flip] { transform: scaleX(-1); }
-.site-blob {
-  position: absolute; aspect-ratio: 1.35; translate: -50% -50%;
-  border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%;
-  filter: blur(clamp(40px, 7vw, 104px));
-}
-.site-blob[data-b='top'] { left: 16%; top: 6%; width: 80%; rotate: -14deg; background: var(--f-top); }
-.site-blob[data-b='bottom'] { left: 86%; top: 98%; width: 86%; rotate: 10deg; background: var(--f-bottom); }
-.site-blob[data-b='side'] { left: 100%; top: 30%; width: 48%; rotate: 24deg; background: var(--f-side); opacity: 0.85; }
-.site-blob[data-b='deep'] { left: 4%; top: 94%; width: 42%; rotate: -8deg; background: var(--f-deep); opacity: 0.55; }
-.site-blob[data-b='light'] { left: 52%; top: 50%; width: 56%; background: var(--f-light); opacity: 0.92; }
-/* The grain: fractal noise, grey, laid into the colour rather than on top of it. */
 .site-grain {
-  position: absolute; inset: 0; opacity: 0.18; mix-blend-mode: soft-light;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
-  background-size: 180px 180px;
+  position: absolute; inset: 0; opacity: 0.4; mix-blend-mode: soft-light;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.22' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='0.5'/%3E%3C/svg%3E");
+  background-size: 180px 180px, 260px 260px;
 }
-html[data-theme='dark'] .site-grain { opacity: 0.1; mix-blend-mode: overlay; }
 
 /* A feature's icon tile, in its area's colour: the field as the ground and the palette's ink as the
-   glyph (the palette's "ink on a field": 7:1 or better on every field). In the dark, the dimmed field,
-   and the field colour itself as the glyph. */
+   glyph (the palette's "ink on a field": 7:1 or better on every field). */
 /* ── AN AREA'S HUE, SAID ONCE ──────────────────────────────────────────────
    Calendly's rule, and the user's (2026-09-26): colour marks the ONE thing that is showing.
    Every feature in a list is the same quiet ink; the one on screen takes its area's colour, and
@@ -1335,21 +1939,92 @@ html[data-theme='dark'] .site-grain { opacity: 0.1; mix-blend-mode: overlay; }
    `--site-hue` is the area's field colour · `--site-hue-fg` the ink that reads on it · and
    `--site-hue-ink` is the same hue at INK strength, because a 2px rule in a pale field colour is
    invisible on white and the bar is the one part that must be seen. Set once per area; the
-   eyebrow, the tile and the dwell all read it, so an area's colour is written in one place.
-   In the dark the field is dimmed into the page and the hue itself becomes the ink, exactly as
-   the tiles have always done. */
-.site-hue-petal { --site-hue: var(--color-field-petal); --site-hue-fg: var(--color-ink-900); --site-hue-ink: color-mix(in oklab, var(--color-field-petal) 58%, var(--color-ink-900)); }
-.site-hue-apricot { --site-hue: var(--color-field-apricot); --site-hue-fg: var(--color-ink-900); --site-hue-ink: color-mix(in oklab, var(--color-field-apricot) 58%, var(--color-ink-900)); }
-.site-hue-butter { --site-hue: var(--color-field-butter); --site-hue-fg: var(--color-ink-900); --site-hue-ink: color-mix(in oklab, var(--color-field-butter) 58%, var(--color-ink-900)); }
-.site-hue-sage { --site-hue: var(--color-field-sage); --site-hue-fg: var(--color-ink-900); --site-hue-ink: color-mix(in oklab, var(--color-field-sage) 58%, var(--color-ink-900)); }
-.site-hue-sky { --site-hue: var(--color-field-sky); --site-hue-fg: var(--color-ink-900); --site-hue-ink: color-mix(in oklab, var(--color-field-sky) 58%, var(--color-ink-900)); }
-.site-hue-periwinkle { --site-hue: var(--color-field-periwinkle); --site-hue-fg: var(--color-ink-900); --site-hue-ink: color-mix(in oklab, var(--color-field-periwinkle) 58%, var(--color-ink-900)); }
-html[data-theme='dark'] .site-hue-petal { --site-hue: color-mix(in oklch, var(--color-field-petal) 22%, var(--color-background)); --site-hue-fg: var(--color-field-petal); --site-hue-ink: var(--color-field-petal); }
-html[data-theme='dark'] .site-hue-apricot { --site-hue: color-mix(in oklch, var(--color-field-apricot) 22%, var(--color-background)); --site-hue-fg: var(--color-field-apricot); --site-hue-ink: var(--color-field-apricot); }
-html[data-theme='dark'] .site-hue-butter { --site-hue: color-mix(in oklch, var(--color-field-butter) 22%, var(--color-background)); --site-hue-fg: var(--color-field-butter); --site-hue-ink: var(--color-field-butter); }
-html[data-theme='dark'] .site-hue-sage { --site-hue: color-mix(in oklch, var(--color-field-sage) 22%, var(--color-background)); --site-hue-fg: var(--color-field-sage); --site-hue-ink: var(--color-field-sage); }
-html[data-theme='dark'] .site-hue-sky { --site-hue: color-mix(in oklch, var(--color-field-sky) 22%, var(--color-background)); --site-hue-fg: var(--color-field-sky); --site-hue-ink: var(--color-field-sky); }
-html[data-theme='dark'] .site-hue-periwinkle { --site-hue: color-mix(in oklch, var(--color-field-periwinkle) 22%, var(--color-background)); --site-hue-fg: var(--color-field-periwinkle); --site-hue-ink: var(--color-field-periwinkle); }
+   eyebrow, the tile and the dwell all read it, so an area's colour is written in one place. */
+/* THE WEBSITE'S COLOUR SYSTEM (user, 2026-09-27: "we're using a lot of colours and I don't want to
+   remove that; the problem is they don't feel cohesive … build our own stronger colour system … a
+   clear hierarchy, where each colour is used, consistent in light and dark … vibrant but mature").
+
+   Measured before: six tints at lightness 0.81–0.87 and chroma 0.050–0.084, so butter and apricot
+   shouted while sky and sage looked washed out, and three of the six crowded one warm corner of the
+   wheel. Worse, a place wore different colours in different spots (Finance pink in the menu, green
+   on the page; the portal apricot in one file, violet in another).
+
+   THE HIERARCHY, from loudest to quietest:
+     1. BERRY, the brand (`--accent`): identity and the one action. Never a section's colour.
+     2. FOUR CHAPTER COLOURS, one per place in the product, decided once (visual.tsx `CHAPTER`):
+        Day = butter (amber) · Projects = sky (blue) · Client portal = periwinkle (violet) ·
+        Money = sage (green). A chapter's colour is its menu card, its tag, its feature tiles and its
+        picture, and it is used for nothing else.
+     3. NEUTRAL (`neutral`): every section that is not one place (the hub, the story, who it is for,
+        the details, questions) wears ink, so colour on this page always means a place.
+     Petal and apricot remain for pictures and people, never for a place.
+
+   Every tint sits at the SAME lightness and chroma (oklch 0.885 / 0.058), so no hue outshouts
+   another, and every glyph on a tint is ink (8.5:1 or better). */
+.site-hue-petal { --site-hue-src: var(--color-field-petal); }
+.site-hue-apricot { --site-hue-src: var(--color-field-apricot); }
+.site-hue-butter { --site-hue-src: var(--color-field-butter); }
+.site-hue-sage { --site-hue-src: var(--color-field-sage); }
+.site-hue-sky { --site-hue-src: var(--color-field-sky); }
+.site-hue-periwinkle { --site-hue-src: var(--color-field-periwinkle); }
+/* Browsers without relative colour get the palette's tint as it is. */
+:is(.site-hue-petal, .site-hue-apricot, .site-hue-butter, .site-hue-sage, .site-hue-sky, .site-hue-periwinkle) {
+  --site-hue: var(--site-hue-src); --site-hue-fg: var(--color-ink-900);
+  --site-hue-ink: color-mix(in oklab, var(--site-hue-src) 58%, var(--color-ink-900));
+  /* The place's GLOW, the bloom behind an illustration (`.plot-glow`). */
+  --site-glow: var(--site-hue-src);
+}
+/* THE HUE IS THE PALETTE'S; THE STRENGTH IS THE SYSTEM'S. Every tint at one lightness and chroma
+   (0.885 / 0.058) and every ink at one (0.56 / 0.12), each time at the palette's own hue angle, so
+   nothing is picked by hand. */
+@supports (color: oklch(from white l c h)) {
+  :is(.site-hue-petal, .site-hue-apricot, .site-hue-butter, .site-hue-sage, .site-hue-sky, .site-hue-periwinkle) {
+    --site-hue: oklch(from var(--site-hue-src) 0.885 0.058 h);
+    --site-hue-ink: oklch(from var(--site-hue-src) 0.56 0.12 h);
+    --site-glow: oklch(from var(--site-hue-src) 0.84 0.075 h);
+  }
+}
+.site-hue-neutral { --site-hue: color-mix(in oklab, var(--color-ink-900) 7%, var(--color-background)); --site-hue-fg: var(--color-ink-800); --site-hue-ink: var(--color-ink-700); }
+
+/* ── THE BAND: ONE DARK SECTION A PAGE ─────────────────────────────────────
+   Ramp puts one dark band in the middle of the page, and it is what their page hangs from: it says
+   "this is the part that ties the rest together". Ours holds HOW IT FITS TOGETHER (loop.tsx), the
+   one request travelling from a client's ask to her payment, and the footer closes in the same ink
+   (user, 2026-09-28, approving the colour canvas: "implement the colours").
+
+   The pictures cannot sit on it directly (their glass rims go grey and their dark labels vanish),
+   so, as Ramp does, the band holds a LIGHT picture inside it: the glow card stays in the page's
+   theme and the band is only the room around it.
+
+   A place's hue on the band keeps its LIGHT tile, with the band's own ink on it, and the marker's
+   ring takes the hue's light variant, because a 2px ring on the band has to clear 3:1 against
+   near-black. `:root` in front is specificity on purpose: a hue on the band must beat the page's
+   own hue derivations wherever in the cascade they sit. */
+.site-band {
+  background: var(--site-band);
+  color: var(--site-band-fg);
+  --site-second: var(--site-band-muted);
+  --focus-offset: var(--site-band);
+}
+:root .site-band :is(.site-hue-petal, .site-hue-apricot, .site-hue-butter, .site-hue-sage, .site-hue-sky, .site-hue-periwinkle) {
+  --site-hue: var(--site-hue-src);
+  --site-hue-fg: var(--site-band);
+  --site-hue-ink: var(--site-hue-src);
+}
+@supports (color: oklch(from white l c h)) {
+  :root .site-band :is(.site-hue-petal, .site-hue-apricot, .site-hue-butter, .site-hue-sage, .site-hue-sky, .site-hue-periwinkle) {
+    --site-hue: oklch(from var(--site-hue-src) 0.885 0.058 h);
+    --site-hue-ink: oklch(from var(--site-hue-src) 0.80 0.10 h);
+  }
+}
+:root .site-band .site-hue-neutral, :root .site-band.site-hue-neutral {
+  --site-hue: var(--site-band-tile); --site-hue-fg: var(--site-band-fg); --site-hue-ink: var(--site-band-muted);
+}
+.site-band .site-tag {
+  background: var(--site-band-raised);
+  box-shadow: inset 0 0 0 1px var(--site-band-line);
+  color: var(--site-band-fg);
+}
 
 /* Always coloured: an area's name wears its colour wherever it appears. */
 .site-tile { background: var(--site-hue); color: var(--site-hue-fg); }
@@ -1378,8 +2053,14 @@ html[data-theme='dark'] .site-hue-periwinkle { --site-hue: color-mix(in oklch, v
    with opacity and colour, never by toggling visibility; outline is the resting variant and fill
    marks the active one). */
 .site-feature-tile {
-  background: transparent;
-  color: var(--color-ink-400);
+  /* A BOX AT REST TOO (user, 2026-09-28: "I want all icons with box background, and active icons
+     with colour and the others default grey"). It was `transparent`, so a quiet item had a bare
+     glyph while the showing one had a filled tile — the list changed SHAPE as it advanced, not
+     just colour, and a row of four came out as one box and three loose marks. The resting fill is
+     the field wash, which is a step down from every ground it sits on (card, band, popover), so
+     one value works everywhere. Only the COLOUR changes now; the box is always there. */
+  background: var(--color-surface-fill);
+  color: var(--color-ink-500);
   transition: background-color var(--site-hover) var(--ease-hover), color var(--site-hover) var(--ease-hover);
 }
 [data-state='active'] .site-feature-tile { background: var(--site-hue); color: var(--site-hue-fg); }
@@ -1397,42 +2078,95 @@ html[data-theme='dark'] .site-hue-periwinkle { --site-hue: color-mix(in oklch, v
 /* The feature list's dwell: the active item's rule fills, and when it is full the next item takes over. */
 @keyframes site-dwell { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 .site-dwell { transform-origin: left center; animation: site-dwell var(--site-dwell) linear both; }
-/* Something live: a dot that breathes. Colour only, never position. */
-@keyframes site-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
-.site-pulse { animation: site-pulse calc(var(--site-shimmer) / 4) var(--ease-standard) infinite; }
+/* ── THE DWELL: DOTS DRAW THEMSELVES, THEN ONE LINE RUNS ROUND THEM ─────
+   The whole arc, in the user's own words (2026-09-28): "Default → dots draw themselves around the
+   icon → accent stroke travels around the perimeter → active state. Not: Default → instantly show
+   a complete dotted circle." Which is two animations, not one, and the earlier pass had them
+   collapsed into each other: the timer WAS the reveal, so the dots crept in over the whole six
+   seconds and the marker read as empty and then, at the last moment, complete.
 
-/* THE LOOP'S MOTION (loop.tsx). A thing travels a track from one part of Zenboard to the next: the
-   track is a size container, so the hop is `100cq` of it, a transform, whatever the track's length.
-   Across on a wide screen, down on a narrow one, where the parts stack. What it arrives at appears
-   when it lands (`site-arrive`, delayed by the hops before it). The orbit turns around the mark. */
-@keyframes site-hop-x {
-  0% { opacity: 0; transform: translateX(var(--hop-x0)); }
-  12%, 88% { opacity: 1; }
-  100% { opacity: 0; transform: translateX(var(--hop-x1)); }
+   So: the dots arriving is an ENTRANCE (`--site-dwell-draw`, on the arrival curve), the accent
+   line running round them is the TIMER (the rest of `--site-dwell`, linear, because it is constant
+   motion and the reader is reading time off it), and the two are stacked on the same path so the
+   line CONVERTS the dots rather than orbiting beside them. A marker's whole cycle is still exactly
+   one `--site-dwell`, which is what keeps it in step with a feature row's rule filling.
+
+   `path-length: --site-dwell-dots` is what makes it work at any size: one dash slot is one unit is
+   1/18th of the perimeter, so the dots are the same COUNT and evenly spaced on a 26px box and a
+   34px one with no arithmetic, and each drawn line's dash is simply the whole of it. */
+@keyframes site-dwell-draw { from { stroke-dashoffset: var(--site-dwell-dots); } to { stroke-dashoffset: 0; } }
+.site-dwell-edge rect { fill: none; stroke-width: 2; stroke-linecap: round; }
+/* ONE INK FOR THE MARKER: the AREA's hue where an area owns it (people.tsx puts `HUE[hue]` on the
+   Dwell itself for exactly this), and where none does, `--accent-text` rather than the raw accent —
+   berry measures 2.91:1 on a dark card, which is why the step NUMBER inside this very marker is set
+   in `text-accent-text`. A 2px stroke is a graphic and wants 3:1, so the ring takes the same ink its
+   number does.
+
+   THE DOTS are that ink held back from the line, so the loop reads as the unfinished thing and the
+   line as the finished one. A faint TRACK would be decoration the eye skips; discrete dots are
+   visibly waiting to be joined up, which is the whole reason the marker is dotted.
+
+   HELD BACK TO EIGHTY PER CENT, which is where two rules meet. Measured 2026-09-28 against the
+   card, sampling every hue in both themes: the marker's ink is 4.1–4.6:1 in light (the area hues)
+   and 5.2–9.7:1 in dark, so there is only about a stop of room UNDER it before a graphic stops
+   clearing 3:1. At 80% the dots are 2.94:1 on the weakest hue (sage, in light), 3.95 on berry and
+   5.9+ on every hue in dark — against a line that stays a clear tier above at 4.1–9.7. Going to
+   70% would put five of the six hues under 2.7, and going to 85% to clear 3:1 on sage would close
+   the gap the design is FOR. The dots are never the only thing saying which item is live: the
+   person is centred at full size with their name in `ink-900`, and a step's number and title are
+   both in `accent-text`. */
+.site-dwell-edge { --site-dwell-ink: var(--site-hue-ink, var(--accent-text)); }
+.site-dwell-edge .site-dwell-dots { stroke: color-mix(in oklab, var(--site-dwell-ink) 80%, transparent); stroke-dasharray: 0.09 0.91; }
+/* THE LINE: the timer, at full strength, over the dots and on their exact path. It starts when the
+   dots have finished arriving and ends one dwell after the marker lit — and its end is what turns
+   the page (use-auto-advance.tsx), so a paused marker simply stops rather than falling behind a
+   clock it cannot see. */
+.site-dwell-edge .site-dwell-line {
+  stroke: var(--site-dwell-ink);
+  stroke-dasharray: var(--site-dwell-dots);
+  animation: site-dwell-draw calc(var(--site-dwell) - var(--site-dwell-draw)) linear var(--site-dwell-draw) both;
 }
-@keyframes site-hop-y {
-  0% { opacity: 0; transform: translateY(var(--hop-y0)); }
-  12%, 88% { opacity: 1; }
-  100% { opacity: 0; transform: translateY(var(--hop-y1)); }
+/* THE HEAD that lights them: a white line drawn INSIDE a mask and softened, so the line itself is
+   never seen — "the dots should appear smoothly and animate around the perimeter". */
+.site-dwell-edge .site-dwell-ring {
+  stroke: white;
+  stroke-width: 6;
+  stroke-dasharray: var(--site-dwell-dots);
+  animation: site-dwell-draw var(--site-dwell-draw) var(--ease-out-quiet) both;
 }
-.site-hop { opacity: 0; animation: site-hop-y var(--site-hop) var(--ease-standard) both; animation-delay: var(--hop-at, 0s); }
-@media (min-width: 64rem) { .site-hop { animation-name: site-hop-x; } }
-.site-arrive { animation: fade-rise var(--duration-slow) var(--ease-out-quiet) both; animation-delay: var(--arrive-at, 0s); }
-@keyframes site-orbit { from { transform: rotate(0turn); } to { transform: rotate(1turn); } }
-.site-orbit { animation: site-orbit var(--site-orbit) linear infinite; }
-/* A card lifted off a picture is never quite still, the way a sheet on a desk is not: it drifts a few
-   pixels, slowly, forever. Put it on the card, not on what positions it, and never on what enters. */
-@keyframes site-drift { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
-.site-drift { animation: site-drift calc(var(--site-shimmer) * 0.75) var(--ease-standard) infinite; animation-delay: var(--drift-at, 0s); }
-/* Two switches, because they answer different questions. `data-running`: may the list turn its own
-   page? (No while the reader reads, once they have chosen, or off screen.) `data-playing`: may the
-   picture move? (Only on screen; a step the reader chose still plays out.) */
-[data-running='false'] .site-dwell { animation-play-state: paused; }
+/* LEAVING: a BLACK line draws over the white one along the same path and eats it, so the dots and
+   the line go out the way they came in, from the same point, in half the time. A second rect rather
+   than the first one reversed, because an item deselected mid-entrance keeps drawing underneath
+   while the erase catches it up — it never snaps to a complete ring in order to leave from one. */
+.site-dwell-edge .site-dwell-erase {
+  stroke: black;
+  stroke-width: 6;
+  stroke-dasharray: var(--site-dwell-dots);
+  animation: site-dwell-draw var(--site-dwell-erase) var(--ease-out-quiet) both;
+}
+/* The timer HOLDS where the reader stopped it; the exit is not a timer and always finishes. */
+[data-phase='out'] .site-dwell-line { animation-play-state: paused; }
+/* NOTHING PLAYS BEFORE IT IS SEEN (user, 2026-09-28: "all animation start when they appear in
+   viewport, in the entire place"). A section still below the window carries `data-shown="false"` on its
+   rule until it first comes into view (site-motion.tsx), so every animation inside it waits at its
+   first frame and plays from the beginning when the reader arrives. What is on screen as the page
+   wakes never carries the mark, so nothing on the first screen waits. */
+[data-reveal='rule'][data-shown='false'] *,
+[data-reveal='rule'][data-shown='false'] *::before,
+[data-reveal='rule'][data-shown='false'] *::after { animation-play-state: paused !important; }
+[data-running='false'] :is(.site-dwell, .site-dwell-ring, .site-dwell-line) { animation-play-state: paused; }
 [data-playing='false'] .site-hop, [data-playing='false'] .site-arrive, [data-playing='false'] .site-orbit { animation-play-state: paused; }
 
 @media (prefers-reduced-motion: reduce) {
   /* No dwell means no automatic advance at all: the reader moves the list, nothing moves it for them. */
   .site-dwell { animation: none; transform: scaleX(0); }
+  /* Nothing turns itself, so the marker sits FINISHED rather than at zero: an empty ring beside the
+     step you are looking at reads as "this one has not started", which is not true of it. The dots
+     are all lit and the line is all the way round — a solid accent ring, saying only "this one". */
+  .site-dwell-ring, .site-dwell-line { animation: none; stroke-dashoffset: 0; }
+  /* The EXIT keeps its animation on purpose, and not only because a 0.3s erase is gentle: its
+     `animationend` is what unmounts the marker (use-auto-advance.tsx), so switching it off would
+     leave an SVG mounted on every item the reader has ever chosen. */
   .site-pulse { animation: none; }
   /* The still TWINS (design-system.test.ts): a hop becomes an appearance where it lands, and the
      orbit stands still. */
@@ -1441,6 +2175,10 @@ html[data-theme='dark'] .site-hue-periwinkle { --site-hue: color-mix(in oklch, v
   @keyframes site-orbit { from { opacity: 1; } to { opacity: 1; } }
   @keyframes site-drift { from { opacity: 1; } to { opacity: 1; } }
 }
+@keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes blurin { from { opacity: 0; filter: blur(8px); transform: scale(0.98); } to { opacity: 1; filter: blur(0); transform: scale(1); } }
+@keyframes pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+@keyframes popIn { 0% { transform: scale(0.96); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 /* Popover/dropdown entrance: fade + 0.98 scale out of the edge that faces the trigger.
    No rise - a 4px lift moved every menu below its trigger UP, toward it. */
 @keyframes zb-pop-in { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: none; } }
@@ -1481,6 +2219,13 @@ html[data-theme='dark'] .site-hue-periwinkle { --site-hue: color-mix(in oklch, v
   @keyframes reveal-down { from { opacity: 0; } }
   @keyframes reveal-up { to { opacity: 0; } }
   @keyframes fade-rise { from { opacity: 0; } }
+  @keyframes site-consent-in { from { opacity: 0; } }
+  @keyframes hub-breathe { 50% { opacity: 0.78; } }
+  @keyframes hub-swirl { to { opacity: 1; } }
+  @keyframes hub-ripple { 0% { opacity: 0; } 22% { opacity: 0.85; } 46% { opacity: 0; } 100% { opacity: 0; } }
+  @keyframes hub-float { 50% { opacity: 1; } }
+  @keyframes hub-depart { 0%, 100% { opacity: 1; } }
+  @keyframes site-consent-out { to { opacity: 0; } }
   @keyframes site-dive { to { opacity: 0; } }
   @keyframes site-view-in { from { opacity: 0; } }
   @keyframes site-in { from { opacity: 0; } }
@@ -1533,6 +2278,14 @@ html[data-input="keyboard"] .zb-enter .site-word { animation: none !important; }
    can never drift. Rows style their own active state inline. */
 .zb-nav-item { transition: background var(--duration-fast) var(--ease-hover), color var(--duration-fast) var(--ease-hover); }
 @media (hover: hover) and (pointer: fine) { .zb-nav-item:hover { background: var(--hover); } }
+
+/* The top bar draws a hairline between every action (`ToolbarActions`,
+   components/shell/shell-parts.tsx). An action can be present and render nothing
+   (the recording indicator, between meetings), which would leave two hairlines
+   touching, or one at an end. Those are not drawn. */
+.zb-toolbar-sep + .zb-toolbar-sep,
+.zb-toolbar-sep:first-child,
+.zb-toolbar-sep:last-child { display: none; }
 
 /* Pressable micro-interaction — calm, Notion-style. No movement, scale, or bounce:
    a subtle tint overlay that respects the element's radius and works over any
@@ -1661,4 +2414,198 @@ input:focus-visible, textarea:focus-visible, [contenteditable]:focus-visible { o
    borrows a large size (⌘K's query, quick capture, a stat's figure) never does. */
 :where(.text-h1) {
   font-family: var(--font-editorial);
+}
+
+/* ── THE TRAVELLING LINE ────────────────────────────────────────────────────
+   User, 2026-09-25, with the reference: "i want add this line animation, this
+   line going continuously animating on login page."
+
+   Four hairlines behind the sign-up form, with a light running along them: the
+   brand's hue, at the edge of visible, arriving and leaving. It is the one
+   piece of decoration on the screen and it earns its place by being the only
+   thing that moves while you are reading a form that does not move at all.
+
+   WHY IT IS BUILT THIS WAY
+   · `translateX` on a gradient bar inside a 1px overflow-hidden line - transform
+     only, so it composites on the GPU and costs nothing on the main thread. A
+     `background-position` loop would repaint a strip every frame.
+   · `linear`, because constant motion that eases is a pulse.
+   · A stagger per line, so the four read as one light passing rather than four
+     lights blinking together.
+   · Reduced motion gets the lines and none of the travel: the light is
+     decoration, and decoration is exactly what that setting asks us to drop. */
+.zb-beam {
+  position: relative;
+  overflow: hidden;
+  height: 1px;
+  background-color: var(--color-line-soft, var(--line));
+}
+.zb-beam::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 55%;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.55;
+  transform: translateX(-100%);
+  animation: zb-beam var(--duration-ambient) linear infinite;
+  animation-delay: var(--zb-beam-delay, 0s);
+  will-change: transform;
+}
+@keyframes zb-beam {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(300%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* The still TWIN, same name — the house rule, because a rule with an exception is a rule
+     nobody can check (app/design-system.test.ts). The lines stay; the light simply is not
+     there, since the light IS the movement. */
+  /* Opacity only: a transform in the twin is still a transform, even when both ends of it are
+     the same. The element's own `translateX(-100%)` (a plain declaration, not a keyframe) keeps
+     it parked off the line. */
+  @keyframes zb-beam {
+    from, to { opacity: 0; }
+  }
+}
+
+/* ── THE PRODUCT MENU'S DRAWINGS (nav-art.tsx) ───────────────────────────────
+   A card's pointer takes its area's hue at INK strength (l − 0.16, c × 3, the pictures' own
+   derivation, `--f-ink-*`): a pointer in the tile's pastel reads as a smudge, and one in the page's
+   ink is not a colour at all. Where relative colour is not supported, it is the area's own ink. The
+   featured picture's pointer is you, in the brand's colour. */
+.site-art { --art-pointer: var(--site-hue-ink, var(--accent)); }
+@supports (color: oklch(from white l c h)) {
+  .site-art { --art-pointer: oklch(from var(--site-hue) calc(l - 0.16) calc(c * 3) h); }
+}
+.site-art-you { --art-pointer: var(--accent); }
+/* A pointer's name: the area's tile (its field, and the ink made to read on it), or the brand's wash. */
+.site-art-tag { background: var(--site-hue, var(--accent-soft)); color: var(--site-hue-fg, var(--color-ink-900)); }
+.site-art-you .site-art-tag { background: var(--accent-soft); color: var(--color-ink-900); }
+/* The guides fade out at both ends, so they are felt rather than drawn. */
+.site-art-guide { mask-image: linear-gradient(to bottom, transparent, #000 22%, #000 78%, transparent); }
+.site-art-guide[data-axis='y'] { mask-image: linear-gradient(to right, transparent, #000 22%, #000 78%, transparent); }
+
+/* ── A SEGMENTED THAT SAYS "YOU ARE IN THIS MODE" (tone="accent", 2026-09-28) ──
+   The user sketched Focus as a sliding Off/Focus switch whose thumb turns
+   brand-coloured when it lands on Focus. A neutral thumb can only say WHERE the
+   switch is; an accent one also says the mode is LIVE, which is the thing worth
+   catching at the edge of vision.
+
+   Styled here rather than branched inside the component: the thumb paints
+   `--seg-thumb` (falling back to the raised surface) and the tone sets that one
+   variable, so no component knows the tone exists — the same rule the skins
+   follow. The thumb keeps sliding on `--duration-base` / `--ease-out-quiet`; a
+   mode switch must MOVE to its new position, never cut to it. */
+[data-slot="segmented"][data-tone="accent"] { --seg-thumb: var(--accent); }
+[data-slot="segmented"][data-tone="accent"] [data-slot="segmented-thumb"] { box-shadow: var(--shadow-sm); }
+[data-slot="segmented"][data-tone="accent"] [data-slot="segmented-item"][data-state="checked"] { color: var(--on-accent); }
+
+/* ── A STACK OF CARDS FANS (2026-09-28) ─────────────────────────────────────
+   User: "on hover the entire illustration is dancing … this all static, make this animated, and
+   on hover cards slide moving — I want interaction."
+
+   Both halves of that are one fix. The dancing was a hover parallax that leaned the whole drawing
+   as a single plane, which fails the second question of Emil's framework: what is the PURPOSE?
+   Moving everything together is a slide, not depth, and it moves the words along with the picture.
+   So the picture holds still and the CARDS INSIDE IT move — which is the thing with something to
+   say. A stack that fans on hover tells you there are more of them than you can see, and it is the
+   same gesture in every illustration, so it reads as one language.
+
+   Hover, so `--ease-hover` (Emil's tree: a hover is `ease`, not the arrival curve) and a stagger of
+   40ms — long enough to read as a sequence, short enough not to feel slow. Transform only, gated
+   behind a real pointer: a touch device fires hover on tap and would leave the stack fanned. */
+@media (hover: hover) and (pointer: fine) {
+  .plot-life:not([data-story]) .plot-panel { transition: transform var(--duration-base) var(--ease-hover); }
+  .plot-life:not([data-story]):hover .plot-panel { transform: translateY(-3px); }
+  /* The ones BEHIND the front card peek further out, so the fan opens away from the reader. */
+  .plot-life:not([data-story]):hover .plot-panel ~ .plot-panel { transform: translate(5px, -7px); transition-delay: 40ms; }
+}
+/* A picture that tells a story (`data-story`) is a LOOPED one, so its cards do not fan: a picture is
+   looped or interactive, never both (user, 2026-09-28). */
+
+/* ── A PORTAL PICTURE TELLS ITS STORY ON A LOOP (rebuilt 2026-09-29) ─────────
+   User: "make them proper animation, delightful animation, on loop". The first pass laid loose
+   beats on one keyframe (a chip fading in and out, a cursor drifting at a button it never pressed),
+   which is a picture flickering, not a story. Each of the three now TELLS its card's sentence, step
+   by step, in the product's own parts: a request is sent, approved, lands in your tasks and is
+   ticked done while her status follows it; a cursor travels to Approve and presses it, the answer
+   replaces the buttons and is stamped on the file; a sent invoice asks to be looked at, is paid, and
+   the balance clears.
+
+   THE CLOCK IS SCRIPT, THE MOTION IS CSS (use-story.ts). The clock says which step a story has
+   reached, each part says from which step it shows (`data-on`), and every change is a TRANSITION:
+   interruptible, off the main thread, arriving on the arrival curve over the site's cross-fade and
+   leaving quicker, over its hover (Emil: an exit is quicker than its entrance). The last step of
+   each story is its longest, so for a third of the loop the picture is its sentence, finished, and
+   reads as a still.
+
+   Transform, opacity and a stroke drawing itself. Less motion asked for: the clock never starts,
+   and every part stands at the step where its story is told. */
+:root { --plot-travel: calc(var(--duration-slow) * 5); }
+/* An SVG part turns about its OWN box: the default origin is the drawing's corner, which would
+   swing a 0.6 scale across the whole picture. */
+svg :is(.plot-in, .plot-pop) { transform-box: fill-box; transform-origin: center; }
+/* A part ARRIVES: up a little and in, from 0.97. */
+.plot-in {
+  opacity: 0; transform: translateY(6px) scale(0.97);
+  transition: opacity var(--site-hover) var(--ease-out-quiet), transform var(--site-hover) var(--ease-out-quiet);
+}
+.plot-in[data-on] { opacity: 1; transform: none; transition-duration: var(--site-swap); }
+/* …and one that follows a line being drawn arrives when the line has, not with it. */
+.plot-late[data-on] { transition-delay: calc(var(--site-reveal) * 0.6); }
+/* A mark LANDS: the approval's tick, a ticked box. From 0.6, never from nothing (Emil). */
+.plot-pop {
+  opacity: 0; transform: scale(0.6);
+  transition: opacity var(--site-hover) var(--ease-out-quiet), transform var(--site-hover) var(--ease-out-quiet);
+}
+.plot-pop[data-on] { opacity: 1; transform: none; transition-duration: var(--site-swap); }
+/* A thing gives way to what it has become, in place, through a little blur (Emil: blur masks the
+   moment two states overlap). */
+.plot-swap {
+  opacity: 0; transform: scale(0.96); filter: blur(2px);
+  transition: opacity var(--site-hover) var(--ease-out-quiet), transform var(--site-hover) var(--ease-out-quiet), filter var(--site-hover) var(--ease-out-quiet);
+}
+.plot-swap[data-on] { opacity: 1; transform: none; filter: none; transition-duration: var(--site-swap); }
+/* A number ROLLS: the new one comes up from under, the old one leaves upward. */
+.plot-roll, .plot-roll-up {
+  opacity: 0;
+  transition: opacity var(--site-hover) var(--ease-out-quiet), transform var(--site-hover) var(--ease-out-quiet);
+}
+.plot-roll { transform: translateY(45%); }
+.plot-roll-up { transform: translateY(-45%); }
+:is(.plot-roll, .plot-roll-up)[data-on] { opacity: 1; transform: none; transition-duration: var(--site-swap); }
+/* A thread DRAWS ITSELF along its own length (`pathLength="1"`): movement on screen, so the in-out
+   curve, over one arrival. */
+.plot-draw { stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset var(--site-hover) var(--ease-out-quiet); }
+.plot-draw[data-on] { stroke-dashoffset: 0; transition: stroke-dashoffset var(--site-reveal) var(--ease-standard); }
+/* A plan's bar grows from its start, and a finished task's words are struck from the left. */
+.plot-grow { transform-box: fill-box; transform-origin: left center; transform: scaleX(0); transition: transform var(--site-hover) var(--ease-out-quiet); }
+.plot-grow[data-on] { transform: none; transition: transform var(--site-reveal) var(--ease-out-quiet); }
+.plot-strike { transform: scaleX(0); transform-origin: left center; transition: transform var(--site-hover) var(--ease-out-quiet); }
+.plot-strike[data-on] { transform: none; transition: transform var(--site-reveal) var(--ease-standard); }
+/* A finished task's words step back: colour, on the hover curve. */
+.plot-done { color: var(--color-ink-900); transition: color var(--site-swap) var(--ease-hover); }
+.plot-done[data-on] { color: var(--color-ink-500); }
+/* The hand. It TRAVELS (movement on screen, so the in-out curve) and it presses: the arrow dips as
+   the house's press does, 0.86 at the tip, over the fast rung, and never bounces. */
+.plot-cursor {
+  opacity: 0; transform: translate(64px, 52px);
+  transition: transform var(--plot-travel) var(--ease-standard), opacity var(--site-swap) var(--ease-out-quiet);
+}
+.plot-cursor[data-on] { opacity: 1; transform: none; }
+.plot-cursor svg { transform-origin: 3px 2px; transition: scale var(--duration-fast) var(--ease-out-quiet); }
+.plot-cursor[data-press] svg { scale: 0.86; }
+/* A control pressed by the story's hand, as the house presses one (0.97, the fast rung). */
+.plot-press { transition: scale var(--duration-fast) var(--ease-out-quiet); }
+.plot-press[data-press] { scale: 0.97; }
+/* A status that asks to be looked at, once: a ring leaving it. */
+@keyframes plot-ping { from { opacity: 0.6; transform: scale(1); } to { opacity: 0; transform: scale(1.35, 1.9); } }
+.plot-ping { opacity: 0; }
+.plot-ping[data-on] { animation: plot-ping var(--site-reveal) var(--ease-out-quiet) both; }
+/* A paid invoice's paper settles, a little straighter, like a page put away. */
+.plot-settle { transition: rotate var(--site-swap) var(--ease-out-quiet); }
+.plot-settle[data-on] { rotate: 2deg; }
+@media (prefers-reduced-motion: reduce) {
+  @keyframes plot-ping { from { opacity: 0.6; } to { opacity: 0; } }
 }

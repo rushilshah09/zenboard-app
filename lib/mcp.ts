@@ -4,7 +4,7 @@
 // raw thought and it holds all things."*
 //
 // So: from Claude (or any MCP client) you say "I need to film the studio tour
-// Tuesday and the TechSpark invoice is overdue", and it lands in Zenboard
+// Tuesday and the Northwind invoice is overdue", and it lands in Zenboard
 // correctly, without you opening Zenboard.
 //
 // ── WHY THE PROTOCOL IS HAND-WRITTEN AND NOT `@modelcontextprotocol/sdk` ────
@@ -105,7 +105,7 @@ export const TOOLS: ToolDef[] = [
     name: 'capture',
     description:
       'Save a raw thought to Zenboard. Use this whenever the user says something ' +
-      'they want kept — a task, an idea for content, a reminder, something a ' +
+      'they want kept: a task, an idea for content, a reminder, something a ' +
       'client said. It lands in an inbox to be sorted later, so it is safe to ' +
       'use freely; nothing is filed or scheduled by capturing it. Call it once ' +
       'per separate thing, so each can be sorted on its own.',
@@ -123,7 +123,7 @@ export const TOOLS: ToolDef[] = [
           enum: ['task', 'idea'],
           description:
             '"task" = something to do (default). "idea" = something to make or ' +
-            'a reference worth keeping — a video idea, a post, an inspiring link.',
+            'a reference worth keeping: a video idea, a post, an inspiring link.',
         },
         url: { type: 'string', description: 'A link the thought is about, if there is one.' },
       },
@@ -143,7 +143,7 @@ export const TOOLS: ToolDef[] = [
   {
     name: 'search',
     description:
-      'Find things in Zenboard by title — tasks, projects, clients, documents and ' +
+      'Find things in Zenboard by title: tasks, projects, clients, documents and ' +
       'content pieces. Use it to check whether something already exists before ' +
       'capturing a duplicate, or to answer a question about the user\'s work.',
     inputSchema: {

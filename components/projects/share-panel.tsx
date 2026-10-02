@@ -79,7 +79,7 @@ export function SharePanel({
     if ('error' in res) { flash(res.error); return; }
     patch({ portal_token: res.token });
     setCopied(false);
-    flash('Link rotated — the old link no longer works');
+    flash('Link rotated. The old link no longer works');
   }
 
   async function flip(key: keyof ShareFlags, value: boolean) {
@@ -180,14 +180,14 @@ export function SharePanel({
             <div className={cn(overline, 'mb-1')}>What the client sees</div>
             <Row label="Progress" hint="Percent complete and X/Y done" on={p.share_progress ?? false} onToggle={() => flip('share_progress', !(p.share_progress ?? false))} />
             <Row label="Completed tasks" hint="Titles only" on={p.share_completed_tasks ?? false} onToggle={() => flip('share_completed_tasks', !(p.share_completed_tasks ?? false))} />
-            <Row label="Open tasks" hint="Titles only — no notes, time, or estimates" on={p.share_open_tasks ?? false} onToggle={() => flip('share_open_tasks', !(p.share_open_tasks ?? false))} />
+            <Row label="Open tasks" hint="Titles only: no notes, time, or estimates" on={p.share_open_tasks ?? false} onToggle={() => flip('share_open_tasks', !(p.share_open_tasks ?? false))} />
             <Row label="Timeline" hint="Recent completed updates" on={p.share_timeline ?? false} onToggle={() => flip('share_timeline', !(p.share_timeline ?? false))} />
             {/* One switch, both kinds — `share_files` is the channel that
                 `lib/visibility.ts` maps BOTH docs and files onto, and calling
                 it "Documents" here while it also gates uploaded files was the
                 label quietly disagreeing with the rule. */}
             <Row label="Documents and files" hint="Only the ones you mark for the client" on={p.share_files ?? false} onToggle={() => flip('share_files', !(p.share_files ?? false))} />
-            <Row label="Invoices" hint="Status and amounts of sent invoices — no drafts or notes" on={p.share_invoices ?? false} onToggle={() => flip('share_invoices', !(p.share_invoices ?? false))} />
+            <Row label="Invoices" hint="Status and amounts of sent invoices, no drafts or notes" on={p.share_invoices ?? false} onToggle={() => flip('share_invoices', !(p.share_invoices ?? false))} />
             <Row label="Allow messages" hint="Let the client send requests" on={p.allow_requests ?? false} onToggle={() => flip('allow_requests', !(p.allow_requests ?? false))} />
           </div>
 

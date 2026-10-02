@@ -13,7 +13,7 @@
 export type HarnessRow = { id: string; title: string; done: boolean };
 
 let rows: HarnessRow[] = [
-  { id: 'r1', title: 'Send the Balluji invoice', done: false },
+  { id: 'r1', title: 'Send the Ridgeline invoice', done: false },
   { id: 'r2', title: 'Book the studio for Thursday', done: false },
   { id: 'r3', title: 'Reply to the portal request', done: false },
 ];

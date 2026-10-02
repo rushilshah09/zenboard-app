@@ -122,7 +122,7 @@ export function ProjectDocs({
             size="inline"
             illustration={<Icon icon={FileText} size={20} />}
             title="No docs yet"
-            description="Briefs, scopes, notes — add one and optionally share it in the portal."
+            description="Briefs, scopes and notes, shared to the portal when you choose."
           />
         </div>
       ) : (

@@ -206,7 +206,7 @@ function MenuBody(props: {
 function MenuList({
   sections,
   searchPlaceholder = "Search…",
-  emptyLabel = "Nothing here yet",
+  emptyLabel = "No other pages here",
   onClose,
   autoFocusFilter,
 }: {
@@ -287,7 +287,7 @@ function MenuList({
               ))}
               {section.items.length > MAX_ROWS && (
                 <p className="px-2.5 py-1.5 text-caption text-ink-500">
-                  {section.items.length.toLocaleString()} items — type to narrow
+                  {section.items.length.toLocaleString()} items · type to narrow
                 </p>
               )}
             </React.Fragment>
@@ -391,7 +391,7 @@ function CrumbSheet({
 }
 
 function SheetRows({
-  source, emptyLabel = "Nothing here yet", onOpen, onPick,
+  source, emptyLabel = "No other pages here", onOpen, onPick,
 }: {
   source?: CrumbMenuSource;
   emptyLabel?: string;

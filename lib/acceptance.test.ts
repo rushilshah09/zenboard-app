@@ -191,8 +191,8 @@ describe('paperwork blocks survive serialization', () => {
 
   it('flattens prices to readable text, with a total that matches the rows', () => {
     const text = blocksToText([b({ type: 'lineitems', items })]);
-    expect(text).toContain('Identity — 1 × 4000.00 = 4000.00');
-    expect(text).toContain('Guidelines — 2 × 750.50 = 1501.00');
+    expect(text).toContain('Identity · 1 × 4000.00 = 4000.00');
+    expect(text).toContain('Guidelines · 2 × 750.50 = 1501.00');
     expect(text).toContain('Total 5501.00');
   });
 

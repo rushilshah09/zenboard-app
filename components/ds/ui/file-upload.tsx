@@ -88,7 +88,7 @@ export function FileUpload({ accept, maxSizeMB = 10, multiple = true, upload, co
         continue;
       }
       if (file.size > maxSizeMB * 1024 * 1024) {
-        next.push({ id, file, status: "error", progress: 0, error: `Too large — max ${maxSizeMB} MB` });
+        next.push({ id, file, status: "error", progress: 0, error: `Too large: max ${maxSizeMB} MB` });
         continue;
       }
       const item: UploadFile = {

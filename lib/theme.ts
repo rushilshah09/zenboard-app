@@ -5,6 +5,8 @@
 // inline boot script (no flash of the wrong theme) and once live from the
 // settings panel — keep them in sync.
 
+import { ALL_SITE_PAGES } from './site-pages';
+
 export type Theme = 'light' | 'dark' | 'system';
 export type Density = 'comfortable' | 'compact';
 export type Accent = 'berry' | 'plum' | 'amber' | 'sage' | 'green' | 'blue';
@@ -30,56 +32,60 @@ export const DENSITY_KEY = 'zb-density';
 export const ACCENT_KEY = 'zb-accent';
 export const SKIN_KEY = 'zb-skin';
 
-// A first visit follows the reader's OS, as Notion and Linear do. This was 'light'
-// while dark was unverified; both themes are now measured in every state, overlays
-// open included (PROGRESS 2026-09-12/14). Only an EXPLICIT choice is ever stored
-// (commitAppearance), so anyone who never picked follows their OS too. Held by
+// LIGHT, by user directive (2026-09-25: "i want light mode is default"). This
+// followed the OS from 2026-09-12 — the Notion/Linear behaviour — and the reason
+// that is reversible without losing anything is that the OS is a GUESS at a
+// preference, while the reference this product is being designed against is a
+// light one: someone whose laptop is in dark mode would otherwise meet Zenboard
+// for the first time in a theme it was not drawn in. Dark is one switch away and
+// is still measured in every state (PROGRESS 2026-09-12/14), and an explicit
+// choice — including 'system' — is still the only thing ever stored
+// (commitAppearance), so nobody who has chosen is overridden. Held by
 // lib/theme.test.ts, which runs the boot script itself.
-export const DEFAULT_THEME: Theme = 'system';
+export const DEFAULT_THEME: Theme = 'light';
 export const DEFAULT_DENSITY: Density = 'comfortable';
 export const DEFAULT_SKIN: Skin = 'default';
-// Berry (#C41C72) is the brand accent (design-system.md §2.1.3) — the sole hue
-// that means "you, here, now". It is the stylesheet default (tokens.css ships
-// light + dark berry), so the switcher pins --accent only for a NON-berry pick.
+// Berry is the brand accent — the sole hue that means "you, here, now". It is
+// the stylesheet's default, so the switcher pins --accent only for a NON-berry pick.
 export const DEFAULT_ACCENT: Accent = 'berry';
 
-// The selectable accents. The hex feeds --accent; every other accent token
-// (-soft, -border, -deep, -text) derives from it via color-mix in globals.css.
+/**
+ * THE BRAND'S OWN BERRY — the colour of the logo ARTWORK (illustration/logo.svg,
+ * the exported lockup in lib/brand.ts, the website's illustration board). It is
+ * not the UI accent: a neon magenta on every primary button and checked box is
+ * the loudest thing on a calm screen. The UI berry below keeps this hue and
+ * gives up about a fifth of its chroma (user directive 2026-10-02: "the subtle,
+ * calm quality of Claude's interface").
+ */
+export const BRAND_BERRY = '#C41C72';
+
+// ── THE SELECTABLE ACCENTS ───────────────────────────────────────────────────
+// The hex feeds --accent; every other accent token (-soft, -border, -deep,
+// -text) derives from it in CSS.
 //
-// ── WHY EACH ACCENT HAS TWO VALUES ──────────────────────────────────────────
-// A single hex cannot serve both themes, and this was failing measurably:
+// ONE LIGHTNESS PER THEME. All six sit at oklch L 0.525 in light, so swapping
+// accents changes the HUE and never the loudness — the old set ran from a neon
+// berry (0.544/0.207) to a dusty sage, and each one was a different weight on
+// the page. Chroma is each hue's calm ceiling (berry 0.165, sage 0.08).
 //
-//   Berry #C41C72 — 5.59:1 on a light card, but **2.91:1 on a dark one**.
-//   Plum  #9A1B6F — 7.61:1 light, **2.14:1 dark**.
+// TWO VALUES PER ACCENT, because one hex cannot serve both themes: a fill dark
+// enough to carry white text on a light card disappears on a dark one (the old
+// brand berry measured 2.91:1 on a dark card). The dark values are lifted until
+// they clear 3:1 on the dark card while still carrying the same near-white text
+// at ≥ 4.5:1 — measured, every pairing, by lib/accent-contrast.test.ts.
 //
-// The BRAND accent was below the 3:1 floor WCAG 1.4.11 sets for a graphical
-// object, on every dark screen in the app. That is the same failure this
-// codebase has hit repeatedly: one value declared once that both themes read.
-// So the dark end of the palette gets a lighter variant, and only where the
-// measurement demands one — berry and plum. The rest are one value that clears
-// both.
-//
-// ── AND WHY THERE IS STILL ONE FOREGROUND ───────────────────────────────────
-// `on` used to be a single hardcoded near-white with the claim "every swatch is
-// saturated enough that a near-white glyph reads best". False for four of six:
-// white on the old Amber measured **2.90:1**. Rather than give some accents a
-// dark glyph — a dark mark on a mid-tone fill reads as disabled, and
-// --on-accent carries TEXT too (the date in the calendar's today pill, the time
-// on the now-marker, so 4.5:1 applies) — the four light swatches were deepened
-// until near-white works on all of them. One rule, kept by choosing the fills to
-// meet it. **Berry in light is untouched**: it is the brand.
-//
-// Every number below is measured; app/../lib/accent-contrast.test.ts recomputes
-// them so a seventh accent cannot be added that fails.
+// ONE FOREGROUND. --on-accent carries text as well as glyphs (the date in the
+// calendar's today pill), so 4.5:1 applies, and every fill is chosen to meet it
+// with the same near-white — a dark mark on a mid-tone fill reads as disabled.
 const ON_ACCENT = '#FDFEFB';
 export const ACCENTS: { id: Accent; label: string; hex: string; dark: string }[] = [
-  //                                   light fill / white text      dark fill / white text
-  { id: 'berry', label: 'Berry', hex: '#C41C72', dark: '#C82175' }, // 5.59/5.52   3.05/5.28
-  { id: 'plum', label: 'Plum', hex: '#9A1B6F', dark: '#B53987' },   // 7.61/7.52   3.03/5.32
-  { id: 'amber', label: 'Amber', hex: '#A4690C', dark: '#A4690C' }, // 4.56/4.51   3.57/4.51
-  { id: 'sage', label: 'Sage', hex: '#6B7B4F', dark: '#6B7B4F' },   // 4.59/4.54   3.55/4.54
-  { id: 'green', label: 'Green', hex: '#438438', dark: '#438438' }, // 4.57/4.51   3.57/4.51
-  { id: 'blue', label: 'Blue', hex: '#1671E8', dark: '#1671E8' },   // 4.60/4.55   3.54/4.55
+  //                                   light: card / text           dark: card / text
+  { id: 'berry', label: 'Berry', hex: '#AF356C', dark: '#C2477C' }, // 5.92 / 5.84   3.47 / 4.63
+  { id: 'plum', label: 'Plum', hex: '#9C428C', dark: '#AD529C' },   // 5.86 / 5.79   3.47 / 4.63
+  { id: 'amber', label: 'Amber', hex: '#9A5805', dark: '#AA6311' }, // 5.58 / 5.52   3.48 / 4.62
+  { id: 'sage', label: 'Sage', hex: '#5D733F', dark: '#657B47' },   // 5.25 / 5.19   3.48 / 4.62
+  { id: 'green', label: 'Green', hex: '#1F7E3F', dark: '#278445' }, // 5.08 / 5.02   3.48 / 4.61
+  { id: 'blue', label: 'Blue', hex: '#206ABE', dark: '#2D74CA' },   // 5.45 / 5.38   3.47 / 4.63
 ];
 const ACCENT_HEX: Record<Accent, { hex: string; dark: string }> =
   Object.fromEntries(ACCENTS.map((a) => [a.id, { hex: a.hex, dark: a.dark }])) as Record<Accent, { hex: string; dark: string }>;
@@ -141,9 +147,29 @@ function holdTransitions(): () => void {
   };
 }
 
+// ── THE WEBSITE HAS ONE APPEARANCE ──────────────────────────────────────────
+// User, 2026-09-29: "right now we only keep light mode, we're removing dark mode" — of the website.
+// The landing page, its legal pages and the product demo it frames are drawn and measured in the
+// light theme, the default skin and the brand's berry, and nowhere else. The APP keeps every choice.
+//
+// So a website page resolves to this appearance the way Paper resolves to light: in the boot script
+// before first paint, and in every later `applyAppearance`, whatever is stored. The stored choice is
+// never touched, so someone who chose dark for the app still gets dark the moment they sign in. The
+// addresses are the site's own list (lib/site-pages.ts), plus the demo, which is never indexed.
+export const SITE_APPEARANCE = { theme: 'light', density: DEFAULT_DENSITY, accent: 'berry', skin: 'default' } as const satisfies {
+  theme: Theme; density: Density; accent: Accent; skin: Skin;
+};
+export const SITE_PATHS: readonly string[] = [...ALL_SITE_PAGES.map((p) => p.path), '/demo'];
+/** Is this address a page of the website (and so drawn in `SITE_APPEARANCE`)? */
+export function isSitePath(pathname: string): boolean {
+  return SITE_PATHS.includes(pathname.replace(/\/+$/, '') || '/');
+}
+const onSite = () => typeof window !== 'undefined' && !!window.location && isSitePath(window.location.pathname);
+
 // Apply the appearance to <html>. Called live when the user changes a control.
 export function applyAppearance(theme: Theme, density: Density, accent: Accent = DEFAULT_ACCENT, skin?: Skin) {
   if (typeof document === 'undefined') return;
+  if (onSite()) ({ theme, density, accent, skin } = SITE_APPEARANCE);
   const el = document.documentElement;
   // `skin` is optional because three callers predate it (the OS watcher, the sidebar toggle, the
   // settings panel's own re-apply) and pass three arguments. Defaulting it to `'default'` would
@@ -246,6 +272,9 @@ var t=localStorage.getItem('${THEME_KEY}')||'${DEFAULT_THEME}';
 var den=localStorage.getItem('${DENSITY_KEY}')||'${DEFAULT_DENSITY}';
 var acc=localStorage.getItem('${ACCENT_KEY}')||'${DEFAULT_ACCENT}';
 var skin=localStorage.getItem('${SKIN_KEY}')||'${DEFAULT_SKIN}';
+// A website page is drawn in one appearance, whatever is stored (SITE_APPEARANCE above).
+var L=window.location,P=L&&L.pathname?(L.pathname.replace(/\\/+$/,'')||'/'):'';
+if(${JSON.stringify(SITE_PATHS)}.indexOf(P)>=0){t='${SITE_APPEARANCE.theme}';den='${SITE_APPEARANCE.density}';acc='${SITE_APPEARANCE.accent}';skin='${SITE_APPEARANCE.skin}';}
 var H={${ACCENTS.map((a) => `${a.id}:'${a.hex}'`).join(',')}};
 var HD={${ACCENTS.map((a) => `${a.id}:'${a.dark}'`).join(',')}};
 var resolved=skin==='paper'?'light':(t==='system'?((window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light'):t);

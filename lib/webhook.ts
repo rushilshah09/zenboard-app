@@ -7,7 +7,7 @@
 // http, localhost, and literal private/link-local IPs — so a webhook can only
 // reach the public internet, never the app's own network. (DNS-rebinding is out
 // of scope for v1; this blocks the copy-paste-an-internal-URL footgun.)
-import { answerToText, type AnswerValue, type FormBlock } from '@/lib/form-schema';
+import { answerToText, blockName, type AnswerValue, type FormBlock } from '@/lib/form-schema';
 
 const PRIVATE_HOST = /^(localhost|0\.0\.0\.0|127\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.|\[?::1\]?|\[?f[cd])/i;
 
@@ -35,7 +35,8 @@ export function buildWebhookAnswers(blocks: FormBlock[], answers: Record<string,
     if (!(b.id in answers)) continue;
     // A file answer is a private storage path — send the readable filename, not
     // the internal path (which isn't fetchable and leaks the bucket layout).
-    out[b.label?.trim() || b.id] = b.type === 'file'
+    // Keyed by what the owner calls the question; a hidden field by its parameter name.
+    out[b.type === 'hidden' || b.label?.trim() ? blockName(b) : b.id] = b.type === 'file'
       ? answerToText(b, answers[b.id] as AnswerValue)
       : answers[b.id];
   }

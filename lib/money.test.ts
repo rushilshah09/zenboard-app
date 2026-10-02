@@ -24,7 +24,8 @@ describe('formatMoney', () => {
   });
 
   it('renders a dash for absent or non-numeric input', () => {
-    for (const v of [null, undefined, NaN]) expect(formatMoney(v, L)).toBe('—');
+    // The EN dash: one glyph for "no value" across the product (app/copy-voice.test.ts).
+    for (const v of [null, undefined, NaN]) expect(formatMoney(v, L)).toBe('–');
   });
 
   it('keeps the sign on a negative', () => {

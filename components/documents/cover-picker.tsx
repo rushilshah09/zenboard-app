@@ -21,19 +21,36 @@ import type { AttachmentOwner } from '@/lib/attachments';
 
 type Tab = 'gallery' | 'upload' | 'link';
 
-export function CoverPicker({ current, onPick, onRemove, onClose, align = 'left', attachTo }: {
+type CoverPickerProps = {
   current?: string;
   onPick: (cover: string) => void;
   onRemove?: () => void;
   onClose: () => void;
-  align?: 'left' | 'right';
   /**
    * The page the cover belongs to. Absent only for a page that has not been
    * saved yet (a `tmp-` row), which has no id to attach anything to — that case
    * falls back to the inline form rather than refusing to set a cover.
    */
   attachTo?: AttachmentOwner;
-}) {
+};
+
+/** The editor's cover panel: the picker in its anchored PickerPanel, exactly as before. */
+export function CoverPicker({ align = 'left', ...rest }: CoverPickerProps & { align?: 'left' | 'right' }) {
+  return (
+    <PickerPanel label="Choose a cover" width={560} align={align} onClose={rest.onClose}>
+      <CoverPickerBody {...rest} />
+    </PickerPanel>
+  );
+}
+
+/**
+ * The picker WITHOUT a surface (2026-09-30). The Documents gallery sets covers from a tile, and a
+ * tile clips its overflow — PickerPanel is `position: absolute`, so a 560px panel opened there
+ * would have been sliced at the tile's edge (the documented popover-clipping bug class). The
+ * gallery hosts this same body in the DS's portalled Popover instead; the editor keeps its panel.
+ * One picker, two hosts, no second copy of the tabs.
+ */
+export function CoverPickerBody({ current, onPick, onRemove, onClose, attachTo }: CoverPickerProps) {
   const [tab, setTab] = useState<Tab>('gallery');
   const [err, setErr] = useState<string | null>(null);
   const [link, setLink] = useState('');
@@ -73,7 +90,7 @@ export function CoverPicker({ current, onPick, onRemove, onClose, align = 'left'
   }
 
   return (
-    <PickerPanel label="Choose a cover" width={560} align={align} onClose={onClose}>
+    <>
       <PickerTabs<Tab>
         tabs={[{ id: 'gallery', label: 'Gallery' }, { id: 'upload', label: 'Upload' }, { id: 'link', label: 'Link' }]}
         active={tab} onTab={(t) => { setTab(t); setErr(null); }}
@@ -81,7 +98,7 @@ export function CoverPicker({ current, onPick, onRemove, onClose, align = 'left'
       />
       {tab === 'gallery' && (
         <div className="max-h-[348px] overflow-y-auto px-3 pb-3 [overscroll-behavior:contain]">
-          <div className="pt-1.5 pb-2.5 text-caption font-medium text-ink-500">Color &amp; Gradient</div>
+          <div className="pt-1.5 pb-2.5 text-caption font-medium text-ink-500">Color &amp; gradient</div>
           <div className="grid grid-cols-4 gap-2">
             {DOC_COVERS.map((c) => {
               const on = current === c.id;
@@ -128,6 +145,6 @@ export function CoverPicker({ current, onPick, onRemove, onClose, align = 'left'
           <div className={cn('pt-2 text-caption', err ? 'text-danger-600' : 'text-ink-500')}>{err ?? 'Works with any image link from the web.'}</div>
         </div>
       )}
-    </PickerPanel>
+    </>
   );
 }

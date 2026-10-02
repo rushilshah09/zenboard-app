@@ -10,8 +10,8 @@ import { useState } from 'react';
 import { PageView, Button, DropdownMenuItem, type ContentType } from '@/components/ds/ui';
 
 const RECORDS = [
-  { id: 'r1', type: 'task' as ContentType, title: 'Balluji brand portal', crumbs: ['Projects', 'Balluji', 'Packaging', 'Balluji brand portal'] },
-  { id: 'r2', type: 'task' as ContentType, title: 'Magazine design outline', crumbs: ['Projects', 'Balluji', 'Magazine design outline'] },
+  { id: 'r1', type: 'task' as ContentType, title: 'Ridgeline brand portal', crumbs: ['Projects', 'Ridgeline', 'Packaging', 'Ridgeline brand portal'] },
+  { id: 'r2', type: 'task' as ContentType, title: 'Magazine design outline', crumbs: ['Projects', 'Ridgeline', 'Magazine design outline'] },
   { id: 'r3', type: 'invoice' as ContentType, title: 'INV-014 — Meridian Studio', crumbs: ['Finance', 'INV-014'] },
   { id: 'r4', type: 'document' as ContentType, title: 'Weekly and daily planning', crumbs: ['Docs', 'Weekly and daily planning'] },
 ];

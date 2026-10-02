@@ -77,7 +77,7 @@ async function fetchPrimaryEvents(
     `&timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`;
 
   const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-  if (res.status === 401 || res.status === 403) return { ok: false, error: 'Google access expired — reconnect to sync.' };
+  if (res.status === 401 || res.status === 403) return { ok: false, error: 'Google access expired. Reconnect to sync.' };
   if (!res.ok) return { ok: false, error: 'Could not reach Google Calendar. Try again.' };
 
   const json = (await res.json()) as { items?: GEvent[] };

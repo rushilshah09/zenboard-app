@@ -3,6 +3,7 @@ import * as RP from "@radix-ui/react-popover";
 import { CalendarDays as CalendarIcon, ChevronLeft, ChevronRight } from "@/components/ds/icons";
 import { cn } from "@/lib/cn";
 import { useFieldProps } from "./field";
+import { inputBox } from "./input";
 import { IconButton } from "./icon-button";
 import { MENU_PANEL_CLASS } from "./menu";
 import { Button } from "./button";
@@ -212,10 +213,9 @@ export function DatePicker({ value: isoValue, onValueChange, placeholder = "tomo
           // and type size (body vs ui) — a date box and a time box that were
           // visibly not the same control.
           className={cn(
-            "h-8 w-full rounded-md border border-line-strong bg-surface-raised ps-2.5 pe-8",
-            "text-ui tabular-nums text-ink-900 placeholder:text-ink-500",
-            "transition-colors duration-instant hover:border-ink-300 focus-ring",
-            "disabled:cursor-not-allowed disabled:border-transparent disabled:bg-surface-disabled disabled:text-ink-500",
+            // THE field recipe (see the twin note in time-picker.tsx).
+            inputBox({ size: "sm" }),
+            "ps-2.5 pe-8 tabular-nums disabled:cursor-not-allowed",
           )}
         />
         <span className="absolute inset-y-0 end-0.5 flex items-center">

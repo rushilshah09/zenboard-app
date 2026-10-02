@@ -2,14 +2,34 @@
 // Triage — the Inbox processed one thought at a time (Linear's triage, sized
 // for one person). A full-screen calm layer: the current item is the only thing
 // on screen, every decision is a single key, and the queue drains to a quiet
-// reward state. Keys: E done · T today · S schedule · P project · L label ·
-// D delete · Enter keep · Z undo last · Esc back/exit. Every decision is
-// reversible (Z steps back and reverts it) — triage is fully undoable (§6.3).
+// reward state. Keys: F file (suggested) · E done · T today · S schedule ·
+// P project · L label · D delete · Enter keep · Z undo last · Esc back/exit.
+// Every decision is reversible (Z steps back and reverts it) — triage is fully
+// undoable (§6.3).
+//
+// ── THE CLERK, WHEN ASKED (MASTER_PRODUCT_PLAN §7Q, *File*) ─────────────────
+// "Suggest where these go" reads the whole queue once and proposes a project —
+// and a date, when the thought itself named one — for as many as it can
+// (lib/inbox-file.ts for the rules, lib/inbox-ai.ts for the residue).
+//
+// NOTHING IS FETCHED UNTIL IT IS PRESSED, which is what "off by default" means
+// here. A settings toggle would be a weaker promise than this: opening triage
+// would spend a shared free pool on somebody who only wanted to clear six
+// thoughts by hand.
+//
+// A proposal is ONE MORE KEY, never a different flow. F applies everything the
+// clerk proposed for this thought at once, because triage's own footer promises
+// one decision per thought and splitting the answer across two keys would make
+// the assisted path slower than the unassisted one. Every proposal shows the
+// receipt it rests on, above the decision row, always — a suggestion you cannot
+// check against your own data is one you have to take on faith.
 import { useCallback, useEffect, useMemo, useRef, useState, forwardRef} from 'react';
-import { Check, Sun, Calendar, Kanban, Trash2, CornerDownLeft, X, Tag, RotateCcw } from "@/components/ds/icons";
+import { Check, Sun, Calendar, Kanban, Trash2, CornerDownLeft, X, Tag, RotateCcw, Sparkles, TriangleAlert } from "@/components/ds/icons";
 import { Icon, Button, IconButton, Kbd, PriorityBars, FullScreenLayer, DatePicker, cardClass } from "@/components/ds/ui";
 import { cn } from '@/lib/cn';
+import { formatDay } from '@/lib/date';
 import { scopeFill } from '@/lib/entity-color';
+import type { FileProposals } from '@/lib/inbox-file';
 
 // The queue's item shape. These used to be declared by the standalone /inbox
 // page and imported back up into here; that page is gone — the Inbox is a view
@@ -58,13 +78,27 @@ const ActBtn = forwardRef<HTMLButtonElement, {
   );
 });
 
-export function Triage({ items, projects, labels = [], onComplete, onSchedule, onProject, onLabel, onUnlabel, onDelete, onUndo, onClose }: {
+/** What asking the clerk comes back with. The host never throws; a failure is a sentence. */
+export type TriageSuggestResult = { proposals: FileProposals[]; modelFailed: boolean } | { error: string };
+
+/** Nothing asked · asking · an answer · a reason there is none. */
+type Reading =
+  | { status: 'idle' }
+  | { status: 'reading' }
+  | { status: 'ready'; by: Map<string, FileProposals>; count: number; modelFailed: boolean }
+  | { status: 'failed'; error: string };
+
+export function Triage({ items, projects, labels = [], onComplete, onSchedule, onProject, onFile, onLabel, onUnlabel, onDelete, onUndo, onSuggest, onClose }: {
   items: InboxTask[]; projects: InboxProject[]; labels?: InboxLabel[];
   onComplete: (task: InboxTask) => void; onSchedule: (task: InboxTask, dateISO: string) => void;
   onProject: (task: InboxTask, projectId: string) => void;
+  /** Accept everything the clerk proposed for one thought, as one decision. */
+  onFile?: (task: InboxTask, filing: { projectId?: string; date?: string }) => void;
   onLabel?: (id: string, labelId: string) => void; onUnlabel?: (id: string, labelId: string) => void;
   onDelete: (task: InboxTask) => void;
   onUndo: (task: InboxTask, kind: UndoKind) => Promise<InboxTask>;
+  /** Ask the clerk to read the queue. Absent ⇒ nothing is offered here at all. */
+  onSuggest?: () => Promise<TriageSuggestResult>;
   onClose: () => void;
 }) {
   // Snapshot the queue oldest-first; acting removes the item globally, keeping
@@ -84,6 +118,7 @@ export function Triage({ items, projects, labels = [], onComplete, onSchedule, o
   const [idx, setIdx] = useState(0);
   const [panel, setPanel] = useState<Panel>(null);
   const [sel, setSel] = useState(0);
+  const [reading, setReading] = useState<Reading>({ status: 'idle' });
   const rootRef = useRef<HTMLDivElement>(null);
   const dateRef = useRef<HTMLInputElement>(null);
 
@@ -96,6 +131,36 @@ export function Triage({ items, projects, labels = [], onComplete, onSchedule, o
   const done = cur === undefined;
   const canUndo = history.length > 0;
 
+  // The clerk's answer for the card on screen, reduced to what can still be acted on: a project
+  // that has since been deleted, or one the thought is already in, proposes nothing.
+  const proposal = reading.status === 'ready' && cur ? reading.by.get(cur.id) : undefined;
+  const suggested = (() => {
+    if (!proposal || !onFile) return undefined;
+    const p = proposal.project && projects.find((x) => x.id === proposal.project!.projectId);
+    const projectId = p && cur?.project_id !== p.id ? p.id : undefined;
+    const date = proposal.scheduled?.date ?? proposal.due?.date;
+    if (!projectId && !date) return undefined;
+    const day = date ? formatDay(date, { weekday: true }) : undefined;
+    return {
+      projectId, date,
+      label: projectId && day ? `File in ${p!.name}, ${day}` : projectId ? `File in ${p!.name}` : `Schedule for ${day}`,
+      // A thought filed somewhere is no longer in the Inbox; one only dated is still a schedule.
+      kind: (projectId ? 'project' : 'schedule') as UndoKind,
+    };
+  })();
+
+  // The receipts, in the order the card reads them. Every proposal shown has one.
+  const receipts = proposal
+    ? [proposal.project?.evidence, proposal.scheduled?.evidence ?? proposal.due?.evidence].filter(Boolean) as string[]
+    : [];
+
+  // A LABEL IS NOT A HOME, so it is not on F. It is marked inside the panel where labels are
+  // already chosen, and named here so the person knows the panel has something in it — one press
+  // agreeing to two different kinds of thing is what §7Q's one-tap-accept rules out.
+  const labelHint = proposal?.label && labels.some((l) => l.id === proposal.label!.labelId)
+    ? proposal.label
+    : undefined;
+
   const advance = useCallback(() => { setPanel(null); setSel(0); setIdx(curPos + 1); }, [curPos]);
   // A data-changing decision: record it for undo, run it, then hold idx (the
   // acted row leaves `items`, so the same idx now points at the next survivor).
@@ -103,6 +168,26 @@ export function Triage({ items, projects, labels = [], onComplete, onSchedule, o
     if (cur) setHistory((h) => [...h, { task: cur, kind, pos: curPos }]);
     fn(); setPanel(null); setSel(0); setIdx(curPos);
   }, [cur, curPos]);
+  const ask = useCallback(async () => {
+    if (!onSuggest || reading.status === 'reading') return;
+    setReading({ status: 'reading' });
+    let res: TriageSuggestResult;
+    try {
+      res = await onSuggest();
+    } catch {
+      // The three rejection kinds are the shell's business; here the only useful thing to say is
+      // that it did not happen and pressing again is allowed.
+      setReading({ status: 'failed', error: 'Couldn\u2019t read your inbox. Try again.' });
+      return;
+    }
+    if ('error' in res) { setReading({ status: 'failed', error: res.error }); return; }
+    const by = new Map(res.proposals.map((p) => [p.thoughtId, p]));
+    setReading({
+      status: 'ready', by, modelFailed: res.modelFailed,
+      count: res.proposals.filter((p) => p.project || p.scheduled || p.due).length,
+    });
+  }, [onSuggest, reading.status]);
+
   const labelAct = useCallback((l: InboxLabel) => {
     if (cur) setHistory((h) => [...h, { task: cur, kind: 'label', pos: curPos, labelId: l.id }]);
     onLabel?.(cur!.id, l.id); advance();
@@ -165,6 +250,10 @@ export function Triage({ items, projects, labels = [], onComplete, onSchedule, o
       return;
     }
     if (e.key === 'Enter') { e.preventDefault(); advance(); }
+    else if (k === 'f' && suggested) {
+      e.preventDefault();
+      act(suggested.kind, () => onFile!(cur!, { projectId: suggested.projectId, date: suggested.date }));
+    }
     else if (k === 'e') { e.preventDefault(); act('complete', () => onComplete(cur!)); }
     else if (k === 't') { e.preventDefault(); act('schedule', () => onSchedule(cur!, isoOf(new Date()))); }
     else if (k === 's') { e.preventDefault(); setPanel('schedule'); }
@@ -187,7 +276,14 @@ export function Triage({ items, projects, labels = [], onComplete, onSchedule, o
     return () => window.removeEventListener('keydown', fn);
   }, []);
 
-  const pickerRow = (list: { id: string; name: string; color?: string | null; isLabel?: boolean }[], onPick: (i: number) => void) => (
+  // `markId` is the clerk's answer, MARKED WHERE IT ALREADY SITS. Moving it to the top would be the
+  // obvious way to draw attention to it and the wrong one: the 1–9 keys are the whole point of this
+  // panel, and a list that reorders itself when a suggestion arrives makes them unmemorisable.
+  const pickerRow = (
+    list: { id: string; name: string; color?: string | null; isLabel?: boolean }[],
+    onPick: (i: number) => void,
+    markId?: string,
+  ) => (
     <div className={cardClass('zb-enter max-w-sm p-1')} style={{ animation: 'fade-rise var(--duration-base) var(--ease-out-quiet)' }}>
       {list.slice(0, 9).map((it, i) => (
         <div key={it.id} onMouseEnter={() => setSel(i)} onClick={() => onPick(i)}
@@ -196,6 +292,11 @@ export function Triage({ items, projects, labels = [], onComplete, onSchedule, o
             ? <Icon icon={Tag} size={12} className="shrink-0 text-ink-500" />
             : <span className="size-2.5 shrink-0 rounded-xs" style={{ background: scopeFill(it.color) }} />}
           <span className="min-w-0 flex-1 truncate text-ui text-ink-800">{it.name}</span>
+          {it.id === markId && (
+            <span className="flex shrink-0 items-center gap-1 text-caption text-ink-500">
+              <Icon icon={Sparkles} size={12} />Suggested
+            </span>
+          )}
           <Kbd keys={[String(i + 1)]} />
         </div>
       ))}
@@ -213,6 +314,20 @@ export function Triage({ items, projects, labels = [], onComplete, onSchedule, o
       <div className="flex w-full max-w-[640px] items-center gap-2 px-6 py-5">
         <span className="tabular-nums text-caption text-ink-500">{done ? 'Triage' : `${Math.min(curPos + 1, total)} of ${total}`}</span>
         <span className="flex-1" />
+        {/* Asked once for the whole queue, and only when pressed. Gone once it has answered: the
+            answers are on the cards, and a button that has done its job is clutter on a screen
+            whose whole argument is that one thought is on it. */}
+        {onSuggest && !done && (reading.status === 'idle' || reading.status === 'reading') && (
+          <Button size="sm" variant="ghost" loading={reading.status === 'reading'}
+            icon={<Icon icon={Sparkles} size={14} />} onClick={() => void ask()}>
+            Suggest where these go
+          </Button>
+        )}
+        {reading.status === 'failed' && (
+          <Button size="sm" variant="ghost" icon={<Icon icon={Sparkles} size={14} />} onClick={() => void ask()}>
+            Try again
+          </Button>
+        )}
         {canUndo && <Button size="sm" variant="ghost" icon={<Icon icon={RotateCcw} size={14} />} onClick={() => void undoLast()}>Undo<Kbd keys={['Z']} className="ml-0.5" /></Button>}
         <IconButton size="sm" variant="ghost" label="Exit triage" tooltip="Exit · Esc" icon={<Icon icon={X} size={16} />} onClick={onClose} />
       </div>
@@ -237,10 +352,37 @@ export function Triage({ items, projects, labels = [], onComplete, onSchedule, o
             </div>
             <div className="font-editorial text-title-1 leading-tight text-ink-900" style={{ overflowWrap: 'anywhere' }}>{cur.title}</div>
 
+            {/* THE RECEIPTS. Always visible, never behind a hover — they are the difference between
+                an inference you can check and one you have to take on faith. */}
+            {(receipts.length > 0 || labelHint || proposal?.duplicate) && (
+              <div className="mt-3 space-y-1">
+                {receipts.map((r) => (
+                  <p key={r} className="text-caption text-ink-500">{r}</p>
+                ))}
+                {labelHint && (
+                  <p className="text-caption text-ink-500">
+                    {labelHint.evidence} <Kbd keys={['L']} /> to label it {labelHint.labelName}.
+                  </p>
+                )}
+                {proposal?.duplicate && (
+                  <p className="flex items-start gap-1.5 text-caption text-ink-500">
+                    <Icon icon={TriangleAlert} size={14} className="mt-px shrink-0 text-warning" />
+                    <span>You already have <span className="text-ink-800">{proposal.duplicate.title}</span>.</span>
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Decision row / sub-panels */}
             <div className="mt-7 min-h-[76px]">
               {panel === null && (
                 <div className="flex flex-wrap gap-2">
+                  {/* The clerk's answer goes FIRST and is one key, so the assisted path is never
+                      slower than the manual one it is assisting. */}
+                  {suggested && (
+                    <ActBtn label={suggested.label} shortcut="F" icon={Sparkles}
+                      onClick={() => act(suggested.kind, () => onFile!(cur!, { projectId: suggested.projectId, date: suggested.date }))} />
+                  )}
                   <ActBtn label="Done" shortcut="E" icon={Check} onClick={() => act('complete', () => onComplete(cur!))} />
                   <ActBtn label="Today" shortcut="T" icon={Sun} onClick={() => act('schedule', () => onSchedule(cur!, isoOf(new Date())))} />
                   <ActBtn label="Schedule" shortcut="S" icon={Calendar} onClick={() => setPanel('schedule')} />
@@ -268,7 +410,7 @@ export function Triage({ items, projects, labels = [], onComplete, onSchedule, o
                   <ActBtn label="Back" shortcut="Esc" icon={X} onClick={() => setPanel(null)} />
                 </div>
               )}
-              {panel === 'label' && pickerRow(labels.map((l) => ({ ...l, isLabel: true })), (i) => { const l = labels[i]; if (l) labelAct(l); })}
+              {panel === 'label' && pickerRow(labels.map((l) => ({ ...l, isLabel: true })), (i) => { const l = labels[i]; if (l) labelAct(l); }, proposal?.label?.labelId)}
               {panel === 'project' && pickerRow(projects, (i) => { const p = projects[i]; if (p) act('project', () => onProject(cur!, p.id)); })}
             </div>
           </div>
@@ -277,7 +419,12 @@ export function Triage({ items, projects, labels = [], onComplete, onSchedule, o
 
       {/* Footer hint line */}
       <div className="w-full max-w-[640px] px-6 pb-5 text-caption text-ink-500">
-        {done ? ' ' : panel ? 'Esc goes back' : <>One decision per thought · <Kbd keys={['Enter']} /> keeps it · <Kbd keys={['Z']} /> undoes · Esc exits</>}
+        {done ? ' ' : panel ? 'Esc goes back' : reading.status === 'failed' ? reading.error
+          : reading.status === 'ready'
+            ? (reading.count === 0
+                ? 'Nothing here was clear enough to suggest a home for.'
+                : <>{reading.count} of {total} have a suggestion · nothing is filed until you press <Kbd keys={['F']} /></>)
+            : <>One decision per thought · <Kbd keys={['Enter']} /> keeps it · <Kbd keys={['Z']} /> undoes · Esc exits</>}
       </div>
       </div>
     </FullScreenLayer>

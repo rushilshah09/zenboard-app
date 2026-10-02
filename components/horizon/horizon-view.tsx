@@ -190,7 +190,7 @@ export function HorizonView({ initialGoals, projects, goalsV2 = false }: {
     setGoals((g) => [...g, { id: tmp, title: t, note: null, horizon: active, target_date: target || null, status: 'active', progress: 0, project_id: null, milestones: [], linkedDone: 0, linkedTotal: 0 }]);
     const res = await addGoal({ title: t, horizon: active, targetDate: target || null });
     if ('id' in res) setGoals((g) => g.map((x) => (x.id === tmp ? { ...x, id: res.id } : x)));
-    else { setGoals((g) => g.filter((x) => x.id !== tmp)); setErr(active === 'month' ? 'Month goals need migration 0008 applied.' : res.error); }
+    else { setGoals((g) => g.filter((x) => x.id !== tmp)); setErr(res.error); }
   }
   const patch = (id: string, p: Partial<Goal>) => setGoals((g) => g.map((x) => (x.id === id ? { ...x, ...p } : x)));
   // Every edit is optimistic AND answers for itself: a save the server refuses puts the old value back and says so,
@@ -248,7 +248,7 @@ export function HorizonView({ initialGoals, projects, goalsV2 = false }: {
         }
         actions={<>
           <Button variant="ghost" size="sm" icon={<Icon icon={Repeat} size={16} />} onClick={() => router.push('/rituals?type=weekly_review')}>Weekly review</Button>
-          <Button variant="secondary" size="sm" icon={<Icon icon={Plus} size={16} />} onClick={() => setAdding((a) => !a)}>New goal</Button>
+          <Button variant="primary" size="sm" icon={<Icon icon={Plus} size={16} />} onClick={() => setAdding((a) => !a)}>New goal</Button>
         </>}
     >
       <Modal
@@ -256,7 +256,7 @@ export function HorizonView({ initialGoals, projects, goalsV2 = false }: {
         onOpenChange={setAdding}
         size="sm"
         title="New goal"
-        description={`An outcome that matters this ${active} — track it through to done.`}
+        description={`An outcome that matters this ${active}, track it through to done.`}
         dirty={!!title.trim()}
         footer={<>
           <Button variant="ghost" onClick={() => setAdding(false)}>Cancel</Button>

@@ -24,6 +24,13 @@ export type ChipKind = 'when' | 'due' | 'priority' | 'estimate' | 'project' | 'r
 
 export type ParsedChip = { kind: ChipKind; label: string };
 
+/**
+ * Every kind the grammar knows, in one place. `ignore` is a set of these, so a caller that wants
+ * exactly one rule to run has to be able to name all the others — see lib/inbox-file.ts, which
+ * recovers the words a rule consumed by running it alone.
+ */
+export const CHIP_KINDS: ChipKind[] = ['when', 'due', 'priority', 'estimate', 'project', 'repeat', 'inbox'];
+
 export type ParsedTask = {
   title: string;
   chips: ParsedChip[];

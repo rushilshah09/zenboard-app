@@ -16,6 +16,7 @@
 //
 // GATED on 0033 via `attachmentsSupported()`; without it the file blocks keep
 // their paste-a-URL behaviour and nothing here is reachable.
+import { notReady } from '@/lib/not-ready';
 import { randomBytes } from 'crypto';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { activeSpaceId } from '@/lib/active-space';
@@ -41,7 +42,7 @@ export async function attachmentsSupported(db?: DB): Promise<boolean> {
   }
 }
 
-const NOT_READY = { error: 'Attachments need migration 0033.' } as const;
+const NOT_READY = () => notReady('Attachments aren’t available yet.', '0033');
 
 /**
  * Prove the caller owns the thing they are attaching to.
@@ -74,7 +75,7 @@ export async function createAttachmentUploadUrl(
   sizeBytes?: number,
 ): Promise<{ error: string } | UploadTicket> {
   const { supabase, user } = await requireSession();
-  if (!(await attachmentsSupported(supabase))) return NOT_READY;
+  if (!(await attachmentsSupported(supabase))) return NOT_READY();
   if (!(await ownsParent(supabase, owner))) return { error: 'Not found.' };
   if (typeof sizeBytes === 'number' && sizeBytes > ATTACHMENT_MAX_BYTES) {
     return { error: 'That file is too large.' };
@@ -99,7 +100,7 @@ export async function recordAttachment(
   file: { path: string; filename: string; mimeType?: string | null; sizeBytes?: number | null },
 ): Promise<{ error: string } | { attachment: Attachment }> {
   const { supabase, user } = await requireSession();
-  if (!(await attachmentsSupported(supabase))) return NOT_READY;
+  if (!(await attachmentsSupported(supabase))) return NOT_READY();
   if (!(await ownsParent(supabase, owner))) return { error: 'Not found.' };
   if (!file.path.startsWith(`${user.id}/`)) return { error: 'Not found.' };
 
@@ -167,7 +168,7 @@ export async function unplacedPageUploads(pageId: string): Promise<Attachment[]>
  */
 export async function signAttachment(id: string): Promise<{ error: string } | { url: string }> {
   const { supabase } = await requireSession();
-  if (!(await attachmentsSupported(supabase))) return NOT_READY;
+  if (!(await attachmentsSupported(supabase))) return NOT_READY();
 
   // RLS is the ownership check: someone else's attachment simply is not here.
   const { data: row } = await supabase.from('attachments').select('path').eq('id', id).maybeSingle();
@@ -193,7 +194,7 @@ export async function signAttachments(ids: string[]): Promise<{ error: string } 
   const unique = [...new Set(ids.filter((id) => typeof id === 'string' && id))].slice(0, 100);
   if (!unique.length) return { urls: {} };
   const { supabase } = await requireSession();
-  if (!(await attachmentsSupported(supabase))) return NOT_READY;
+  if (!(await attachmentsSupported(supabase))) return NOT_READY();
 
   const { data: rows } = await supabase.from('attachments').select('id, path').in('id', unique);
   const found = (rows as { id: string; path: string }[] | null) ?? [];
@@ -221,7 +222,7 @@ export async function signAttachments(ids: string[]): Promise<{ error: string } 
  */
 export async function deleteAttachment(id: string): Promise<{ error: string } | { ok: true }> {
   const { supabase } = await requireSession();
-  if (!(await attachmentsSupported(supabase))) return NOT_READY;
+  if (!(await attachmentsSupported(supabase))) return NOT_READY();
 
   const { data: row } = await supabase.from('attachments').select('path').eq('id', id).maybeSingle();
   if (!row) return { ok: true };   // already gone

@@ -10,7 +10,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { CalendarDays, Plus, Pencil, Trash2, X } from "@/components/ds/icons";
 import { cn } from '@/lib/cn';
-import { Icon, Button, Checkbox, EmptyState, IconButton, InlineConfirm, TimePicker, addLine, inlineEdit, inlineEditProps, toastReverted } from '@/components/ds/ui';
+import { Icon, Button, Checkbox, AnchorRow, IconButton, InlineConfirm, TimePicker, addLine, inlineEdit, inlineEditProps, toastReverted } from '@/components/ds/ui';
 import { Panel, PanelHeader, PanelBody } from '@/components/ui/panels';
 import { HOME_SECTION, homeRow } from '@/components/today/home-rows';
 import { addEvent, updateEvent, deleteEvent } from '@/lib/actions/events';
@@ -132,7 +132,7 @@ export function ScheduleSection({ initialEvents, error }: { initialEvents: Today
             <Icon icon={Plus} size={14} className="mx-px shrink-0" />
             <input ref={titleRef} value={title} onChange={(e) => setTitle(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') add(); if (e.key === 'Escape') { setAdding(false); resetComposer(); } }}
-              placeholder="Event title — e.g. Client call" aria-label="New event" autoComplete="off" data-1p-ignore data-lpignore="true"
+              placeholder="Event title, e.g. Client call" aria-label="New event" autoComplete="off" data-1p-ignore data-lpignore="true"
               className="min-w-0 flex-1 bg-transparent text-ui text-ink-800 outline-none placeholder:text-ink-500" />
             {/* Secondary, not primary — the page's one filled primary is the plan's "Add". */}
             {title.trim() && <Button variant="secondary" size="sm" onClick={add}>Add</Button>}
@@ -161,9 +161,11 @@ export function ScheduleSection({ initialEvents, error }: { initialEvents: Today
         <p className="px-[var(--panel-px)] py-3.5 text-ui text-danger-600">Couldn’t load your calendar. Try refreshing.</p>
       ) : sorted.length === 0 ? (
         !adding && (
-          <EmptyState
-            size="inline"
-            illustration={<Icon icon={CalendarDays} size={20} />}
+          // A SECTION of a populated page, so `<EmptyLine>` — see states.tsx. The header's own
+          // "Add" is the action; the page-sized state spent 180px to repeat it.
+          <AnchorRow
+            className="px-[var(--panel-px)] py-3.5"
+            icon={<Icon icon={CalendarDays} size={16} />}
             title="Nothing scheduled"
             description="Meetings and time blocks for today show here."
           />

@@ -267,17 +267,11 @@ export function Divider({ vertical, className }: { vertical?: boolean; className
 }
 
 // ── Spinner ──────────────────────────────────────────────────
-// Trivial loading ring; kept local (used inside buttons / standalone).
-export function Spinner({ size = 14, className }: { size?: number; className?: string }) {
-  return (
-    <span
-      role="status"
-      aria-label="Loading"
-      className={cx('inline-block rounded-full border-2 border-current border-t-transparent animate-[spin_0.6s_linear_infinite]', className)}
-      style={{ width: size, height: size, opacity: 0.6 }}
-    />
-  );
-}
+// Re-exported, not re-drawn. This was a second spinner: a bordered ring at 600ms
+// beside the DS's `animate-spin` at Tailwind's 1000ms, so one app turned at two
+// speeds. The DS owns it now (components/ds/ui/spinner.tsx), including the delay
+// that stops a fast wait flashing one.
+export { Spinner } from '@/components/ds/ui/spinner';
 
 // ── Avatar (DS §5.4) ─────────────────────────────────────────
 const AVATAR_SIZE = (n: number): 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' =>

@@ -21,7 +21,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusReturn } from '@/lib/use-focus-return';
 import { useRouter } from 'next/navigation';
 import { Inbox, Sun, CornerDownLeft, Check, Brain } from "@/components/ds/icons";
-import { Icon, toast } from "@/components/ds/ui";
+import { Button, Icon, toast } from "@/components/ds/ui";
 import { ParsedChips } from '@/components/ui/parsed-chips';
 import { addTask } from '@/lib/actions/tasks';
 import { remember, forgetMemory } from '@/lib/actions/memory';
@@ -101,7 +101,7 @@ export function QuickCapture() {
     if (problem) {
       setErr(problem === 'empty'
         ? 'Write the fact first.'
-        : `A memory is one line — trim this to ${BODY_MAX} characters.`);
+        : `A memory is one line, trim this to ${BODY_MAX} characters.`);
       return;
     }
     setBusy(true);
@@ -137,7 +137,7 @@ export function QuickCapture() {
   // the same argument as the command palette applies — see its note.
   return (
     <div onMouseDown={close} style={{ position: 'fixed', inset: 0, zIndex: 'var(--z-modal)', background: 'color-mix(in srgb, var(--scrim-color) 38%, transparent)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '16vh' }}>
-      <div onMouseDown={(e) => e.stopPropagation()} style={{ width: 'min(560px, 92vw)', background: 'var(--color-surface-raised)', border: '1px solid var(--color-line-strong)', borderRadius: 'var(--r-xl)', boxShadow: 'var(--shadow-xl)', overflow: 'hidden' }}>
+      <div onMouseDown={(e) => e.stopPropagation()} style={{ width: 'min(560px, 92vw)', background: 'var(--color-surface-raised)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--shadow-lift-3)', overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px' }}>
           <Icon icon={parsed.scheduledDate ? Sun : Inbox} size={20} style={{ color: 'var(--accent-text)', flexShrink: 0 }} />
           <input
@@ -160,15 +160,16 @@ export function QuickCapture() {
             autoComplete="off" data-1p-ignore data-lpignore="true"
             style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 'var(--text-h2-size)', color: 'var(--ink)' }}
           />
-          <button onClick={rememberIt} disabled={busy || !canRemember} aria-label="Remember this about you"
-            title="Remember this about you  ⌥↵"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 30, padding: '0 10px', borderRadius: 'var(--r-md)', border: '1px solid var(--color-line-strong)', background: 'transparent', color: canRemember ? 'var(--text-secondary)' : 'var(--text-muted)', fontSize: 'var(--text-caption-size)', fontWeight: 600, cursor: canRemember ? 'pointer' : 'default', transition: 'color var(--duration-fast) var(--ease-hover), transform var(--duration-fast) var(--ease-out-quiet)' }}>
-            <Icon icon={Brain} size={14} /> Remember
-          </button>
-          <button onClick={() => save(false)} disabled={busy || !parsed.title} aria-label={`Save to ${dest}`}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 30, padding: '0 12px', borderRadius: 'var(--r-md)', border: '1px solid var(--primary-deep)', background: parsed.title ? 'var(--primary)' : 'var(--paper-3)', color: parsed.title ? 'var(--on-primary)' : 'var(--text-secondary)', fontSize: 'var(--text-caption-size)', fontWeight: 600, cursor: parsed.title ? 'pointer' : 'default', transition: 'background var(--duration-fast) var(--ease-hover), color var(--duration-fast) var(--ease-hover), transform var(--duration-fast) var(--ease-out-quiet)' }}>
-            <Icon icon={CornerDownLeft} size={14} /> Save
-          </button>
+          {/* THE DS BUTTON, at the toolbar's size. These were hand-rolled: 30px tall (a height on no
+              ladder), a 5px icon gap, caption type at 600, and a field-tier edge on a ghost action. */}
+          <Button size="sm" variant="ghost" onClick={rememberIt} disabled={busy || !canRemember} aria-label="Remember this about you"
+            title="Remember this about you  ⌥↵" icon={<Icon icon={Brain} size={16} />}>
+            Remember
+          </Button>
+          <Button size="sm" variant="primary" onClick={() => save(false)} disabled={busy || !parsed.title} aria-label={`Save to ${dest}`}
+            icon={<Icon icon={CornerDownLeft} size={16} />}>
+            Save
+          </Button>
         </div>
 
         {/* Parsed chips — the confirmation layer (shared component). */}
@@ -182,7 +183,7 @@ export function QuickCapture() {
             // An empty field does not need to be told what Enter does — it needs
             // to be told what it accepts. The commit keys take over the moment
             // there is something to commit.
-            <span>Try <b style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>call Sam tomorrow !high 30m</b> — dates, priority and #project are parsed</span>
+            <span>Try <b style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>call Sam tomorrow !high 30m</b>: dates, priority and #project are parsed</span>
           ) : (
             <>
               <span><b style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Enter</b> saves to <b style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{dest}</b> · <b style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Shift+Enter</b> adds another · <b style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>⌥Enter</b> remembers it about you</span>

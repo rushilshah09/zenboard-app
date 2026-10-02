@@ -56,10 +56,10 @@ export function PageHeaderHarness({ v = 'plain' }: { v?: string }) {
 
   return (
     <AppShell name="Rushil shah" email="designdotrushil@gmail.com" spaces={SPACES} pins={[
-      { type: 'project', id: 'p1', label: 'Balluji rebrand' },
+      { type: 'project', id: 'p1', label: 'Ridgeline rebrand' },
       { type: 'doc', id: 'd1', label: 'Q3 brief' },
       { type: 'task', id: 't1', label: 'Chase the contract signature' },
-      { type: 'invoice', id: 'i1', label: 'INV-018 · TechSpark' },
+      { type: 'invoice', id: 'i1', label: 'INV-018 · Northwind' },
     ] as const} activeSpaceId="s1">
       {header}
       <ViewContainer className="pt-[var(--view-pt)] pb-[var(--view-pb)]">

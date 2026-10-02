@@ -1,18 +1,31 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Source_Serif_4 } from "next/font/google";
+import { Geist, Geist_Mono, Rubik, Source_Serif_4 } from "next/font/google";
 import "./globals.css";
 import { themeInitScript } from "@/lib/theme";
 import { AppearanceBoot } from "@/components/shell/appearance-boot";
 import { InputModalityBoot } from "@/components/shell/input-modality-boot";
 import { Providers } from "@/components/shell/providers";
 
-// Type system (Figma HIfi, 2026-07-16) = Geist (UI + body, variable weight)
-// · Geist Mono (numerics/kbd/code) · Source Serif 4 (Documents reading-mode,
-// opt-in only — never in chrome). No 700 sans; 600 is our bold.
+// Type system (Figma HIfi, 2026-07-16, amended 2026-09-25) = Geist (UI + body,
+// variable weight) · Geist Mono (numerics/kbd/code) · RUBIK (titles) · Source
+// Serif 4 (Documents reading-mode, opt-in only — never in chrome). No 700 sans;
+// 600 is our bold.
+//
+// TITLES ARE RUBIK (user directive 2026-09-25: "we only use serif fonts, use
+// Rubik for titling fonts"). Every heading in the product was set in Source
+// Serif — the greeting, the step titles, the sign-up h1 — and a serif is a
+// voice, not a neutral: it reads as editorial where this product is a tool.
+// Rubik is a geometric sans with a slightly softened terminal, which is the
+// warmth the serif was carrying, without the literary register. The serif stays
+// exactly where it was chosen deliberately: Documents' reading mode, and the
+// Paper skin, which is a printed sheet.
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
 });
+// Preloaded, unlike the serif: a title is on every screen, so the font is on the
+// critical path whether or not it is asked for early.
+const rubik = Rubik({ variable: "--font-rubik", subsets: ["latin"], display: "swap" });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 const sourceSerif = Source_Serif_4({
   variable: "--font-source-serif",
@@ -27,7 +40,7 @@ const sourceSerif = Source_Serif_4({
 });
 
 export const metadata: Metadata = {
-  title: "Zenboard — a quiet operating system for your work and life",
+  title: "Zenboard. A quiet operating system for your work and life",
   description:
     "One calm place for your tasks, goals, focus, notes, and daily rhythm.",
 };
@@ -44,7 +57,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} ${sourceSerif.variable}`}
+      className={`${geistSans.variable} ${geistMono.variable} ${rubik.variable} ${sourceSerif.variable}`}
     >
       <head>
         {/* Applies the saved theme/density/accent before paint — no flash. */}

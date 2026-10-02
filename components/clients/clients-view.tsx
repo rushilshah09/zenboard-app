@@ -9,7 +9,7 @@
 // server/realtime props via `useServerState`.
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, unstable_isUnrecognizedActionError } from 'next/navigation';
 import {
   Plus, Mail, Check, ArrowRight, ChevronRight, ChevronLeft, ChevronDown,
   Kanban, Users, MessageSquare, Circle, Activity, User, Calendar, Landmark,
@@ -19,7 +19,7 @@ import {
   Modal, Field, TextInput, toast, toastReverted,
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
   type BadgeStatus,
-  RecordHeader, Tabs, type TabItem, cardClass } from "@/components/ds/ui";
+  RecordHeader, Tabs, type TabItem, cardClass, inlineEditProps } from "@/components/ds/ui";
 import { cn } from '@/lib/cn';
 import { scopeFill } from '@/lib/entity-color';
 import { formatAgo, formatDay, formatMonthYear } from '@/lib/date';
@@ -34,9 +34,13 @@ import type { EntityType } from '@/lib/connected';
 const CLIENT_OMIT: EntityType[] = ['project', 'invoice', 'form', 'meeting'];
 import { addClient, updateClient, addClientNote, addLead, updateLead, convertLead } from '@/lib/actions/clients';
 import { addFeedback, updateFeedback, shipFeedback } from '@/lib/actions/feedback';
-import { addMeeting, updateMeeting, deleteMeeting, makeTaskFromMeeting } from '@/lib/actions/meetings';
+import {
+  addMeeting, updateMeeting, deleteMeeting, makeTaskFromMeeting,
+  writeUpMeeting, loadMeetingWriteUp, dismissWriteUpItem, clearMeetingWriteUp,
+} from '@/lib/actions/meetings';
+import { NOTES_MESSAGES, thrownNotesProblem } from '@/lib/meeting-notes';
 import { FeedbackBoard, AddFeedbackModal, type FeedbackItem, type FeedbackStatus, FEEDBACK_TONE as fbTone, FEEDBACK_LABEL as fbLabel } from '@/components/feedback/feedback-board';
-import { MeetingPanel, type MeetingItem } from '@/components/meetings/meeting-panel';
+import { MeetingPanel, type MeetingItem, type WriteUpResult } from '@/components/meetings/meeting-panel';
 import { meetingActions, type MeetingTaskRow } from '@/lib/meeting-actions';
 import { FormsPanel } from '@/components/forms/forms-panel';
 import type { FormSummary } from '@/lib/forms';
@@ -128,7 +132,7 @@ function ClientRow({ client, active, onClick }: { client: ClientCard; active: bo
       <Avatar name={client.name} shape="square" size="md" decorative />
       <div className="min-w-0 flex-1">
         <div className={cn('truncate text-ui', active ? 'font-medium text-ink-900' : 'text-ink-800')}>{client.name}</div>
-        <div className="truncate text-caption text-ink-500">{(client.contact ?? client.role ?? '—')} · {relTouch(client.notes[0]?.created_at)}</div>
+        <div className="truncate text-caption text-ink-500">{(client.contact ?? client.role ?? '–')} · {relTouch(client.notes[0]?.created_at)}</div>
       </div>
       <span title={healthLabel[client.health]} className={cn('size-1.5 shrink-0 rounded-full', healthDot[client.health] ?? 'bg-ink-300')} />
     </button>
@@ -217,7 +221,7 @@ function ClientDetail({ client, tasked, feedback, meetings, meetingTasks, proper
           },
           {
             key: 'health', icon: Activity, label: 'Health',
-            value: <BadgeMenu label={healthLabel[client.health] ?? '—'} tone={healthTone[client.health] ?? 'neutral'} options={HEALTH_KEYS.map((k) => ({ key: k, label: healthLabel[k], dot: healthDot[k] }))} onSelect={onSetHealth} />,
+            value: <BadgeMenu label={healthLabel[client.health] ?? '–'} tone={healthTone[client.health] ?? 'neutral'} options={HEALTH_KEYS.map((k) => ({ key: k, label: healthLabel[k], dot: healthDot[k] }))} onSelect={onSetHealth} />,
           },
           client.contact ? {
             key: 'contact', icon: User, label: 'Contact',
@@ -263,6 +267,7 @@ function ClientDetail({ client, tasked, feedback, meetings, meetingTasks, proper
                 placeholder="What moves this relationship forward?"
                 autoComplete="off" data-1p-ignore data-lpignore="true"
                 className={composerInput}
+                {...inlineEditProps}
               />
               {client.next_step && (
                 <Button size="sm" variant="secondary" icon={tasked ? <Icon icon={Check} size={14} /> : undefined} onClick={onMakeTask}>
@@ -292,6 +297,7 @@ function ClientDetail({ client, tasked, feedback, meetings, meetingTasks, proper
                 onChange={(e) => setNoteDraft(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') addNote(); }}
                 placeholder="Log a call, a decision, a promise…"
+                {...inlineEditProps}
                 autoComplete="off" data-1p-ignore data-lpignore="true"
                 className={composerInput}
               />
@@ -397,7 +403,7 @@ function ClientDetail({ client, tasked, feedback, meetings, meetingTasks, proper
               <Button size="xs" variant="ghost" icon={<Icon icon={MessageSquare} size={14} />} onClick={onLogFeedback}>Log</Button>
             </div>
             {feedback.length === 0
-              ? <EmptyLine>Nothing logged yet. Capture what they ask for — the highest-value asks rise to the top of Feedback.</EmptyLine>
+              ? <EmptyLine>Nothing logged yet. Capture what they ask for. The highest-value asks rise to the top of Feedback.</EmptyLine>
               : feedback.map((f) => {
                   const stake = f.deals.reduce((a, d) => a + d.value, 0);
                   return (
@@ -441,7 +447,7 @@ function LeadCard({ lead, onAdvance, onBack, onWin, onCreateProject, onLogFeedba
         <div className="min-w-0 flex-1 truncate text-ui font-medium text-ink-900">{lead.name}</div>
         {lead.value > 0 && <span className="shrink-0 tabular-nums text-caption text-ink-700">{fmtMoney(lead.value)}</span>}
       </div>
-      <div className="mb-1.5 text-caption text-ink-500">{[lead.contact, lead.source].filter(Boolean).join(' · ') || '—'}</div>
+      <div className="mb-1.5 text-caption text-ink-500">{[lead.contact, lead.source].filter(Boolean).join(' · ') || '–'}</div>
       {lead.note && <div className="mb-2 text-caption leading-relaxed text-ink-500">{lead.note}</div>}
       <div className="flex items-center gap-1.5">
         <span className="text-meta text-ink-500">{ageOf(lead.created_at)} in stage</span>
@@ -646,7 +652,7 @@ export function ClientsView({
     try {
       res = await makeTaskFromMeeting(meetingId, title);
     } catch {
-      toast({ message: 'Could not save that — check your connection and try again.', variant: 'error' });
+      toast({ message: 'Could not save that. Check your connection and try again.', variant: 'error' });
       return;
     }
     if ('error' in res) { toast({ message: res.error, variant: 'error' }); return; }
@@ -709,9 +715,24 @@ export function ClientsView({
     if ('id' in res) { setMeetings((ms) => ms.map((m) => (m.id === tmp ? { ...m, id: res.id } : m))); setOpenMeetingId(res.id); }
     else { setMeetings((ms) => ms.filter((m) => m.id !== tmp)); setOpenMeetingId(null); }
   }
-  function saveMeetingNotes(id: string, notes: string) {
+  async function saveMeetingNotes(id: string, notes: string) {
     setMeetings((ms) => ms.map((m) => (m.id === id ? { ...m, notes } : m)));
-    updateMeeting(id, { notes: notes.trim() || null });
+    // Not reverted: the panel still holds the words, and taking them off the screen would lose
+    // them. Saying so is what lets the person keep the panel open and try again. (This used to be
+    // silent, which mattered once adding a suggested action item started saving through here.)
+    const res = await updateMeeting(id, { notes: notes.trim() || null });
+    if ('error' in res) toast({ message: 'The transcript didn’t save. Try again before closing the panel.', variant: 'error' });
+  }
+
+  /** Suggestions for a meeting. Never throws: a thrown action becomes a reason the panel can say. */
+  /** The clerk writes the meeting up (MEETINGS_PLAN.md M2). A thrown action becomes a sentence. */
+  async function writeUpFor(meetingId: string, notes: string): Promise<WriteUpResult> {
+    try {
+      return await writeUpMeeting(meetingId, notes);
+    } catch (e) {
+      const reason = thrownNotesProblem(e, unstable_isUnrecognizedActionError);
+      return { error: NOTES_MESSAGES[reason], reason };
+    }
   }
   async function removeMeeting(id: string) {
     setMeetings((ms) => ms.filter((m) => m.id !== id));
@@ -726,7 +747,7 @@ export function ClientsView({
     setFeedback((fs) => fs.map((f) => (f.id === id ? { ...f, status: 'in_progress' } : f)));
     const res = await shipFeedback(id);
     if ('error' in res) { setFeedback((fs) => fs.map((f) => (f.id === id ? { ...f, status: 'planned' } : f))); toast({ message: res.error, variant: 'error' }); }
-    else { setFeedback((fs) => fs.map((f) => (f.id === id ? { ...f, task_id: res.taskId } : f))); toast({ message: 'Shipped — task added to Inbox', variant: 'success' }); }
+    else { setFeedback((fs) => fs.map((f) => (f.id === id ? { ...f, task_id: res.taskId } : f))); toast({ message: 'Shipped, task added to Inbox', variant: 'success' }); }
   }
 
   // The one header row, above BOTH panes — so a two-pane hub's actions land on
@@ -775,11 +796,16 @@ export function ClientsView({
                 // first one's words.
                 key={m.id}
                 meeting={m}
+                clientName={clients.find((c) => c.id === m.client_id)?.name ?? null}
                 feedback={feedback.filter((f) => f.meeting_id === m.id)}
                 tasks={meetingTasks.filter((t) => t.meetingId === m.id)}
                 projects={clients.find((c) => c.id === m.client_id)?.projects ?? []}
                 linkSupported={meetingTasksSupported}
                 onMakeTask={(title) => makeMeetingTask(m.id, title)}
+                onWriteUp={(n) => writeUpFor(m.id, n)}
+                onLoadWriteUp={() => loadMeetingWriteUp(m.id)}
+                onDismissItem={(k) => dismissWriteUpItem(m.id, k)}
+                onClearWriteUp={() => clearMeetingWriteUp(m.id)}
                 onClose={() => setOpenMeetingId(null)}
                 onSaveNotes={(n) => saveMeetingNotes(m.id, n)}
                 onAddFeedback={(t) => createFeedback({ title: t, dealIds: [], clientId: m.client_id ?? undefined, source: 'meeting', meetingId: m.id })}
@@ -818,11 +844,11 @@ export function ClientsView({
               <Button size="sm" variant="ghost" icon={<Icon icon={Mail} size={16} />}
                 onClick={() => { window.location.href = `mailto:${active.email}`; }}>Email</Button>
             )}
-            <Button size="sm" variant="secondary" icon={<Icon icon={Check} size={16} />}
+            <Button size="sm" variant="primary" icon={<Icon icon={Check} size={16} />}
               onClick={() => logTouch(active)}>Log a touch</Button>
           </>
         ) : tab === 'pipeline' ? (
-          <Button size="sm" variant="secondary" icon={<Icon icon={Plus} size={16} />}
+          <Button size="sm" variant="primary" icon={<Icon icon={Plus} size={16} />}
             onClick={() => setShowAddLead(true)}>New lead</Button>
         ) : feedback.some((f) => f.status !== 'declined') ? (
           // Hidden while the board is empty: there the EmptyState is the single,

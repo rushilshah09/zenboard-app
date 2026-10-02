@@ -134,7 +134,7 @@ export function MemoryRow({ m, gutter, sourceLabel, history, onChanged }: {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem
-            icon={<Icon icon={Star} size={14} weight={m.pinned ? 'fill' : 'regular'} />}
+            icon={<Icon icon={Star} size={14} state={!!m.pinned} />}
             onSelect={async () => {
               const res = await setMemoryPinned(m.id, !m.pinned);
               if ('error' in res) toast({ message: res.error, variant: 'error' });

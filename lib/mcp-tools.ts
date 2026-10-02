@@ -62,7 +62,7 @@ const link = (ctx: McpContext, type: EntityType, id: string) => `${ctx.origin}${
 
 export async function capture(ctx: McpContext, args: Record<string, unknown>): Promise<string> {
   const { title, body } = splitThought(String(args.text ?? ''));
-  if (!title) return 'Nothing to save — give it a line of text.';
+  if (!title) return 'Nothing to save. Give it a line of text.';
   const url = typeof args.url === 'string' && args.url.trim() ? args.url.trim() : undefined;
   const spaceId = await spaceOf(ctx);
   const kept = body ? ' The full text is kept with it.' : '';
@@ -185,7 +185,7 @@ export async function listProjects(ctx: McpContext): Promise<string> {
  * A project's status, only when it says something. "Active" is the default —
  * the same rule the project header follows: a row states facts, not defaults.
  */
-const statusNote = (status: string | null) => (status && status !== 'active' ? ` — ${status}` : '');
+const statusNote = (status: string | null) => (status && status !== 'active' ? ` · ${status}` : '');
 
 // ── dispatch ────────────────────────────────────────────────────────────────
 

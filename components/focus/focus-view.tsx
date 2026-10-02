@@ -44,7 +44,7 @@ function TimeCells({ actualSec, plannedMin, live }: { actualSec: number; planned
         {actualSec > 0 ? clock(actualSec) : '–:–'}
       </span>
       <span className="w-[56px] shrink-0 text-right tabular-nums text-caption text-ink-500">
-        {plannedMin ? clock(plannedMin * 60) : '—'}
+        {plannedMin ? clock(plannedMin * 60) : '–'}
       </span>
     </>
   );
@@ -417,6 +417,7 @@ export function FocusView({ initialTasks, subsByTask, projects }: {
                     onChange={(e) => setNotesDraft(e.target.value)}
                     onBlur={saveNotes}
                     placeholder="Start writing"
+                    data-chromeless=""
                     rows={Math.max(2, (notesDraft ?? active.notes ?? '').split('\n').length)}
                     style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', resize: 'none', fontSize: 'var(--text-body-lg-size)', lineHeight: 1.6, color: 'var(--ink-2)', fontFamily: 'inherit', padding: '0 0 0 26px' }}
                   />
@@ -460,7 +461,7 @@ export function FocusView({ initialTasks, subsByTask, projects }: {
             <div style={{ maxWidth: 848, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 10, height: 56, padding: '0 8px 0 20px', background: 'var(--paper-2)', border: '1px solid var(--line)', borderRadius: 'var(--r-xl)', boxShadow: 'var(--shadow-sm)' }}>
               <input value={msg} onChange={(e) => setMsg(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') sendMessage(); }}
-                placeholder="Leave a message..." autoComplete="off" data-1p-ignore data-lpignore="true"
+                placeholder="Leave a message..." data-chromeless="" autoComplete="off" data-1p-ignore data-lpignore="true"
                 style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 'var(--text-body-lg-size)', color: 'var(--ink)' }} />
               {flash && <span style={{ fontSize: 'var(--text-caption-size)', color: 'var(--accent-text)', flexShrink: 0 }}>{flash}</span>}
               <button onClick={sendMessage} disabled={!msg.trim()} aria-label="Log message to task" className="zb-press"

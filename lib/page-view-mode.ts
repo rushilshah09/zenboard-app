@@ -46,7 +46,9 @@ const TYPE_DEFAULT: Record<ContentType, PageViewMode> = {
   goal: 'side-peek',
   calendar: 'center-peek',
   'database-row': 'side-peek',
-  meeting: 'side-peek',
+  // A meeting is a workspace now — your notes beside the live transcript, recorded while you talk
+  // (MEETINGS_PLAN.md M1) — so, like a document, it is the thing you came to do and takes the page.
+  meeting: 'full-page',
   finance: 'side-peek',
   contact: 'center-peek',
   'collection-item': 'center-peek',

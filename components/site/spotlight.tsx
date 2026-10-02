@@ -21,9 +21,9 @@ import { Tabs as RT } from 'radix-ui';
 import { type IconType } from '@/components/ds/icons';
 import { cn } from '@/lib/cn';
 import { type MarkPlacement } from './halftone';
-import { Dwell, useAutoAdvance } from './use-auto-advance';
+import { DwellLine, useAutoAdvance } from './use-auto-advance';
 import { Cell, Eyebrow, HUE, IconTile, Joints, Stage, type Field, type Hue } from './visual';
-import { Words } from './words';
+import { Title } from './words';
 
 export type Feature = {
   title: string;
@@ -42,7 +42,8 @@ export function Spotlight({
   hue: Hue;
   icon: IconType;
   name: string;
-  title: string;
+  /** The claim, and its second clause in the quieter tone (words.tsx `Title`). */
+  title: [string, string];
   features: Feature[];
   /** The lobe of the mark its stage is printed with. */
   mark: MarkPlacement;
@@ -50,7 +51,7 @@ export function Spotlight({
 }) {
   // Destructured on purpose: reading a field off the object that also holds the ref reads, to the
   // React Compiler's rules, as reading the ref during render.
-  const { ref, active, auto, running, choose, next, stop, hold } = useAutoAdvance(features.length);
+  const { ref, active, running, choose, next, stop, hold } = useAutoAdvance(features.length);
 
   return (
     <RT.Root asChild value={String(active)} onValueChange={(v) => choose(Number(v))} orientation="vertical">
@@ -64,15 +65,15 @@ export function Spotlight({
         className="site-row col-span-full grid scroll-mt-20 grid-cols-subgrid gap-px"
       >
         <Joints />
-        <Cell pad className={cn('flex flex-col justify-center py-14 sm:py-16 lg:col-span-6 lg:py-20', flip && 'lg:order-2')}>
+        <Cell pad className={cn('site-head flex flex-col justify-center lg:col-span-6', flip && 'lg:order-2')}>
           {/* Arrives as one sentence: the area's name, its heading a word at a time, then its list. */}
           <div data-reveal-group>
             <Eyebrow hue={hue} icon={icon} data-reveal="rise">{name}</Eyebrow>
-            <h2 id={`${id}-title`} data-reveal="words" className="mt-6 max-w-[15ch] text-balance font-editorial text-h1 text-ink-900 sm:text-headline"><Words>{title}</Words></h2>
+            <h2 id={`${id}-title`} data-reveal="words" className="mt-6 max-w-[16ch] text-balance font-editorial text-headline-sm text-ink-900 sm:text-headline"><Title then={title[1]}>{title[0]}</Title></h2>
 
             {/* The area's hue is set ONCE, here: the tile below takes it only while its row is the
                 one showing, and the rule that times the row is the same hue at ink strength. */}
-            <RT.List aria-label={`${name}: what it does`} className={cn('mt-10 flex flex-col border-t border-line', HUE[hue])}>
+            <RT.List aria-label={`${name}: what it does`} className={cn('mt-12 flex flex-col border-t border-line lg:mt-16', HUE[hue])}>
               {features.map((f, i) => (
                 <RT.Trigger
                   key={f.title}
@@ -80,7 +81,7 @@ export function Spotlight({
                   data-reveal="rise"
                   // No fill on hover (user, 2026-09-26: "this grey patch looks so bad, I want only the text
                   // and content to highlight"): the words and the glyph darken, nothing else changes.
-                  className="focus-ring group relative flex items-start gap-4 rounded-xs border-b border-line py-3.5 text-start lg:py-5"
+                  className="focus-ring group relative flex items-start gap-4 rounded-xs border-b border-line py-4 text-start lg:py-6"
                 >
                   <IconTile icon={f.icon} hue={hue} showing="state" />
                   {/* The title's first line centres on the tile (a 28px line beside a 36px tile); the
@@ -89,9 +90,11 @@ export function Spotlight({
                       the title, use Rubik, it looks so small next to the icon"). */}
                   <span className="min-w-0 flex-1 pt-1">
                     <span className="block font-editorial text-title-3 font-medium text-ink-500 transition-colors duration-[var(--site-hover)] ease-hover group-hover:text-ink-800 group-data-[state=active]:text-ink-900">{f.title}</span>
-                    <span className="mt-2 block max-w-[46ch] text-body-lg leading-relaxed text-ink-500 transition-colors duration-[var(--site-hover)] ease-hover group-hover:text-ink-600 group-data-[state=active]:text-ink-600 max-lg:hidden">{f.body}</span>
+                    <span className="mt-2 block max-w-[416px] text-body-lg text-ink-500 transition-colors duration-[var(--site-hover)] ease-hover group-hover:text-ink-600 group-data-[state=active]:text-ink-600 max-lg:hidden">{f.body}</span>
                   </span>
-                  {i === active && auto && <Dwell onEnd={next} />}
+                  {/* These rows are DRAWN with a bottom rule, so the rule is the timer: filling
+                      it is one mark, where a box round the tile would be a second. */}
+                  {i === active && <DwellLine onEnd={next} />}
                 </RT.Trigger>
               ))}
             </RT.List>

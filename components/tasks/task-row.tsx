@@ -106,7 +106,7 @@ export function TaskRow({
   // The divider on the outer box, the wash on an inner one — see components/tasks/row-surface.ts. The LEADING inset
   // is the panel's (`--panel-px`), so a row's checkbox lines up with the heading above it. The HEIGHT is declared:
   // a row's rhythm must not be decided by whichever control was added last (a 28px star once made this 48px).
-  const surface = rowSurface({ selected, last, heightClass: 'h-[var(--row-task)]', padding: 'items-center gap-3 px-[var(--panel-px)]' });
+  const surface = rowSurface({ selected, last, heightClass: 'h-[var(--row-task)]', padding: 'items-center gap-3' });
   const hasMenu = !!menu || !!move;
   return (
     <div className={surface.outer}>
@@ -181,7 +181,7 @@ export function TaskRow({
             // On, the FILLED glyph is the state — the toolbar-toggle wash behind it made a grey tile on the one
             // highlighted row of the list, heavier than anything else on it (2026-09-22). aria-pressed still says it.
             className={cn('[@media(pointer:coarse)]:after:w-6', task.highlight ? 'bg-transparent text-ink-700 hover:bg-surface-hover active:bg-surface-hover' : 'reveal-on-hover')}
-            icon={<Icon icon={Highlight} size={14} weight={task.highlight ? 'fill' : 'regular'} />}
+            icon={<Icon icon={Highlight} size={14} state={!!task.highlight} />}
           />
         )}
 
@@ -198,7 +198,7 @@ export function TaskRow({
               onCloseAutoFocus={(e) => { if (opening.current) { e.preventDefault(); opening.current = false; } }}>
               <DropdownMenuItem icon={<Icon icon={Pencil} size={16} />} onSelect={() => { opening.current = true; onOpen(); }}>Open</DropdownMenuItem>
               {onHighlight && (
-                <DropdownMenuItem icon={<Icon icon={Highlight} size={16} weight={task.highlight ? 'fill' : 'regular'} />} onSelect={onHighlight}>
+                <DropdownMenuItem icon={<Icon icon={Highlight} size={16} state={!!task.highlight} />} onSelect={onHighlight}>
                   {task.highlight ? 'Remove highlight' : 'Highlight'}
                 </DropdownMenuItem>
               )}

@@ -7,6 +7,7 @@ import { commentsSupported } from '@/lib/actions/comments';
 import { PageStamp } from '@/components/shell/page-stamp';
 import { pageScope } from '@/lib/page-scope';
 import { currentProfile } from '@/lib/profile';
+import { readTimeZone } from '@/lib/date';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,6 +60,8 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
         spaces={spaces.map((s) => ({ id: s.id, name: s.name, emoji: s.emoji }))}
         activeSpaceId={sid}
         commentsEnabled={commentsEnabled}
+        // The zone the index's Today/Yesterday headings are computed in, on the server AND in the browser.
+        timeZone={readTimeZone(profile?.preferences)}
       />
     </>
   );

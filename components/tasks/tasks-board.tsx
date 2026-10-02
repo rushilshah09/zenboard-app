@@ -177,7 +177,7 @@ function Column({ col, subByParent, settling, onToggle, onOpen, onAdd }: {
         </SortableContext>
 
         {active.length === 0 && completed.length === 0 && (
-          <p className="px-2 py-3 text-caption text-ink-500">Nothing here yet.</p>
+          <p className="px-2 py-3 text-caption text-ink-500">Drag a task here.</p>
         )}
 
         <CompletedSection count={completed.length} className="mt-1 border-t-0">

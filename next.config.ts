@@ -46,5 +46,11 @@ const nextConfig: NextConfig = {
 export default nextConfig;
 
 // Enables getCloudflareContext() (Cloudflare bindings/env) during `next dev`.
+//
+// GUARDED, because it is FOR DEV — the name says so. Unguarded it also ran during `next build`,
+// where it opens a remote binding session against Cloudflare's `workers/subdomain/edge-preview`
+// API for the `ai` binding. When that API is unwell the BUILD dies with
+// "Failed to start the remote proxy session" and nothing ships — which it did, twice, on a tree
+// whose tests were green. A production build has no business holding a dev session open.
 import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
-initOpenNextCloudflareForDev();
+if (process.env.NODE_ENV === "development") initOpenNextCloudflareForDev();

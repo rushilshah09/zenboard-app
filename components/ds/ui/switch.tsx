@@ -1,7 +1,7 @@
 import * as React from "react";
 import * as RS from "@radix-ui/react-switch";
-import { Loader2 } from "@/lib/icons";
 import { cn } from "@/lib/cn";
+import { Spinner } from "./spinner";
 
 // design-system.md §4.18 — a switch takes effect IMMEDIATELY (needs a Save
 // button? it's a checkbox). Label sits left; never render "On"/"Off".
@@ -64,7 +64,7 @@ export const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(function 
       >
         {loading && (
           <span className="grid size-full place-items-center">
-            <Loader2 className={cn("animate-spin text-ink-500", md ? "size-3" : "size-2.5")} aria-hidden />
+            <Spinner size={md ? 12 : 10} className="text-ink-500" />
           </span>
         )}
       </RS.Thumb>

@@ -7,10 +7,11 @@
 // then breaks. Nothing is saved; "Start over" puts each one back.
 
 import * as React from 'react';
-import { Check, Clock, RotateCcw } from '@/components/ds/icons';
-import { Badge, Button, Checkbox, Icon, SegmentedControl, Tooltip, cardClass } from '@/components/ds/ui';
+import { Check, Clock, Folder, Link as LinkIcon, RotateCcw } from '@/components/ds/icons';
+import { Avatar, AvatarGroup, Badge, Button, Checkbox, Icon, SegmentedControl, Tooltip, cardClass } from '@/components/ds/ui';
 import { cn } from '@/lib/cn';
 import { formatMoney } from '@/lib/money';
+import { FACES } from './faces';
 
 const money = (n: number) => formatMoney(n, { exact: true });
 
@@ -18,7 +19,12 @@ const money = (n: number) => formatMoney(n, { exact: true });
 
 const DAY_START = 9 * 60;
 const DAY_END = 17 * 60;
-const PX_PER_MIN = 0.62;
+/** Tall enough that a half-hour call holds its one line (0.62 clipped "Ridgeline call" in half). */
+const PX_PER_MIN = 0.8;
+/** The grid's own inset above 9:00 and below 17:00, so the first and last labels are not cut. */
+const INSET = 12;
+/** Where the day is now, drawn as the product's now line. */
+const NOW = 10 * 60 + 40;
 const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 
 type Block = { id: string; title: string; start: number; end: number; event?: boolean };
@@ -51,24 +57,26 @@ export function TimeboxDemo() {
   };
 
   return (
-    <div className="grid gap-5 sm:grid-cols-[minmax(0,15rem)_minmax(0,1fr)]">
+    <div className="grid gap-4 sm:grid-cols-[minmax(0,12.5rem)_minmax(0,1fr)]">
       <div className="flex flex-col gap-2">
-        <p className="text-overline text-ink-500">To schedule</p>
+        <p className="text-overline">To schedule</p>
         {QUEUE.map((q) => {
           const at = placed.find((p) => p.id === q.id);
           return (
-            <div key={q.id} className={cardClass('flex items-center gap-3 px-3 py-2.5')}>
-              <div className="min-w-0 flex-1">
-                <p className={cn('truncate text-ui', at ? 'text-ink-500' : 'text-ink-900')}>{q.title}</p>
-                <p className="text-caption tabular-nums text-ink-500">
+            // The title gets the card's whole width and two lines, and the button its own row: at this
+            // width a button beside the words cut "Finish the logo presentation" to "Finish the logo pres…".
+            <div key={q.id} className={cardClass('flex flex-col gap-2 px-3 py-2.5')}>
+              <p className={cn('line-clamp-2 text-ui', at ? 'text-ink-500' : 'text-ink-900')}>{q.title}</p>
+              <div className="flex h-6 items-center justify-between gap-2">
+                <span className="text-caption tabular-nums text-ink-500">
                   {at ? `${hhmm(at.start)} – ${hhmm(at.end)}` : q.mins >= 60 ? `${q.mins / 60}h` : `${q.mins}m`}
-                </p>
+                </span>
+                {at ? (
+                  <Icon icon={Check} size={16} className="shrink-0 text-success-600" aria-label="Scheduled" />
+                ) : (
+                  <Button size="xs" variant="secondary" onClick={() => schedule(q)}>Schedule</Button>
+                )}
               </div>
-              {at ? (
-                <Icon icon={Check} size={16} className="shrink-0 text-success-600" aria-label="Scheduled" />
-              ) : (
-                <Button size="xs" variant="secondary" onClick={() => schedule(q)}>Schedule</Button>
-              )}
             </div>
           );
         })}
@@ -79,28 +87,43 @@ export function TimeboxDemo() {
         )}
       </div>
 
-      <div className={cardClass('relative')} style={{ height: (DAY_END - DAY_START) * PX_PER_MIN + 16 }}>
+      <div className={cardClass('relative overflow-hidden')} style={{ height: (DAY_END - DAY_START) * PX_PER_MIN + INSET * 2 }}>
+        {/* THE HOURS. Each row is ZERO tall and centres its two children on the hour itself, so the
+            label and its line share one centre. Both used to be nudged up by half their OWN heights,
+            which left every label 8px above its line. */}
         {Array.from({ length: (DAY_END - DAY_START) / 60 + 1 }, (_, i) => (
-          <div key={i} className="absolute inset-x-0 flex items-center gap-2 px-2" style={{ top: 8 + i * 60 * PX_PER_MIN }}>
-            <span className="w-10 -translate-y-1/2 text-caption tabular-nums text-ink-500">{hhmm(DAY_START + i * 60)}</span>
-            <span className="h-px flex-1 -translate-y-1/2 bg-line-soft" />
+          <div key={i} className="absolute inset-x-0 flex h-0 items-center" style={{ top: INSET + i * 60 * PX_PER_MIN }}>
+            <span className="w-12 shrink-0 pe-2 text-end text-caption tabular-nums text-ink-500">{hhmm(DAY_START + i * 60)}</span>
+            <span className="h-px flex-1 bg-line-soft" />
           </div>
         ))}
-        {day.map((b) => (
-          <div
-            key={b.id}
-            className={cn(
-              'absolute end-2 start-14 overflow-hidden rounded-md px-2.5 py-1',
-              b.event ? 'bg-surface-fill text-ink-800' : 'site-swap zb-enter border border-line-strong bg-surface-selected text-ink-900',
-            )}
-            style={{ top: 8 + (b.start - DAY_START) * PX_PER_MIN, height: (b.end - b.start) * PX_PER_MIN - 2 }}
-          >
-            <p className="truncate text-caption font-medium">{b.title}</p>
-            {(b.end - b.start) >= 45 && (
-              <p className="truncate text-caption text-ink-500">{b.event ? 'Google Calendar' : `${hhmm(b.start)} – ${hhmm(b.end)}`}</p>
-            )}
-          </div>
-        ))}
+        {day.map((b) => {
+          const tall = (b.end - b.start) >= 45;
+          return (
+            <div
+              key={b.id}
+              className={cn(
+                'absolute end-2 start-12 flex overflow-hidden rounded-md',
+                b.event ? 'bg-surface-fill text-ink-800' : 'site-swap zb-enter bg-surface-selected text-ink-900 ring-1 ring-inset ring-line-strong',
+              )}
+              style={{ top: INSET + (b.start - DAY_START) * PX_PER_MIN + 1, height: (b.end - b.start) * PX_PER_MIN - 2 }}
+            >
+              {/* A meeting from the calendar wears its calendar's colour on its edge; a task you placed wears ink. */}
+              <span className="w-[3px] shrink-0" style={{ background: b.event ? 'var(--color-label-slate)' : 'var(--color-ink-900)' }} />
+              <div className={cn('min-w-0 flex-1 px-2', tall ? 'py-1' : 'flex items-center gap-1.5')}>
+                <p className="truncate text-caption font-medium">{b.title}</p>
+                <p className="truncate text-caption tabular-nums text-ink-500">
+                  {b.event ? (tall ? 'Google Calendar' : hhmm(b.start)) : `${hhmm(b.start)} – ${hhmm(b.end)}`}
+                </p>
+              </div>
+            </div>
+          );
+        })}
+        {/* NOW, as the product draws it: the accent, across the day, with a dot where the hours end. */}
+        <div aria-hidden className="absolute end-0 start-11 flex h-0 items-center" style={{ top: INSET + (NOW - DAY_START) * PX_PER_MIN }}>
+          <span className="size-2 shrink-0 rounded-full bg-accent" />
+          <span className="h-px flex-1 bg-accent" />
+        </div>
       </div>
     </div>
   );
@@ -135,14 +158,28 @@ export function BoardDemo() {
   const [view, setView] = React.useState<'list' | 'board'>('list');
   const [tasks, setTasks] = React.useState(PROJECT);
   const toggle = (id: string) => setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
+  const done = tasks.filter((t) => t.done).length;
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
-        <p className="font-editorial text-title-3 text-ink-900">Ridgeline rebrand</p>
+      {/* WHO IS ON IT, HOW FAR IT HAS GOT, AND HOW YOU ARE LOOKING AT IT: one toolbar, as the project
+          page has. The people are the product's AvatarGroup (hand-drawn initials at 18px overlapped
+          into "A.PISM"), and "3 of 7 done" is COUNTED from the same tasks the list below renders, so
+          ticking one moves the bar: a figure that agrees with the rows by construction cannot drift. */}
+      <div className="flex items-center gap-2.5 text-caption text-ink-500">
+        <AvatarGroup people={[{ name: 'Alex Moreau', src: FACES.alex }, { name: 'Priya Nair', src: FACES.priya }]} size="xs" />
+        <span className="tabular-nums">{done} of {tasks.length} done</span>
+        <span aria-hidden>·</span>
+        <span className="max-sm:hidden">Due Nov 14</span>
+        <span aria-hidden className="block h-1 w-12 overflow-hidden rounded-full bg-surface-fill max-sm:hidden">
+          {/* scaleX, not width: width is a layout property and the house animates transform and
+              opacity only (app/design-system.test.ts). Origin left so it grows from the start. */}
+          <span className="block h-full w-full origin-left rounded-full bg-accent transition-transform duration-slow ease-out-quiet" style={{ transform: `scaleX(${done / tasks.length})` }} />
+        </span>
         <SegmentedControl
           aria-label="View"
           fit="content"
+          className="ms-auto"
           value={view}
           onValueChange={(v) => setView(v as 'list' | 'board')}
           options={[{ value: 'list', label: 'List' }, { value: 'board', label: 'Board' }]}
@@ -199,9 +236,12 @@ export function DocDemo() {
   return (
     <div className="w-full">
       <p className="font-editorial text-title-1 text-ink-900">Ridgeline, brand brief</p>
-      <dl className="mt-4 grid grid-cols-[88px_1fr] gap-y-2 text-ui">
-        <dt className="text-ink-500">Client</dt><dd className="text-ink-900">Ridgeline</dd>
+      <dl className="mt-4 grid grid-cols-[88px_1fr] items-center gap-y-2 text-ui">
+        <dt className="text-ink-500">Client</dt>
+        <dd className="flex items-center gap-2 text-ink-900"><Avatar name="Priya Nair" src={FACES.priya} size="xs" decorative />Ridgeline</dd>
         <dt className="text-ink-500">Status</dt><dd><Badge status="info">In review</Badge></dd>
+        <dt className="text-ink-500">Project</dt>
+        <dd><span className="inline-flex items-center gap-1.5 rounded-xs bg-surface-fill px-1.5 py-0.5 text-ink-900"><Icon icon={Folder} size={14} className="text-ink-500" />Ridgeline rebrand</span></dd>
       </dl>
       <div className="mt-6 flex flex-col gap-3 border-t border-line-soft pt-6 text-body text-ink-800">
         <p>
@@ -223,6 +263,11 @@ export function DocDemo() {
           />
         ))}
       </div>
+      {/* The other half of a link: what points HERE. A brief that knows what it is about is also
+          known by the things that are about it. */}
+      <p className="mt-5 flex items-center gap-2 border-t border-line-soft pt-3 text-caption text-ink-500">
+        <Icon icon={LinkIcon} size={14} className="shrink-0" />Linked from 2 tasks · Logo presentation, Brand guidelines
+      </p>
     </div>
   );
 }
@@ -242,8 +287,9 @@ export function InvoiceDemo() {
     <div className="w-full">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-overline text-ink-500">Invoice to Ridgeline</p>
+          <p className="text-overline">Invoice to Ridgeline</p>
           <p className="mt-1 font-mono text-ui text-ink-900">INV-021</p>
+          <p className="mt-1 flex items-center gap-1.5 text-caption text-ink-500"><Avatar name="Priya Nair" src={FACES.priya} size="xs" decorative />Priya Nair · issued Oct 6</p>
         </div>
         <Badge status={paid ? 'success' : 'info'}>{paid ? 'Paid' : 'Sent'}</Badge>
       </div>

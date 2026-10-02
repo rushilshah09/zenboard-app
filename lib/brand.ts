@@ -10,11 +10,12 @@
 // stylesheet, so they become the brand's own colours: berry for the mark, the palette's ink for the
 // letters.
 
-import { ACCENTS } from './theme';
+import { BRAND_BERRY } from './theme';
 
-/** Berry, the mark's colour (lib/theme.ts), and the marketing palette's ink, for the lettering. */
+/** The brand's own berry (the artwork's colour, not the calmer UI accent — lib/theme.ts), and the
+ *  marketing palette's ink, for the lettering. */
 export const BRAND_COLOURS = {
-  mark: ACCENTS.find((a) => a.id === 'berry')?.hex ?? '#C41C72',
+  mark: BRAND_BERRY,
   ink: '#191919',
 } as const;
 

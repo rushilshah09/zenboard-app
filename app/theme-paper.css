@@ -73,6 +73,9 @@ html[data-skin='paper'] {
   --muted: #FCFBF7;               /* the card's own white: an inset is ruled, never shaded */
   --secondary: #FCFBF7;
   --accent-surface: #E9E7E1;      /* selected — a highlighter pass, in stock */
+  /* The shell's ground. The default skin declares its own desk now (theme-shadcn.css);
+     paper keeps the stock it always resolved to. */
+  --desk: #E9E7E1;
   --sidebar: #FCFBF7;             /* a cell too — ruled off, never filled grey */
   --sidebar-accent: #E9E7E1;
 
@@ -81,6 +84,11 @@ html[data-skin='paper'] {
      that still clears 4.5:1 on ALL THREE stocks (sheet 5.9 / desk 5.2 / inset
      5.0), which is the same rule the default skin's secondary ink follows. */
   --foreground: #26241E;
+  /* Paper's washes and edges stay made of PAPER'S ink, exactly as before the
+     default skin moved them onto --tint (theme-shadcn.css): the skin overrides
+     the token, and no component learns the skin exists. */
+  --tint: var(--foreground);
+  --tint-line: var(--foreground);
   --card-foreground: #26241E;
   --popover-foreground: #26241E;
   --secondary-foreground: #26241E;
@@ -388,7 +396,7 @@ html[data-skin='paper'] body {
    memory is how it happened — the same mistake as the accent and the panel ring. */
 html[data-skin='paper'] :where(
   .bg-surface-raised, .bg-paper, .bg-paper-2, .bg-paper-3, .bg-paper-4, .bg-paper-5,
-  .bg-popover, .bg-card, .bg-surface, .bg-surface-sunken, .bg-surface-secondary,
+  .bg-popover, .bg-card, .bg-surface, .bg-surface-sunken, .bg-surface-band, .bg-surface-secondary,
   .bg-surface-fill, .bg-surface-fill-hover, .bg-surface-hover, .bg-surface-active,
   .bg-surface-selected, .bg-surface-disabled, .bg-surface-row,
   .bg-background, .bg-canvas, .bg-sidebar
@@ -401,10 +409,12 @@ html[data-skin='paper'] :where(
    surface; this one adds the dots to the surfaces that are CELLS — a card, a slip, a menu. The
    canvas and the sidebar are deliberately left out: they are the desk and the folder the cells
    lie on, and a desk has no corners. The list is what the app REALLY draws with, read out of the
-   DOM rather than guessed: a Panel is `bg-surface-sunken`, which the first version of this rule
-   missed entirely, so the dots landed on nothing. The whole stack is re-declared because background-image is
+   DOM rather than guessed: a Panel is `bg-surface-band` (`bg-surface-sunken` until 2026-09-29,
+   when the card's band got the rung light never had — BOTH stay listed, because a recess inside a
+   surface is still a cell), which the first version of this rule missed entirely, so the dots
+   landed on nothing. The whole stack is re-declared because background-image is
    one property: naming only the dots here would drop the grain underneath them. */
-html[data-skin='paper'] :where(.bg-surface-sunken, .bg-surface-raised, .bg-paper, .bg-card, .bg-popover) {
+html[data-skin='paper'] :where(.bg-surface-sunken, .bg-surface-band, .bg-surface-raised, .bg-paper, .bg-card, .bg-popover) {
   background-image: var(--paper-dots), var(--paper-laid), var(--paper-stock);
   background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, repeat, repeat;
   background-blend-mode: normal, normal, normal, normal, normal, var(--paper-blend);

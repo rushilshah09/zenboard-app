@@ -163,9 +163,9 @@ export function Combobox(props: ComboboxProps | MultiComboboxProps) {
       <RP.Anchor asChild>
         <div
           className={cn(
-            "flex min-h-8 w-full cursor-text flex-wrap items-center gap-1 rounded-sm border bg-surface-raised px-1.5 py-1",
+            "flex min-h-8 w-full cursor-text flex-wrap items-center gap-1 rounded-sm border px-1.5 py-1",
             // Same field rule as TextInput / Select / Textarea.
-            "border-line-strong transition-colors duration-instant hover:border-line-control",
+            "border-transparent bg-surface-fill transition-colors duration-instant hover:wash-over focus-within:bg-transparent focus-within:border-[var(--accent)]",
             // One focus recipe app-wide; the berry ring compiled to nothing (see input.tsx).
             "focus-within:shadow-[0_0_0_2px_var(--color-surface-panel),0_0_0_4px_var(--color-border-focus)]",
             props.multiple && "max-h-24 overflow-y-auto",

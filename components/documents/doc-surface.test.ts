@@ -31,34 +31,41 @@ function region(marker: string, chars = 1400): string {
   return src.slice(i, i + chars);
 }
 
+// ── RE-ANCHORED 2026-09-30 onto components/documents/doc-index.tsx, where the redesigned index
+// lives. Same properties as before, in the new file's spelling (Tailwind classes, the card recipe).
+const index = readFileSync('components/documents/doc-index.tsx', 'utf8');
+function indexRegion(from: string, to: string): string {
+  const i = index.indexOf(from);
+  expect(i, `marker moved: ${from}`).toBeGreaterThan(-1);
+  const j = index.indexOf(to, i);
+  expect(j, `marker moved: ${to}`).toBeGreaterThan(i);
+  return index.slice(i, j);
+}
+
 describe('the grid card', () => {
-  const card = region('// ── Grid card ──', 3200);
+  const card = indexRegion('function DocTile(', 'function DocMiniature(');
 
-  it('paints ONE surface', () => {
-    expect(card, 'the card itself is the surface').toMatch(/background: 'var\(--paper\)'/);
-    expect(card, 'and nothing inside it paints a second one')
-      .not.toMatch(/background: 'var\(--paper-2\)'[^}]*\}\}>\s*\{lines\.length/);
+  it('paints ONE card surface, through the recipe', () => {
+    expect(card, 'the tile is the house\'s openable card').toMatch(/cardInteractiveClass\(/);
+    expect(card, 'no hand-spelled card fill').not.toMatch(/\bbg-paper\b/);
   });
 
-  it('separates header from body with a hairline, not a fill', () => {
-    expect(card).toMatch(/borderBottom: '1px solid var\(--color-line-soft\)'/);
-  });
-
-  it('has an edge against the canvas', () => {
-    expect(card).toMatch(/border: '1px solid var\(--line\)'/);
+  it('separates the picture from the title with a hairline, not a fill', () => {
+    expect(card).toMatch(/border-b border-line-soft/);
   });
 });
 
 describe('the list row', () => {
-  const row = region('// ── List row ──', 1600);
+  const row = indexRegion('function DocRow(', 'function DocTile(');
 
-  it('is the same surface as the card — a doc looks like a doc in both layouts', () => {
-    expect(row).toMatch(/background: 'var\(--paper\)'/);
-    expect(row, '`--paper-2` measured 1.02:1 on the gallery canvas').not.toMatch(/background: 'var\(--paper-2\)'/);
+  it('rides ONE panel instead of being a card of its own', () => {
+    // The old list drew every row as its own bordered white card: fifteen boxes 6px apart.
+    expect(index, 'the list is one card per group').toMatch(/cardClass\('overflow-hidden'\)/);
+    expect(row, 'a row paints no resting fill — only the hover wash').not.toMatch(/\bbg-(paper|surface-raised|surface-band)\b/);
   });
 
-  it('carries the same hairline', () => {
-    expect(row).toMatch(/border: '1px solid var\(--line\)'/);
+  it('separates rows with a hairline', () => {
+    expect(row).toMatch(/border-t border-line-soft/);
   });
 });
 

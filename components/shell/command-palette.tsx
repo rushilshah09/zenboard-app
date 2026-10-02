@@ -10,13 +10,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusReturn } from '@/lib/use-focus-return';
 import { usePathname, useRouter } from 'next/navigation';
-import { Sun, House, Flame, Calendar, Target, Kanban, Users, MessageCircle, Landmark, BookOpen, Forms, Timer, Moon, Repeat, Plus, Search, SquareCheck, SquarePen, FileText, ListChecks, Inbox, Receipt, Brain, type IconType, Video, CalendarCheck } from '@/components/ds/icons';
+import { Sun, House, Flame, Calendar, Target, Kanban, Users, MessageCircle, Landmark, BookOpen, Forms, Timer, Moon, Repeat, Plus, Search, Sparkles, ListChecks, Inbox, type IconType } from '@/components/ds/icons';
 import { Icon } from "@/components/ds/ui";
 import { Kbd } from '@/components/ds/ui';
 import { createClient } from '@/lib/supabase/client';
 import { addTask } from '@/lib/actions/tasks';
 import { parseTask, chipSummary } from '@/lib/task-parse';
-import type { EntityType } from '@/lib/connected';
+import { ENTITY_TYPES, type EntityType } from '@/lib/connected';
+import { RECORD_FACE } from '@/components/ds/record-face';
+import { openAsk } from '@/components/ask/ask-panel';
 import { searchRecords } from '@/lib/search';
 import { recallMemory } from '@/lib/actions/memory';
 import { useChanged } from '@/lib/use-changed';
@@ -38,28 +40,24 @@ type Item = { id: string; group: string; label: string; icon: IconType; href?: s
 // addressable" so it can render an unlinked row instead of a link that lands on
 // a list. The @-mention picker draws the same types with the same glyphs; a
 // record has one face in this product.
-const GROUPS: Record<EntityType, { group: string; icon: IconType; hub: string }> = {
-  task: { group: 'Tasks', icon: SquareCheck, hub: '/tasks' },
-  project: { group: 'Projects', icon: Kanban, hub: '/projects' },
-  client: { group: 'Clients', icon: Users, hub: '/clients' },
-  doc: { group: 'Docs', icon: FileText, hub: '/documents' },
-  invoice: { group: 'Finance', icon: Receipt, hub: '/money' },
-  form: { group: 'Forms', icon: SquarePen, hub: '/forms' },
-  goal: { group: 'Goals', icon: Target, hub: '/horizon' },
-  // ⌘K RECALL (§7X §5.1) is this one line. The plan asked for "a Recall section
-  // in the command palette"; because `searchRecords` is the ONE index, a group
-  // name is the entire integration. A second search box is on the never-list,
-  // and this is what honouring that looks like in practice.
-  memory: { group: 'Recall', icon: Brain, hub: '/memory' },
-  content: { group: 'Content', icon: Video, hub: '/content' },
-  event: { group: 'Calendar', icon: CalendarCheck, hub: '/calendar' },
-  // Present so the map is total: these types have no record route yet (§7J) and
-  // `searchRecords` does not fetch them, but a new one must land somewhere
-  // honest rather than crash the palette.
-  meeting: { group: 'Calendar', icon: Calendar, hub: '/calendar' },
-  request: { group: 'Clients', icon: Users, hub: '/clients' },
-  feedback: { group: 'Clients', icon: Users, hub: '/clients' },
+// The HEADING each type sits under here. The glyph and the fallback hub moved to
+// `components/ds/record-face.ts` when Ask needed the same ones — they are facts
+// about the record, and this is a fact about this list, which is why only this
+// half stayed. `RECORD_FACE` carries the note about types with no route yet.
+//
+// ⌘K RECALL (§7X §5.1) is the `memory` line. The plan asked for "a Recall
+// section in the command palette"; because `searchRecords` is the ONE index, a
+// group name is the entire integration. A second search box is on the
+// never-list, and this is what honouring that looks like in practice.
+const GROUP: Record<EntityType, string> = {
+  task: 'Tasks', project: 'Projects', client: 'Clients', doc: 'Docs', invoice: 'Finance',
+  form: 'Forms', goal: 'Goals', memory: 'Recall', content: 'Content', event: 'Calendar',
+  meeting: 'Calendar', request: 'Clients', feedback: 'Clients',
 };
+
+const GROUPS: Record<EntityType, { group: string; icon: IconType; hub: string }> = Object.fromEntries(
+  ENTITY_TYPES.map((t) => [t, { group: GROUP[t], ...RECORD_FACE[t] }]),
+) as Record<EntityType, { group: string; icon: IconType; hub: string }>;
 
 /**
  * The fixed rows, identical on every page.
@@ -76,7 +74,7 @@ function staticItems(): Item[] {
     { id: 'n-inbox', group: 'Navigate', label: 'Go to Inbox', icon: Inbox, href: '/tasks?view=inbox', kbd: 'G I' },
     { id: 'n-tasks', group: 'Navigate', label: 'Go to Tasks', icon: ListChecks, href: '/tasks', kbd: 'G K' },
     { id: 'n-calendar', group: 'Navigate', label: 'Go to Calendar', icon: Calendar, href: '/calendar' },
-    { id: 'n-week', group: 'Navigate', label: 'Tasks — Week view', icon: ListChecks, href: '/tasks?view=week', kbd: 'G W' },
+    { id: 'n-week', group: 'Navigate', label: 'Tasks, Week view', icon: ListChecks, href: '/tasks?view=week', kbd: 'G W' },
     { id: 'n-horizon', group: 'Navigate', label: 'Go to Goals', icon: Target, href: '/horizon', kbd: 'G H' },
     { id: 'n-habits', group: 'Navigate', label: 'Go to Habits', icon: Flame, href: '/habits', kbd: 'G B' },
     // "Go to Memory" removed with the nav row (2026-09-07). The `memory` entry in
@@ -214,6 +212,23 @@ export function CommandPalette() {
         },
       });
     }
+    // ── THE FALL-THROUGH TO ASK ─────────────────────────────────────────────
+    // Anything typed can become a task; anything typed can also be a SENTENCE. This row is what
+    // means nobody has to learn which box to use: you start in the fast one (a list, no model, no
+    // latency) and fall through to the patient one carrying your words, instead of closing this,
+    // finding the other, and typing it again.
+    //
+    // It is ALWAYS last and always present, never "only when nothing matched". This palette earns
+    // its speed from muscle memory — the same reason `staticItems` refuses to reorder itself by
+    // page — and a row that comes and goes depending on your results is one nobody can aim at.
+    if (q.trim()) {
+      out.push({
+        id: 'ask', group: 'Ask', label: `Ask “${q.trim()}”`, icon: Sparkles,
+        hint: 'A',
+        run: () => openAsk(q.trim()),
+      });
+    }
+
     return out;
     // `pathname` is gone from the deps with `staticItems`' parameter — this memo
     // no longer reads it, so keeping it here would rebuild every row on every
@@ -242,12 +257,27 @@ export function CommandPalette() {
 
   // NO entrance animation, deliberately. This opens on ⌘K, dozens of times a
   // day, and animation on a keyboard-initiated surface reads as lag however
-  // short it is — Raycast opens instantly for the same reason. The panel never
-  // animated; the scrim used to fade over 160ms, so the two halves of one
-  // surface disagreed.
+  // short it is — Raycast opens instantly for the same reason. The scrim used
+  // to fade over 160ms, so the two halves of one surface disagreed.
+  //
+  // ── AND THE PANEL WAS STILL ANIMATING WHILE THIS COMMENT SAID IT WAS NOT ──
+  // The line below carried `animation: 'slideUp var(--duration-slow) …'` —
+  // a 12px rise and a fade, 200ms, on every ⌘K. Measured with
+  // `html[data-input="keyboard"]` set, to be sure the modality switch was not
+  // catching it: it was not, and it could not. That switch is
+  // `html[data-input="keyboard"] .zb-enter { animation: none !important }`
+  // (globals.css), and it needs the CLASS; this panel is styled inline and
+  // carries none, so the one rule written to stop exactly this could never
+  // reach it. Three things agreed it should not animate — CLAUDE.md
+  // ("nothing a keyboard opens animates: ⌘K … never do"), Emil's frequency
+  // table (100+/day → no animation, ever), and this comment — and it animated
+  // anyway for want of a class nobody noticed was missing.
+  // The fix is not to add `zb-enter`: that would only make it instant for the
+  // keyboard and keep the rise for a pointer, and this surface is the keyboard's
+  // either way. It simply does not animate. Guarded in app/design-system.test.ts.
   return (
     <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 'var(--z-modal)', background: 'color-mix(in srgb, var(--scrim-color) 36%, transparent)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: 80 }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(640px, calc(100vw - 32px))', maxHeight: '70vh', background: 'var(--color-surface-raised)', border: '1px solid var(--color-line-strong)', borderRadius: 'var(--r-xl)', boxShadow: 'var(--shadow-xl)', display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'slideUp var(--duration-slow) var(--ease-out-quiet)' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(640px, calc(100vw - 32px))', maxHeight: '70vh', background: 'var(--color-surface-raised)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--shadow-lift-3)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderBottom: '1px solid var(--line)' }}>
           <Icon icon={Search} size={16} style={{ color: 'var(--text-secondary)' }} />
           <input ref={inputRef} value={q} autoComplete="off" data-1p-ignore data-lpignore="true" onChange={(e) => setQ(e.target.value)} onKeyDown={onKey} placeholder="Search, navigate, or jump…" style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 'var(--text-h2-size)', lineHeight: 1.3, color: 'var(--ink)' }} />

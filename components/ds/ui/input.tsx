@@ -1,7 +1,8 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { Eye, EyeOff, Loader2, X } from "@/lib/icons";
+import { Eye, EyeOff, X } from "@/lib/icons";
 import { cn } from "@/lib/cn";
+import { Spinner } from "./spinner";
 import { useFieldProps } from "./field";
 
 // design-system.md §4.12 + Zenboard handoff — Text input. Resting: raised (ivory)
@@ -19,27 +20,50 @@ import { useFieldProps } from "./field";
 // `focus-ring` is the one recipe the rest of the app uses, and it keys off
 // `:focus-visible`, so it no longer fires on a mouse click either.
 export const inputBox = cva(
-  "w-full rounded-md border bg-surface-raised text-ink-900 placeholder:text-ink-500 " +
-    "transition-colors duration-instant " +
-    // EDGE TIER (2026-09-08). `border-line` is `--border`, the same token that
-    // draws a card edge and a divider — and on a white card a white field with
-    // that edge measured **1.13:1**, i.e. no visible field at all. A static
-    // surface and an interactive one are not the same job: -strong is the
-    // field tier (>=1.6:1), and hover firms to the control tier (>=3:1), so
-    // the hover is now something you can actually see. See app/tokens-light.css.
-    "border-line-strong hover:border-line-control focus-ring " +
+  "w-full rounded-sm border text-ink-900 placeholder:text-ink-500 " +
+    "transition-colors duration-instant focus-ring " +
     "aria-[invalid=true]:border-danger-500 " +
     "disabled:bg-surface-disabled disabled:text-ink-500 disabled:border-transparent " +
     "read-only:bg-surface-sunken read-only:border-transparent read-only:text-ink-700",
   {
     variants: {
+      // ── TONE (2026-09-25) ────────────────────────────────────────────────
+      // `soft` is the default because a field is not a card: it is a place to
+      // put something, and a recessed wash says that more quietly than a box
+      // drawn around nothing. Measured off the user's reference: the resting
+      // field is #F2F1EB on a #FAF9F5 sheet — 1.05:1, exactly what
+      // surface-sunken measures on a white card here — and it has NO edge until
+      // you touch it, at which point it lifts to the card's own fill and takes
+      // an accent edge. The focus RING is untouched (`focus-ring`, keyboard
+      // only); the accent border is what a mouse click gets, so both pointers
+      // see the field answer.
+      tone: {
+        // A WASH, not a tone. `bg-surface-sunken` is one absolute colour, and a field does not
+        // live on one ground: swept across twelve screens, six of them had a field sitting on a
+        // band or an inset of the SAME tone — 1.00:1, a field you cannot see. `surface-fill` is
+        // 6% of the theme's own ink, so it composites a step down from whatever is behind it, on
+        // a card, a band, a popover or a sheet, in both themes. Same reasoning as "state is a
+        // wash, never an elevation" (app/theme-bridge.test.ts), applied to a resting fill.
+        soft:
+          "bg-surface-fill border-transparent hover:wash-over " +
+          "focus:bg-transparent focus:border-[var(--accent)]",
+        // The bordered field, kept for a field that sits ON a wash — where a
+        // recessed fill would have nothing to be recessed from. EDGE TIER
+        // (2026-09-08): `border-line` is the divider tier, and on a white card
+        // a white field with that edge measured 1.13:1 — no visible field at
+        // all. -strong is the field tier (>=1.6:1); hover firms to -control.
+        outline: "bg-surface-raised border-line-strong hover:border-line-control",
+      },
       size: {
-        sm: "h-8 px-3 text-ui",   // 32px · handoff sm
-        md: "h-9 px-3 text-ui",   // 36px · handoff default (control-x 12px pad)
-        lg: "h-11 px-3 text-ui",  // 44px · handoff lg
+        // THE CONTROL LADDER, the same three heights a Button takes (28 · 32 · 36),
+        // so a field and the button beside it line up. They were 32 · 36 · 44 — every
+        // form put a 36px field next to a 32px button.
+        sm: "h-7 px-2.5 text-ui", // 28px · toolbars, filters, inline
+        md: "h-8 px-3 text-ui",   // 32px · default (= Button md)
+        lg: "h-9 px-3 text-ui",   // 36px · prominent
       },
     },
-    defaultVariants: { size: "md" },
+    defaultVariants: { size: "md", tone: "soft" },
   },
 );
 
@@ -87,6 +111,65 @@ export const inlineEdit = cva(
 /** Props every chromeless editor carries, so the exemption is declared once. */
 export const inlineEditProps = { "data-chromeless": "" } as const;
 
+// ── GrowText — a chromeless editor exactly as big as its words ───────────────
+//
+// A question typed into a form builder wraps onto two lines in the published form,
+// so it has to wrap where it is typed too, or the builder is lying about the page.
+// `field-sizing: content` does this in one declaration, and only Chromium has it:
+// in Firefox and older Safari a field keeps its default size, and a long question
+// scrolls sideways inside a 20-character box. So the box takes its size from an
+// invisible copy of its own text laid in the same grid cell — the long-standing way
+// to grow a field to fit that works in every browser.
+//
+// `inline` hugs the words (a label with "Optional" after it); otherwise it fills the
+// line. `singleLine` keeps Enter for the caller (next question) and folds pasted
+// newlines into spaces, for text that is one line wherever it is shown.
+export interface GrowTextProps extends Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "value" | "rows"> {
+  value: string;
+  /** The `inlineEdit` role the words take — title, subtitle, label, body, ui. */
+  as?: VariantProps<typeof inlineEdit>["as"];
+  inline?: boolean;
+  singleLine?: boolean;
+  /** Typography and colour, given to the field AND its measuring copy so the two agree to the pixel. */
+  textClassName?: string;
+}
+
+export const GrowText = React.forwardRef<HTMLTextAreaElement, GrowTextProps>(function GrowText(
+  { value, as = "body", inline = false, singleLine = false, textClassName, className, placeholder, onKeyDown, onChange, ...props },
+  ref,
+) {
+  const text = cn(inlineEdit({ as }), textClassName);
+  return (
+    <span className={cn(inline ? "inline-grid max-w-full" : "grid w-full", "min-w-0", className)}>
+      {/* The measure: same words, same type, never seen. A zero-width space keeps an empty
+          field one line tall, and a trailing newline from typing Enter its own line. */}
+      <span aria-hidden className={cn(text, "invisible col-start-1 row-start-1 whitespace-pre-wrap break-words")}>
+        {(value || placeholder || "") + "\u200b"}
+      </span>
+      <textarea
+        ref={ref}
+        rows={1}
+        // A textarea's default 20 columns would set the cell's minimum width, and an `inline`
+        // field would never hug a short label. One column hands the sizing to the measure.
+        cols={1}
+        value={value}
+        placeholder={placeholder}
+        onKeyDown={(e) => {
+          if (singleLine && e.key === "Enter") e.preventDefault();
+          onKeyDown?.(e);
+        }}
+        onChange={(e) => {
+          if (singleLine && /[\r\n]/.test(e.target.value)) e.target.value = e.target.value.replace(/[\r\n]+/g, " ");
+          onChange?.(e);
+        }}
+        className={cn(text, "col-start-1 row-start-1 h-full resize-none overflow-hidden whitespace-pre-wrap break-words")}
+        {...inlineEditProps}
+        {...props}
+      />
+    </span>
+  );
+});
+
 export interface TextInputProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "size">,
     VariantProps<typeof inputBox> {
@@ -107,7 +190,7 @@ export interface TextInputProps
 }
 
 export const TextInput = React.forwardRef<HTMLInputElement, TextInputProps>(function TextInput(
-  { size, icon, prefix, unit, onClear, reveal, loading, showCount, className, type, value, defaultValue, maxLength, ...props },
+  { size, tone, icon, prefix, unit, onClear, reveal, loading, showCount, className, type, value, defaultValue, maxLength, ...props },
   ref,
 ) {
   const fieldProps = useFieldProps(props);
@@ -122,8 +205,10 @@ export const TextInput = React.forwardRef<HTMLInputElement, TextInputProps>(func
   return (
     <div className="flex flex-col gap-1.5">
       <div className="relative flex w-full items-stretch">
+        {/* The prefix is part of the FIELD, so it wears the field's own wash and no edge — a bordered
+            box glued to a borderless wash read as two controls (Settings → hourly rate). */}
         {prefix && (
-          <span className="flex items-center rounded-s-md border border-e-0 border-line bg-surface-sunken px-3 text-ui text-ink-600">
+          <span className="flex items-center rounded-s-sm border border-e-0 border-transparent bg-surface-fill ps-3 pe-1 text-ui text-ink-600">
             {prefix}
           </span>
         )}
@@ -141,7 +226,7 @@ export const TextInput = React.forwardRef<HTMLInputElement, TextInputProps>(func
             maxLength={maxLength}
             onInput={value === undefined ? (e) => setUncontrolled(e.currentTarget.value) : undefined}
             className={cn(
-              inputBox({ size }),
+              inputBox({ size, tone }),
               icon && "ps-9",
               hasTrailing && "pe-9",
               prefix && "rounded-s-none",
@@ -151,7 +236,7 @@ export const TextInput = React.forwardRef<HTMLInputElement, TextInputProps>(func
             {...fieldProps}
           />
           <span className="absolute inset-y-0 end-2 flex items-center gap-1">
-            {loading && <Loader2 className="size-3.5 animate-spin text-ink-500" aria-hidden />}
+            {loading && <Spinner size={14} className="text-ink-500" />}
             {unit && !loading && <span className="font-mono text-mono-sm text-ink-600">{unit}</span>}
             {onClear && current.length > 0 && !loading && (
               <button

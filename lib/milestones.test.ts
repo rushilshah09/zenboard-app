@@ -78,7 +78,7 @@ describe('milestoneProgress', () => {
 describe('milestonesForCalendar', () => {
   const cm = (id: string, due: string | null, done = false, title = id) => ({
     id, title, done, due_date: due as string, sort_order: 0,
-    projectId: 'p1', projectName: 'Balluji rebrand', projectColor: null,
+    projectId: 'p1', projectName: 'Ridgeline rebrand', projectColor: null,
   });
 
   it('buckets by day inside the window', () => {

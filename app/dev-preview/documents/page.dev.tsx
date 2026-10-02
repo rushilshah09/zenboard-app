@@ -2,7 +2,9 @@
 // Dev-only harness for the Documents redesign (rail · filter toolbar · well grid ·
 // card language), rendered with staged data so it can be verified without a
 // session. 404s in prod, like the other dev-preview routes.
+import { useEffect } from 'react';
 import { notFound } from 'next/navigation';
+import { stubServerActions } from '../action-stub';
 import { DocumentsView, type Folder, type Page } from '@/components/documents/documents-view';
 import { Toaster } from '@/components/ds/ui';
 import { ActionFailureNet } from '@/components/shell/action-failure-net';
@@ -38,7 +40,7 @@ const BODY = {
     { id: 'b6', type: 'h2', text: 'Decisions' },
     { id: 'b7', type: 'text', text: 'Weekly sync every Tuesday. Invoices sent at month end.' },
     { id: 'b8', type: 'h3', text: 'Next steps' },
-    { id: 'b9', type: 'text', text: 'Send the July invoice to TechSpark and share the portal link.' },
+    { id: 'b9', type: 'text', text: 'Send the July invoice to Northwind and share the portal link.' },
     // DELIBERATELY INVALID. Every paragraph above used to be `type: 'p'` — not a
     // BlockType — and nothing said so: the blocks rendered and edited, they just
     // fell out of the document's 16px typography onto the app's 14px UI text.
@@ -94,7 +96,7 @@ const DEMO_DB = {
   // two Tags columns at once.
   rows: [
     // A row whose page holds a page, which holds a page — pages nest without end.
-    { id: 'r1', title: 'Portfolio site', data: { status: 'in_progress', tags: ['design'], start: inDays(-6), due: inDays(10), hours: '12', link: 'zenboard.app', paid: true }, order: 'c', created_at: monthsAgo(1), updated_at: monthsAgo(0),
+    { id: 'r1', title: 'Portfolio site', data: { status: 'in_progress', tags: ['design'], start: inDays(-6), due: inDays(10), hours: '12', link: 'zenboard.life', paid: true }, order: 'c', created_at: monthsAgo(1), updated_at: monthsAgo(0),
       content: { blocks: [
         { id: 'rb1', type: 'text', text: 'Case studies first, then the about page.' },
         { id: 'rb2', type: 'page', text: '', pageId: 'pCaseStudies' },
@@ -194,9 +196,9 @@ const PAGES: Page[] = [
     updated_at: new Date(TODAY - 70000).toISOString(),
     content: { blocks: [
       { id: 'cs-1', type: 'text', text: 'Three projects, each told as problem, process, result.' },
-      { id: 'cs-2', type: 'page', text: '', pageId: 'pCaseTechSpark' },
+      { id: 'cs-2', type: 'page', text: '', pageId: 'pCaseNorthwind' },
     ] } },
-  { id: 'pCaseTechSpark', folder_id: null, parent_id: 'pCaseStudies', title: 'TechSpark rebrand', type: 'note', tags: [],
+  { id: 'pCaseNorthwind', folder_id: null, parent_id: 'pCaseStudies', title: 'Northwind rebrand', type: 'note', tags: [],
     updated_at: new Date(TODAY - 65000).toISOString(),
     content: { blocks: [{ id: 'ts-1', type: 'text', text: 'Before and after, with the numbers.' }] } },
   { id: 'pLaunchChecklist', folder_id: null, parent_id: 'pInlineDb', title: 'Launch checklist', type: 'note', tags: [], icon: '✅',
@@ -288,7 +290,7 @@ const PAGES: Page[] = [
           ] },
         ], resources: [{ id: 'r1', url: 'https://linear.app', label: 'linear.app' }] }
       : BODY,
-    tags: ['Client Meeting', 'TechSpark'],
+    tags: ['Client Meeting', 'Northwind'],
     updated_at: monthsAgo(4),
     icon: i === 0 ? '🎯' : undefined,
   })),
@@ -312,6 +314,16 @@ const PAGES: Page[] = [
 
 export default function DocumentsPreviewPage() {
   if (process.env.NODE_ENV === 'production') notFound();
+  return <Preview />;
+}
+
+function Preview() {
+  // Answer ONE write: setting a cover from a gallery tile, so its success path can be seen. Every
+  // other write still fails here on purpose — the net below exists to show the revert path.
+  useEffect(() => stubServerActions((args) => {
+    const patch = args[1] as { content?: Record<string, unknown> } | undefined;
+    return patch && typeof patch.content?.cover === 'string' ? { ok: true } : undefined;
+  }), []);
   return (
     <div style={{ height: '100dvh', background: 'var(--canvas)', padding: 8 }}>
       <div style={{ height: '100%', background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>

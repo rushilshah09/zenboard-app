@@ -6,6 +6,7 @@
 // is applied `remindersSupported()` reports false, every action here returns a
 // clean "not available yet", the Remind chip is hidden and the scheduler never
 // issues a query. The app is correct before and after.
+import { notReady } from '@/lib/not-ready';
 import { createClient } from '@/lib/supabase/server';
 import { notifyOwner } from '@/lib/notify';
 import { requireSession } from '@/lib/auth';
@@ -28,7 +29,7 @@ export async function remindersSupported(db?: DB): Promise<boolean> {
   }
 }
 
-const NOT_READY = { error: 'Reminders need migration 0031.' } as const;
+const NOT_READY = () => notReady('Reminders aren’t available yet.', '0031');
 
 /**
  * Set or clear a task's one reminder.
@@ -44,7 +45,7 @@ export async function setReminder(
   atISO: string | null,
 ): Promise<{ error: string } | { ok: true; remindAt: string | null }> {
   const { supabase } = await requireSession();
-  if (!(await remindersSupported(supabase))) return NOT_READY;
+  if (!(await remindersSupported(supabase))) return NOT_READY();
 
   let remindAt: string | null = null;
   if (atISO) {

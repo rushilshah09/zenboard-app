@@ -18,6 +18,7 @@ import {
   Database, ModeFullPage, FileText,
 } from '@/components/ds/icons';
 import { menuKey, type BlockMenuItem } from '@/lib/blocks';
+import { DrawnBar, DrawnChip, DrawnPageGlyph, DrawnRow } from '@/components/ds/ui/drawn';
 
 // ── The kit ─────────────────────────────────────────────────────────────────
 // A canvas the size of Notion's (140×100), and the three marks everything else
@@ -31,23 +32,13 @@ function Canvas({ children, className }: { children: ReactNode; className?: stri
   );
 }
 
-/** A line of text, drawn. `w` is a Tailwind width class. */
-function Bar({ w = 'w-full', strong, className }: { w?: string; strong?: boolean; className?: string }) {
-  return <span className={cn('block h-1.5 shrink-0 rounded-full', strong ? 'bg-ink-400' : 'bg-ink-200', w, className)} />;
-}
-
-function Chip({ w = 'w-5' }: { w?: string }) {
-  return <span className={cn('block h-2 shrink-0 rounded-full bg-ink-200', w)} />;
-}
-
-/** A page, drawn at picture scale — below the DS icon scale, so not an <Icon>. */
-function Page() {
-  return <span className="block h-2.5 w-2 shrink-0 rounded-[2px] border border-ink-400" />;
-}
-
-function Row({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn('flex items-center gap-1.5', className)}>{children}</div>;
-}
+// The marks themselves live in components/ds/ui/drawn.tsx now (2026-09-30): the Documents
+// gallery draws its page miniatures with them too, and two private copies of "a bar of text"
+// would drift the first time either was touched. Same names here, so nothing below changed.
+const Bar = DrawnBar;
+const Chip = DrawnChip;
+const Page = DrawnPageGlyph;
+const Row = DrawnRow;
 
 // ── One picture per entry ───────────────────────────────────────────────────
 

@@ -24,7 +24,7 @@ export const FORM_TEMPLATES: FormTemplate[] = [
     hint: 'New enquiries',
     title: 'Tell us about your project',
     description: 'A few questions so we can work out whether we’re a good fit. Takes about three minutes.',
-    settings: { mode: 'page', collectIdentity: true, thanks: 'Thanks — we’ll come back to you within two working days.' },
+    settings: { mode: 'page', collectIdentity: true, thanks: 'Thanks. We’ll come back to you within two working days.' },
     blocks: [
       { type: 'short_text', label: 'What’s your company called?', required: true },
       { type: 'long_text', label: 'What are you hoping to make?', help: 'A sentence or two is plenty.', required: true },
@@ -39,7 +39,7 @@ export const FORM_TEMPLATES: FormTemplate[] = [
     name: 'Project kickoff brief',
     hint: 'Start of a project',
     title: 'Project kickoff brief',
-    description: 'The details we need before we start. Answer what you can — we’ll fill the gaps together.',
+    description: 'The details we need before we start. Answer what you can and we’ll fill the gaps together.',
     settings: { mode: 'page', thanks: 'Got it. We’ll review this before the kickoff call.' },
     blocks: [
       { type: 'long_text', label: 'What does success look like six months from now?', required: true },
@@ -56,7 +56,7 @@ export const FORM_TEMPLATES: FormTemplate[] = [
     hint: 'A review round',
     title: 'Feedback on this round',
     description: 'Tell us what’s working and what isn’t. Specific beats polite.',
-    settings: { mode: 'focus', thanks: 'Thank you — we’ll fold this into the next round.' },
+    settings: { mode: 'focus', thanks: 'Thank you. We’ll fold this into the next round.' },
     blocks: [
       { type: 'rating', label: 'Overall, how does this feel?', required: true },
       { type: 'long_text', label: 'What’s working?', required: true },
@@ -72,7 +72,7 @@ export const FORM_TEMPLATES: FormTemplate[] = [
     hint: 'After a project',
     title: 'Would you say a few words?',
     description: 'If you enjoyed working with us, a short quote helps more than you’d think.',
-    settings: { mode: 'focus', collectIdentity: true, thanks: 'Thank you — genuinely.' },
+    settings: { mode: 'focus', collectIdentity: true, thanks: 'Thank you, genuinely.' },
     blocks: [
       { type: 'long_text', label: 'What was it like working with us?', required: true },
       { type: 'long_text', label: 'What changed for your business?', help: 'Numbers are great if you have them.' },
@@ -90,7 +90,7 @@ export const FORM_TEMPLATES: FormTemplate[] = [
     settings: { mode: 'page', collectIdentity: true, thanks: 'Received. We’ll come back with scope and timing.' },
     blocks: [
       { type: 'short_text', label: 'What needs to change?', required: true },
-      { type: 'long_text', label: 'Why — what problem does it solve?', required: true },
+      { type: 'long_text', label: 'Why: what problem does it solve?', required: true },
       { type: 'select', label: 'How urgent is it?', options: ['Blocking us', 'Soon', 'Whenever there’s room'], required: true },
       { type: 'yes_no', label: 'Does this replace something already agreed?' },
     ],
@@ -101,7 +101,7 @@ export const FORM_TEMPLATES: FormTemplate[] = [
     hint: 'After delivery',
     title: 'How did that go?',
     description: 'Five minutes of honesty makes the next project better.',
-    settings: { mode: 'focus', thanks: 'Thank you — this is how we get better.' },
+    settings: { mode: 'focus', thanks: 'Thank you. This is how we get better.' },
     blocks: [
       { type: 'rating', label: 'How happy are you with what we delivered?', required: true },
       { type: 'rating', label: 'How was it to work with us day to day?', required: true },

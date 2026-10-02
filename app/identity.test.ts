@@ -13,10 +13,18 @@ const tokens = readFileSync('app/tokens.css', 'utf8');
 const read = (f: string) => readFileSync(f, 'utf8');
 
 describe('the editorial voice', () => {
-  it('is the serif, in one token', () => {
-    expect(globals).toMatch(/--font-editorial: var\(--font-serif\);/);
-    // …and it is still a single line to revert, which is part of the proposal.
-    expect(globals.match(/--font-editorial: var\(--font-(serif|ui)\);/g)?.length).toBe(1);
+  it('is the TITLING face, in one token', () => {
+    // It was the serif from the 2026-09-08 identity pass until the user's directive of
+    // 2026-09-25 ("we only use serif fonts, use Rubik for titling fonts"): a serif is a voice,
+    // and this product is a tool rather than a magazine. The role did not move — every title
+    // still asks for `--font-editorial` — only what that token points at.
+    expect(globals).toMatch(/--font-editorial: var\(--font-title\);/);
+    // Still ONE line to change, which is what makes a family decision reversible.
+    expect(globals.match(/--font-editorial: var\(--font-(title|serif|ui)\);/g)?.length).toBe(1);
+    // And the serif is still loaded and still named, for the places that chose it on purpose:
+    // Documents' reading mode and the Paper skin's printed sheet.
+    expect(read('app/tokens.css')).toMatch(/--font-serif:\s+var\(--font-source-serif\)/);
+    expect(read('app/theme-paper.css')).toMatch(/--font-editorial: var\(--font-serif\);/);
   });
 
   it('is carried by the content-title role itself', () => {
@@ -41,9 +49,13 @@ describe('the editorial voice', () => {
 });
 
 describe('the UI keeps its own face', () => {
-  it('leaves the chrome display face on the sans', () => {
-    // The 48px header row's page name and dialog titles use --font-display, which is UI.
-    expect(tokens).toMatch(/--font-display: var\(--font-sans\);/);
+  it('puts every DISPLAY size on the titling face, and nothing else', () => {
+    // A display size is a title by definition — the page name in the 48px header row, a dialog's
+    // title, the sign-up h1 — so it takes the titling face (Rubik, 2026-09-25) rather than the UI
+    // face. Body, labels, controls and figures stay on the sans; that is the next test.
+    expect(tokens).toMatch(/--font-display: var\(--font-title\);/);
+    expect(tokens).toMatch(/--font-title:\s+var\(--font-rubik\)/);
+    expect(tokens).toMatch(/--font-ui:\s+var\(--font-sans\);/);
   });
 
   it('never gives a control the editorial face', () => {

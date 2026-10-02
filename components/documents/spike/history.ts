@@ -24,7 +24,7 @@ export class History {
   private redoStack: Step[] = [];
 
   get depth() { return this.undoStack.length; }
-  get lastLabel() { return this.undoStack[this.undoStack.length - 1]?.label ?? '—'; }
+  get lastLabel() { return this.undoStack[this.undoStack.length - 1]?.label ?? '–'; }
 
   // Coalesced text edit: extends the top step when it's the same block's
   // typing run and the pause is under 1s; otherwise starts a new step.

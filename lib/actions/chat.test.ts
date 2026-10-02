@@ -152,7 +152,9 @@ describe('every write is checked before it is sent', () => {
 
   it('answers with { error } and keeps what the person typed', () => {
     expect(code).toMatch(/Could not send\. Your message is still here\./);
-    expect(code).toMatch(/Messages need migration 0043\./);
+    // The person is told it isn't available; the migration number goes to the developer's console
+    // through lib/not-ready (it used to be the user-facing text: "Messages need migration 0043.").
+    expect(code).toMatch(/notReady\('Messages aren’t available yet\.', '0043'\)/);
   });
 });
 

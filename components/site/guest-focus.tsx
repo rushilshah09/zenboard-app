@@ -254,9 +254,9 @@ export function GuestFocus() {
                       ? `${minutes(result.session.minutes)}${result.session.what ? ` on ${result.session.what}` : ''}. That’s ${result.today} today.`
                       : 'It was under a minute, so there was nothing to keep.'}
                   </p>
-                  <p className="mt-6 max-w-[36ch] text-ui text-site-ink-muted">Kept on this device. Start free, and your sessions count in Zenboard from the day you began.</p>
+                  <p className="mt-6 max-w-[36ch] text-ui text-site-ink-muted">Kept on this device. Join the waitlist, and your sessions count in Zenboard from the day you began.</p>
                   <div className="mt-8 flex flex-wrap items-center justify-center gap-6">
-                    <Link href="/login" className={ON_DARK}>Start free</Link>
+                    <Link href="/waitlist" className={ON_DARK}>Join the waitlist</Link>
                     <button type="button" onClick={() => setPhase('setup')} className={QUIET_ON_DARK}>Another session</button>
                   </div>
                   <RD.Close className={cn(QUIET_ON_DARK, 'mt-8')}>Back to the site</RD.Close>

@@ -149,7 +149,7 @@ export function PageHeader({
           Documents at 420px, the row wanted 442px in a 402px box and "New doc"
           sat 40px past the right edge, unreachable at any scroll position.
           Wrapping gives the actions their own line on a phone, which is what a
-          two-line header is for. Above `sm` nothing changes — `flex-wrap` costs
+          two-line header is for. Above `sm` nothing changes, `flex-wrap` costs
           nothing when everything already fits. */}
       <div
         className="flex w-full flex-wrap items-center sm:flex-nowrap"

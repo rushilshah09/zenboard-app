@@ -177,7 +177,7 @@ export function DocBreadcrumbs({
     onNavigate: () => go(node),
     menu: () => menuFor(node),
     searchPlaceholder: 'Search…',
-    emptyLabel: node.kind === 'folder' ? 'This folder is empty' : 'Nothing here yet',
+    emptyLabel: node.kind === 'folder' ? 'No pages in this folder yet' : 'No pages inside this one',
   }));
 
   return <Breadcrumbs items={items} className={className} />;

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { taskClosedHref, taskOpenHref } from './task-address';
 
 // A task opens OVER the page you are on (2026-09-21). Every opener wrote `${pathname}?task=${id}`, which threw the
-// page's own settings away: open a task from the Balluji project, close it, and you were in the Inbox.
+// page's own settings away: open a task from the Ridgeline project, close it, and you were in the Inbox.
 describe('taskOpenHref — a task opens over the page, and the page stays as it was', () => {
   it('keeps every setting of the page behind it', () => {
     expect(taskOpenHref('/tasks', '?scope=project%3Ap1&view=today', 't4')).toBe('/tasks?scope=project%3Ap1&view=today&task=t4');

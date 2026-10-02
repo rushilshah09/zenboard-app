@@ -27,7 +27,7 @@ const todayPlus = (n: number) => new Date(Date.now() + n * 86400_000).toISOStrin
 // everything unmarked reads "Internal".
 const PROJECTS: PProject[] = [
   {
-    id: 'p1', name: 'Balluji rebrand', color: '#9A1B6F', status: 'active', client_id: 'c1',
+    id: 'p1', name: 'Ridgeline rebrand', color: '#9A1B6F', status: 'active', client_id: 'c1',
     created_at: daysAgo(30), updated_at: daysAgo(1),
     portal_enabled: true, portal_token: 'demoPortalToken12345',
     share_progress: true, share_open_tasks: true, share_completed_tasks: false,
@@ -77,7 +77,7 @@ const TIMES: PTime[] = [
 ];
 
 const mkReq = (over: Partial<PRequest> & Pick<PRequest, 'id' | 'body' | 'status'>): PRequest => ({
-  project_id: 'p1', name: 'Priya (Balluji)', title: null, client_id: 'c1', task_id: null,
+  project_id: 'p1', name: 'Priya (Ridgeline)', title: null, client_id: 'c1', task_id: null,
   resolution_note: null, created_at: daysAgo(1), ...over,
 });
 const REQUESTS: PRequest[] = [
@@ -100,7 +100,7 @@ const DOCS: PDoc[] = [
   // this). It carries `project_id`, so the loader returns it here — and
   // until 2026-09-09 the Docs tab rendered it as though it were a document.
   // The fixture had no `content` row, which is why nobody saw it.
-  { id: 'pg4', project_id: 'p1', title: 'Balluji rebrand — case study', type: 'content', client_visible: false, updated_at: daysAgo(3) },
+  { id: 'pg4', project_id: 'p1', title: 'Ridgeline rebrand — case study', type: 'content', client_visible: false, updated_at: daysAgo(3) },
 ];
 
 const APPROVALS: PApproval[] = [
@@ -152,7 +152,7 @@ export default function ProjectsPreviewPage() {
         sections={SECTIONS}
         // The linked client's name, as the loader supplies it. Without it the
         // header falls back to "Linked" — the other state worth seeing.
-        clientNames={{ c1: 'Balluji Foods' }}
+        clientNames={{ c1: 'Ridgeline Foods' }}
         sectionsSupported
         iconSupported
         taskVisible={TASK_VISIBLE}

@@ -97,7 +97,7 @@ function DropdownMenuItemBase({
       data-inset={inset}
       data-variant={variant}
       className={cn(
-        "group/item relative flex cursor-default items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-hidden select-none focus:bg-surface-hover data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[inset]:pl-8 data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:text-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground data-[variant=destructive]:*:[svg]:text-destructive!",
+        "group/item relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none focus:bg-surface-hover data-[disabled]:pointer-events-none data-[disabled]:text-ink-500 data-[inset]:pl-8 data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:text-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground data-[variant=destructive]:*:[svg]:text-destructive!",
         className
       )}
       {...props}
@@ -114,19 +114,20 @@ function DropdownMenuCheckboxItem({
   return (
     <DropdownMenuPrimitive.CheckboxItem
       data-slot="dropdown-menu-checkbox-item"
+      // ONE GRAMMAR FOR "THIS ONE IS ON": a trailing check, as the radio rows and every
+      // `DropdownMenuItem active` draw it. The registry's LEADING check indented these rows
+      // 32px, so a menu holding both kinds had two label columns 24px apart.
       className={cn(
-        "group/item relative flex cursor-default items-center gap-2 rounded-sm py-1.5 pr-2 pl-8 text-sm outline-hidden select-none focus:bg-surface-hover data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "group/item relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none focus:bg-surface-hover data-[disabled]:pointer-events-none data-[disabled]:text-ink-500 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className
       )}
       checked={checked}
       {...props}
     >
-      <span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
-        <DropdownMenuPrimitive.ItemIndicator>
-          <CheckIcon className="size-4" />
-        </DropdownMenuPrimitive.ItemIndicator>
-      </span>
       {children}
+      <DropdownMenuPrimitive.ItemIndicator className="ms-auto">
+        <CheckIcon className="size-4" />
+      </DropdownMenuPrimitive.ItemIndicator>
     </DropdownMenuPrimitive.CheckboxItem>
   )
 }
@@ -159,7 +160,7 @@ function DropdownMenuRadioItem({
       // still Radix's RadioItem, still `role="menuitemradio"` with aria-checked;
       // only the glyph the indicator draws has changed.
       className={cn(
-        "group/item relative flex cursor-default items-center gap-2.5 rounded-md px-2 py-1.5 text-sm outline-hidden select-none focus:bg-surface-hover data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "group/item relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none focus:bg-surface-hover data-[disabled]:pointer-events-none data-[disabled]:text-ink-500 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className
       )}
       {...props}
@@ -244,7 +245,7 @@ function DropdownMenuSubTrigger({
   /** Leading glyph, like `DropdownMenuItem`'s. Styled by the row's own
    *  `[&_svg]:size-4`, so it needs no wrapper of its own. */
   icon?: React.ReactNode
-  /** The current answer, right-aligned before the chevron — "Project · Balluji ›", as Linear's property
+  /** The current answer, right-aligned before the chevron — "Project · Ridgeline ›", as Linear's property
    *  submenus read. Secondary ink that steps up on the highlight wash, like an item's `description`. Put it
    *  here, never inside `children`: the label is one truncating span, so anything placed in it runs on
    *  ("ScheduleInbox"). */
@@ -255,7 +256,7 @@ function DropdownMenuSubTrigger({
       data-slot="dropdown-menu-sub-trigger"
       data-inset={inset}
       className={cn(
-        "group/item flex cursor-default items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-hidden select-none focus:bg-surface-hover data-[inset]:pl-8 data-[state=open]:bg-surface-hover [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground",
+        "group/item flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none focus:bg-surface-hover data-[inset]:pl-8 data-[state=open]:bg-surface-hover [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground",
         className
       )}
       {...props}

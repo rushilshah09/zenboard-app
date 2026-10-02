@@ -40,6 +40,7 @@ import { readWorkHours } from '@/lib/capacity';
 import { readHiddenScopes, taskScopes, type Scope } from '@/lib/task-scopes';
 import { PageStamp } from '@/components/shell/page-stamp';
 import { pageScope } from '@/lib/page-scope';
+import { suggestFiling } from '@/lib/actions/inbox-file';
 
 type TasksSearchParams = { view?: string; w?: string; scope?: string; list?: string; filter?: string; label?: string };
 type DB = Awaited<ReturnType<typeof createClient>>;
@@ -220,6 +221,9 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
         labels={labelData.labels} taskLabels={labelData.taskLabels}
         savedViews={savedViewsData.views} savedViewsSupported={savedViewsData.supported}
         lists={listData.lists} listsSupported={listsSupported} hiddenScopes={hiddenScopes}
+        // §7Q *File*. Handed down rather than imported in the client component so the dev-preview
+        // harness gets a Triage with no clerk in it — it has no session to spend an allowance on.
+        onSuggestFiling={suggestFiling}
       />
     </>
   );

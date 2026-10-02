@@ -69,6 +69,26 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['mentions']['Insert']>;
         Relationships: [];
       };
+      // Ask's conversation history (migration 0049, DRAFTED — the user applies DDL by hand).
+      // Typed here so the gated code compiles; every read and write goes through
+      // `askHistorySupported()` and degrades to "no history" until the migration lands, which is
+      // SPRINT_RULES rule 2 — the app is correct before and after.
+      ask_conversations: {
+        Row: { id: string; user_id: string; space_id: string | null; title: string; last_message_at: string; pinned: boolean; created_at: string };
+        Insert: { id?: string; user_id: string; space_id?: string | null; title: string; last_message_at?: string; pinned?: boolean };
+        Update: Partial<Database['public']['Tables']['ask_conversations']['Insert']>;
+        Relationships: [];
+      };
+      ask_messages: {
+        // `payload` is the whole `AskAnswer` with its `trace`, so a reopened conversation shows
+        // the same receipts it showed live. `unknown`, not a hand-copied shape: that union lives
+        // in lib/actions/ask.ts and changes with the product, and a second copy here would be a
+        // second source of truth that nothing keeps in step.
+        Row: { id: string; conversation_id: string; user_id: string; role: 'said' | 'answered'; body: string; payload: unknown; created_at: string };
+        Insert: { id?: string; conversation_id: string; user_id: string; role: 'said' | 'answered'; body: string; payload?: unknown };
+        Update: Partial<Database['public']['Tables']['ask_messages']['Insert']>;
+        Relationships: [];
+      };
       // Memory — the sixth layer (§7X, migration 0029, DRAFTED and NOT applied
       // as of 2026-08-06). Typed here so the gated code compiles; every read and
       // write goes through `memoriesSupported()` and degrades to nothing until
@@ -312,9 +332,17 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['feedback']['Insert']>;
         Relationships: [];
       };
+      // 0046 — a recorded meeting's transcript (MEETINGS_PLAN.md M1). One row per meeting.
+      meeting_transcripts: {
+        Row: { meeting_id: string; user_id: string; segments: unknown[]; language: string | null; duration_seconds: number; source: 'recording' | 'upload' } & Timestamps;
+        Insert: { meeting_id: string; user_id: string; segments?: unknown[]; language?: string | null; duration_seconds?: number; source?: 'recording' | 'upload' };
+        Update: Partial<Database['public']['Tables']['meeting_transcripts']['Insert']>;
+        Relationships: [];
+      };
       meetings: {
-        Row: { id: string; user_id: string; space_id: string | null; client_id: string | null; title: string; notes: string | null; met_at: string } & Timestamps;
-        Insert: { id?: string; user_id: string; space_id?: string | null; client_id?: string | null; title: string; notes?: string | null; met_at?: string };
+        // `summary` / `summarized_at` arrive with 0047 (the write-up, lib/meeting-notes.ts).
+        Row: { id: string; user_id: string; space_id: string | null; client_id: string | null; title: string; notes: string | null; met_at: string; summary?: Record<string, unknown> | null; summarized_at?: string | null } & Timestamps;
+        Insert: { id?: string; user_id: string; space_id?: string | null; client_id?: string | null; title: string; notes?: string | null; met_at?: string; summary?: Record<string, unknown> | null; summarized_at?: string | null };
         Update: Partial<Database['public']['Tables']['meetings']['Insert']>;
         Relationships: [];
       };
@@ -361,6 +389,13 @@ export interface Database {
         Row: { id: string; project_id: string; author: 'team' | 'client'; author_name: string | null; body: string; created_at: string; edited_at: string | null; deleted_at: string | null };
         Insert: { id?: string; project_id: string; author: 'team' | 'client'; author_name?: string | null; body: string; created_at?: string; edited_at?: string | null; deleted_at?: string | null };
         Update: Partial<Database['public']['Tables']['project_messages']['Insert']>;
+        Relationships: [];
+      };
+      // 0044 — reactions (chat C3). Gated by `reactionsSupported()`.
+      project_message_reactions: {
+        Row: { message_id: string; reactor: 'team' | 'client'; emoji: string; created_at: string; removed_at: string | null };
+        Insert: { message_id: string; reactor: 'team' | 'client'; emoji: string; created_at?: string; removed_at?: string | null };
+        Update: Partial<Database['public']['Tables']['project_message_reactions']['Insert']>;
         Relationships: [];
       };
       project_message_reads: {
@@ -417,9 +452,30 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['notifications']['Insert']>;
         Relationships: [];
       };
+      // 0045 — the AI usage ledger (lib/ai/usage.ts). Written only by the service role; the owner
+      // may read their own rows.
+      ai_usage: {
+        Row: { id: number; user_id: string; feature: string; provider: string; model: string; ok: boolean; input_tokens: number; output_tokens: number; neurons: number; audio_seconds: number; created_at: string };
+        Insert: { user_id: string; feature: string; provider: string; model: string; ok: boolean; input_tokens?: number; output_tokens?: number; neurons?: number; audio_seconds?: number; created_at?: string };
+        Update: Partial<Database['public']['Tables']['ai_usage']['Insert']>;
+        Relationships: [];
+      };
+      // 0048 — the waitlist. `number` comes from a sequence starting one above WAITLIST_SEED, so it
+      // is never supplied on insert; the database gives out the place in the queue, not the caller.
+      waitlist: {
+        Row: { id: string; number: number; email: string; name: string | null; username: string | null; username_claimed_at: string | null; source: string; created_at: string };
+        // The handle is claimed AS somebody joins, in this one insert — joining and claiming cannot
+        // half-happen that way, and no capability token has to reach the browser to finish it later.
+        Insert: { email: string; name?: string | null; source?: string; username?: string | null; username_claimed_at?: string | null };
+        Update: Partial<Database['public']['Tables']['waitlist']['Insert']>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      // 0045 — Neurons drawn from Workers AI's shared free pool since `since`. Service role only.
+      ai_pool_neurons: { Args: { since: string }; Returns: number };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };
