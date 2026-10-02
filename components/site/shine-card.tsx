@@ -1,123 +1,102 @@
 'use client';
-// ShineCard — the waitlist card plus one interaction: a light reflection that
-// follows the mouse across the gold.
+// ShineCard — the waitlist card whose own diagonal shine is interactive.
 //
-// The card artwork is an immutable asset and renders untouched as an <img>.
-// The reflection is ONE layer above it: a second copy of the same artwork,
-// brightened, revealed only inside a soft spot under the cursor (a radial
-// mask). Because the light is made from the card itself:
-//  - it can never leave the card's shape;
-//  - the gold lights up while the black frame stays black (contrast holds the
-//    darks down as brightness lifts the metal);
-//  - no blend modes, so it looks the same on any page background and in
-//    every browser.
-// At rest the layer is transparent: the card is pixel-identical to the asset.
+// The card's shine is part of its artwork. To move it, the card is split once
+// (see shine-profile.ts): a flattened card (the gold without its shine), plus
+// the shine itself, measured from the original and stored as two gradient
+// masks: a lift where the gold is brighter and a shade where it is darker.
+// Both are copies of the same flattened card, brightened or darkened, so the
+// texture, the frame and the logo always line up and light never leaves the
+// card. At rest (--s = 0) the stack reproduces the original artwork.
 //
-// No tilt, rotation, scale, movement, glow or auto-sweep. Mouse and pen only
-// (touch has no hover), and reduced motion drops the smoothing.
+// Modes:
+//  - 'cursor': the shine's peak slides to follow the mouse along the shine's
+//    own axis, and eases back to its original place when the mouse leaves.
+//  - 'scroll': the shine travels with the card's position in the viewport,
+//    which also works on phones.
+// No tilt, rotation, scale, movement or glow. Reduced motion keeps the shine
+// at rest.
 import { useEffect, useRef } from 'react';
+import { SHINE } from './shine-profile';
 
 type Props = {
-  /** The card asset (SVG or PNG with transparent surroundings). */
+  /** The flattened card (the artwork without its baked shine). */
   src: string;
   alt: string;
   /** Intrinsic size of the asset, for the aspect ratio. */
   width: number;
   height: number;
+  mode?: 'cursor' | 'scroll';
   className?: string;
 };
 
-const LERP = 0.14; // per frame: soft follow, settles in ~250ms
-const FADE_IN = 'opacity 240ms cubic-bezier(0.23, 1, 0.32, 1)';
-const FADE_OUT = 'opacity 320ms cubic-bezier(0.23, 1, 0.32, 1)';
-/** The light: a narrow, soft spot. Sized in % of the card so it scales with it. */
-const SPOT = 'radial-gradient(ellipse 15% 46% at var(--x) var(--y), #000 0%, rgba(0,0,0,0.55) 42%, rgba(0,0,0,0) 100%)';
-const LIFT = 'brightness(1.5) contrast(1.12)';
+const LERP = 0.12; // per frame: a soft follow that settles in ~300ms
+const RAD = (SHINE.angle * Math.PI) / 180;
+const DIR = { x: Math.sin(RAD), y: -Math.cos(RAD) }; // the gradient line, in screen space
 
-export function ShineCard({ src, alt, width, height, className }: Props) {
+export function ShineCard({ src, alt, width, height, mode = 'cursor', className }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
-  const lightRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
     const root = rootRef.current;
-    const light = lightRef.current;
-    if (!root || !light) return;
-    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
-
+    if (!root) return;
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const target = { x: 0, y: 0 };
-    const pos = { x: 0, y: 0 };
-    let raf = 0;
-    let inside = false;
+    if (reduce.matches) return;
 
-    const place = () => {
-      light.style.setProperty('--x', `${pos.x}px`);
-      light.style.setProperty('--y', `${pos.y}px`);
+    let target = 0;
+    let shift = 0;
+    let raf = 0;
+    /** Length of the gradient line for the card's current size. */
+    const lineLength = () => {
+      const r = root.getBoundingClientRect();
+      return { r, L: r.width * Math.abs(DIR.x) + r.height * Math.abs(DIR.y) };
     };
     const tick = () => {
-      const k = reduce.matches ? 1 : LERP;
-      pos.x += (target.x - pos.x) * k;
-      pos.y += (target.y - pos.y) * k;
-      place();
-      const settled = Math.abs(target.x - pos.x) < 0.1 && Math.abs(target.y - pos.y) < 0.1;
-      raf = settled && !inside ? 0 : requestAnimationFrame(tick);
+      shift += (target - shift) * LERP;
+      root.style.setProperty('--s', `${shift.toFixed(2)}px`);
+      raf = Math.abs(target - shift) < 0.1 ? 0 : requestAnimationFrame(tick);
     };
-    const local = (e: PointerEvent) => {
-      const r = root.getBoundingClientRect();
-      target.x = e.clientX - r.left;
-      target.y = e.clientY - r.top;
-    };
+    const go = () => { if (!raf) raf = requestAnimationFrame(tick); };
 
-    const onEnter = (e: PointerEvent) => {
-      if (e.pointerType === 'touch') return;
-      inside = true;
-      local(e);
-      // Light appears where the cursor enters; it never sweeps in from elsewhere.
-      pos.x = target.x;
-      pos.y = target.y;
-      place();
-      light.style.transition = FADE_IN;
-      light.style.opacity = '1';
-      if (!raf) raf = requestAnimationFrame(tick);
-    };
+    if (mode === 'scroll') {
+      const onScroll = () => {
+        const { r, L } = lineLength();
+        // -1 when the card enters at the bottom, +1 when it leaves at the top.
+        const p = (window.innerHeight / 2 - (r.top + r.height / 2)) / (window.innerHeight / 2 + r.height / 2);
+        target = Math.max(-1, Math.min(1, p)) * L * 0.45;
+        go();
+      };
+      onScroll();
+      window.addEventListener('scroll', onScroll, { passive: true });
+      return () => { cancelAnimationFrame(raf); window.removeEventListener('scroll', onScroll); };
+    }
+
+    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
     const onMove = (e: PointerEvent) => {
-      if (e.pointerType === 'touch' || !inside) return;
-      local(e);
-      if (!raf) raf = requestAnimationFrame(tick);
+      if (e.pointerType === 'touch') return;
+      const { r, L } = lineLength();
+      const proj = (e.clientX - r.left - r.width / 2) * DIR.x + (e.clientY - r.top - r.height / 2) * DIR.y;
+      target = (proj / L + 0.5 - SHINE.peak) * L; // put the shine's peak under the cursor
+      go();
     };
-    const onLeave = () => {
-      inside = false;
-      light.style.transition = FADE_OUT;
-      light.style.opacity = '0';
-    };
-
-    root.addEventListener('pointerenter', onEnter);
+    const onLeave = () => { target = 0; go(); };
     root.addEventListener('pointermove', onMove);
     root.addEventListener('pointerleave', onLeave);
     return () => {
       cancelAnimationFrame(raf);
-      root.removeEventListener('pointerenter', onEnter);
       root.removeEventListener('pointermove', onMove);
       root.removeEventListener('pointerleave', onLeave);
     };
-  }, []);
+  }, [mode]);
 
-  const fillBox = { position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', userSelect: 'none' } as const;
+  const layer = { position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', userSelect: 'none', pointerEvents: 'none' } as const;
   return (
     <div ref={rootRef} className={className} style={{ position: 'relative', display: 'inline-block', width, maxWidth: '100%', aspectRatio: `${width} / ${height}`, lineHeight: 0 }}>
-      {/* The asset itself, untouched. A plain <img> keeps it byte-for-byte. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt={alt} width={width} height={height} draggable={false} style={fillBox} />
-      {/* The single light: the same artwork, brightened, seen only under the cursor. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        ref={lightRef}
-        src={src}
-        alt=""
-        aria-hidden
-        draggable={false}
-        style={{ ...fillBox, pointerEvents: 'none', opacity: 0, filter: LIFT, maskImage: SPOT, WebkitMaskImage: SPOT }}
-      />
+      {/* eslint-disable @next/next/no-img-element -- plain <img> keeps the artwork byte-for-byte */}
+      <img src={src} alt={alt} width={width} height={height} draggable={false} style={layer} />
+      <img src={src} alt="" aria-hidden draggable={false} style={{ ...layer, filter: SHINE.shade.filter, maskImage: SHINE.shade.mask, WebkitMaskImage: SHINE.shade.mask }} />
+      <img src={src} alt="" aria-hidden draggable={false} style={{ ...layer, filter: SHINE.lift.filter, maskImage: SHINE.lift.mask, WebkitMaskImage: SHINE.lift.mask }} />
+      {/* eslint-enable @next/next/no-img-element */}
     </div>
   );
 }
