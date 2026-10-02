@@ -1,17 +1,17 @@
 'use client';
-// ShineCard — the waitlist card plus one interaction: a specular light
-// reflection that follows the mouse across the gold.
+// ShineCard — the waitlist card plus one interaction: a light reflection that
+// follows the mouse across the gold.
 //
-// The card artwork is an immutable asset. It renders untouched as an <img>;
-// the reflection is a separate overlay above it, masked by the card's own
-// alpha so light never leaves the card. At rest the overlay is fully
-// transparent, so the card is pixel-identical to the asset.
-//
-// Blend modes do the realism: `overlay` and `color-dodge` leave black as
-// black, so the frame stays dark and only the gold catches the light. Each
-// light is its own masked layer with the blend mode on the layer itself; a
-// mask isolates its children, so a blend set inside it would never reach the
-// card.
+// The card artwork is an immutable asset and renders untouched as an <img>.
+// The reflection is ONE layer above it: a second copy of the same artwork,
+// brightened, revealed only inside a soft spot under the cursor (a radial
+// mask). Because the light is made from the card itself:
+//  - it can never leave the card's shape;
+//  - the gold lights up while the black frame stays black (contrast holds the
+//    darks down as brightness lifts the metal);
+//  - no blend modes, so it looks the same on any page background and in
+//    every browser.
+// At rest the layer is transparent: the card is pixel-identical to the asset.
 //
 // No tilt, rotation, scale, movement, glow or auto-sweep. Mouse and pen only
 // (touch has no hover), and reduced motion drops the smoothing.
@@ -27,25 +27,21 @@ type Props = {
   className?: string;
 };
 
-/** The reflection: a broad sheen that lifts the gold, and a narrow specular core. */
-const LIGHTS = [
-  { blend: 'overlay', w: '34%', h: '150%', bg: 'radial-gradient(closest-side, rgba(255,248,228,0.7), rgba(255,240,205,0.28) 45%, rgba(255,240,205,0) 100%)' },
-  { blend: 'color-dodge', w: '13%', h: '84%', bg: 'radial-gradient(closest-side, rgba(255,236,190,0.55), rgba(255,236,190,0) 100%)' },
-] as const;
 const LERP = 0.14; // per frame: soft follow, settles in ~250ms
 const FADE_IN = 'opacity 240ms cubic-bezier(0.23, 1, 0.32, 1)';
 const FADE_OUT = 'opacity 320ms cubic-bezier(0.23, 1, 0.32, 1)';
+/** The light: a narrow, soft spot. Sized in % of the card so it scales with it. */
+const SPOT = 'radial-gradient(ellipse 15% 46% at var(--x) var(--y), #000 0%, rgba(0,0,0,0.55) 42%, rgba(0,0,0,0) 100%)';
+const LIFT = 'brightness(1.5) contrast(1.12)';
 
 export function ShineCard({ src, alt, width, height, className }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
-  const layerRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const lightRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const lightRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
     const root = rootRef.current;
-    const layers = layerRefs.current.filter((el): el is HTMLDivElement => !!el);
-    const lights = lightRefs.current.filter((el): el is HTMLDivElement => !!el);
-    if (!root || !layers.length) return;
+    const light = lightRef.current;
+    if (!root || !light) return;
     if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
 
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -55,8 +51,8 @@ export function ShineCard({ src, alt, width, height, className }: Props) {
     let inside = false;
 
     const place = () => {
-      const t = `translate3d(${pos.x}px, ${pos.y}px, 0) translate(-50%, -50%) rotate(-24deg)`;
-      for (const el of lights) el.style.transform = t;
+      light.style.setProperty('--x', `${pos.x}px`);
+      light.style.setProperty('--y', `${pos.y}px`);
     };
     const tick = () => {
       const k = reduce.matches ? 1 : LERP;
@@ -80,7 +76,8 @@ export function ShineCard({ src, alt, width, height, className }: Props) {
       pos.x = target.x;
       pos.y = target.y;
       place();
-      for (const el of layers) { el.style.transition = FADE_IN; el.style.opacity = '1'; }
+      light.style.transition = FADE_IN;
+      light.style.opacity = '1';
       if (!raf) raf = requestAnimationFrame(tick);
     };
     const onMove = (e: PointerEvent) => {
@@ -90,7 +87,8 @@ export function ShineCard({ src, alt, width, height, className }: Props) {
     };
     const onLeave = () => {
       inside = false;
-      for (const el of layers) { el.style.transition = FADE_OUT; el.style.opacity = '0'; }
+      light.style.transition = FADE_OUT;
+      light.style.opacity = '0';
     };
 
     root.addEventListener('pointerenter', onEnter);
@@ -104,22 +102,22 @@ export function ShineCard({ src, alt, width, height, className }: Props) {
     };
   }, []);
 
-  const mask = `url("${src}") center / 100% 100% no-repeat`;
+  const fillBox = { position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', userSelect: 'none' } as const;
   return (
     <div ref={rootRef} className={className} style={{ position: 'relative', display: 'inline-block', width, maxWidth: '100%', aspectRatio: `${width} / ${height}`, lineHeight: 0 }}>
       {/* The asset itself, untouched. A plain <img> keeps it byte-for-byte. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt={alt} width={width} height={height} draggable={false} style={{ width: '100%', height: '100%', display: 'block', userSelect: 'none' }} />
-      {LIGHTS.map((l, i) => (
-        <div
-          key={l.blend}
-          ref={(el) => { layerRefs.current[i] = el; }}
-          aria-hidden
-          style={{ position: 'absolute', inset: 0, pointerEvents: 'none', opacity: 0, overflow: 'hidden', mixBlendMode: l.blend, mask, WebkitMask: mask }}
-        >
-          <div ref={(el) => { lightRefs.current[i] = el; }} style={{ position: 'absolute', left: 0, top: 0, width: l.w, height: l.h, background: l.bg, willChange: 'transform' }} />
-        </div>
-      ))}
+      <img src={src} alt={alt} width={width} height={height} draggable={false} style={fillBox} />
+      {/* The single light: the same artwork, brightened, seen only under the cursor. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        ref={lightRef}
+        src={src}
+        alt=""
+        aria-hidden
+        draggable={false}
+        style={{ ...fillBox, pointerEvents: 'none', opacity: 0, filter: LIFT, maskImage: SPOT, WebkitMaskImage: SPOT }}
+      />
     </div>
   );
 }
