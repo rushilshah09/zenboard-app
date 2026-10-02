@@ -17,7 +17,7 @@ import { join } from 'node:path';
 // What IS checkable without a DOM is that the pattern has not come back.
 
 const ROOT = join(__dirname, '..');
-const SKIP = new Set(['node_modules', '.next', '.open-next', '.git', 'out', 'build']);
+const SKIP = new Set(['node_modules', '.next', '.open-next', '.git', 'out', 'build', 'launch-video']);
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {

@@ -163,6 +163,89 @@
   /* ─── LAYER 2 · SEMANTIC — GENERATED, see tokens.generated.css ── */
 }
 
+/* ---------- Zen Ink illustration palette ----------
+   Hand-inked, watercolor-filled illustrations (components/illustrations/ink).
+   Ink outline + a warm, limited pigment set + the periwinkle ground shadow.
+   `.ill-on-dark` flips only the ink (and paper whites) for dark surfaces. */
+:root {
+  --ill-ink: #1E1C1A;
+  --ill-blank: #FFFDF8;
+  --ill-cream: #F6EEDC;
+  --ill-teal: #55C2A8;
+  --ill-teal-deep: #1F6F62;
+  --ill-lilac: #EDB8F4;
+  --ill-violet: #B877DD;
+  --ill-marigold: #F6BE45;
+  --ill-orange: #E98B30;
+  --ill-tomato: #EA4B3D;
+  --ill-brick: #B5573C;
+  --ill-periwinkle: #8FA5F2;
+  --ill-shadow: #A6B6F6;
+}
+/* Zen Ink · Brand — the watercolor look remapped to the zenboard.life palette:
+   berry (brand), the site's lavender client accent, and its feature hues.
+   Put `.ill-brand` on any ancestor of a Zen Ink illustration. */
+.ill-brand {
+  --ill-blank: #FFFFFF;
+  --ill-cream: #F4F2EC;
+  --ill-teal: #72BDB8;
+  --ill-teal-deep: #2F7C78;
+  --ill-lilac: #F4C3DC;
+  --ill-violet: #C41C72;
+  --ill-marigold: #E6B955;
+  --ill-orange: #C97A55;
+  --ill-tomato: #A3165F;
+  --ill-brick: #A98B77;
+  --ill-periwinkle: #B8BEEE;
+  --ill-shadow: #C9CDF4;
+}
+
+/* Zen Bold — the flat, editorial illustration look (thick ink, flat pigment,
+   hard black cast shadows), drawn from the Zenboard palette: berry brand
+   accent, B&G ink/bone, and the label hues (blue, green, amber, purple, pink,
+   coral, clay). */
+:root {
+  --zb-ill-night: #121212;
+  --zb-ill-bone: #F2F1EB;
+  --zb-ill-white: #FFFDF8;
+  --zb-ill-berry: #C41C72;
+  --zb-ill-blush: #F4B9D6;
+  --zb-ill-plum: #7E1A5E;
+  --zb-ill-gold: #F2C14E;
+  --zb-ill-amber: #DBA45A;
+  --zb-ill-green: #6FB35F;
+  --zb-ill-sage: #7B8B5F;
+  --zb-ill-meadow: #CBD48C;
+  --zb-ill-blue: #5E92DE;
+  --zb-ill-sky: #B9D3F5;
+  --zb-ill-purple: #B173C4;
+  --zb-ill-lavender: #DACDF1;
+  --zb-ill-coral: #FF6B66;
+  --zb-ill-clay: #C08A5E;
+  --zb-ill-skin: #EACDAE;
+  --zb-ill-stone: #D8D5CD;
+}
+/* Zen Shape — flat geometric illustration (no outlines, one tonal fold per
+   shape, soft tonal shadows), built only from Zenboard's palette: berry brand,
+   the site's lavender/indigo client accent, and the label hues. Each hue has a
+   base, a -dk fold shade and a -lt tint. */
+:root {
+  --zs-berry: #C41C72; --zs-berry-dk: #A3165F; --zs-berry-lt: #F4C3DC; --zs-pink: #E06FB3; --zs-blush-lt: #FBE7F1;
+  --zs-lav: #B8BEEE; --zs-lav-dk: #9AA1E6; --zs-lav-lt: #E3E5F9; --zs-indigo: #5B62B9; --zs-indigo-dk: #4D54A8;
+  --zs-blue: #5E92DE; --zs-blue-dk: #4A7BC6; --zs-teal: #4FA8A4; --zs-teal-dk: #3E8C88;
+  --zs-green: #6FB35F; --zs-green-dk: #5A9A4B; --zs-amber: #DBA45A; --zs-amber-dk: #C38B40; --zs-amber-lt: #F3DDB6;
+  --zs-coral: #FF6B66; --zs-coral-dk: #E55650; --zs-gold: #F2C14E; --zs-ink: #121212; --zs-paper: #FFFFFF; --zs-bone: #F2F1EB; --zs-bar: #E6E6E3;
+  /* People: four skin tones, each with its fold shade, and one hair tone. */
+  --zs-skin-1: #F4CDB0; --zs-skin-1-dk: #E2B08E; --zs-skin-2: #DDA27A; --zs-skin-2-dk: #C5875F;
+  --zs-skin-3: #B0744E; --zs-skin-3-dk: #965E3B; --zs-skin-4: #73472F; --zs-skin-4-dk: #5C3622; --zs-hair: #2B2230;
+}
+.ill-on-dark {
+  --ill-ink: #F1EBDF;
+  --ill-blank: #2A2724;
+  --ill-cream: #37322C;
+  --ill-shadow: #4B5794;
+}
+
 /* ---------- B&G is a single dark theme ----------
    The old "Slate Desk" dark block is gone: :root above already carries the
    dark system. data-theme="dark" stays a harmless no-op. */

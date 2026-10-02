@@ -18,9 +18,10 @@ import { join } from 'node:path';
 // · test names, for the same reason;
 // · the "no value" glyph in a stat or a table cell, which is an EN dash (–), a different
 //   character and the typographic convention for "none";
-// · `components/site/*`, which is the marketing site another sprint owns.
+// · `components/site/*`, which is the marketing site another sprint owns;
+// · `launch-video/`, the launch film: a separate Remotion project, not product copy.
 
-const SKIP = /dev-preview|node_modules|\.next|components\/site/;
+const SKIP = /dev-preview|node_modules|\.next|components\/site|launch-video/;
 
 function sources(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {

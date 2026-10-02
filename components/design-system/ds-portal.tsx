@@ -19,6 +19,10 @@ import {
 import { Panel, PanelHeader, PanelBody } from '@/components/ui/panels';
 import { TaskMeta } from '@/components/tasks/task-meta';
 import { DS_USAGE } from './usage.generated';
+import {
+  Spot, Scene, IconBadge, BoldScene, SiteIllustration, ShapeScene, ShapeIcon, ShapeHero, SITE, SITE_ICONS, SCENES, BADGES, BOLD_SCENES, SHAPE_SCENES, SHAPE_ICONS,
+  type ShapeSceneName, type ShapeIconName, type SceneName, type BadgeName, type BoldSceneName, type SiteIllustrationName,
+} from '@/components/illustrations/ink';
 
 /* ── Registry ────────────────────────────────────────────────────────────── */
 
@@ -148,6 +152,68 @@ const GROUPS: Group[] = [
               <Icon icon={Star} size={20} />
               <span className="absolute -top-1 -right-1 size-2.5 rounded-full border" style={{ background: 'var(--color-berry-500)', borderColor: 'var(--paper)' }} />
             </span>
+          </div>
+        ),
+      },
+    ],
+  },
+  {
+    label: 'Illustrations',
+    items: [
+      {
+        name: 'Zen Shape', keys: [], desc: 'Flat geometric direction in Zenboard colors: no outlines, one tonal fold per colored shape, flat white UI panels, the Zenboard mark as the hero shape. No faces. Hub hero, 11 feature stories, 18 icons.',
+        render: () => (
+          <div className="flex flex-col gap-4">
+            <ShapeHero size={420} title="Hub" style={{ width: '100%', height: 'auto' }} />
+            <div className="flex flex-wrap gap-3">
+              {(Object.keys(SHAPE_ICONS) as ShapeIconName[]).map((n) => <ShapeIcon key={n} name={n} size={56} title={n} />)}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {(Object.keys(SHAPE_SCENES) as ShapeSceneName[]).map((n) => <ShapeScene key={n} name={n} size={330} title={n} style={{ width: '100%', height: 'auto' }} />)}
+            </div>
+          </div>
+        ),
+      },
+      {
+        name: 'Zen Ink · Website', keys: [], desc: 'zenboard.life: hand-inked, watercolor feature illustrations and icons in the brand palette (berry, the lavender client accent, the feature hues). Wrap in .ill-brand. Full canvas: /dev-preview/illustrations.',
+        render: () => (
+          <div className="ill-brand flex flex-col gap-4 rounded-lg p-5" style={{ background: 'var(--zb-ill-bone)' }}>
+            <div className="flex flex-wrap gap-3">
+              {SITE_ICONS.map((i) => <Spot key={i.label} name={i.spot} size={56} title={i.label} />)}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {(Object.keys(SITE) as SiteIllustrationName[]).map((n) => (
+                <div key={n} className="rounded-md" style={{ background: 'var(--zb-ill-white)' }}>
+                  <SiteIllustration name={n} size={330} title={n} style={{ width: '100%', height: 'auto' }} />
+                </div>
+              ))}
+            </div>
+          </div>
+        ),
+      },
+      {
+        name: 'Zen Ink · App', keys: [], desc: 'In-app spots and scenes: ink outline, off-register watercolor wash, periwinkle ground shadow. .ill-on-dark flips ink for dark surfaces.',
+        render: () => (
+          <div className="ill-on-dark flex flex-col gap-4">
+            <div className="flex flex-wrap gap-3">
+              {(['inbox', 'tasks', 'calendar', 'folder', 'clients', 'forms', 'docs', 'finance', 'goals', 'habits', 'focus', 'ai'] as const).map((n) => <Spot key={n} name={n} size={64} title={n} />)}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {(Object.keys(SCENES) as SceneName[]).map((n) => <Scene key={n} name={n} size={330} title={n} style={{ width: '100%', height: 'auto' }} />)}
+            </div>
+          </div>
+        ),
+      },
+      {
+        name: 'Zen Bold', keys: [], desc: 'Flat editorial look in Zenboard colors: thick ink, flat pigment, hard black cast shadows. Icon badges and color-field scenes.',
+        render: () => (
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-wrap gap-3">
+              {(Object.keys(BADGES) as BadgeName[]).map((n) => <IconBadge key={n} name={n} size={64} title={n} />)}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {(Object.keys(BOLD_SCENES) as BoldSceneName[]).map((n) => <BoldScene key={n} name={n} size={330} title={n} style={{ width: '100%', height: 'auto' }} />)}
+            </div>
           </div>
         ),
       },

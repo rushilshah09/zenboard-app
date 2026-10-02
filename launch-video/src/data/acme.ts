@@ -69,3 +69,39 @@ export const EVENTS = [
 ];
 
 export const money = (n: number) => `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+/** Loose fragments of a business, for the swarm (v3 scene 1). */
+export const MESSAGES = [
+  { from: "Mara Okafor", text: "Can we see the proposal by Thursday?", time: "9:12" },
+  { from: "Theo Lindqvist", text: "Feedback on the Lumen deck is in 👍", time: "9:40" },
+  { from: "Inés Duarte", text: "Is the Northwind intro still on?", time: "10:05" },
+  { from: "Sam Patel", text: "Pausing Fieldhouse until Q1.", time: "Yesterday" },
+  { from: "Mara Okafor", text: "Approved — go ahead with phase two.", time: "11:48" },
+] as const;
+
+export const INVOICES = [
+  { id: "INV-1042", client: "Acme Studio", amount: 1875, status: "Draft" },
+  { id: "INV-1039", client: "Lumen Co.", amount: 640, status: "Overdue" },
+  { id: "INV-1036", client: "Northwind", amount: 2400, status: "Sent" },
+  { id: "INV-1031", client: "Fieldhouse", amount: 980, status: "Paid" },
+] as const;
+
+export const RECEIPTS = [
+  { vendor: "Figma", amount: 45, date: "Sep 01" },
+  { vendor: "Notion", amount: 16, date: "Sep 03" },
+  { vendor: "Adobe CC", amount: 59.99, date: "Sep 04" },
+  { vendor: "Google Workspace", amount: 14, date: "Sep 05" },
+  { vendor: "Dropbox", amount: 11.99, date: "Sep 08" },
+] as const;
+
+export const NOTES = [
+  { title: "Call notes — Mara", lines: ["Wants warmer palette", "Keep the wordmark", "Budget approved"] },
+  { title: "Pricing ideas", lines: ["Tier by seats?", "Annual discount 20%"] },
+  { title: "Moodboard refs", lines: ["Linen, terracotta", "Editorial serif? no"] },
+] as const;
+
+export const DOCS = [
+  { title: "Acme: rebrand proposal", lines: 5 },
+  { title: "Lumen — feedback round 2", lines: 4 },
+  { title: "Northwind intro deck", lines: 3 },
+] as const;

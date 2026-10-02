@@ -1,0 +1,90 @@
+{
+  "noise": {
+    "text": "Your work lives in a dozen places.",
+    "dur": 2.145
+  },
+  "meet": {
+    "text": "Meet, Zenboard.",
+    "dur": 1.211
+  },
+  "whole": {
+    "text": "Your whole business.",
+    "dur": 1.173
+  },
+  "one": {
+    "text": "One workspace.",
+    "dur": 1.127
+  },
+  "arc-tasks": {
+    "text": "Tasks.",
+    "dur": 0.775
+  },
+  "arc-calendar": {
+    "text": "Calendar.",
+    "dur": 0.791
+  },
+  "arc-docs": {
+    "text": "Docs.",
+    "dur": 0.774
+  },
+  "arc-clients": {
+    "text": "Clients.",
+    "dur": 0.809
+  },
+  "arc-money": {
+    "text": "Money.",
+    "dur": 0.693
+  },
+  "g-task": {
+    "text": "A task",
+    "dur": 0.804
+  },
+  "g-project": {
+    "text": "becomes a project.",
+    "dur": 1.298
+  },
+  "g-calendar": {
+    "text": "lands on your calendar.",
+    "dur": 1.393
+  },
+  "g-doc": {
+    "text": "opens a doc.",
+    "dur": 1.122
+  },
+  "g-client": {
+    "text": "updates your client.",
+    "dur": 1.227
+  },
+  "g-paid": {
+    "text": "and gets paid.",
+    "dur": 1.079
+  },
+  "connects": {
+    "text": "Everything connects.",
+    "dur": 1.147
+  },
+  "work": {
+    "text": "Work.",
+    "dur": 0.69
+  },
+  "life": {
+    "text": "Life.",
+    "dur": 0.711
+  },
+  "business": {
+    "text": "Business.",
+    "dur": 0.788
+  },
+  "zenboard": {
+    "text": "Zenboard.",
+    "dur": 0.84
+  },
+  "tagline": {
+    "text": "The single platform to manage work, life, and business.",
+    "dur": 3.344
+  },
+  "today": {
+    "text": "Available today.",
+    "dur": 1.216
+  }
+}
