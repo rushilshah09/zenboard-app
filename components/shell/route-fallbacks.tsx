@@ -13,7 +13,7 @@ export function NotFoundState() {
       <EmptyState
         illustration={<EmptyArt name="notFound" />}
         title="This page wandered off"
-        description="The link may be old, or the page was moved. Everything else is right where you left it."
+        description="The link may be old, or the page has moved."
         primary={<Button onClick={() => router.push('/today')}>Back to Today</Button>}
         secondary={<Button variant="ghost" onClick={() => router.back()}>Go back</Button>}
       />
@@ -28,7 +28,7 @@ export function ErrorState({ onRetry }: { onRetry: () => void }) {
       <EmptyState
         illustration={<EmptyArt name="error" />}
         title="Something slipped"
-        description="This view hit an unexpected error. Your work is saved — try again, or head back to Today."
+        description="Your work is saved; try again or head back to Today."
         primary={<Button onClick={onRetry}>Try again</Button>}
         secondary={<Button variant="ghost" onClick={() => router.push('/today')}>Back to Today</Button>}
       />

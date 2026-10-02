@@ -33,10 +33,11 @@ export async function WaitlistSection({ source = 'site' }: { source?: WaitlistSo
     <Row id="waitlist" aria-labelledby="waitlist-title">
       <Cell pad className="flex flex-col items-center py-20 text-center sm:py-24 lg:py-28">
         <div data-reveal-group className="flex w-full flex-col items-center">
-          {/* The ticket, seen from above. It does not perform: a small parallax under the pointer
-              and nothing else, because this is a thing to look at while you decide. */}
+          {/* The ticket, seen from above. It plays the storyboard's opening once as it scrolls in
+              (the black card, the gold card rising out of it), then it is a thing to look at while
+              you decide: it tilts and catches the light under the pointer, and turns over on click. */}
           <div data-reveal="lift" className="w-full max-w-[420px]">
-<GoldenTicket number={joined + 1} />
+<GoldenTicket number={joined + 1} intro />
           </div>
 
           <Eyebrow hue="petal" icon={Sparkles} data-reveal="rise" className="mt-10 justify-center">Early access</Eyebrow>

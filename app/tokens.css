@@ -169,7 +169,7 @@
    `.ill-on-dark` flips only the ink (and paper whites) for dark surfaces. */
 :root {
   --ill-ink: #1E1C1A;
-  --ill-paper: #FFFDF8;
+  --ill-blank: #FFFDF8;
   --ill-cream: #F6EEDC;
   --ill-teal: #55C2A8;
   --ill-teal-deep: #1F6F62;
@@ -186,7 +186,7 @@
    berry (brand), the site's lavender client accent, and its feature hues.
    Put `.ill-brand` on any ancestor of a Zen Ink illustration. */
 .ill-brand {
-  --ill-paper: #FFFFFF;
+  --ill-blank: #FFFFFF;
   --ill-cream: #F4F2EC;
   --ill-teal: #72BDB8;
   --ill-teal-deep: #2F7C78;
@@ -241,7 +241,7 @@
 }
 .ill-on-dark {
   --ill-ink: #F1EBDF;
-  --ill-paper: #2A2724;
+  --ill-blank: #2A2724;
   --ill-cream: #37322C;
   --ill-shadow: #4B5794;
 }

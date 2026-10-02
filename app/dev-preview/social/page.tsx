@@ -21,12 +21,12 @@ function SocialPost({ post }: { post: Post }) {
     <article data-post={post.name} style={{ position: 'relative', width: 432, aspectRatio: '4 / 5', borderRadius: 12, overflow: 'hidden', containerType: 'inline-size' }}>
       <SocialArt name={post.name} size={432} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
       <div style={{ position: 'absolute', inset: '7.4cqw 7.4cqw auto', color: fg }}>
-        <p style={{ margin: 0, font: '600 3.2cqw/1 var(--font-geist-sans)', letterSpacing: '0.04em', textTransform: 'uppercase', opacity: 0.72 }}>{post.eyebrow}</p>
-        <h3 style={{ margin: '3cqw 0 0', font: '600 8.4cqw/1.04 var(--font-geist-sans)', letterSpacing: '-0.03em', maxWidth: '80cqw', textWrap: 'balance' }}>{post.title}</h3>
+        <p style={{ margin: 0, font: '600 3.2cqw/1 var(--font-geist-sans)', opacity: 0.72 }}>{post.eyebrow}</p>
+        <h3 style={{ margin: '3cqw 0 0', font: '600 8.4cqw/1.04 var(--font-geist-sans)', maxWidth: '80cqw', textWrap: 'balance' }}>{post.title}</h3>
       </div>
       <div style={{ position: 'absolute', right: '7.4cqw', bottom: '6cqw', display: 'flex', alignItems: 'center', gap: '1.6cqw', color: fg }}>
         <svg viewBox="0 0 20 20" width="4.4%" style={{ width: '4.4cqw', height: '4.4cqw' }} aria-hidden><path d={ZB_MARK} fill="currentColor" /></svg>
-        <span style={{ font: '600 3.4cqw/1 var(--font-geist-sans)', letterSpacing: '-0.01em' }}>zenboard</span>
+        <span style={{ font: '600 3.4cqw/1 var(--font-geist-sans)' }}>zenboard</span>
       </div>
     </article>
   );

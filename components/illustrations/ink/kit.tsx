@@ -24,7 +24,7 @@ export type Tone =
   | 'sSkin1' | 'sSkin1Dk' | 'sSkin2' | 'sSkin2Dk' | 'sSkin3' | 'sSkin3Dk' | 'sSkin4' | 'sSkin4Dk' | 'sHair';
 
 const TONE_VAR: Record<Tone, string> = {
-  ink: 'var(--ill-ink)', paper: 'var(--ill-paper)', cream: 'var(--ill-cream)',
+  ink: 'var(--ill-ink)', paper: 'var(--ill-blank)', cream: 'var(--ill-cream)',
   teal: 'var(--ill-teal)', tealDeep: 'var(--ill-teal-deep)', lilac: 'var(--ill-lilac)',
   violet: 'var(--ill-violet)', marigold: 'var(--ill-marigold)', orange: 'var(--ill-orange)',
   tomato: 'var(--ill-tomato)', brick: 'var(--ill-brick)', periwinkle: 'var(--ill-periwinkle)',

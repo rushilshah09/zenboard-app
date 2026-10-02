@@ -14,7 +14,7 @@ function Board({ dark }: { dark?: boolean }) {
       className={dark ? 'ill-on-dark' : undefined}
       style={{ background: dark ? '#1B1A18' : '#F7F5F0', color: dark ? '#E9E4DA' : '#3A3632', padding: 48, borderRadius: 16 }}
     >
-      <h2 style={{ margin: '0 0 24px', font: '600 14px/1 var(--font-ui)', letterSpacing: '0.02em', opacity: 0.6 }}>
+      <h2 style={{ margin: '0 0 24px', font: '600 14px/1 var(--font-ui)', opacity: 0.6 }}>
         Spots {dark ? '· dark surface' : '· paper'}
       </h2>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 32 }}>
@@ -27,7 +27,7 @@ function Board({ dark }: { dark?: boolean }) {
       </div>
       {Object.keys(SCENES).length > 0 && (
         <>
-          <h2 style={{ margin: '48px 0 24px', font: '600 14px/1 var(--font-ui)', letterSpacing: '0.02em', opacity: 0.6 }}>Scenes</h2>
+          <h2 style={{ margin: '48px 0 24px', font: '600 14px/1 var(--font-ui)', opacity: 0.6 }}>Scenes</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 40 }}>
             {(Object.keys(SCENES) as SceneName[]).map((n) => (
               <figure key={n} style={{ margin: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
@@ -45,7 +45,7 @@ function Board({ dark }: { dark?: boolean }) {
 function EmptyBoard({ dark }: { dark?: boolean }) {
   return (
     <section style={{ background: dark ? '#121212' : '#FFFFFF', color: dark ? '#F2F1EB' : '#2F2F2B', padding: 40, borderRadius: 16 }}>
-      <h2 style={{ margin: '0 0 20px', font: '600 14px/1 var(--font-ui)', letterSpacing: '0.02em', opacity: 0.6 }}>In-app empty states · {dark ? 'dark' : 'light'}</h2>
+      <h2 style={{ margin: '0 0 20px', font: '600 14px/1 var(--font-ui)', opacity: 0.6 }}>In-app empty states · {dark ? 'dark' : 'light'}</h2>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
         {(Object.keys(EMPTY) as EmptyName[]).map((n) => (
           <figure key={n} style={{ margin: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
@@ -59,7 +59,7 @@ function EmptyBoard({ dark }: { dark?: boolean }) {
 }
 
 function ShapeBoard() {
-  const label = { margin: '0 0 24px', font: '600 14px/1 var(--font-ui)', letterSpacing: '0.02em', opacity: 0.6 } as const;
+  const label = { margin: '0 0 24px', font: '600 14px/1 var(--font-ui)', opacity: 0.6 } as const;
   return (
     <section style={{ background: '#FFFFFF', color: '#2F2F2B', padding: 48, borderRadius: 16 }}>
       <h2 style={label}>Zen Shape · hub hero</h2>
@@ -96,7 +96,7 @@ function ShapeBoard() {
 }
 
 function SiteBoard() {
-  const label = { margin: '0 0 24px', font: '600 14px/1 var(--font-ui)', letterSpacing: '0.02em', opacity: 0.6 } as const;
+  const label = { margin: '0 0 24px', font: '600 14px/1 var(--font-ui)', opacity: 0.6 } as const;
   return (
     <section className="ill-brand" style={{ background: '#F7F7F5', color: '#2F2F2B', padding: 48, borderRadius: 16 }}>
       <h2 style={label}>zenboard.life · icons</h2>
@@ -124,7 +124,7 @@ function SiteBoard() {
 function BoldBoard() {
   return (
     <section style={{ background: '#FFFFFF', color: '#3A3632', padding: 48, borderRadius: 16 }}>
-      <h2 style={{ margin: '0 0 24px', font: '600 14px/1 var(--font-ui)', letterSpacing: '0.02em', opacity: 0.6 }}>Zen Bold · icon badges</h2>
+      <h2 style={{ margin: '0 0 24px', font: '600 14px/1 var(--font-ui)', opacity: 0.6 }}>Zen Bold · icon badges</h2>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 32 }}>
         {(Object.keys(BADGES) as BadgeName[]).map((n) => (
           <figure key={n} style={{ margin: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
@@ -133,7 +133,7 @@ function BoldBoard() {
           </figure>
         ))}
       </div>
-      <h2 style={{ margin: '48px 0 24px', font: '600 14px/1 var(--font-ui)', letterSpacing: '0.02em', opacity: 0.6 }}>Zen Bold · scenes</h2>
+      <h2 style={{ margin: '48px 0 24px', font: '600 14px/1 var(--font-ui)', opacity: 0.6 }}>Zen Bold · scenes</h2>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 32 }}>
         {(Object.keys(BOLD_SCENES) as BoldSceneName[]).map((n) => (
           <figure key={n} style={{ margin: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>

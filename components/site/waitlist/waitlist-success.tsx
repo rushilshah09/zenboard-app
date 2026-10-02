@@ -2,8 +2,8 @@
 // ── YOU'RE ON THE WAITLIST ──────────────────────────────────────────────────
 //
 // What replaces the page the moment someone joins (user, 2026-09-30): the white page gives way to
-// a full black screen, the card comes out of its box, and the two things they can do next are
-// underneath it.
+// a full black screen, the ticket slides out of its holder and the holder drops away (the storyboard's
+// last beats), and the two things they can do next are underneath it.
 //
 // IT IS A TAKEOVER, NOT A SECTION. `fixed inset-0`, its own scroll, and the page behind it is
 // inert — because this is the end of one task, not a step in it. A success that renders inline
@@ -71,7 +71,7 @@ export function WaitlistSuccess({ number, name, username, already, onClose }: {
         <div className="mx-auto flex min-h-dvh w-full max-w-[560px] flex-col items-center justify-center gap-12 px-6 py-20">
           <span aria-hidden className="zb-ticket-pool" />
           <div ref={ticketRef} className="relative w-full max-w-[460px]">
-<GoldenTicket number={number} name={name} arrive bare />
+<GoldenTicket number={number} name={name} arrive out={out} />
           </div>
 
           <div data-shown={shown ? 'true' : undefined} className="zb-joined-body flex w-full flex-col items-center gap-10 text-center">
