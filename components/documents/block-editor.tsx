@@ -11,23 +11,45 @@
 //   · per-block context menu (convert · duplicate · move · delete)
 //   · toggle blocks that collapse their children
 //   · document-level undo/redo (⌘Z / ⌘⇧Z) across structural edits
-import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Fragment, memo, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { NO_SETTLE } from '@/lib/drop-settle';
 import { createPortal } from 'react-dom';
 import {
-  Check, Plus, GripVertical, X, ArrowDownUp, Type, Heading1, Heading2, Heading3, List, ListOrdered, ListChecks, Table, Quote, Lightbulb, Code, Minus, ChevronRight, ChevronLeft, Copy as CopyIcon, Trash2, ArrowUp, ArrowDown, ArrowLeftRight, Image, UnfoldHorizontal, Download, Bookmark, Globe, CodeXml, ExternalLink, Video, Volume2, FileText, Paperclip, Palette as PaletteIcon, AlignLeft, AlignCenter, AlignRight, Database as DatabaseIcon, type IconType } from "@/components/ds/icons";
-import { Icon, Checkbox, Button, ToolbarButton, MenuPanel, MenuItem, MenuLabel, MenuSeparator, MenuGlyph } from "@/components/ds/ui";
+  Check, Plus, GripVertical, X, ArrowDownUp, Type, Heading1, Heading2, Heading3, List, ListOrdered, ListChecks, Table, Quote, Lightbulb, Code, Minus, ChevronRight, ChevronLeft, Copy as CopyIcon, Trash2, ArrowUp, ArrowDown, ArrowLeftRight, Image, UnfoldHorizontal, Download, Bookmark, Globe, CodeXml, ExternalLink, Link as LinkIcon, MessageCircle, Video, Volume2, FileText, Paperclip, Palette as PaletteIcon, AlignLeft, AlignCenter, AlignRight, Database as DatabaseIcon, Receipt, PenTool, Images, type IconType } from "@/components/ds/icons";
+import { Icon, IconSwap, Checkbox, Button, ToolbarButton, MenuPanel, MenuItem, MenuLabel, MenuSeparator, MenuGlyph, MENU_PANEL_CLASS, OVERLAY_CLASS, FullScreenLayer, Popover, PopoverAnchor, PopoverContent, LinkCard, Tooltip, toast, DropLine, DragGhost } from "@/components/ds/ui";
 import { cn } from '@/lib/cn';
+import { useLinkMeta, fetchLinkMeta } from '@/lib/use-link-meta';
+import { isBareUrl, pasteOptions, mentionLabel, type PasteAs } from '@/lib/unfurl';
 import {
   type Block, type BlockType, type BlockMenuItem, LIST_TYPES, NESTABLE_TYPES, MEDIA_TYPES, genId, emptyBlock,
-  markdownPrefix, BLOCK_MENU, emptyTableRows, sectionEnd, hiddenIds, blocksToText,
+  markdownPrefix, BLOCK_MENU, slashMenu, menuKey, FILTERED_SECTION, type SlashEntry, emptyTableRows, sectionEnd, hiddenIds, togglesHiding, blocksToText, isLeafBlock, isTextBlock, newLeaf,
   computeDrop, type DropTargetCalc,
 } from '@/lib/blocks';
+import { blockHref } from '@/lib/block-link';
+import { useBlockAnchor, ANCHOR_TTL } from '@/lib/use-block-anchor';
+import { BlockComments, type CommentActions } from '@/components/documents/comment-thread';
+import type { CommentThread } from '@/lib/comments';
 import { cutAt, concatRich, removeRange, insertSpan, type RichSpan } from '@/lib/rich';
-import { RichText, RichTextStyles, textareaHandle, type SurfaceHandle, type KeyLike, type TurnIntoOption } from '@/components/documents/rich-text';
-import { createCollection } from '@/lib/actions/collections';
+import { triggerAt } from '@/lib/editor-trigger';
+import { insertMention } from '@/lib/mentions';
+import { MentionMenu, useMentionSearch, MENTION_MAX_QUERY } from '@/components/documents/mention-menu';
+import type { RecordHit } from '@/lib/search';
+import { RichText, RichTextStyles, textareaHandle, type SurfaceHandle, type CaretRect, type KeyLike, type TurnIntoOption, type RememberHook } from '@/components/documents/rich-text';
+import { newDatabase } from '@/lib/db-store';
+import { COLLECTION_PAGE_TYPE, NEW_COLLECTION_NAME } from '@/lib/collection';
+import { newPage } from '@/lib/page-store';
+import { PageBlock } from '@/components/documents/page-block';
+import { DB_MENU_ICON } from '@/components/documents/view-icons';
+import { SlashPreview } from '@/components/documents/slash-previews';
 import { InlineCollection } from '@/components/documents/database-view';
+import { LineItemsBlock } from '@/components/documents/line-items-block';
+import { AcceptBlock } from '@/components/documents/accept-block';
+import { acceptanceFor, type Acceptance } from '@/lib/acceptance';
 import { htmlToBlocks, textToBlocks, copyBlocks, blocksFromHtml } from '@/lib/clipboard';
-import { fileToDataUrl } from '@/lib/image';
+import { fileToDataUrl, downscaleImage, reencodedName } from '@/lib/image';
+import { useAttachmentUrl, useAttachmentUpload } from '@/lib/use-attachment';
+import { attachmentKind, unplacedUploads, type Attachment, type AttachmentOwner } from '@/lib/attachments';
+import { unplacedPageUploads } from '@/lib/actions/attachments';
 import { PALETTE_NAMES } from '@/lib/palette';
 import {
   DndContext, PointerSensor, KeyboardSensor, useSensor, useSensors, closestCenter,
@@ -35,18 +57,52 @@ import {
 } from '@dnd-kit/core';
 import { SortableContext, useSortable, sortableKeyboardCoordinates, type SortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+// An <a> with no href is not a link: no navigation, not focusable. That is the
+// right shape for a URL we will not vouch for — the card still renders, it just
+// does not take anyone anywhere. (The image DOWNLOAD link is deliberately not
+// guarded: an uploaded image is a legitimate `data:` URL and `download` never
+// navigates.)
+import { safeHref, safeEmbedSrc, EMBED_SANDBOX } from '@/lib/safe-url';
 
 const BLOCK_ICON: Record<BlockType, IconType> = {
   text: Type, h1: Heading1, h2: Heading2, h3: Heading3, bullet: List, numbered: ListOrdered,
   todo: ListChecks, table: Table, quote: Quote, callout: Lightbulb, code: Code, divider: Minus,
-  toggle: ChevronRight, image: Image, bookmark: Bookmark, embed: CodeXml, collection: DatabaseIcon,
+  toggle: ChevronRight, image: Image, bookmark: Bookmark, embed: CodeXml, collection: DatabaseIcon, page: FileText,
   video: Video, audio: Volume2, pdf: FileText, file: Paperclip,
+  // A proposal's line items become the invoice on accept (§7M) — same glyph.
+  lineitems: Receipt, accept: PenTool,
 };
 const CODE_LANGS = ['text', 'ts', 'js', 'tsx', 'json', 'html', 'css', 'sql', 'bash', 'python', 'go', 'rust'];
+// "You arrived here" — one pulse of the same wash a selected block wears, so
+// arriving reads as the block being pointed at rather than as a new colour
+// nobody has seen before. 1200ms is the DS's own --animate-flash-highlight.
+const FLASH_CLASS = 'block-anchor-flash';
+const FLASH_MS = 1200;
+
+/**
+ * What a host must provide for block comments to appear (§7H, 0037).
+ *
+ * The editor is handed the grouped threads rather than the raw list, because
+ * grouping is `lib/comments.ts`'s job and the host is already doing it for the
+ * page-level panel — asking the editor to group again would be the same answer
+ * computed twice.
+ */
+export type CommentsHook = {
+  /** Open threads by anchor; `openThreadsByAnchor` in lib/comments.ts. */
+  byBlock: Map<string | null, CommentThread[]>;
+  /** The block whose composer is open, if any. */
+  composingFor: string | null;
+  open: (blockId: string) => void;
+  close: () => void;
+  actions: CommentActions;
+};
+
+/** Stable empty array — a fresh `[]` per row would defeat the row memo. */
+const NO_THREADS: CommentThread[] = [];
 // §7.3 toolbar turn-into — the same convertible set as the block menu's
 // "Convert into" (text-carrying types only), hoisted so rows stay memoizable.
 const TURN_INTO: TurnIntoOption[] = BLOCK_MENU
-  .filter((m) => !m.db && m.type !== 'table' && m.type !== 'divider' && m.type !== 'collection' && !MEDIA_TYPES.includes(m.type))
+  .filter((m) => !m.db && isTextBlock(m.type))
   .map((m) => ({ type: m.type, label: m.label, icon: BLOCK_ICON[m.type] }));
 const RECENT_KEY = 'zb_slash_recent';
 // Hoisted so DndContext props keep referential identity across renders —
@@ -76,10 +132,53 @@ const TURN_KEY: Record<string, BlockType> = {
 
 // Slash picks carry the menu item (not just the type) so database entries can
 // distinguish inline view kinds from "Database — Full page".
-type SlashItem = { type: BlockType; db?: BlockMenuItem['db'] };
+type SlashItem = { type: BlockType; db?: BlockMenuItem['db']; page?: BlockMenuItem['page'] };
 
-export function BlockEditor({ blocks, onChange, onCreateDatabasePage, onExpandCollection }: {
+export function BlockEditor({ blocks, onChange, onCreateDatabasePage, onExpandCollection, onOpenPage, attachTo, remember, acceptances, docHashes, onWithdrawAccept, acceptInvoices, onCreateAcceptInvoice, pageId, comments }: {
   blocks: Block[]; onChange: (b: Block[]) => void;
+  /**
+   * Block comments (§7H, 0037). Absent ⇒ no comment affordance anywhere, which
+   * is the correct reading both for a host with no page of its own and for a
+   * workspace where the migration has not been applied — the host decides, the
+   * editor never probes.
+   */
+  comments?: CommentsHook;
+  /**
+   * The page these blocks belong to — what makes a block ADDRESSABLE (v2.3 §2).
+   * With it, every block offers "Copy link to block" and the editor answers a
+   * `#block-…` fragment by opening, scrolling to and flashing that row.
+   *
+   * Hosts editing blocks that are not a page of their own — a task drawer, the
+   * form builder, project docs — omit it, and neither half appears. Same rule
+   * as `attachTo` and `remember`: a capability the host either has or does not.
+   */
+  pageId?: string;
+  /**
+   * "Remember this" on a selection (§7X §4.2). Forwarded to every rich block and
+   * otherwise untouched: the editor deliberately does not know what a memory is,
+   * which record a fact would be about, or how one is written. Hosts with no
+   * record context (a drawer) omit it and the toolbar action does not appear.
+   */
+  remember?: RememberHook;
+  /**
+   * Signatures on this page (§7M) and the fingerprint of the page AS SAVED.
+   * Both come from the server in one call (`loadAcceptanceState`); the editor
+   * never computes either, because a signature the editor could produce would
+   * not be worth anything. Absent ⇒ accept blocks render unsigned, which is the
+   * correct reading for a host with no page context, such as a drawer.
+   */
+  acceptances?: Acceptance[];
+  docHashes?: readonly string[];
+  onWithdrawAccept?: (id: string) => void;
+  /** Invoices §7M's crossing drafted, by id. Empty until 0035 is applied. */
+  acceptInvoices?: Record<string, { number: string; status: string }>;
+  onCreateAcceptInvoice?: (acceptanceId: string) => void;
+  /**
+   * What a file uploaded from this editor hangs off — normally the page being
+   * edited (§7H, 0033). Hosts with no record context (a drawer) omit it, and
+   * file blocks fall back to accepting a pasted link, exactly as before.
+   */
+  attachTo?: AttachmentOwner;
   // Host hook for "Database — Full page" — creates + opens a database page.
   // Hosts without page context (drawers) omit it; the entry falls back inline.
   onCreateDatabasePage?: () => void;
@@ -87,9 +186,23 @@ export function BlockEditor({ blocks, onChange, onCreateDatabasePage, onExpandCo
   // collection to a new database page and open it. The inline block stays as
   // a linked view of the now-page-owned database (Notion's replacement).
   onExpandCollection?: (colId: string) => void;
+  /**
+   * Open a page — one a Page block links to, or one `/page` has just made. The
+   * host decides what opening means: Documents selects the page, a peek steps
+   * into it. The page itself is made HERE (`newPage`, a child of `pageId`), on
+   * screen at once, like an inline database.
+   */
+  onOpenPage?: (pageId: string) => void;
 }) {
   // Caret surfaces by block id — the active rich block's PM handle, or a
   // code block's wrapped <textarea>. Static (unfocused) rich blocks are null.
+  // Generated, never a literal: dnd-kit derives the drag description's element
+  // id from this and, given none, falls back to a MODULE-LEVEL COUNTER that
+  // keeps counting on the server and restarts at 0 in the browser — which
+  // hydrates `aria-describedby="DndDescribedBy-1"` against a client expecting
+  // `-0` and makes React discard the subtree. A hard-coded string fixes that
+  // but collides the moment two of these mount at once; `useId` does both.
+  const dndId = useId();
   const refs = useRef<Record<string, SurfaceHandle | null>>({});
   // The block hosting the live PM editor + its initial selection. `epoch`
   // bumps force a re-mount (re-position) when re-focusing the same block.
@@ -101,6 +214,25 @@ export function BlockEditor({ blocks, onChange, onCreateDatabasePage, onExpandCo
   // query is everything between it and the caret (typing stays in the block,
   // Notion-style: the editor never loses focus).
   const [slash, setSlash] = useState<{ id: string; at: number; query: string; active: number } | null>(null);
+  // @-mention picker — the same shape as `slash` on purpose: one trigger rule
+  // (lib/editor-trigger.ts) drives both, so the two menus cannot drift apart in
+  // when they open, what they treat as the query, or how the keyboard moves.
+  const [mention, setMention] = useState<{ id: string; at: number; query: string; active: number } | null>(null);
+  // Pasting an image uploads it too — the paste handler lives here rather than
+  // in ImageBlock (the block does not exist yet when the paste arrives).
+  const { upload: pasteUpload } = useAttachmentUpload(attachTo);
+  // What this page holds and no block shows — offered by its empty image and file blocks.
+  const uploads = useUnplacedUploads(attachTo, blocks);
+  const mentionResults = useMentionSearch(mention?.query ?? null);
+  // Both typed-trigger menus close together wherever the caret's context is
+  // gone — a drag, a block menu, a block selection. One function so a new
+  // dismissal site cannot remember one menu and forget the other.
+  const closeTriggerMenus = () => { setSlash(null); setMention(null); };
+  // "Paste as" (Notion §): a lone pasted URL goes in as a plain link IMMEDIATELY,
+  // and this offers to turn it into something richer. The paste is never blocked —
+  // dismissing the menu leaves you with exactly the link you pasted, which is why
+  // "URL" is one of the choices rather than a cancel button.
+  const [pasteAs, setPasteAs] = useState<{ id: string; url: string } | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [dragCount, setDragCount] = useState(1);
   // Render mirror of movingRef — which rows dim while a group drags.
@@ -224,18 +356,24 @@ export function BlockEditor({ blocks, onChange, onCreateDatabasePage, onExpandCo
     const blocks = blocksRef.current;
     const i = idx(id); if (i < 0) return;
     const b = blocks[i];
-    // Slash menu (Notion behavior): a '/' at the start of the block or right
-    // after whitespace opens the menu at the caret — anywhere in the text
-    // ("Hello /img" works). The query is what follows the '/'. Whitespace
-    // immediately after the '/' or deleting the '/' closes it instantly.
-    if (b.type !== 'image') {
-      const upto = value.slice(0, caret);
-      const si = upto.lastIndexOf('/');
-      const q = si >= 0 ? upto.slice(si + 1) : '';
-      if (si >= 0 && (si === 0 || /\s/.test(upto[si - 1])) && !/^\s/.test(q) && !q.includes('\n')) {
-        setSlash({ id, at: si, query: q, active: 0 });
-      } else if (slash?.id === id) setSlash(null);
-    } else if (slash?.id === id) setSlash(null);
+    // Typed-trigger menus (Notion behaviour): '/' at the start of the block or
+    // right after whitespace opens the block menu; '@' opens the mention
+    // picker. Both work anywhere in the line ("Hello /img", "ship @Acme"), and
+    // both close the instant the trigger stops being one — see
+    // `triggerAt` for the exact rules, which they now share.
+    //
+    // WHICHEVER IS NEARER THE CARET WINS, so typing '@' inside an open slash
+    // query hands over rather than leaving two menus fighting for the arrows.
+    // An image block takes neither: its text is a caption.
+    const slashT = b.type === 'image' ? null : triggerAt(value, caret, '/');
+    const mentionT = b.type === 'image' ? null : triggerAt(value, caret, '@', { maxQuery: MENTION_MAX_QUERY });
+    const winner = (slashT?.at ?? -1) > (mentionT?.at ?? -1) ? 'slash' : 'mention';
+    if (slashT && winner === 'slash') setSlash({ id, at: slashT.at, query: slashT.query, active: 0 });
+    else if (slash?.id === id) setSlash(null);
+    // Every keystroke re-ranks the list, so the highlight returns to the best
+    // match (Notion does the same) — and can never point past the new results.
+    if (mentionT && winner === 'mention') setMention({ id, at: mentionT.at, query: mentionT.query, active: 0 });
+    else if (mention?.id === id) setMention(null);
     if (b.type === 'text' && !value.startsWith('/')) {
       const t = markdownPrefix(value);
       if (t) {
@@ -272,13 +410,11 @@ export function BlockEditor({ blocks, onChange, onCreateDatabasePage, onExpandCo
 
   function applyType(id: string, type: BlockType, text?: string, caret?: number) {
     const blocks = blocksRef.current;
-    setSlash(null);
-    rememberRecent(type);
+    closeTriggerMenus();
+    rememberRecent({ type });
     const i = idx(id); if (i < 0) return;
-    if (type === 'divider' || type === 'table' || MEDIA_TYPES.includes(type)) {
-      const block: Block = type === 'table'
-        ? { id: blocks[i].id, type: 'table', text: '', rows: emptyTableRows() }
-        : { id: blocks[i].id, type, text: '' };
+    if (isLeafBlock(type)) {
+      const block: Block = { ...newLeaf(type), id: blocks[i].id };
       const after = emptyBlock();
       commit([...blocks.slice(0, i), block, after, ...blocks.slice(i + 1)], { id: after.id, pos: 0 });
       return;
@@ -294,9 +430,10 @@ export function BlockEditor({ blocks, onChange, onCreateDatabasePage, onExpandCo
   }
 
   // Database from the slash menu (Notion): 'fullpage' delegates to the host to
-  // create + open a database page; view kinds create a standalone collection
-  // and mount it as an inline block. The block shows a "Creating database…"
-  // shell (colId 'pending') until the server id lands — or 'error:<msg>'.
+  // create + open a database page; view kinds make the database HERE, at once —
+  // `newDatabase` mints its final id and seeds its store, so the table is on
+  // screen before the server has heard of it — and save it behind. A failed save
+  // turns the block into 'error:<msg>'; 'linked' mounts the source picker.
   function insertCollection(id: string, stripped: { text: string; spans?: RichSpan[] } | undefined, db?: BlockMenuItem['db']) {
     const bs = blocksRef.current;
     const i = bs.findIndex((x) => x.id === id); if (i < 0) return;
@@ -310,18 +447,71 @@ export function BlockEditor({ blocks, onChange, onCreateDatabasePage, onExpandCo
     }
     const targetId = rest.text.trim() === '' ? b.id : genId();
     // 'linked' mounts the source picker instead of creating a collection.
-    const nb: Block = { id: targetId, type: 'collection', text: '', colId: db === 'linked' ? 'picker' : 'pending' };
+    const kind = db === 'board' || db === 'gallery' || db === 'list' || db === 'calendar' || db === 'timeline' ? db : 'table';
+    const made = db === 'linked' ? null : newDatabase({ kind });
+    const nb: Block = made
+      ? { id: targetId, type: 'collection', text: '', colId: made.store.getState().col.id, dbKind: kind }
+      : { id: targetId, type: 'collection', text: '', colId: 'picker' };
     if (rest.text.trim() === '') {
       const after = emptyBlock();
       commit([...bs.slice(0, i), nb, after, ...bs.slice(i + 1)], { id: after.id, pos: 0 });
     } else {
       commit([...bs.slice(0, i), { ...b, ...rest }, nb, ...bs.slice(i + 1)]);
     }
-    if (db === 'linked') return;
-    const kind = db === 'board' || db === 'gallery' || db === 'list' ? db : 'table';
-    createCollection(kind)
-      .then((res) => onChange(blocksRef.current.map((x) => (x.id === targetId ? { ...x, colId: 'id' in res ? res.id : 'error:' + res.error } : x))))
-      .catch((e: unknown) => onChange(blocksRef.current.map((x) => (x.id === targetId ? { ...x, colId: 'error:' + (e instanceof Error ? e.message : 'Could not create database.') } : x))));
+    if (made) saveCollection(targetId, made);
+  }
+
+  // Page from the slash menu (Notion's): a page INSIDE this one, made at once under
+  // an id minted here, saved behind (lib/page-store.ts). Like Notion, making a page
+  // takes you into it — the block stays behind as the way back in.
+  function insertPage(id: string, stripped: { text: string; spans?: RichSpan[] } | undefined, kind?: 'collection') {
+    const bs = blocksRef.current;
+    const i = bs.findIndex((x) => x.id === id); if (i < 0) return;
+    const b = bs[i];
+    const rest = stripped ?? { text: b.text, spans: b.spans };
+    // "/collection" makes a Collection: a page of its own kind, named (COLLECTION_ITEM_BRIEF §12).
+    const made = newPage({ parentId: pageId ?? null, ...(kind === 'collection' ? { type: COLLECTION_PAGE_TYPE, title: NEW_COLLECTION_NAME } : {}) });
+    const targetId = rest.text.trim() === '' ? b.id : genId();
+    const nb: Block = { id: targetId, type: 'page', text: '', pageId: made.id };
+    if (rest.text.trim() === '') {
+      const after = emptyBlock();
+      commit([...bs.slice(0, i), nb, after, ...bs.slice(i + 1)], { id: after.id, pos: 0 });
+    } else {
+      commit([...bs.slice(0, i), { ...b, ...rest }, nb, ...bs.slice(i + 1)]);
+    }
+    // A frame later, not in this handler: opening the page replaces the page this
+    // editor is on, and in the same render its host would never commit the block
+    // just added — let alone schedule its save. Measured: the Page block vanished
+    // from its parent every time, in Documents and in a peek alike.
+    if (onOpenPage) requestAnimationFrame(() => onOpenPage(made.id));
+  }
+
+  // A Page block whose page was never made (a block from before its page existed,
+  // or one pasted without it) gets a new page, in place.
+  function recreatePage(blockId: string) {
+    const made = newPage({ parentId: pageId ?? null });
+    onChange(blocksRef.current.map((x) => (x.id === blockId ? { ...x, pageId: made.id } : x)));
+  }
+
+  // Save a database this block is already showing. A failure turns the block into
+  // its failure line; neither outcome is an edit of the person's, so neither goes
+  // through `commit` onto the undo stack.
+  function saveCollection(blockId: string, made: ReturnType<typeof newDatabase>) {
+    // Shown where it happened: an 'error:' block renders its failure line.
+    const fail = (message: string) => onChange(blocksRef.current.map((x) => (x.id === blockId ? { ...x, colId: 'error:' + message } : x)));
+    void made.persist().then((res) => {
+      if ('error' in res) fail(res.error);
+    });
+  }
+
+  // "Try again" on a database that failed to save: a NEW database, in the layout
+  // the person picked, on screen at once — the failed one never reached the server.
+  function retryCollection(blockId: string) {
+    const b = blocksRef.current.find((x) => x.id === blockId);
+    if (!b || b.type !== 'collection') return;
+    const made = newDatabase({ kind: b.dbKind ?? 'table' });
+    onChange(blocksRef.current.map((x) => (x.id === blockId ? { ...x, colId: made.store.getState().col.id } : x)));
+    saveCollection(blockId, made);
   }
 
   // Slash pick (Notion): strip "/query" from the text and keep the rest.
@@ -331,19 +521,21 @@ export function BlockEditor({ blocks, onChange, onCreateDatabasePage, onExpandCo
     const { type } = item;
     const s = slash;
     if (!s || s.id !== id) {
-      if (type === 'collection') { rememberRecent(type); insertCollection(id, undefined, item.db); return; }
+      if (type === 'collection') { rememberRecent(item); insertCollection(id, undefined, item.db); return; }
+      if (type === 'page') { rememberRecent(item); insertPage(id, undefined, item.page); return; }
       applyType(id, type, '');
       return;
     }
-    setSlash(null);
-    rememberRecent(type);
+    closeTriggerMenus();
+    rememberRecent(item);
     const blocks = blocksRef.current;
     const i = idx(id); if (i < 0) return;
     const b = blocks[i];
     const stripped = removeRange(b, s.at, s.at + 1 + s.query.length);
     if (type === 'collection') { insertCollection(id, stripped, item.db); return; }
-    if (type === 'divider' || type === 'table' || MEDIA_TYPES.includes(type)) {
-      const nb: Block = type === 'table' ? { id: genId(), type, text: '', rows: emptyTableRows() } : { id: genId(), type, text: '' };
+    if (type === 'page') { insertPage(id, stripped, item.page); return; }
+    if (isLeafBlock(type)) {
+      const nb: Block = newLeaf(type);
       if (stripped.text.trim() === '') {
         const after = emptyBlock();
         commit([...blocks.slice(0, i), { ...nb, id: b.id }, after, ...blocks.slice(i + 1)], { id: after.id, pos: 0 });
@@ -492,7 +684,7 @@ export function BlockEditor({ blocks, onChange, onCreateDatabasePage, onExpandCo
   }
 
   // ── selection interactions ──
-  function selectOnly(id: string) { anchorRef.current = id; setSel(new Set(spanIds(id))); setSlash(null); refs.current[id]?.blur(); }
+  function selectOnly(id: string) { anchorRef.current = id; setSel(new Set(spanIds(id))); closeTriggerMenus(); refs.current[id]?.blur(); }
   function toggleSelect(id: string) {
     const n = new Set(selRef.current);
     const span = spanIds(id);
@@ -541,6 +733,48 @@ export function BlockEditor({ blocks, onChange, onCreateDatabasePage, onExpandCo
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+
+  // ── arriving at a block by link (v2.3 §2) ──────────────────────────────────
+  // A `#block-…` fragment, or an in-app jump announced through `zb:block-anchor`.
+  // Three things have to happen in order, and the order is the whole feature:
+  // open the toggles the block is folded inside, scroll it into view, then say
+  // which one it was. Skipping the first scrolls to a row that is not rendered.
+  const anchor = useBlockAnchor();
+  const seekedRef = useRef(-1);
+  useEffect(() => {
+    if (!pageId || !anchor || seekedRef.current === anchor.nonce) return;
+    // A request outlives one render so it can wait for a document that is still
+    // loading; ANCHOR_TTL is what stops it re-scanning on every later keystroke.
+    if (Date.now() - anchor.at > ANCHOR_TTL) return;
+    if (!blocks.some((b) => b.id === anchor.id)) return;
+
+    const folded = togglesHiding(blocks, anchor.id);
+    if (folded.length) {
+      // Expanding is an ordinary edit, but not one worth an undo step of its
+      // own — arriving somewhere is not something a reader means to undo.
+      const open = new Set(folded);
+      onChange(blocksRef.current.map((b) => (open.has(b.id) ? { ...b, collapsed: false } : b)));
+      return; // the row exists next render; the effect re-runs on `blocks`
+    }
+
+    seekedRef.current = anchor.nonce;
+    // The id came out of a URL, so it is untrusted input. Building a
+    // `[data-block-id="…"]` selector out of it would let a quote character
+    // break the selector — scan and compare instead.
+    const row = [...(rootRef.current?.querySelectorAll<HTMLElement>('[data-block-id]') ?? [])]
+      .find((el) => el.getAttribute('data-block-id') === anchor.id);
+    if (!row) return;
+    const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    row.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'center' });
+    row.classList.remove(FLASH_CLASS);
+    // Reading offsetWidth restarts the animation when the same block is asked
+    // for twice: without the reflow the class is removed and re-added inside one
+    // frame and the browser never sees it change.
+    void row.offsetWidth;
+    row.classList.add(FLASH_CLASS);
+    const t = setTimeout(() => row.classList.remove(FLASH_CLASS), FLASH_MS);
+    return () => clearTimeout(t);
+  }, [anchor, blocks, pageId, onChange]);
 
   function nearestBlockId(y: number): string | null {
     const rows = rootRef.current?.querySelectorAll<HTMLElement>('[data-block-id]');
@@ -617,7 +851,7 @@ export function BlockEditor({ blocks, onChange, onCreateDatabasePage, onExpandCo
       if (dragSel.current) dragSel.current.active = true;
       anchorRef.current = anchor;
       document.body.style.userSelect = 'none';
-      setSlash(null); setMenuFor(null);
+      closeTriggerMenus(); setMenuFor(null);
       setSel(new Set(spanIds(anchor)));
       state.raf = requestAnimationFrame(tick);
     };
@@ -702,22 +936,80 @@ export function BlockEditor({ blocks, onChange, onCreateDatabasePage, onExpandCo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── slash menu (with recently-used) ──
-  function recentTypes(): BlockType[] {
-    try { return (JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]') as BlockType[]).filter((t) => BLOCK_MENU.some((m) => m.type === t)); } catch { return []; }
+  // ── paste as (a lone pasted URL) ──────────────────────────────────────────
+  // Whether the block is JUST the link decides which choices are honest: turning
+  // the block into a bookmark card would throw away any other prose in it, so
+  // when there is some, only the inline choices are offered. It reads the block
+  // being RENDERED: it runs during render, where `blocksRef` can still hold the
+  // previous commit's blocks.
+  function pasteAsChoices(b: Block, url: string) {
+    const soleContent = b.text.trim() === url;
+    return pasteOptions(url).filter((o) => soleContent || o.value === 'mention' || o.value === 'url');
   }
-  function rememberRecent(t: BlockType) {
+
+  function applyPasteAs(id: string, url: string, choice: PasteAs) {
+    setPasteAs(null);
+    if (choice === 'url') return; // already pasted — nothing to do
+    const blocks = blocksRef.current;
+    const i = blocks.findIndex((x) => x.id === id);
+    if (i < 0) return;
+
+    if (choice === 'bookmark' || choice === 'video') {
+      // The block IS the link (guaranteed by pasteAsChoices), so it becomes the
+      // media block, and a fresh paragraph follows to keep the caret in prose.
+      const media: Block = { id: genId(), type: choice === 'video' ? 'video' : 'bookmark', text: '', src: url };
+      const after = emptyBlock();
+      commit([...blocks.slice(0, i), media, after, ...blocks.slice(i + 1)], { id: after.id, pos: 0 });
+      // Warm the metadata cache so the card renders titled on first paint.
+      void fetchLinkMeta(url);
+      return;
+    }
+
+    // Mention: swap the URL text for the page's own title, keeping the link.
+    void fetchLinkMeta(url).then((meta) => {
+      const label = mentionLabel(meta ?? { url });
+      const cur = blocksRef.current;
+      const target = cur.find((x) => x.id === id);
+      if (!target) return;
+      const at = target.text.indexOf(url);
+      if (at < 0) return; // edited away while we were fetching — leave it alone
+      const cut = removeRange(target, at, at + url.length);
+      const next = insertSpan(cut, at, { text: label, link: url });
+      commit(cur.map((x) => (x.id === id ? { ...x, ...next } : x)), { id, pos: at + label.length });
+    });
+  }
+
+  // Mention pick. The text surgery itself lives in `insertMention`
+  // (lib/mentions.ts), beside the function that reads those links back out as
+  // graph edges — the two are one contract, and a picker that wrote a slightly
+  // different span would produce mentions the fabric could not see.
+  function pickMention(id: string, hit: RecordHit) {
+    const m = mention;
+    setMention(null);
+    if (!m || m.id !== id || !hit.href) return;
+    const blocks = blocksRef.current;
+    const i = idx(id); if (i < 0) return;
+    const next = insertMention(blocks[i], m, hit.title, hit.href);
+    if (!next) return;   // the trigger moved under us — leave the text alone
+    const { caret, ...content } = next;
+    commit(blocks.map((x) => (x.id === id ? { ...x, ...content } : x)), { id, pos: caret });
+  }
+
+  // ── slash menu (with recently-used) ──
+  // Remembered by ENTRY (`menuKey`), not by block type: every database is a
+  // `collection`, so a board you had just made came back as "Table view".
+  function recentKeys(): string[] {
+    try { return (JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]') as unknown[]).filter((k): k is string => typeof k === 'string'); } catch { return []; }
+  }
+  function rememberRecent(item: SlashItem) {
+    const key = menuKey(item);
     try {
-      const next = [t, ...recentTypes().filter((x) => x !== t)].slice(0, 4);
-      localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+      localStorage.setItem(RECENT_KEY, JSON.stringify([key, ...recentKeys().filter((x) => x !== key)].slice(0, 4)));
     } catch { /* ignore */ }
   }
+  /** The ONE list the menu draws and Enter picks from — see `slashMenu`. */
   function slashResults(q: string) {
-    const s = q.toLowerCase().trim();
-    if (s) return BLOCK_MENU.filter((m) => (m.label + ' ' + m.keywords).toLowerCase().includes(s)).map((m) => ({ ...m, group: m.group as string }));
-    const rec = recentTypes();
-    const recent = rec.map((t) => BLOCK_MENU.find((m) => m.type === t)!).filter(Boolean).map((m) => ({ ...m, group: 'Recent' as string }));
-    return [...recent, ...BLOCK_MENU.map((m) => ({ ...m, group: m.group as string }))];
+    return slashMenu(q, recentKeys());
   }
 
   // Shared key handler for both caret surfaces (PM-hosted rich blocks and the
@@ -728,10 +1020,29 @@ export function BlockEditor({ blocks, onChange, onCreateDatabasePage, onExpandCo
     const mod = e.metaKey || e.ctrlKey;
     if (slash?.id === b.id) {
       const res = slashResults(slash.query);
-      if (e.key === 'ArrowDown') { e.preventDefault(); setSlash({ ...slash, active: Math.min(Math.max(res.length - 1, 0), slash.active + 1) }); return true; }
-      if (e.key === 'ArrowUp') { e.preventDefault(); setSlash({ ...slash, active: Math.max(0, slash.active - 1) }); return true; }
+      // The highlight wraps at both ends, as Notion's does.
+      if (e.key === 'ArrowDown') { e.preventDefault(); setSlash({ ...slash, active: res.length ? (slash.active + 1) % res.length : 0 }); return true; }
+      if (e.key === 'ArrowUp') { e.preventDefault(); setSlash({ ...slash, active: res.length ? (slash.active - 1 + res.length) % res.length : 0 }); return true; }
       if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); const pick = res[slash.active]; if (pick) pickSlash(b.id, pick); return true; }
       if (e.key === 'Escape') { e.preventDefault(); setSlash(null); return true; }
+    }
+    // Mention picker — the same grammar as the slash menu above, with one
+    // deliberate difference: when there is nothing to pick, Enter is NOT
+    // swallowed. A slash query resolves the moment you finish typing a known
+    // word, but a mention query is a name that may simply not exist yet, and a
+    // menu that eats your Enter until you notice it is a trap.
+    if (mention?.id === b.id) {
+      const res = mentionResults.hits;
+      // Clamped, not wrapping — the same as the slash menu one branch up, and
+      // the right shape for a RANKED list: the top row is the best match, so
+      // ArrowUp from it should stay put rather than jump to the worst one.
+      if (e.key === 'ArrowDown') { e.preventDefault(); setMention({ ...mention, active: Math.min(Math.max(res.length - 1, 0), mention.active + 1) }); return true; }
+      if (e.key === 'ArrowUp') { e.preventDefault(); setMention({ ...mention, active: Math.max(0, mention.active - 1) }); return true; }
+      if ((e.key === 'Enter' || e.key === 'Tab') && res[mention.active]) { e.preventDefault(); pickMention(b.id, res[mention.active]); return true; }
+      // Escape keeps the literal "@" you typed — dismissing the menu must never
+      // also undo the character that opened it.
+      if (e.key === 'Escape') { e.preventDefault(); setMention(null); return true; }
+      if (e.key === 'Enter') setMention(null);
     }
     if (e.key === 'Escape') { e.preventDefault(); selectOnly(b.id); return true; }
     // ⌘A: first press selects this block's text; once the block is already
@@ -775,6 +1086,11 @@ export function BlockEditor({ blocks, onChange, onCreateDatabasePage, onExpandCo
         else { for (let j = i - 1; j >= 0; j--) if (!hid.has(bs[j].id)) { spanIds(bs[j].id).forEach((x) => n.add(x)); break; } }
         setSel(n); return true;
       }
+    }
+    if (mod && e.shiftKey && e.key.toLowerCase() === 'm' && comments) {
+      // Notion's own shortcut for "comment on this block", so the muscle memory
+      // transfers. Checked before ⌘D so the Shift variant is never swallowed.
+      e.preventDefault(); comments.open(b.id); return true;
     }
     if (mod && e.key.toLowerCase() === 'd') { e.preventDefault(); duplicateIds(spanIds(b.id)); return true; }
     if (mod && e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { e.preventDefault(); moveSpan(b.id, e.key === 'ArrowUp' ? -1 : 1); return true; }
@@ -827,7 +1143,22 @@ export function BlockEditor({ blocks, onChange, onCreateDatabasePage, onExpandCo
         ? [...blocks.slice(0, i), img, after, ...blocks.slice(i + 1)]
         : [...blocks.slice(0, at), img, after, ...blocks.slice(at)];
       commit(next);
-      fileToDataUrl(imgFile, { max: 1600, quality: 0.85 }).then((src) => setImage(img.id, { src })).catch(() => {});
+      // The block appears immediately and fills in when the bytes land, so a
+      // paste never blocks on the network. Same destination as the picker: with
+      // an owner the image goes to storage (0033), without one it falls back to
+      // the inline data-URL this always used.
+      void (async () => {
+        try {
+          if (attachTo) {
+            const { blob, mime } = await downscaleImage(imgFile, { max: 1600, quality: 0.85 });
+            const named = new File([blob], reencodedName(imgFile.name || 'pasted-image', mime), { type: mime });
+            const saved = await pasteUpload(named);
+            if (saved) setImage(img.id, { fileId: saved.id, fileName: saved.filename, fileSize: saved.size_bytes ?? 0 });
+          } else {
+            setImage(img.id, { src: await fileToDataUrl(imgFile, { max: 1600, quality: 0.85 }) });
+          }
+        } catch { /* the empty image block stays, ready to retry */ }
+      })();
       return true;
     }
     const text = e.clipboardData.getData('text/plain');
@@ -859,6 +1190,14 @@ export function BlockEditor({ blocks, onChange, onCreateDatabasePage, onExpandCo
         const richEnough = parsed.length > 1 || (parsed.length === 1 && (parsed[0].type !== 'text' || parsed[0].text !== text.trim().replace(/\s+/g, ' ')));
         if (parsed.length && richEnough) { e.preventDefault(); spliceParsed(parsed, b, el); return true; }
       }
+    }
+
+    // A URL on its own: let it land as a link, then offer Mention · Embed video ·
+    // Bookmark · URL. Only a BARE url qualifies — pasting a sentence that happens
+    // to contain a link must not pop a menu (see isBareUrl).
+    if (isBareUrl(text) && b.type !== 'code' && b.type !== 'table') {
+      setPasteAs({ id: b.id, url: text.trim() });
+      return false;
     }
 
     if (!text.includes('\n') || b.type === 'code' || b.type === 'table') return false; // single-line / code paste = default
@@ -961,7 +1300,7 @@ export function BlockEditor({ blocks, onChange, onCreateDatabasePage, onExpandCo
     setActiveId(id);
     setMovingIds(movingRef.current);
     setDragCount(movingRef.current.length);
-    setSlash(null); setMenuFor(null);
+    closeTriggerMenus(); setMenuFor(null);
     // Track the pointer live (rAF-throttled) to drive the indicator.
     const onMove = (ev: PointerEvent) => {
       dragPointer.current = { x: ev.clientX, y: ev.clientY };
@@ -1016,7 +1355,7 @@ export function BlockEditor({ blocks, onChange, onCreateDatabasePage, onExpandCo
   const activeBlock = activeId ? blocks.find((b) => b.id === activeId) ?? null : null;
 
   return (
-    <DndContext id="doc-blocks" sensors={sensors} collisionDetection={closestCenter} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => { movingRef.current = []; endDrag(); }}>
+    <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => { movingRef.current = []; endDrag(); }}>
       <SortableContext items={ids} strategy={NO_SHIFT_STRATEGY}>
         <div ref={rootRef} style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 2 }} onMouseDown={onSurfaceMouseDown}>
           {activeId && dropTarget && <DropIndicator top={dropTarget.top} left={dropTarget.left} />}
@@ -1046,12 +1385,27 @@ export function BlockEditor({ blocks, onChange, onCreateDatabasePage, onExpandCo
                 onPasteShared={(e, el) => onPaste(e, b, el)}
                 onActivate={(anchor, head) => setActive((a) => ({ id: b.id, anchor, head, epoch: (a?.epoch ?? 0) + 1 }))}
                 onFocusText={() => { anchorRef.current = b.id; setFocusedId(b.id); }}
-                onBlurText={() => { setFocusedId((cur) => (cur === b.id ? null : cur)); setSlash((cur) => (cur?.id === b.id ? null : cur)); }}
+                onBlurText={() => { setFocusedId((cur) => (cur === b.id ? null : cur)); setSlash((cur) => (cur?.id === b.id ? null : cur)); setMention((cur) => (cur?.id === b.id ? null : cur)); }}
                 onToggleTodo={() => toggleTodo(b.id)} onToggleCollapse={() => toggleCollapse(b.id)}
                 onAddToggleChild={() => addToggleChild(b.id)}
                 onSetLang={(l) => setLang(b.id, l)} onTableChange={(rows) => setRows(b.id, rows)}
                 onImage={(patch) => setImage(b.id, patch)}
+                attachTo={attachTo}
+                uploads={takesUpload(b) && uploads.length ? uploads : undefined}
+                remember={remember}
+                acceptance={b.type === 'accept' ? acceptanceFor(acceptances, b.id) : null}
+                docHashes={b.type === 'accept' ? docHashes : undefined}
+                onWithdrawAccept={onWithdrawAccept}
+                acceptInvoices={b.type === 'accept' ? acceptInvoices : undefined}
+                onCreateAcceptInvoice={onCreateAcceptInvoice}
                 onExpandDb={expand}
+                onRetryDb={b.type === 'collection' ? () => retryCollection(b.id) : undefined}
+                onOpenPage={onOpenPage}
+                onRecreatePage={b.type === 'page' ? () => recreatePage(b.id) : undefined}
+                commentThreads={comments?.byBlock.get(b.id) ?? NO_THREADS}
+                commenting={comments?.composingFor === b.id}
+                commentActions={comments?.actions}
+                onCloseComposer={comments?.close}
                 onAddAfter={(above) => insertMenu(b.id, above)}
                 onRowMouseDown={(e) => {
                   if (e.metaKey || e.ctrlKey) { e.preventDefault(); toggleSelect(b.id); }
@@ -1059,12 +1413,14 @@ export function BlockEditor({ blocks, onChange, onCreateDatabasePage, onExpandCo
                   else if (selRef.current.size) setSel(new Set());
                 }}
                 menu={menuFor === b.id}
-                onOpenMenu={() => { setMenuFor(menuFor === b.id ? null : b.id); setSlash(null); }}
+                onOpenMenu={() => { setMenuFor(menuFor === b.id ? null : b.id); closeTriggerMenus(); }}
                 onCloseMenu={() => setMenuFor(null)}
                 menuActions={{
                   convert: (t) => convertTo(b.id, t),
                   setColor: (c) => { setMenuFor(null); setColor(b.id, c); },
                   duplicate: () => { setMenuFor(null); duplicateIds(spanIds(b.id)); },
+                  copyLink: pageId ? () => { setMenuFor(null); copyBlockLink(pageId, b.id); } : undefined,
+                  comment: comments ? () => { setMenuFor(null); comments.open(b.id); } : undefined,
                   copyText: () => {
                     setMenuFor(null);
                     const bs = blocksRef.current;
@@ -1077,7 +1433,12 @@ export function BlockEditor({ blocks, onChange, onCreateDatabasePage, onExpandCo
                   remove: () => { setMenuFor(null); deleteIds(spanIds(b.id)); },
                   expandPage: expand ? () => { setMenuFor(null); expand(); } : undefined,
                 }}
-                slash={slash?.id === b.id ? { query: slash.query, active: slash.active, results: slashResults(slash.query), pick: (m) => pickSlash(b.id, m) } : null}
+                trigger={slash?.id === b.id ? { at: slash.at, query: slash.query } : null}
+                pasteAs={pasteAs?.id === b.id ? {
+                  options: pasteAsChoices(b, pasteAs.url),
+                  pick: (c) => applyPasteAs(b.id, pasteAs.url, c),
+                  dismiss: () => setPasteAs(null),
+                } : null}
               />
             );
           })}
@@ -1099,8 +1460,134 @@ export function BlockEditor({ blocks, onChange, onCreateDatabasePage, onExpandCo
           <RichTextStyles />
         </div>
       </SortableContext>
-      <DragOverlay>{activeBlock ? <DragGhost block={activeBlock} count={dragCount} /> : null}</DragOverlay>
+      {/* A ghost chip NAMES the block; the DropLine says where it lands. Flying
+          the chip into the page would animate a claim that is not true — see
+          NO_SETTLE. */}
+      <DragOverlay dropAnimation={NO_SETTLE}>{activeBlock ? <BlockDragGhost block={activeBlock} count={dragCount} /> : null}</DragOverlay>
+      {/* The mention picker anchors to the CARET, not to the block, so it is
+          portalled and fixed rather than absolutely positioned inside the row —
+          an absolute popover is clipped by the first scrolling ancestor, and
+          every host of this editor scrolls. */}
+      {/* The slash menu anchors to its "/" the same way — fixed-size, flipped
+          above the caret when there is no room below, never clipped. */}
+      {slash && (
+        <CaretLayer
+          anchorKey={`slash:${slash.id}:${slash.at}`}
+          rectOf={() => {
+            const r = refs.current[slash.id]?.caretRect(slash.at);
+            // The panel's rows start at its inner edge; pulling it left by that
+            // inset lines the row text up with the "/" you typed.
+            return r ? { ...r, left: r.left - SLASH_INSET } : null;
+          }}
+          onLost={() => setSlash(null)}
+        >
+          <SlashMenu
+            results={slashResults(slash.query)}
+            active={slash.active}
+            pick={(m) => pickSlash(slash.id, m)}
+            hover={(i) => setSlash((cur) => (cur && cur.active !== i ? { ...cur, active: i } : cur))}
+            close={() => setSlash(null)}
+          />
+        </CaretLayer>
+      )}
+      {mention && (
+        <CaretLayer
+          anchorKey={`${mention.id}:${mention.at}`}
+          rectOf={() => refs.current[mention.id]?.caretRect(mention.at) ?? null}
+          onLost={() => setMention(null)}
+        >
+          <MentionMenu
+            {...mentionResults}
+            query={mention.query}
+            active={mention.active}
+            listId="zb-mention-list"
+            pick={(h) => pickMention(mention.id, h)}
+          />
+        </CaretLayer>
+      )}
     </DndContext>
+  );
+}
+
+// Holds a floating panel next to a caret: measured on open, re-measured while
+// anything scrolls or resizes, flipped above when it would run off the bottom,
+// and clamped so it never hangs off either side. When it fits on NEITHER side it
+// takes the roomier one and says how much room there is (`--caret-room`), so a
+// panel that can shrink — the slash menu's list — does, instead of running off
+// the screen (a 423px menu under a caret with 191px below it did exactly that).
+//
+// `onLost` fires when the caret leaves the viewport. A menu still floating over
+// a document you have scrolled away from is pointing at nothing — Notion
+// dismisses in exactly that case.
+const CARET_GAP = 6;
+const VIEWPORT_MARGIN = 8;
+function CaretLayer({ anchorKey, rectOf, onLost, children }: {
+  anchorKey: string;
+  rectOf: () => CaretRect | null;
+  onLost: () => void;
+  children: React.ReactNode;
+}) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const [rect, setRect] = useState<CaretRect | null>(null);
+  const [pos, setPos] = useState<{ left: number; top: number; room: number } | null>(null);
+  const lost = useRef(onLost);
+  useLayoutEffect(() => { lost.current = onLost; });
+
+  // Track the caret. Capture-phase scroll catches the editor's own scroll
+  // container, which does not bubble its scroll events to the window.
+  useLayoutEffect(() => {
+    const read = () => {
+      const r = rectOf();
+      if (!r || r.bottom < 0 || r.top > window.innerHeight) { lost.current(); return; }
+      setRect(r);
+    };
+    read();
+    window.addEventListener('scroll', read, true);
+    window.addEventListener('resize', read);
+    return () => {
+      window.removeEventListener('scroll', read, true);
+      window.removeEventListener('resize', read);
+    };
+    // `anchorKey` identifies the caret being tracked; `rectOf` is a fresh
+    // closure every render and would otherwise re-subscribe on each keystroke.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anchorKey]);
+
+  // Place it once the panel has a measured size — before paint, so the flip is
+  // never visible as a jump.
+  useLayoutEffect(() => {
+    const el = hostRef.current;
+    if (!el || !rect) return;
+    const { width, height } = el.getBoundingClientRect();
+    const roomBelow = window.innerHeight - VIEWPORT_MARGIN - (rect.bottom + CARET_GAP);
+    const roomAbove = rect.top - CARET_GAP - VIEWPORT_MARGIN;
+    // Below unless it doesn't fit there AND above has more room.
+    const flip = height > roomBelow && roomAbove > roomBelow;
+    const room = Math.floor(flip ? roomAbove : roomBelow);
+    const drawn = Math.min(height, room);
+    const next = {
+      left: Math.max(VIEWPORT_MARGIN, Math.min(rect.left, window.innerWidth - width - VIEWPORT_MARGIN)),
+      top: flip ? rect.top - CARET_GAP - drawn : rect.bottom + CARET_GAP,
+      room,
+    };
+    setPos((cur) => (cur && cur.left === next.left && cur.top === next.top && cur.room === next.room ? cur : next));
+  }, [rect, children]);
+
+  if (typeof document === 'undefined' || !rect) return null;
+  return createPortal(
+    <div
+      ref={hostRef}
+      style={{
+        position: 'fixed', zIndex: 'var(--z-dropdown)', left: pos?.left ?? rect.left, top: pos?.top ?? rect.bottom + CARET_GAP,
+        ['--caret-room' as string]: pos ? `${pos.room}px` : undefined,
+        // Until the first measurement lands there is no honest position to draw
+        // at; one frame hidden beats one frame in the wrong place.
+        visibility: pos ? 'visible' : 'hidden',
+      }}
+    >
+      {children}
+    </div>,
+    document.body,
   );
 }
 
@@ -1118,21 +1605,83 @@ const baseRich: React.CSSProperties = { color: 'var(--color-ink-900)', lineHeigh
 // `style` contract); values track the §6 scale, colours are canonical tokens.
 const TYPE_STYLE: Record<BlockType, React.CSSProperties> = {
   text: { fontSize: 16, lineHeight: 1.5, letterSpacing: '-0.01em' },
+  // The block draws its own table; this is only the caption/fallback run.
+  lineitems: { fontSize: 16, lineHeight: 1.5, letterSpacing: '-0.01em' },
+  accept: { fontSize: 16, lineHeight: 1.5, letterSpacing: '-0.01em' },
   h1: { fontSize: 30, fontWeight: 600, lineHeight: 1.3, letterSpacing: '-0.006em', marginTop: 18 },
   h2: { fontSize: 20, fontWeight: 600, lineHeight: 1.35, letterSpacing: '-0.01em', marginTop: 12 },
   h3: { fontSize: 16, fontWeight: 600, lineHeight: 1.5, letterSpacing: '-0.01em', marginTop: 6 },
   bullet: { fontSize: 16, lineHeight: 1.5, letterSpacing: '-0.01em' }, numbered: { fontSize: 16, lineHeight: 1.5, letterSpacing: '-0.01em' }, todo: { fontSize: 16, lineHeight: 1.5, letterSpacing: '-0.01em' },
   quote: { fontSize: 16, fontStyle: 'italic', color: 'var(--color-ink-800)', lineHeight: 1.5 },
   callout: { fontSize: 16, lineHeight: 1.5 }, code: { fontSize: 14, fontFamily: 'var(--font-mono)' }, divider: {}, table: {},
-  image: {}, bookmark: {}, embed: {}, video: {}, audio: {}, pdf: {}, file: {}, collection: {},
+  image: {}, bookmark: {}, embed: {}, video: {}, audio: {}, pdf: {}, file: {}, collection: {}, page: {},
   toggle: { fontSize: 16, fontWeight: 500, lineHeight: 1.5 },
 };
+
+// ── Gutter alignment ────────────────────────────────────────────────────────
+// The +/⠿ handles must sit on the block's FIRST LINE, the way Notion's do. They
+// used to be `top: 3px` — a constant, which can only ever be right for ONE block
+// type. It was right for a 16px/1.5 paragraph (2px content padding + (24−22)/2 =
+// 3) and wrong for everything else: an h1 is 30px/1.3 with an 18px top margin, so
+// its handles floated ~25px above the cap height they were meant to line up with.
+//
+// So it's derived from TYPE_STYLE — the same map that sets the typography — and
+// cannot drift from it. Change a heading's size and the handles follow.
+const GUTTER_H = 22;   // the handle buttons' height
+const CONTENT_PT = 2;  // the content wrapper's own padding-top
+
+/** Vertical padding a block type's wrapper adds above its first line of text. */
+const WRAPPER_PT: Partial<Record<BlockType, number>> = {
+  callout: 12, // rounded box: px-3.5 py-3
+};
+
+/** Container blocks have no line of prose to centre on — a code block, a table,
+ *  an image. The handle sits near the container's top edge, which is where the
+ *  block visually begins. */
+const CONTAINER_TOP: Partial<Record<BlockType, number>> = {
+  code: 4, table: 4, image: 4, collection: 4,
+  bookmark: 4, embed: 4, video: 4, audio: 4, pdf: 4, file: 4,
+  divider: 2,
+  // A page line is 30px tall: the 22px handles centre on it (2 + (30 − 22) / 2).
+  page: 6,
+};
+
+function gutterTop(type: BlockType): number {
+  const fixed = CONTAINER_TOP[type];
+  if (fixed != null) return fixed;
+  const st = TYPE_STYLE[type] ?? {};
+  const fontSize = typeof st.fontSize === 'number' ? st.fontSize : 16;
+  // baseRich/baseInput default to 1.6 when a type doesn't override it.
+  const lineHeight = typeof st.lineHeight === 'number' ? st.lineHeight : 1.6;
+  const marginTop = typeof st.marginTop === 'number' ? st.marginTop : 0;
+  const firstLine = fontSize * lineHeight;
+  return marginTop + CONTENT_PT + (WRAPPER_PT[type] ?? 0) + Math.max(0, (firstLine - GUTTER_H) / 2);
+}
 
 type MenuActions = {
   convert: (t: BlockType) => void; setColor: (c: string | null) => void; duplicate: () => void; copyText: () => void;
   select: () => void; moveUp: () => void; moveDown: () => void; remove: () => void;
   expandPage?: () => void; // inline database → full-page database
+  copyLink?: () => void;   // only where the host has a page of its own (see `pageId`)
+  comment?: () => void;    // only where the host supplies `comments` (§7H, 0037)
 };
+
+/**
+ * Put a block's address on the clipboard.
+ *
+ * Copying happens away from the user's eye, so it reports through the app's one
+ * feedback channel (§2.5) — and says the whole failing URL on the way out,
+ * because a clipboard write that silently did nothing is indistinguishable from
+ * one that worked.
+ */
+function copyBlockLink(pageId: string, blockId: string) {
+  const path = blockHref(pageId, blockId);
+  if (!path) return;
+  const url = `${window.location.origin}${path}`;
+  navigator.clipboard?.writeText(url)
+    .then(() => toast({ message: 'Link to block copied.' }))
+    .catch(() => toast({ message: `Copy failed: the link is ${url}`, variant: 'error' }));
+}
 
 // Rows are memoized on their data props only — callback identity is ignored,
 // which is safe because every editor handler reads live state through refs
@@ -1143,8 +1692,10 @@ const activeEq = (a: ActiveSel, b: ActiveSel) =>
 
 const BlockRow = memo(function BlockRow({
   block: b, number, selected, focused, dimmed, hasChildren, findShadow, active, inputRef, onRich, onConvertInline, onTurnInto, onCodeText, onKey, onPasteShared, onActivate, onFocusText, onBlurText,
-  onToggleTodo, onToggleCollapse, onAddToggleChild, onSetLang, onTableChange, onImage, onExpandDb, slash, onAddAfter,
+  onToggleTodo, onToggleCollapse, onAddToggleChild, onSetLang, onTableChange, onImage, onExpandDb, onRetryDb, onOpenPage, onRecreatePage, trigger, pasteAs, onAddAfter, attachTo, uploads, remember,
+  acceptance, docHashes, onWithdrawAccept, acceptInvoices, onCreateAcceptInvoice,
   onRowMouseDown, menu, onOpenMenu, onCloseMenu, menuActions,
+  commentThreads, commenting, commentActions, onCloseComposer,
 }: {
   block: Block; number: number; selected: boolean; focused: boolean; dimmed: boolean; hasChildren: boolean;
   // Plain text of the descendants a collapsed toggle is hiding — present only
@@ -1162,10 +1713,32 @@ const BlockRow = memo(function BlockRow({
   onFocusText: () => void; onBlurText: () => void;
   onToggleTodo: () => void; onToggleCollapse: () => void; onAddToggleChild: () => void; onSetLang: (l: string) => void; onTableChange: (rows: string[][]) => void;
   onImage: (patch: Partial<Block>) => void;
+  /** What an uploaded file hangs off (0033). Absent ⇒ file blocks link only. */
+  attachTo?: AttachmentOwner;
+  /** The page's uploads nothing on it shows — given only to an empty block that could show one. */
+  uploads?: readonly Attachment[];
+  /** "Remember this" on a selection (§7X). Forwarded to the rich block. */
+  remember?: RememberHook;
+  /** This block's signature, if it is an accept block and has one (§7M). */
+  acceptance?: Acceptance | null;
+  docHashes?: readonly string[];
+  onWithdrawAccept?: (id: string) => void;
+  acceptInvoices?: Record<string, { number: string; status: string }>;
+  onCreateAcceptInvoice?: (acceptanceId: string) => void;
   onExpandDb?: () => void;
+  onRetryDb?: () => void;
+  onOpenPage?: (pageId: string) => void;
+  onRecreatePage?: () => void;
+  /** Open conversations anchored to THIS block (§7H). Stable identity — see NO_THREADS. */
+  commentThreads: CommentThread[];
+  commenting: boolean;
+  commentActions?: CommentActions;
+  onCloseComposer?: () => void;
   onAddAfter: (above: boolean) => void; onRowMouseDown: (e: React.MouseEvent) => void;
   menu: boolean; onOpenMenu: () => void; onCloseMenu: () => void; menuActions: MenuActions;
-  slash: { query: string; active: number; results: SlashResults; pick: (m: SlashItem) => void } | null;
+  /** The slash menu is open on this row: where its "/" is, and what follows it. */
+  trigger: { at: number; query: string } | null;
+  pasteAs: { options: { value: PasteAs; label: string }[]; pick: (c: PasteAs) => void; dismiss: () => void } | null;
 }) {
   const { setNodeRef, setActivatorNodeRef, listeners, attributes, transform, transition, isDragging } = useSortable({ id: b.id });
   // Code-block "Copied" confirmation (§8.10) — auto-clears after 1.5s.
@@ -1188,7 +1761,7 @@ const BlockRow = memo(function BlockRow({
     b.type === 'code' ? (
       <textarea
         ref={(el) => { inputRef(el ? textareaHandle(el) : null); if (el) grow(el); }}
-        value={b.text} rows={1} placeholder={ph} wrap={b.wrap ? 'soft' : 'off'}
+        value={b.text} rows={1} placeholder={ph} wrap={b.wrap ? 'soft' : 'off'} data-chromeless
         onChange={(e) => { onCodeText(e.target.value); grow(e.currentTarget); }}
         onFocus={onFocusText} onBlur={onBlurText}
         onMouseDown={(e) => { if (e.detail >= 3) { e.preventDefault(); const t = e.currentTarget; t.focus(); t.select(); } }}
@@ -1201,9 +1774,11 @@ const BlockRow = memo(function BlockRow({
       <RichText
         blockId={b.id} text={b.text} spans={b.spans} type={b.type}
         active={active} placeholder={ph}
+        trigger={trigger && b.text[trigger.at] === '/' ? { at: trigger.at, length: 1 + trigger.query.length, placeholder: trigger.query ? undefined : 'Type to search' } : null}
         style={{ ...baseRich, ...TYPE_STYLE[b.type], ...tint, ...extra }}
         onRich={onRich} onConvertInline={onConvertInline} onKey={onKey} onPasteEvent={(e, el) => onPasteShared(e, el)}
         turnIntoOptions={TURN_INTO} onTurnInto={(t, anchor, head) => onTurnInto(t as BlockType, anchor, head)}
+        remember={remember}
         onFocus={onFocusText} onBlur={onBlurText}
         onActivate={onActivate} handleRef={inputRef}
       />
@@ -1229,7 +1804,7 @@ const BlockRow = memo(function BlockRow({
       <div className="flex items-start gap-1.5" style={{ paddingLeft: pad }}>
         <button onClick={onToggleCollapse} aria-label={b.collapsed ? 'Expand' : 'Collapse'} aria-expanded={!b.collapsed}
           className="mt-0.5 grid size-5 shrink-0 cursor-pointer place-items-center rounded-xs border-0 bg-transparent text-ink-600">
-          <Icon icon={ChevronRight} size={14} weight="bold" style={{ transform: b.collapsed ? 'none' : 'rotate(90deg)', transition: 'transform 140ms var(--ease-standard)' }} />
+          <Icon icon={ChevronRight} size={14} weight="bold" style={{ transform: b.collapsed ? 'none' : 'rotate(90deg)', transition: 'transform var(--duration-base) var(--ease-standard)' }} />
         </button>
         {ta()}
         {b.collapsed && hasChildren && <span className="mt-[5px] shrink-0 text-caption text-ink-500">…</span>}
@@ -1250,6 +1825,25 @@ const BlockRow = memo(function BlockRow({
         </div>
       );
     }
+  } else if (b.type === 'lineitems') {
+    inner = (
+      <div style={{ marginLeft: pad }}>
+        <LineItemsBlock items={b.items ?? []} onChange={(items) => onImage({ items })} />
+      </div>
+    );
+  } else if (b.type === 'accept') {
+    // Terms only. The signature this block waits for is a row in `acceptances`
+    // written by the client through the portal, never something the editor can
+    // produce — so the editor never passes `onAccept`.
+    inner = (
+      <div style={{ marginLeft: pad }}>
+        <AcceptBlock terms={b.accept} acceptance={acceptance} currentHashes={docHashes}
+          onChange={(accept) => onImage({ accept })}
+          onWithdraw={acceptance && onWithdrawAccept ? () => onWithdrawAccept(acceptance.id) : undefined}
+          invoice={acceptance?.invoiceId ? { id: acceptance.invoiceId, ...(acceptInvoices?.[acceptance.invoiceId] ?? { number: 'Invoice', status: 'draft' }) } : null}
+          onCreateInvoice={acceptance && !acceptance.invoiceId && onCreateAcceptInvoice ? () => onCreateAcceptInvoice(acceptance.id) : undefined} />
+      </div>
+    );
   } else if (b.type === 'quote') {
     inner = <div className="border-l-[3px] border-line-strong pl-3.5" style={{ marginLeft: pad }}>{ta()}</div>;
   } else if (b.type === 'callout') {
@@ -1259,14 +1853,14 @@ const BlockRow = memo(function BlockRow({
     inner = (
       <div className="overflow-hidden rounded-md border border-line-strong bg-surface-raised">
         <div className="flex items-center justify-end gap-0.5 border-b border-line-soft px-1.5 py-1">
-          <select value={b.lang ?? 'text'} onChange={(e) => onSetLang(e.target.value)} className="mr-auto cursor-pointer border-0 bg-transparent font-mono text-caption text-ink-600 outline-none">
+          <select data-chromeless value={b.lang ?? 'text'} onChange={(e) => onSetLang(e.target.value)} className="mr-auto cursor-pointer border-0 bg-transparent font-mono text-caption text-ink-600 outline-none">
             {CODE_LANGS.map((l) => <option key={l} value={l}>{l}</option>)}
           </select>
           <ToolbarButton wide size="sm" active={!!b.wrap} onClick={() => onImage({ wrap: !b.wrap })} title="Toggle soft wrap" aria-pressed={!!b.wrap}>
-            <Icon icon={ArrowDownUp} size={13} style={{ transform: 'rotate(90deg)' }} /> Wrap
+            <Icon icon={ArrowDownUp} size={12} style={{ transform: 'rotate(90deg)' }} /> Wrap
           </ToolbarButton>
           <ToolbarButton wide size="sm" onClick={() => { navigator.clipboard?.writeText(b.text).catch(() => {}); setCopied(true); }} title="Copy code">
-            <Icon icon={copied ? Check : CopyIcon} size={13} /> {copied ? 'Copied' : 'Copy'}
+            <IconSwap swapKey={copied ? 'check' : 'copy'}><Icon icon={copied ? Check : CopyIcon} size={12} /></IconSwap> {copied ? 'Copied' : 'Copy'}
           </ToolbarButton>
         </div>
         <div className="px-3.5 py-2.5">{ta()}</div>
@@ -1275,13 +1869,18 @@ const BlockRow = memo(function BlockRow({
   } else if (b.type === 'table') {
     inner = <TableBlock rows={b.rows && b.rows.length ? b.rows : emptyTableRows()} onChange={onTableChange} />;
   } else if (b.type === 'image') {
-    inner = <div style={{ marginLeft: pad }}><ImageBlock block={b} onImage={onImage} caption={ta} /></div>;
+    inner = <div style={{ marginLeft: pad }}><ImageBlock block={b} onImage={onImage} caption={ta} attachTo={attachTo} uploads={uploads} /></div>;
   } else if (b.type === 'bookmark' || b.type === 'embed' || b.type === 'video' || b.type === 'audio' || b.type === 'pdf' || b.type === 'file') {
-    inner = <div style={{ marginLeft: pad }}><LinkBlock block={b} onSubmit={(url) => onImage({ src: url })} onClear={() => onImage({ src: undefined })} /></div>;
+    inner = <div style={{ marginLeft: pad }}><LinkBlock block={b} attachTo={attachTo} uploads={uploads} note={ta}
+      onSubmit={(url) => onImage({ src: url })}
+      onAttach={(patch) => onImage(patch)}
+      onClear={() => onImage({ src: undefined, fileId: undefined, fileName: undefined, fileSize: undefined })} /></div>;
+  } else if (b.type === 'page') {
+    inner = <div style={{ marginLeft: pad }}><PageBlock pageId={b.pageId} onOpen={onOpenPage} onRecreate={onRecreatePage} /></div>;
   } else if (b.type === 'collection') {
     /* Inline database — the block hosts a full database surface. onPick binds
        a "Linked view" block to its chosen source collection. */
-    inner = <div style={{ marginLeft: pad }}><InlineCollection colId={b.colId} onExpand={onExpandDb} onPick={(cid) => onImage({ colId: cid })} /></div>;
+    inner = <div style={{ marginLeft: pad }}><InlineCollection colId={b.colId} onExpand={onExpandDb} onRetry={onRetryDb} onPick={(cid) => onImage({ colId: cid })} /></div>;
   } else {
     inner = <div style={{ paddingLeft: pad }}>{ta()}</div>;
   }
@@ -1296,7 +1895,7 @@ const BlockRow = memo(function BlockRow({
       onContextMenu={(e) => {
         // Right-click opens the block action menu (§6.4) for text-carrying
         // blocks; tables/databases keep their own native cell menus.
-        if (b.type === 'table' || b.type === 'collection') return;
+        if (b.type === 'table' || b.type === 'collection' || b.type === 'lineitems') return;
         e.preventDefault(); onOpenMenu();
       }}
       style={{ position: 'relative', display: 'flex', gap: 4, alignItems: 'flex-start', opacity: isDragging ? 0.35 : dimmed ? 0.45 : 1, transform: CSS.Transform.toString(transform), transition }}
@@ -1305,13 +1904,16 @@ const BlockRow = memo(function BlockRow({
           (Notion architecture): absolutely positioned left of the row so the
           caret, placeholder, and text never shift, hover or not. Consumers
           reserve ≥44px of horizontal padding for it. */}
-      <span className={cn('block-gutter absolute top-[3px] flex w-10 items-center justify-end gap-px opacity-0 transition-opacity duration-fast group-hover/row:opacity-100', menu && 'opacity-100')} style={{ left: -44 }}>
+      <span
+        className={cn('block-gutter absolute flex w-10 items-center justify-end gap-px opacity-0 transition-opacity duration-fast group-hover/row:opacity-100', menu && 'opacity-100')}
+        style={{ left: -44, top: gutterTop(b.type) }}
+      >
         <button onClick={(e) => onAddAfter(e.altKey)} title="Click to add below · ⌥-click to add above" aria-label="Add block"
           className="zb-press grid h-[22px] w-5 cursor-pointer place-items-center rounded-xs border-0 bg-transparent text-ink-600">
           <Icon icon={Plus} size={16} />
         </button>
         <button ref={setActivatorNodeRef} {...attributes} {...listeners} onClick={onOpenMenu} title="Drag to move · click for menu" aria-label="Block menu"
-          className={cn('zb-press grid h-[22px] w-4 cursor-grab place-items-center rounded-xs border-0 text-ink-600 [touch-action:none]', menu ? 'bg-paper-3' : 'bg-transparent')}>
+          className={cn('zb-press grid h-[22px] w-4 cursor-grab place-items-center rounded-xs border-0 text-ink-600 [touch-action:none]', menu ? 'bg-surface-active' : 'bg-transparent')}>
           <Icon icon={GripVertical} size={14} />
         </button>
       </span>
@@ -1324,10 +1926,18 @@ const BlockRow = memo(function BlockRow({
       <div style={{
         flex: 1, minWidth: 0, padding: '2px 4px', borderRadius: 'var(--r-xs)',
         background: selected ? 'var(--sel-block)' : bgTint ?? 'transparent',
-        ...(active || menu || slash || b.type === 'collection' || b.type === 'callout' ? {} : { contentVisibility: 'auto', containIntrinsicSize: 'auto 34px' }),
+        // Containment is off whenever anything inside may overflow or must be
+        // measured — a comment thread grows the row well past the 34px estimate.
+        ...(active || menu || trigger || commenting || commentThreads.length || b.type === 'collection' || b.type === 'lineitems' || b.type === 'callout' ? {} : { contentVisibility: 'auto', containIntrinsicSize: 'auto 34px' }),
       }}>
         {inner}
-        {slash && <SlashMenu {...slash} />}
+        {pasteAs && <PasteAsMenu {...pasteAs} />}
+        {commentActions && (
+          <BlockComments
+            threads={commentThreads} composing={commenting} blockId={b.id}
+            actions={commentActions} onCloseComposer={onCloseComposer ?? (() => {})}
+          />
+        )}
       </div>
       {findShadow !== undefined && <FindShadow text={findShadow} onReveal={onToggleCollapse} />}
       {menu && <BlockMenu block={b} actions={menuActions} onClose={onCloseMenu} />}
@@ -1337,7 +1947,18 @@ const BlockRow = memo(function BlockRow({
   p.block === n.block && p.number === n.number && p.selected === n.selected &&
   p.focused === n.focused && p.dimmed === n.dimmed && p.hasChildren === n.hasChildren &&
   p.findShadow === n.findShadow &&
-  p.menu === n.menu && activeEq(p.active, n.active) && !p.slash && !n.slash);
+  // DATA a row paints from, which arrives after the row does: the page's unplaced uploads (an empty media row's
+  // offer) and a proposal's signatures. Missing here, an offer that landed never appeared, and a signed proposal
+  // kept reading "unsigned" until something else repainted its row (found 2026-09-21). Each is handed only to the
+  // rows that paint it, as a stable reference, so these stay pointer compares and typing still skips every row.
+  p.uploads === n.uploads && p.acceptance === n.acceptance && p.docHashes === n.docHashes &&
+  p.acceptInvoices === n.acceptInvoices &&
+  // Comments are data, so they belong in the comparator — a thread posted on
+  // this row must repaint it. `byBlock` hands back the same array reference
+  // while the threads are unchanged (and NO_THREADS when there are none), so
+  // this stays a pointer compare and typing still skips every other row.
+  p.commentThreads === n.commentThreads && p.commenting === n.commenting &&
+  p.menu === n.menu && activeEq(p.active, n.active) && !p.trigger && !n.trigger);
 
 // ⌘F reaches inside collapsed toggles (PRD §8.6): the hidden children's plain
 // text stays in the DOM under hidden="until-found", so native find-on-page
@@ -1378,7 +1999,7 @@ function BlockMenu({ block, actions, onClose }: { block: Block; actions: MenuAct
     window.addEventListener('mousedown', fn);
     return () => window.removeEventListener('mousedown', fn);
   }, [onClose]);
-  const convertible = block.type !== 'table' && block.type !== 'divider' && block.type !== 'collection' && !MEDIA_TYPES.includes(block.type);
+  const convertible = isTextBlock(block.type);
   const colorable = convertible;
   const typeLabel = BLOCK_MENU.find((m) => m.type === block.type)?.label ?? block.type;
   // Type-ahead: fuzzy-filter every menu item on label + keywords (§6.4).
@@ -1388,7 +2009,9 @@ function BlockMenu({ block, actions, onClose }: { block: Block; actions: MenuAct
   type Leaf = { key: string; label: string; kw: string; icon: IconType; kbd?: string; danger?: boolean; run: () => void };
   const leaves: Leaf[] = [
     ...(actions.expandPage ? [{ key: 'page', label: 'Turn into page', kw: 'turn into page subpage', icon: ExternalLink, run: actions.expandPage }] : []),
+    ...(actions.comment ? [{ key: 'comment', label: 'Comment', kw: 'comment discuss note reply thread feedback', icon: MessageCircle, kbd: '⌘⇧M', run: actions.comment }] : []),
     { key: 'dup', label: 'Duplicate', kw: 'duplicate copy clone', icon: CopyIcon, kbd: '⌘D', run: actions.duplicate },
+    ...(actions.copyLink ? [{ key: 'copylink', label: 'Copy link to block', kw: 'copy link to block anchor address url share permalink', icon: LinkIcon, run: actions.copyLink }] : []),
     { key: 'copytext', label: 'Copy text', kw: 'copy text', icon: CopyIcon, run: actions.copyText },
     { key: 'select', label: 'Select', kw: 'select highlight', icon: Check, kbd: 'Esc', run: actions.select },
     { key: 'up', label: 'Move up', kw: 'move up reorder', icon: ArrowUp, kbd: '⌘⇧↑', run: actions.moveUp },
@@ -1401,8 +2024,29 @@ function BlockMenu({ block, actions, onClose }: { block: Block; actions: MenuAct
   // Enter runs the single remaining match (fast keyboard path).
   const onlyOne = shownLeaves.length === 1 && !showConvert && !showColor ? shownLeaves[0] : null;
   return (
-    <MenuPanel ref={ref} onMouseDown={(e) => e.stopPropagation()} className="absolute top-[26px] left-0 z-[70] w-[216px]">
-      <input
+    // PORTALLED. This was `absolute top-[26px] left-0`, and a block lives inside
+    // the editor's `overflow: auto` scroll region — measured — so the panel was
+    // sliced at the region's edge for any block near the bottom. Same class of
+    // bug as the document card menu.
+    //
+    // A Popover, not a DropdownMenu: this panel owns a SEARCH INPUT, and a
+    // Radix menu would swallow those keystrokes for type-ahead. The anchor is a
+    // zero-size span left exactly where the old panel's top-left corner sat, so
+    // the menu appears in the same place while being positioned from the body.
+    <Popover open onOpenChange={(next) => { if (!next) onClose(); }}>
+      <PopoverAnchor asChild>
+        <span aria-hidden className="pointer-events-none absolute top-[26px] left-0 block size-0" />
+      </PopoverAnchor>
+      <PopoverContent
+        ref={ref}
+        align="start" side="bottom" sideOffset={0} flush
+        onMouseDown={(e) => e.stopPropagation()}
+        // The panel's own input carries autoFocus; letting Radix steal focus to
+        // the content wrapper first would drop the first keystroke.
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        className="w-[216px] p-1"
+      >
+      <input data-chromeless
         autoFocus value={q} onChange={(e) => setQ(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'Escape') { e.preventDefault(); onClose(); }
@@ -1419,7 +2063,7 @@ function BlockMenu({ block, actions, onClose }: { block: Block; actions: MenuAct
           <MenuItem icon={<Icon icon={ArrowLeftRight} size={14} />} trailing={<Icon icon={ChevronRight} size={12} />} onClick={() => { setConvertOpen((v) => !v); setColorOpen(false); }}>Turn into</MenuItem>
           {convertOpen && (
             <MenuPanel className={MENU_SUB_POS}>
-              {BLOCK_MENU.filter((m) => m.type !== 'table' && m.type !== 'divider' && m.type !== 'collection' && !MEDIA_TYPES.includes(m.type) && m.type !== block.type).map((m) => (
+              {BLOCK_MENU.filter((m) => isTextBlock(m.type) && m.type !== block.type).map((m) => (
                 <MenuItem key={m.type} icon={<Icon icon={BLOCK_ICON[m.type]} size={14} />} onClick={() => actions.convert(m.type)}>{m.label}</MenuItem>
               ))}
             </MenuPanel>
@@ -1464,21 +2108,118 @@ function BlockMenu({ block, actions, onClose }: { block: Block; actions: MenuAct
       {query && !showConvert && !showColor && shownLeaves.length === 0 && (
         <div className="px-2 py-1.5 text-meta font-medium text-ink-500">No actions</div>
       )}
-    </MenuPanel>
+      </PopoverContent>
+    </Popover>
   );
 }
 function Kbdish({ children }: { children: React.ReactNode }) {
   return <span className="ml-auto text-caption text-ink-500">{children}</span>;
 }
 
+// ── Uploads a page holds and no longer shows (2026-09-21) ────────────────────
+// Until 2026-09-21 a reopened document dropped its uploads' references (lib/blocks.ts `uploadOf`), and its next save
+// wrote the loss down. The files were never touched — each is an `attachments` row owned by the page — so every one
+// can come back: an empty image or file block offers them, and one press puts one in. The person places them; the
+// editor does not guess which empty block each belonged to.
+
+/** A media block with nothing in it yet, of a type an upload can fill. */
+const takesUpload = (b: Block): boolean => (b.type === 'image' || b.type === 'pdf' || b.type === 'file') && !b.src && !b.fileId;
+
+/** What a block of this type can show: images for an image, PDFs for a PDF, anything but an image for a file. */
+function uploadsFor(type: BlockType, files: readonly Attachment[] | undefined): Attachment[] {
+  return (files ?? []).filter((f) => {
+    const kind = attachmentKind(f.mime_type, f.filename);
+    return type === 'image' ? kind === 'image' : type === 'pdf' ? kind === 'pdf' : kind !== 'image';
+  });
+}
+
+/**
+ * The page's uploads that nothing on it shows. Asked once per page, and only when some block could take one — an
+ * ordinary document costs nothing. The editor's own placements are subtracted as they happen, so a file put back in
+ * one block stops being offered in the others, and comes back if that block is deleted.
+ */
+function useUnplacedUploads(owner: AttachmentOwner | undefined, blocks: Block[]): Attachment[] {
+  const pageId = owner && 'page_id' in owner ? owner.page_id : null;
+  const wanted = !!pageId && blocks.some(takesUpload);
+  const [got, setGot] = useState<{ pageId: string; files: Attachment[] } | null>(null);
+  useEffect(() => {
+    if (!wanted || !pageId || got?.pageId === pageId) return;
+    let live = true;
+    void unplacedPageUploads(pageId).then((files) => { if (live) setGot({ pageId, files }); });
+    return () => { live = false; };
+  }, [wanted, pageId, got?.pageId]);
+  // Keyed by what is PLACED, not by the blocks: rows compare this by reference (BlockRow's memo), so it must keep its
+  // identity while someone types and change only when a file is put in or taken out.
+  const placed = blocks.map((b) => b.fileId ?? '').filter(Boolean).join(',');
+  return useMemo(
+    () => (got && got.pageId === pageId ? unplacedUploads(got.files, null, placed.split(',')) : []),
+    [got, pageId, placed],
+  );
+}
+
+/** Enough to recognise a lost picture at a glance; the rest are offered as these are placed. */
+const MAX_UPLOAD_CHOICES = 12;
+
+/**
+ * The offer itself: images as themselves, any other file by its name. Draws nothing when there is nothing to offer.
+ * Its name sits on a line of its own, so the choices wrap as one row at any width rather than around the words.
+ */
+function UploadChoices({ files, onPick }: { files: readonly Attachment[]; onPick: (f: Attachment) => void }) {
+  const labelId = useId();
+  if (!files.length) return null;
+  return (
+    <div role="group" aria-labelledby={labelId} className="mt-2">
+      <div id={labelId} className="mb-1.5 text-caption text-ink-500">Uploaded to this doc</div>
+      <div className="flex flex-wrap gap-1.5">
+        {files.slice(0, MAX_UPLOAD_CHOICES).map((f) => <UploadChoice key={f.id} file={f} onPick={() => onPick(f)} />)}
+      </div>
+    </div>
+  );
+}
+
+function UploadChoice({ file, onPick }: { file: Attachment; onPick: () => void }) {
+  const image = attachmentKind(file.mime_type, file.filename) === 'image';
+  // Minted per render and batched with every other URL asked for in the same moment (lib/use-attachment).
+  const { url } = useAttachmentUrl(image ? file.id : null);
+  const label = `Show ${file.filename} here`;
+  if (!image) {
+    return (
+      <Button size="sm" variant="ghost" onClick={onPick} aria-label={label} className="max-w-64">
+        <Icon icon={Paperclip} size={14} /><span className="truncate">{file.filename}</span>
+      </Button>
+    );
+  }
+  return (
+    <Tooltip content={file.filename}>
+      <button type="button" onClick={onPick} aria-label={label}
+        className="focus-ring grid size-14 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-md border border-line bg-paper-3 p-0 text-ink-500 hover:border-line-strong">
+        {url
+          // eslint-disable-next-line @next/next/no-img-element -- a short-lived signed URL for the person's own upload
+          ? <img src={url} alt="" draggable={false} className="size-full object-cover" />
+          : <Icon icon={Image} size={20} />}
+      </button>
+    </Tooltip>
+  );
+}
+
 // ── Image block (Notion-style) ───────────────────────────────────────────────
 // Empty → a quiet "Add an image" bar (click / drag-drop / paste). Set → the
 // image at its stored width, with drag-to-resize side handles, a hover toolbar
 // (Replace · Full width · Download), and an editable caption below.
-function ImageBlock({ block: b, onImage, caption }: {
+function ImageBlock({ block: b, onImage, caption, attachTo, uploads }: {
   block: Block; onImage: (patch: Partial<Block>) => void; caption: (extra?: React.CSSProperties) => React.ReactNode;
+  /** Where an uploaded image is stored (0033). Absent ⇒ the legacy inline path. */
+  attachTo?: AttachmentOwner;
+  /** The page's uploads nothing on it shows (`useUnplacedUploads`); its images are offered while this block is empty. */
+  uploads?: readonly Attachment[];
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const { upload, busy } = useAttachmentUpload(attachTo);
+  // An uploaded image is an attachment id; the bucket is private, so the URL is
+  // minted per render. `b.src` still renders anything stored inline before this
+  // — documents written with data-URLs keep working untouched.
+  const { url: storedUrl } = useAttachmentUrl(b.fileId);
+  const src = b.fileId ? storedUrl : b.src;
   const [dragOver, setDragOver] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [w, setW] = useState<number | null>(null); // live width while dragging
@@ -1487,18 +2228,34 @@ function ImageBlock({ block: b, onImage, caption }: {
 
   async function intake(file: File) {
     setErr(null);
-    try { onImage({ src: await fileToDataUrl(file, { max: 1600, quality: 0.85 }) }); }
-    catch (e) { setErr(e instanceof Error ? e.message : 'Upload failed'); }
+    try {
+      // Downscale either way: a 12 MP phone photo is 4 MB of bytes nobody can
+      // see at 1600px, and that cost is the same whether it lands in storage or
+      // in the page JSON.
+      if (attachTo) {
+        const { blob, mime } = await downscaleImage(file, { max: 1600, quality: 0.85 });
+        const named = new File([blob], reencodedName(file.name, mime), { type: mime });
+        const saved = await upload(named);
+        if (!saved) { setErr('Upload failed'); return; }
+        // `src: undefined` so a replaced image cannot leave the old inline copy
+        // behind it, silently winning the render.
+        onImage({ fileId: saved.id, fileName: saved.filename, fileSize: saved.size_bytes ?? 0, src: undefined });
+      } else {
+        // No owner (an unsaved page, or a host with no record context): keep the
+        // inline data-URL, which is exactly what this did before 0033.
+        onImage({ src: await fileToDataUrl(file, { max: 1600, quality: 0.85 }) });
+      }
+    } catch (e) { setErr(e instanceof Error ? e.message : 'Upload failed'); }
   }
 
   // Click the image → full-screen lightbox. Collect every image on the page at
   // open time so ←/→ can page through them (§8.11) without lifting state.
   function openLightbox() {
-    if (!b.src) return;
+    if (!src) return;
     const srcs = Array.from(document.querySelectorAll<HTMLImageElement>('.img-block img'))
       .map((im) => im.getAttribute('src') || '').filter(Boolean);
-    const index = Math.max(0, srcs.indexOf(b.src));
-    setLightbox({ srcs: srcs.length ? srcs : [b.src], index });
+    const index = Math.max(0, srcs.indexOf(src));
+    setLightbox({ srcs: srcs.length ? srcs : [src], index });
   }
 
   // Drag a side handle to set width (% of the column, clamped 20–100).
@@ -1518,7 +2275,7 @@ function ImageBlock({ block: b, onImage, caption }: {
     window.addEventListener('mousemove', move); window.addEventListener('mouseup', up);
   }
 
-  if (!b.src) {
+  if (!b.src && !b.fileId) {
     return (
       <div className="my-1">
         <button
@@ -1531,10 +2288,24 @@ function ImageBlock({ block: b, onImage, caption }: {
             dragOver ? 'bg-[var(--accent-soft)] shadow-[0_0_0_1px_var(--accent-border)]' : 'bg-paper-3',
           )}>
           <Icon icon={Image} size={20} className="shrink-0 text-ink-600" />
-          <span>{dragOver ? 'Drop image to upload' : 'Add an image'}</span>
+          <span>{busy ? 'Uploading…' : dragOver ? 'Drop image to upload' : 'Add an image'}</span>
         </button>
+        <UploadChoices files={uploadsFor('image', uploads)}
+          onPick={(f) => onImage({ fileId: f.id, fileName: f.filename, fileSize: f.size_bytes ?? 0, src: undefined })} />
         {err && <div role="alert" className="pt-1.5 text-caption text-danger-600">{err}</div>}
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) intake(f); e.target.value = ''; }} />
+      </div>
+    );
+  }
+
+  // A stored image whose short-lived URL has not been minted yet. Reserve the
+  // frame instead of rendering a broken <img> — the swap is one paint, and an
+  // empty box that becomes a picture reads far better than a torn-image glyph.
+  if (b.fileId && !src) {
+    return (
+      <div className="my-1 flex h-24 items-center gap-2.5 rounded-md bg-paper-3 px-3.5 text-body text-ink-500">
+        <Icon icon={Image} size={20} className="shrink-0" />
+        <span>{b.fileName || 'Image'}</span>
       </div>
     );
   }
@@ -1546,7 +2317,7 @@ function ImageBlock({ block: b, onImage, caption }: {
     <figure ref={wrapRef} className="img-block my-1 flex flex-col" style={{ alignItems }}>
       <div className="img-wrap group/img relative max-w-full overflow-hidden rounded-md leading-[0]" style={{ width: `${width}%`, userSelect: w != null ? 'none' : undefined }}>
         {/* eslint-disable-next-line @next/next/no-img-element -- user image, data/blob/http URL */}
-        <img src={b.src} alt={b.text || ''} draggable={false} onClick={openLightbox}
+        <img src={src ?? undefined} alt={b.text || ''} draggable={false} onClick={openLightbox}
           className="block h-auto w-full" style={{ cursor: w != null ? 'ew-resize' : 'zoom-in' }} />
         {/* side resize handles */}
         {(['l', 'r'] as const).map((side) => (
@@ -1561,7 +2332,7 @@ function ImageBlock({ block: b, onImage, caption }: {
           <span aria-hidden className="mx-px my-0.5 w-px bg-line-soft" />
           <ToolbarButton size="sm" onClick={() => fileRef.current?.click()} title="Replace" aria-label="Replace image"><Icon icon={Image} size={14} /></ToolbarButton>
           <ToolbarButton size="sm" onClick={() => onImage({ width: width >= 100 ? 60 : 100 })} title="Toggle width" aria-label="Toggle width"><Icon icon={UnfoldHorizontal} size={14} /></ToolbarButton>
-          <a href={b.src} download={(b.text || 'image')} title="Download" aria-label="Download image" onClick={(e) => e.stopPropagation()}
+          <a href={src ?? undefined} download={(b.fileName || b.text || 'image')} title="Download" aria-label="Download image" onClick={(e) => e.stopPropagation()}
             className="zb-press grid size-[22px] place-items-center rounded-sm text-ink-600 no-underline transition-colors duration-fast hover:text-ink-900"><Icon icon={Download} size={14} /></a>
         </span>
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) intake(f); e.target.value = ''; }} />
@@ -1572,46 +2343,45 @@ function ImageBlock({ block: b, onImage, caption }: {
   );
 }
 
-// ── Lightbox (§8.11) — full-screen image viewer, portalled to <body> so it
-// escapes any content-visibility/overflow containment on the block row.
-// Esc / click-out closes; ←/→ pages through every image on the document.
+// ── Lightbox (§8.11) — full-screen image viewer. The portal, the dark surface,
+// the dialog role, Escape, backdrop-dismiss, the body scroll lock and the one
+// z value all come from <FullScreenLayer>; this only owns what is actually
+// specific to a viewer, which is ←/→ paging through the document's images.
 function Lightbox({ srcs, index, alt, onClose }: { srcs: string[]; index: number; alt: string; onClose: () => void }) {
   const [i, setI] = useState(index);
   const many = srcs.length > 1;
   const step = (d: number) => setI((c) => (c + d + srcs.length) % srcs.length);
   useEffect(() => {
+    if (!many) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.preventDefault(); onClose(); }
-      else if (many && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
         e.preventDefault();
         setI((c) => (c + (e.key === 'ArrowLeft' ? -1 : 1) + srcs.length) % srcs.length);
       }
     };
     window.addEventListener('keydown', onKey);
-    const prev = document.body.style.overflow; document.body.style.overflow = 'hidden';
-    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
-  }, [many, srcs.length, onClose]);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [many, srcs.length]);
   const src = srcs[i] ?? srcs[0];
   const navBtn = 'absolute top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full border-0 bg-[color-mix(in_srgb,var(--color-paper)_14%,transparent)] text-white [cursor:pointer]';
-  return createPortal(
-    <div onClick={onClose} role="dialog" aria-modal="true" aria-label="Image viewer"
-      className="fixed inset-0 z-[200] grid place-items-center bg-black/80 p-12 backdrop-blur-[2px] [animation:fadein_120ms]">
+  return (
+    <FullScreenLayer label="Image viewer" onClose={onClose} surface="dark" dismissOnBackdrop
+      className="grid place-items-center p-12">
       <button onClick={onClose} aria-label="Close" title="Close (Esc)"
         className="absolute right-4 top-4 grid size-9 place-items-center rounded-full border-0 bg-[color-mix(in_srgb,var(--color-paper)_14%,transparent)] text-white [cursor:pointer]">
-        <Icon icon={X} size={18} />
+        <Icon icon={X} size={20} />
       </button>
       {many && (
         <>
           <button onClick={(e) => { e.stopPropagation(); step(-1); }} aria-label="Previous image" className={cn(navBtn, 'left-4')}><Icon icon={ChevronLeft} size={20} /></button>
           <button onClick={(e) => { e.stopPropagation(); step(1); }} aria-label="Next image" className={cn(navBtn, 'right-4')}><Icon icon={ChevronRight} size={20} /></button>
-          <span className="absolute bottom-5 left-1/2 -translate-x-1/2 text-caption tracking-[0.02em] text-white/80">{i + 1} / {srcs.length}</span>
+          <span className="absolute bottom-5 left-1/2 -translate-x-1/2 text-caption text-white/80">{i + 1} / {srcs.length}</span>
         </>
       )}
       {/* eslint-disable-next-line @next/next/no-img-element -- user image, data/blob/http URL */}
       <img src={src} alt={alt} onClick={(e) => e.stopPropagation()}
         className="max-h-full max-w-full rounded-md object-contain shadow-lg" />
-    </div>,
-    document.body,
+    </FullScreenLayer>
   );
 }
 
@@ -1654,42 +2424,113 @@ const LINK_INTAKE: Partial<Record<BlockType, { icon: IconType; placeholder: stri
   pdf: { icon: FileText, placeholder: 'Paste a link to a PDF', action: 'Embed PDF' },
   file: { icon: Paperclip, placeholder: 'Paste a link to a file', action: 'Attach' },
 };
-function LinkBlock({ block: b, onSubmit, onClear }: { block: Block; onSubmit: (url: string) => void; onClear: () => void }) {
+function LinkBlock({ block: b, onSubmit, onClear, onAttach, attachTo, uploads, note }: {
+  block: Block; onSubmit: (url: string) => void; onClear: () => void;
+  /** The page's uploads nothing on it shows; a PDF or file block offers the ones it can show while empty. */
+  uploads?: readonly Attachment[];
+  /** Record an uploaded file on the block. */
+  onAttach: (patch: { fileId: string; fileName: string; fileSize: number }) => void;
+  /** What the file hangs off. Absent ⇒ upload is hidden and only links work. */
+  attachTo?: AttachmentOwner;
+  /**
+   * The block's own editable text — YOUR note about this link.
+   *
+   * The card already shows a description, but it is SCRAPED from the page, and
+   * for the links people actually paste that is worthless: a Drive folder says
+   * "Sign in to continue", a Figma file says "Figma", a private Notion page
+   * says nothing at all. What an agency needs to record is why this link
+   * matters — "Final homepage designs, approved 12 Aug" — and there was
+   * nowhere to put it.
+   *
+   * It is the same render-prop `ImageBlock` already takes for its caption, and
+   * the same `block.text` field, so this needed no schema and no migration:
+   * every block has carried `text` all along.
+   */
+  note?: (extra?: React.CSSProperties) => React.ReactNode;
+}) {
   const [draft, setDraft] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
+  const { upload, busy, error: upErr } = useAttachmentUpload(attachTo);
+  // Only the two block types that mean "a file lives here" offer an upload;
+  // video/audio/embed/bookmark are about linking something already on the web.
+  const uploadable = !!attachTo && (b.type === 'file' || b.type === 'pdf');
+  const onUpload = async (f: File) => {
+    const a = await upload(f);
+    if (a) onAttach({ fileId: a.id, fileName: a.filename, fileSize: a.size_bytes ?? 0 });
+  };
   const intake = LINK_INTAKE[b.type] ?? LINK_INTAKE.bookmark!;
   const submit = () => { const u = normalizeUrl(draft); if (u) onSubmit(u); };
-  if (!b.src) {
+  // An uploaded file is stored as an id; the private bucket only hands out
+  // short-lived signatures, so the URL is minted here on render.
+  const { url: signedUrl } = useAttachmentUrl(b.fileId);
+  const src = b.fileId ? signedUrl : b.src;
+
+  if (!b.src && !b.fileId) {
     return (
       <div className="my-1">
-        <div className="flex items-center gap-2 rounded-md bg-paper-3 px-3 py-2.5">
+        {/* Wraps rather than squeezes: at a phone's width the field kept two characters ("Pa") beside its buttons. */}
+        <div className="flex flex-wrap items-center gap-2 rounded-md bg-paper-3 px-3 py-2.5">
           <Icon icon={intake.icon} size={20} className="shrink-0 text-ink-600" />
-          <input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)}
+          <input data-chromeless autoFocus value={draft} onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submit(); } if (e.key === 'Escape') setDraft(''); }}
             onMouseDown={(e) => e.stopPropagation()}
             placeholder={intake.placeholder}
             autoComplete="off" data-1p-ignore data-lpignore="true"
-            className="min-w-0 flex-1 border-0 bg-transparent text-body text-ink-900 outline-none" />
+            className="min-w-40 flex-1 border-0 bg-transparent text-body text-ink-900 outline-none" />
+          {/* Upload sits BESIDE the link field rather than replacing it: linking
+              a file you host elsewhere is still legitimate, and a picker that
+              swallowed the paste box would remove an ability people had. */}
+          {uploadable && (
+            <>
+              <input ref={fileRef} type="file" hidden aria-hidden tabIndex={-1}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) void onUpload(f); e.target.value = ''; }} />
+              <Button size="sm" loading={busy} onMouseDown={(e) => { e.preventDefault(); fileRef.current?.click(); }} className="whitespace-nowrap">
+                Upload
+              </Button>
+            </>
+          )}
           <Button size="sm" variant="primary" disabled={!draft.trim()} onMouseDown={(e) => { e.preventDefault(); submit(); }} className="whitespace-nowrap">
             {intake.action}
           </Button>
         </div>
+        {uploadable && (
+          <UploadChoices files={uploadsFor(b.type, uploads)}
+            onPick={(f) => onAttach({ fileId: f.id, fileName: f.filename, fileSize: f.size_bytes ?? 0 })} />
+        )}
+        {upErr && <div className="mt-1 px-1 text-caption text-danger-600">{upErr}</div>}
+      </div>
+    );
+  }
+
+  // An uploaded file whose signature has not landed yet — show the name we
+  // already know rather than an empty frame that looks broken.
+  if (b.fileId && !src) {
+    return (
+      <div className="my-1 flex items-center gap-2.5 rounded-md border border-line bg-paper-2 px-3 py-2">
+        <Icon icon={Paperclip} size={16} className="shrink-0 text-ink-600" />
+        <span className="min-w-0 flex-1 truncate text-body text-ink-600">{b.fileName || 'Attachment'}</span>
+        <span className="text-caption text-ink-500">Opening…</span>
       </div>
     );
   }
   // Hover toolbar shared by the framed media types.
   const tools = (
     <span className="embed-tools absolute right-2 top-2 inline-flex gap-0.5 rounded-sm bg-paper-2 p-0.5 opacity-0 shadow-[0_0_0_1px_var(--color-line-soft),var(--shadow-sm)] transition-opacity duration-fast group-hover/embed:opacity-100">
-      <a href={b.src} target="_blank" rel="noreferrer" title="Open" aria-label="Open in new tab" onClick={(e) => e.stopPropagation()}
+      <a href={safeHref(src) ?? undefined} target="_blank" rel="noreferrer" title="Open" aria-label="Open in new tab" onClick={(e) => e.stopPropagation()}
         className="zb-press grid size-[22px] place-items-center rounded-sm text-ink-600 no-underline transition-colors duration-fast hover:text-ink-900"><Icon icon={ExternalLink} size={14} /></a>
       <ToolbarButton size="sm" onClick={(e) => { e.stopPropagation(); onClear(); }} title="Remove" aria-label="Remove"><Icon icon={X} size={14} /></ToolbarButton>
     </span>
   );
-  const directVideo = b.type === 'video' && toEmbedUrl(b.src) === b.src;
+  const directVideo = b.type === 'video' && toEmbedUrl(src!) === b.src;
   if (b.type === 'embed' || (b.type === 'video' && !directVideo)) {
     return (
       <div className="embed-block group/embed relative my-1">
         <div className="relative aspect-video w-full overflow-hidden rounded-md border border-line bg-paper-3">
-          <iframe src={toEmbedUrl(b.src)} title={b.type === 'video' ? 'Video' : 'Embed'} loading="lazy" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen className="absolute inset-0 h-full w-full border-0" />
+          {/* SANDBOXED, and the src is validated. An embed is a whole page some
+              stranger wrote, running unprompted inside ours — and ours is often
+              a client portal. `EMBED_SANDBOX` withholds top-level navigation, so
+              an embed can no longer replace the tab with a lookalike. */}
+          <iframe src={safeEmbedSrc(toEmbedUrl(src!)) ?? 'about:blank'} sandbox={EMBED_SANDBOX} referrerPolicy="no-referrer" title={b.type === 'video' ? 'Video' : 'Embed'} loading="lazy" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen className="absolute inset-0 h-full w-full border-0" />
         </div>
         {tools}
       </div>
@@ -1698,7 +2539,7 @@ function LinkBlock({ block: b, onSubmit, onClear }: { block: Block; onSubmit: (u
   if (directVideo) {
     return (
       <div className="embed-block group/embed relative my-1">
-        <video src={b.src} controls playsInline className="block w-full rounded-md border border-line bg-paper-3" />
+        <video src={src!} controls playsInline className="block w-full rounded-md border border-line bg-paper-3" />
         {tools}
       </div>
     );
@@ -1706,7 +2547,7 @@ function LinkBlock({ block: b, onSubmit, onClear }: { block: Block; onSubmit: (u
   if (b.type === 'audio') {
     return (
       <div className="embed-block group/embed relative my-1 rounded-md border border-line bg-paper-3 px-2.5 py-2">
-        <audio src={b.src} controls className="block w-full" />
+        <audio src={src!} controls className="block w-full" />
         {tools}
       </div>
     );
@@ -1714,7 +2555,7 @@ function LinkBlock({ block: b, onSubmit, onClear }: { block: Block; onSubmit: (u
   if (b.type === 'pdf') {
     return (
       <div className="embed-block group/embed relative my-1">
-        <iframe src={b.src} title="PDF" loading="lazy" className="block w-full rounded-md border border-line bg-paper-3" style={{ height: 480 }} />
+        <iframe src={safeEmbedSrc(src!) ?? 'about:blank'} sandbox={EMBED_SANDBOX} referrerPolicy="no-referrer" title="PDF" loading="lazy" className="block w-full rounded-md border border-line bg-paper-3" style={{ height: 480 }} />
         {tools}
       </div>
     );
@@ -1722,31 +2563,42 @@ function LinkBlock({ block: b, onSubmit, onClear }: { block: Block; onSubmit: (u
   if (b.type === 'file') {
     return (
       <div className="embed-block group/embed doc-proprow relative my-1">
-        <a href={b.src} target="_blank" rel="noreferrer" onMouseDown={(e) => e.stopPropagation()}
-          className="bookmark-card flex items-center gap-2.5 rounded-md border border-line bg-paper-2 px-3 py-2 no-underline transition-colors duration-fast hover:bg-paper-3">
+        <a href={safeHref(src) ?? undefined} target="_blank" rel="noreferrer" onMouseDown={(e) => e.stopPropagation()}
+          className="bookmark-card flex items-center gap-2.5 rounded-md border border-line bg-paper-2 px-3 py-2 no-underline transition-colors duration-fast hover:wash-over">
           <Icon icon={Paperclip} size={16} className="shrink-0 text-ink-600" />
-          <span className="min-w-0 flex-1 truncate text-body font-medium text-ink-800">{urlFilename(b.src)}</span>
+          <span className="min-w-0 flex-1 truncate text-body font-medium text-ink-800">{(b.fileName || urlFilename(src!))}</span>
           <Icon icon={Download} size={16} className="shrink-0 text-ink-500" />
         </a>
         {tools}
       </div>
     );
   }
-  // bookmark
-  let host = b.src; try { host = new URL(b.src).hostname.replace(/^www\./, ''); } catch { /* keep raw */ }
+  // bookmark — see BookmarkCard: it needs the page's own metadata, which means a
+  // hook, which means its own component. The note sits BELOW the card and not
+  // inside it, because the card is an <a> and a textarea inside an anchor is
+  // invalid HTML that swallows its own clicks.
   return (
-    <a href={b.src} target="_blank" rel="noreferrer" onMouseDown={(e) => e.stopPropagation()}
-      className="bookmark-card my-1 flex items-center gap-3 rounded-md border border-line bg-paper-2 px-3.5 py-3 no-underline transition-colors duration-fast hover:bg-paper-3">
-      <span className="grid size-9 shrink-0 place-items-center rounded-sm bg-paper-3">
-        <Icon icon={Globe} size={20} className="text-ink-600" />
-      </span>
-      <span className="flex min-w-0 flex-col gap-0.5">
-        <span className="truncate text-body font-medium text-ink-800">{host}</span>
-        <span className="truncate text-caption text-ink-500">{b.src}</span>
-      </span>
-      <Icon icon={ExternalLink} size={16} className="ml-auto shrink-0 text-ink-500" />
-    </a>
+    <div className="my-1">
+      <BookmarkCard url={src!} note={b.text?.trim() || undefined} />
+      {note?.({ marginTop: 6 })}
+    </div>
   );
+}
+
+// A bookmark is a PREVIEW of a page, not a bordered link. This used to render the
+// hostname and the raw URL twice over — everything the plain link already said —
+// because nothing ever fetched the page's title. Now: title, description, the
+// site's favicon and name, and the og:image as a thumbnail.
+//
+// Every part is optional. A site that blocks us, serves no Open Graph tags, or
+// simply has no image still gets a clean card built from what did arrive, down to
+// just the hostname — which is exactly the old card, so this can only improve.
+function BookmarkCard({ url, note }: { url: string; note?: string }) {
+  // The card itself is the DS `LinkCard` (Content's library reads links too); the
+  // editor brings the metadata and keeps a click on the card from selecting the
+  // block underneath it.
+  const meta = useLinkMeta(url);
+  return <LinkCard url={url} meta={meta} note={note} className="my-1" onMouseDown={(e) => e.stopPropagation()} />;
 }
 
 // Editable table block — unchanged behavior: header + body, add/remove, sort.
@@ -1801,7 +2653,7 @@ function TableBlock({ rows, onChange }: { rows: string[][]; onChange: (rows: str
               <tr key={r} className="tbl-tr group">
                 {row.map((cell, c) => (
                   <td key={c} className={cn('min-w-[120px]', r < rows.length - 1 && 'border-b border-line-soft', c < cols - 1 && 'border-r border-line-soft')}>
-                    <input value={cell} onChange={(e) => setCell(r, c, e.target.value)} placeholder="—" className={cellInput()} autoComplete="off" data-1p-ignore data-lpignore="true" />
+                    <input value={cell} onChange={(e) => setCell(r, c, e.target.value)} placeholder="–" className={cellInput()} autoComplete="off" data-1p-ignore data-lpignore="true" />
                   </td>
                 ))}
                 <td className="w-[34px] text-center">
@@ -1820,67 +2672,155 @@ function TableBlock({ rows, onChange }: { rows: string[][]; onChange: (rows: str
 }
 const CTL_BTN = 'grid size-5 cursor-pointer place-items-center rounded-sm border-0 bg-transparent text-ink-600';
 
-// Drag preview under the cursor — shows a count pill for group moves.
-// §6.5 drop indicator: a 2px accent line at the target gap, inset to the nest
-// level. Position is precomputed (container-relative top/left) by the drag's
-// rAF loop, so this renders from plain numbers — no DOM reads during render.
+// §6.5 drop indicator: the DS drop line at the target gap, inset to the nest level.
+// Position is precomputed (container-relative top/left) by the drag's rAF loop, so
+// this renders from plain numbers — no DOM reads during render.
 function DropIndicator({ top, left }: { top: number; left: number }) {
+  return <DropLine style={{ left, right: 0, top }} />;
+}
+
+// Drag preview under the cursor — the DS ghost, with a count for group moves.
+function BlockDragGhost({ block, count }: { block: Block; count: number }) {
   return (
-    <div aria-hidden style={{ position: 'absolute', left, right: 0, top, height: 2, background: 'var(--accent)', borderRadius: 1, pointerEvents: 'none', zIndex: 50 }}>
-      <span style={{ position: 'absolute', left: -3, top: -2, width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)' }} />
-    </div>
+    <DragGhost icon={<Icon icon={GripVertical} size={14} />} count={{ n: count, noun: 'blocks' }}
+      label={block.type === 'divider' ? ', divider, ' : (block.text || 'Empty block')} />
   );
 }
 
-function DragGhost({ block, count }: { block: Block; count: number }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 10px', background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', boxShadow: 'var(--shadow-lg)', fontSize: 'var(--text-body-size)', color: 'var(--ink-2)', maxWidth: 360, maxHeight: 120, opacity: 0.9, transform: 'scale(0.98)', cursor: 'grabbing', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
-      <Icon icon={GripVertical} size={14} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
-      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{block.type === 'divider' ? '— divider —' : (block.text || 'Empty block')}</span>
-      {count > 1 && <span className="num shrink-0 rounded-full bg-ink-900 px-1.5 py-px text-caption font-semibold text-onsolid">{count} blocks</span>}
-    </div>
-  );
-}
+type SlashResults = SlashEntry[];
 
-type SlashResults = (Omit<BlockMenuItem, 'group'> & { group: string })[];
+// The "Paste as" chooser. Deliberately tiny: four words, no icons, no search —
+// it appears unbidden right after a paste, so it has to be readable in the
+// quarter-second before you decide to ignore it. Escape or clicking away leaves
+// the plain link you already have.
+function PasteAsMenu({ options, pick, dismiss }: {
+  options: { value: PasteAs; label: string }[]; pick: (c: PasteAs) => void; dismiss: () => void;
+}) {
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); dismiss(); } };
+    // A click anywhere else means "I'm done with this" — including back in the text.
+    const down = (e: MouseEvent) => { if (!(e.target as HTMLElement)?.closest('.paste-as-menu')) dismiss(); };
+    window.addEventListener('keydown', key);
+    window.addEventListener('mousedown', down);
+    return () => { window.removeEventListener('keydown', key); window.removeEventListener('mousedown', down); };
+  }, [dismiss]);
 
-function SlashMenu({ results, active, pick }: { query: string; active: number; results: SlashResults; pick: (m: SlashItem) => void }) {
-  const order: string[] = ['Recent', 'Basic', 'Lists', 'Media', 'Database', 'Blocks'];
-  const groups = order.filter((g) => results.some((m) => m.group === g));
-  let flat = -1; // running index across groups, aligned with keyboard nav
   return (
-    // onMouseDown preventDefault keeps the block textarea focused (Notion: the
-    // editor never loses focus) — clicks and scrollbar drags don't blur it.
+    // preventDefault on mousedown keeps the caret in the block, the way the slash
+    // menu does — the editor never loses focus to its own chrome.
     <MenuPanel onMouseDown={(e) => e.preventDefault()}
-      className="absolute z-50 mt-1 max-h-[320px] w-[272px] origin-top-left overflow-y-auto">
-      {results.length === 0 && (
-        <div className="px-2.5 py-3.5 text-center">
-          <div className="text-meta font-medium text-ink-600">No results found</div>
-          <div className="mt-0.5 text-caption text-ink-500">Try another block type.</div>
+      className="paste-as-menu absolute z-50 mt-1 w-[188px] origin-top-left">
+      <MenuLabel>Paste as</MenuLabel>
+      {options.map((o) => (
+        <MenuItem key={o.value} onClick={() => pick(o.value)}>{o.label}</MenuItem>
+      ))}
+    </MenuPanel>
+  );
+}
+
+// The slash menu — Notion's, by the user's request ("same to same"): a fixed-size
+// panel of compact rows under section headings, each row a glyph, a name and the
+// markdown that makes the block as you type; a preview card beside the
+// highlighted row; "Close menu · esc" pinned at the foot. It draws EXACTLY the
+// list `slashMenu` returns and the highlight is an index into it, so the row you
+// see highlighted is the row Enter inserts (the menu used to regroup its rows for
+// display, and Enter on "Table view" inserted Line items).
+const SLASH_INSET = 14;           // panel edge → row text, so the text lines up with the "/"
+const SLASH_PREVIEW_OVERLAP = 12; // the preview tucks over the panel's edge, as Notion's does
+function SlashMenu({ results, active, pick, hover, close }: {
+  results: SlashResults; active: number;
+  pick: (m: SlashItem) => void; hover: (index: number) => void; close: () => void;
+}) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const rowRef = useRef<HTMLButtonElement | null>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const [preview, setPreview] = useState<{ top: number; side: 'right' | 'left' } | null>(null);
+  const item = results[active];
+
+  // Hang the preview beside the highlighted row: centred on it, kept inside the
+  // viewport, and moved to the left when the right has no room.
+  const place = () => {
+    const panel = panelRef.current, row = rowRef.current, card = previewRef.current;
+    if (!panel || !row || !card) return;
+    const p = panel.getBoundingClientRect(), r = row.getBoundingClientRect(), h = card.offsetHeight, w = card.offsetWidth;
+    const centre = r.top + r.height / 2;
+    const top = Math.max(8, Math.min(centre - h / 2, window.innerHeight - h - 8)) - p.top;
+    const side = p.right - SLASH_PREVIEW_OVERLAP + w > window.innerWidth - 8 ? 'left' : 'right';
+    setPreview((cur) => (cur && cur.top === top && cur.side === side ? cur : { top, side }));
+  };
+
+  // ↑↓ walk a list taller than the panel, so the highlight is kept in view — by
+  // moving the LIST, never the page behind it.
+  useLayoutEffect(() => {
+    const list = listRef.current, row = rowRef.current;
+    if (list && row) {
+      const top = row.offsetTop, bottom = top + row.offsetHeight;
+      if (top < list.scrollTop + 4) list.scrollTop = Math.max(0, top - 4);
+      else if (bottom > list.scrollTop + list.clientHeight - 4) list.scrollTop = bottom - list.clientHeight + 4;
+    }
+    place();
+  });
+
+  return (
+    // onMouseDown preventDefault keeps the block focused (Notion: the editor
+    // never loses focus) — clicks and scrollbar drags don't blur it.
+    <div ref={panelRef} onMouseDown={(e) => e.preventDefault()}
+      className={cn(MENU_PANEL_CLASS, 'relative w-[324px] p-0')}>
+      <div ref={listRef} role="listbox" aria-label="Insert a block" onScroll={place}
+        className="max-h-[max(132px,min(388px,calc(var(--caret-room,440px)-50px)))] overflow-y-auto overscroll-contain px-1 pb-1">
+        {results.length === 0 && <p className="px-2.5 pb-2 pt-3 text-ui text-ink-500">No results</p>}
+        {results.map((m, i) => {
+          const on = i === active;
+          const heading = m.section !== results[i - 1]?.section;
+          // Where no heading names the entry's group, the row does (Notion's "· Database").
+          const showGroup = m.section === 'Recent' || m.section === FILTERED_SECTION;
+          return (
+            <Fragment key={m.section + ':' + menuKey(m)}>
+              {heading && i > 0 && <div className="mx-2.5 my-1 h-px bg-line-soft" />}
+              {heading && <MenuLabel className="pt-2.5">{m.section}</MenuLabel>}
+              <button
+                type="button" role="option" aria-selected={on} data-highlighted={on ? '' : undefined}
+                ref={on ? rowRef : undefined}
+                onMouseDown={(e) => { e.preventDefault(); pick(m); }}
+                onMouseMove={() => hover(i)}
+                className="group/item flex h-8 w-full cursor-pointer select-none items-center gap-2.5 rounded-md border-0 bg-transparent px-2.5 text-left text-ui text-ink-800 outline-none transition-colors duration-fast data-[highlighted]:bg-surface-hover data-[highlighted]:text-ink-900"
+              >
+                <span className="grid size-5 shrink-0 place-items-center text-ink-600 group-data-[highlighted]/item:text-ink-800">
+                  <Icon icon={m.db ? DB_MENU_ICON[m.db] : m.page === 'collection' ? Images : BLOCK_ICON[m.type]} size={20} />
+                </span>
+                <span className="min-w-0 truncate">{m.label}</span>
+                {showGroup && <span className="shrink-0 truncate text-ink-500">· {m.group}</span>}
+                {m.shortcut && <span className="ml-auto shrink-0 pl-2 text-meta text-ink-500">{m.shortcut}</span>}
+              </button>
+            </Fragment>
+          );
+        })}
+      </div>
+      <div className="border-t border-line-soft p-1">
+        <button type="button" onMouseDown={(e) => { e.preventDefault(); close(); }}
+          className="flex h-8 w-full cursor-pointer items-center rounded-md border-0 bg-transparent px-2.5 text-left text-ui text-ink-800 outline-none transition-colors duration-fast hover:bg-surface-hover">
+          <span className="flex-1">Close menu</span>
+          <span className="text-meta text-ink-500">esc</span>
+        </button>
+      </div>
+      {item && (
+        <div
+          ref={previewRef}
+          aria-hidden
+          className="pointer-events-none absolute max-sm:hidden"
+          style={{
+            top: preview?.top ?? 0,
+            ...(preview?.side === 'left'
+              ? { right: `calc(100% - ${SLASH_PREVIEW_OVERLAP}px)` }
+              : { left: `calc(100% - ${SLASH_PREVIEW_OVERLAP}px)` }),
+            visibility: preview ? 'visible' : 'hidden',
+          }}
+        >
+          <SlashPreview item={item} />
         </div>
       )}
-      {groups.map((g) => {
-        const items = results.filter((m) => m.group === g);
-        return (
-          <div key={g}>
-            <MenuLabel>{g}</MenuLabel>
-            {items.map((m, k) => {
-              flat += 1; const i = flat; const on = i === active;
-              return (
-                <button key={g + m.type + k} onMouseDown={(e) => { e.preventDefault(); pick(m); }}
-                  className={cn('zb-press flex w-full cursor-pointer items-center gap-2.5 rounded-sm border-0 px-2 py-1.5 text-left', on ? 'bg-surface-selected' : 'bg-transparent')}>
-                  <span className={cn('grid size-7 shrink-0 place-items-center rounded-sm border border-line-soft bg-surface-fill', on ? 'text-ink-800' : 'text-ink-600')}><Icon icon={BLOCK_ICON[m.type]} size={16} /></span>
-                  <span className="flex min-w-0 flex-col gap-px">
-                    <span className="text-meta font-medium text-ink-900">{m.label}</span>
-                    <span className="text-caption text-ink-600">{m.hint}</span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        );
-      })}
-    </MenuPanel>
+    </div>
   );
 }
 
@@ -1901,7 +2841,7 @@ function CalloutIcon({ icon, onPick }: { icon?: string; onPick: (emoji: string) 
         {icon || '💡'}
       </button>
       {open && (
-        <div className="absolute left-0 top-[calc(100%+4px)] z-[70] grid gap-0.5 rounded-lg border border-line-strong bg-surface-raised p-1.5 shadow-lift-2 [animation:fadein_120ms]" style={{ gridTemplateColumns: 'repeat(8, 26px)' }}>
+        <div className={cn(OVERLAY_CLASS, 'absolute left-0 top-[calc(100%+4px)] z-dropdown grid gap-0.5 p-1 origin-top-left zb-enter [animation:zb-pop-in_var(--duration-fast)_var(--ease-out-quiet)]')} style={{ gridTemplateColumns: 'repeat(8, 26px)' }}>
           {CALLOUT_EMOJI.map((e) => (
             <button key={e} onClick={() => { onPick(e); setOpen(false); }}
               className={cn('zb-press grid size-[26px] cursor-pointer place-items-center rounded-xs border-0 text-[15px]', e === (icon || '💡') ? 'bg-surface-hover' : 'bg-transparent')}>

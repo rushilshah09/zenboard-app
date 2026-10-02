@@ -35,7 +35,7 @@ export function SelectionBar({ count, noun = "selected", children, onClear, clas
         // so the ring never reads as a halo on the wrong colour (§2.11.2 / B1.3).
         style={{ ["--focus-offset" as string]: "var(--color-ink-900)" }}
         className={cn(
-          "pointer-events-auto flex h-12 max-w-[640px] items-center gap-3 rounded-md bg-ink-900 px-4 text-paper shadow-lift-3 animate-rise",
+          "pointer-events-auto flex h-12 max-w-[640px] items-center gap-3 rounded-md bg-ink-900 px-4 text-paper shadow-lift-3 zb-enter animate-rise",
           className,
         )}
       >

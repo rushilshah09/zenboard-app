@@ -2,21 +2,25 @@
 // Invoice detail — header, line-item table, totals, payments, and actions
 // (Edit draft · Mark sent · Record payment · Duplicate · Void). Totals computed
 // from items. Optimistic; reconciles via router.refresh. Built on DS primitives.
+import { notReady } from '@/lib/not-ready';
 import { useState } from 'react';
+import { PageLayout } from '@/components/ui/page-layout';
+import { todayISO } from '@/lib/date';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, Plus, X, Check } from '@/components/ds/icons';
-import { Icon, Button, IconButton, Badge, TextInput, Field, Modal, Toaster, toast } from '@/components/ds/ui';
+import { Icon, Button, IconButton, Badge, TextInput, Field, Modal, toast, EmptyLine, DatePicker, cardClass, DataTable } from '@/components/ds/ui';
 import { cn } from '@/lib/cn';
 import { updateInvoiceStatus, recordPayment, voidInvoice, duplicateInvoice, updateInvoiceDraft } from '@/lib/actions/money';
 import { usd, fmtDate, displayStatus, STATUS_TONE } from '@/components/money/money-view';
+import { tempId } from '@/lib/temp-id';
 
 export type InvoiceFull = { id: string; number: string; client_id: string | null; project_id: string | null; status: string; due_date: string | null; notes: string | null; created_at: string };
 export type ItemRow = { id: string; description: string; quantity: number; unit_amount: number; time_entry_id: string | null; sort_order: number };
 export type PaymentLine = { id: string; amount: number; paid_on: string; method: string | null };
 type Line = { description: string; quantity: string; unit_amount: string };
 
-const dateInputClass = 'focus-ring h-9 rounded-md border border-line bg-surface-raised px-3 text-ui text-ink-900';
+// (`dateInputClass` is gone — both dates come through the DS <DatePicker>.)
 
 export function InvoiceDetail({ invoice, items: initItems, payments: initPayments, clientName, voidSupported }: {
   invoice: InvoiceFull; items: ItemRow[]; payments: PaymentLine[]; clientName: string; voidSupported: boolean;
@@ -42,7 +46,7 @@ export function InvoiceDetail({ invoice, items: initItems, payments: initPayment
     setStatus('sent'); await updateInvoiceStatus(invoice.id, 'sent'); toast({ message: 'Marked as sent', variant: 'info' }); router.refresh();
   }
   async function doVoid() {
-    if (!voidSupported) { toast({ message: 'Voiding needs migration 0004', variant: 'error' }); return; }
+    if (!voidSupported) { toast({ message: notReady('Voiding isn’t available yet.', '0004').error, variant: 'error' }); return; }
     const prev = status; setStatus('void');
     const r = await voidInvoice(invoice.id);
     if ('error' in r) { setStatus(prev); toast({ message: 'Could not void', variant: 'error' }); } else { toast({ message: 'Invoice voided', variant: 'info' }); router.refresh(); }
@@ -53,7 +57,7 @@ export function InvoiceDetail({ invoice, items: initItems, payments: initPayment
   }
   async function pay(amount: number, paidOn: string, method: string) {
     setPaying(false);
-    const tmp = 'tmp-' + Date.now();
+    const tmp = tempId();
     setPayments((p) => [{ id: tmp, amount, paid_on: paidOn, method: method || null }, ...p]);
     if (paid + amount >= total && total > 0) setStatus('paid');
     const r = await recordPayment({ invoiceId: invoice.id, amount, paidOn, method });
@@ -68,10 +72,10 @@ export function InvoiceDetail({ invoice, items: initItems, payments: initPayment
   }
   const setLine = (i: number, patch: Partial<Line>) => setLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
 
-  const headCols = '1fr 70px 90px 90px' + (editing ? ' 32px' : '');
+  const headCols = '1fr 70px 90px 90px 32px';
 
   return (
-    <div className="relative mx-auto max-w-[820px] px-[clamp(18px,3vw,40px)] pb-[var(--view-pb)] pt-8" style={{ animation: 'fadein 220ms' }}>
+    <PageLayout>
       <Link href="/money" className="focus-ring mb-4 inline-flex items-center gap-1 rounded-xs text-ui text-ink-500 transition-colors hover:text-ink-800">
         <Icon icon={ChevronLeft} size={16} /> Finance
       </Link>
@@ -94,21 +98,40 @@ export function InvoiceDetail({ invoice, items: initItems, payments: initPayment
         </div>
       </div>
 
-      {/* Line items */}
-      <div className="mb-4 overflow-hidden rounded-lg border border-line-soft bg-surface-raised">
-        <div className="grid gap-2 border-b border-line-soft px-4 py-2.5 text-overline uppercase tracking-wide text-ink-500" style={{ gridTemplateColumns: headCols }}>
-          <div>Description</div><div className="text-right">Qty</div><div className="text-right">Rate</div><div className="text-right">Amount</div>{editing && <div />}
-        </div>
-        {!editing ? (
-          items.length === 0 ? <div className="px-4 py-5 text-ui text-ink-500">No line items.</div> : items.map((it, i) => (
-            <div key={it.id} className={cn('grid items-center gap-2 px-4 py-3 text-ui', i > 0 && 'border-t border-line-soft')} style={{ gridTemplateColumns: '1fr 70px 90px 90px' }}>
-              <div className="text-ink-900">{it.description}{it.time_entry_id && <span className="ml-1.5 text-caption text-ink-500">· time</span>}</div>
-              <div className="text-right tabular-nums text-ink-500">{it.quantity}</div>
-              <div className="text-right tabular-nums text-ink-500">{usd(Number(it.unit_amount))}</div>
-              <div className="text-right font-medium tabular-nums text-ink-900">{usd(Number(it.quantity) * Number(it.unit_amount))}</div>
-            </div>
-          ))
-        ) : (
+      {/* Line items. READ, they are THE table — the one Finance's list and every other tabular
+          screen uses — so a line item and an invoice row are drawn by the same code. They do not
+          open anything, so they carry no hover wash (a wash promises a click). EDITING is a form
+          of inputs, not a table, and keeps its own grid on purpose. */}
+      {!editing ? (
+        <DataTable
+          caption="Line items"
+          className="mb-4"
+          rows={items}
+          rowKey={(it) => it.id}
+          empty={<EmptyLine className="px-4 py-5">No line items.</EmptyLine>}
+          columns={[
+            {
+              key: 'description', header: 'Description',
+              cell: (it) => (
+                <span className="text-ink-900">
+                  {it.description}
+                  {it.time_entry_id && <span className="ml-1.5 text-caption text-ink-500">· time</span>}
+                </span>
+              ),
+            },
+            { key: 'qty', header: 'Qty', numeric: true, width: '70px', cell: (it) => <span className="text-ink-500">{it.quantity}</span> },
+            { key: 'rate', header: 'Rate', numeric: true, width: '90px', cell: (it) => <span className="text-ink-500">{usd(Number(it.unit_amount))}</span> },
+            {
+              key: 'amount', header: 'Amount', numeric: true, width: '90px',
+              cell: (it) => <span className="font-medium text-ink-900">{usd(Number(it.quantity) * Number(it.unit_amount))}</span>,
+            },
+          ]}
+        />
+      ) : (
+        <div className={cardClass('mb-4 overflow-hidden')}>
+          <div className="grid gap-2 border-b border-line-soft px-4 py-2.5 text-overline text-ink-500" style={{ gridTemplateColumns: headCols }}>
+            <div>Description</div><div className="text-right">Qty</div><div className="text-right">Rate</div><div className="text-right">Amount</div><div />
+          </div>
           <div className="p-3">
             {lines.map((l, i) => (
               <div key={i} className="mb-2 grid items-center gap-2" style={{ gridTemplateColumns: '1fr 70px 90px 90px 32px' }}>
@@ -122,14 +145,14 @@ export function InvoiceDetail({ invoice, items: initItems, payments: initPayment
             <Button variant="ghost" size="xs" icon={<Icon icon={Plus} size={14} />} onClick={() => setLines((ls) => [...ls, { description: '', quantity: '1', unit_amount: '' }])}>Add line</Button>
             <div className="mt-3 flex items-center gap-2.5 border-t border-line-soft pt-3">
               <label htmlFor="inv-due" className="text-caption text-ink-500">Due</label>
-              <input id="inv-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={dateInputClass} />
+              <DatePicker id="inv-due" className="w-[168px]" value={dueDate || null} onValueChange={setDueDate} />
               <div className="flex-1" />
               <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
               <Button size="sm" variant="primary" onClick={saveDraft}>Save</Button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Totals */}
       <div className="mb-6 flex justify-end">
@@ -151,9 +174,9 @@ export function InvoiceDetail({ invoice, items: initItems, payments: initPayment
         {(ds === 'sent' || ds === 'overdue') && <Button size="sm" variant="ghost" icon={<Icon icon={Plus} size={16} />} onClick={() => setPaying(true)}>Record</Button>}
       </div>
       {payments.length === 0 ? (
-        <p className="px-0.5 text-caption text-ink-500">No payments recorded yet.</p>
+        <EmptyLine>No payments recorded yet.</EmptyLine>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-line-soft bg-surface-raised">
+        <div className={cardClass('overflow-hidden')}>
           {payments.map((p, i) => (
             <div key={p.id} className={cn('flex items-center gap-3 px-4 py-3 text-ui', i > 0 && 'border-t border-line-soft')}>
               <span className="w-[70px] shrink-0 text-caption tabular-nums text-ink-500">{fmtDate(p.paid_on)}</span>
@@ -164,9 +187,8 @@ export function InvoiceDetail({ invoice, items: initItems, payments: initPayment
         </div>
       )}
 
-      <Toaster />
       {paying && <PaymentModal balance={balance > 0 ? balance : total} onClose={() => setPaying(false)} onSave={pay} />}
-    </div>
+    </PageLayout>
   );
 }
 
@@ -181,7 +203,7 @@ function Row({ label, value, strong, positive }: { label: string; value: string;
 
 function PaymentModal({ balance, onClose, onSave }: { balance: number; onClose: () => void; onSave: (amount: number, paidOn: string, method: string) => void }) {
   const [amount, setAmount] = useState(balance ? String(Math.round(balance)) : '');
-  const [paidOn, setPaidOn] = useState(new Date().toISOString().slice(0, 10));
+  const [paidOn, setPaidOn] = useState(todayISO());
   const [method, setMethod] = useState('Bank transfer');
   const submit = () => { const a = parseFloat(amount); if (!a || a <= 0) return; onSave(a, paidOn, method.trim()); };
   return (
@@ -195,7 +217,7 @@ function PaymentModal({ balance, onClose, onSave }: { balance: number; onClose: 
           <TextInput autoFocus value={amount} onChange={(e) => setAmount(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} inputMode="decimal" />
         </Field>
         <Field label="Date" id="pay-date">
-          <input id="pay-date" type="date" value={paidOn} onChange={(e) => setPaidOn(e.target.value)} className={cn(dateInputClass, 'w-full')} />
+          <DatePicker id="pay-date" value={paidOn || null} onValueChange={setPaidOn} />
         </Field>
         <Field label="Method">
           <TextInput value={method} onChange={(e) => setMethod(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} placeholder="Bank transfer, Stripe…" autoComplete="off" data-1p-ignore data-lpignore="true" />

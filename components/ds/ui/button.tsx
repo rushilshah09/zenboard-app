@@ -1,8 +1,8 @@
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
-import { Loader2 } from "@/lib/icons";
 import { cn } from "@/lib/cn";
+import { Spinner } from "./spinner";
 
 // DESIGN_SYSTEM.md §5.1 — the most-used control. Reference-measured from the
 // Notion "Continue"/"Share" and Attio "New" buttons: 28/32/40 heights, radius
@@ -14,7 +14,7 @@ export const button = cva(
   "focus-ring relative inline-flex items-center justify-center font-medium whitespace-nowrap select-none " +
     // Motion: colors only, 100ms (--duration-fast) — inside the 100–150ms band the
     // constitution mandates (CLAUDE.md §Interaction). No scale/lift/shadow (§6.3).
-    "transition-colors duration-fast ease-standard cursor-pointer " +
+    "transition-colors duration-fast ease-hover cursor-pointer " +
     // WCAG 2.5.5 target size: on coarse pointers a zero-ink ::after extends the hit
     // area to ≥44px tall (h-11) at the drawn width — VERTICAL only, so horizontally
     // adjacent members (ButtonGroup / SplitButton) never overlap. IconButton adds the
@@ -25,18 +25,67 @@ export const button = cva(
     // Loading ≠ disabled (§5.1 / B1.1): inert via data-loading + pointer-events-none,
     // so the variant's fill/width/name survive. Real disabled keeps its own treatment,
     // with a transparent border so it doesn't read as a broken enabled control (B3.13).
-    "disabled:pointer-events-none disabled:bg-surface-disabled disabled:text-ink-300 disabled:border-transparent " +
-    // No transforms on click (§6.3) — pressed feedback is the variant's active: fill only.
+    "disabled:pointer-events-none disabled:bg-surface-disabled disabled:text-ink-500 disabled:border-transparent " +
+    // PRESS. This used to read "no transforms on click (§6.3) — pressed feedback
+    // is the variant's active: fill only", and that rule is why the app felt
+    // static: an active FILL is a colour change, indistinguishable at a glance
+    // from the hover it replaces, so a click produced no evidence it landed.
+    // `zb-tap` (globals.css) adds a 20ms scale that releases on a spring —
+    // movement no hover can be confused with, and it happens before any network
+    // does. Reversed on the user's report, twice, that the app "feels laggy".
+    "zb-tap " +
     "data-[loading]:pointer-events-none data-[loading]:cursor-progress",
   {
     variants: {
       variant: {
-        // B&G: no colorful buttons. Primary = the ink solid (#F2F1EB fill,
-        // #121212 label) — at most one per view.
-        primary: "bg-ink-900 text-onsolid hover:bg-ink-700 active:bg-ink-900",
+        // PRIMARY IS THE BRAND FILL (user decision 2026-09-30: "one brand action
+        // per view"). It used to be the ink solid, under a B&G-era rule that read
+        // "no colorful buttons ... so no screen full of work competes with the
+        // work". That rule is what made the workspace greyscale: measured on Home,
+        // an entire screen carried ONE accent pixel, and the user's report was that
+        // the product "looks default, no character".
+        //
+        // It also contradicted the constitution it cited. CLAUDE.md §Hard layout
+        // rules 2 has always said "ONE filled-accent (PRIMARY) button per view" —
+        // the house rule already called primary the filled accent, and this
+        // component shipped near-black. Restoring that costs nothing in restraint:
+        // the cap is still ONE per view, and `secondary`/`ghost` are unchanged, so
+        // nothing else gains colour.
+        //
+        // Benchmark (SPRINT_RULES 7, stated specifically rather than named): Linear
+        // fills its single view-level action — "Create new issue", "Create new
+        // view" — in its indigo, inside the workspace, and leaves every other
+        // control monochrome. Ours matches that grammar; the hue is Zenboard's own.
+        // #C41C72 on white measures 5.59:1, so the label clears AA.
+        //
+        // Callers that genuinely want the INK solid still have it under `neutral`,
+        // which was already the documented alias for exactly that.
+        primary:
+          "bg-[var(--accent)] text-[var(--on-accent)] hover:bg-[var(--accent-hover)] active:bg-[var(--accent)]",
+        // BRAND — kept as an ALIAS of `primary`, not a second recipe. It existed
+        // because the workspace was barred from the accent and the product
+        // surfaces (sign-up, onboarding, the portal's one action, the website's
+        // "Start free") still needed it. Now that `primary` IS the brand fill the
+        // two are the same button, and the six existing `variant="brand"` call
+        // sites keep working. New code writes `primary`.
+        brand:
+          "bg-[var(--accent)] text-[var(--on-accent)] hover:bg-[var(--accent-hover)] active:bg-[var(--accent)]",
+        // The pair of `brand`: the same hue as an EDGE, for the second action on
+        // a brand surface (the "Log in" pill beside "Create account"). It keeps
+        // the filled-accent count at one while the header still carries the
+        // brand — which is the whole reason a sign-up page has two buttons.
+        brandOutline:
+          "border border-[var(--accent)] bg-transparent text-accent-text " +
+          "hover:bg-[var(--accent-soft)] active:bg-transparent",
         // B&G secondary (Figma 1:811): white-12% fill, no border, default ink label.
+        // `light:border` is not decoration. A secondary button is `surface-fill`
+        // — #F5F5F5 in light — and on a white panel that measures 1.04:1
+        // against its own background, so the control has no edge and reads as
+        // nothing. Dark gets its edge from luminance (a white wash on near
+        // black); light has to draw one. See the `light:` variant in
+        // ds-theme.css for why this asymmetry is stated rather than tuned away.
         secondary:
-          "bg-surface-fill text-ink-800 hover:bg-surface-fill-hover hover:text-ink-900 active:bg-surface-fill",
+          "bg-surface-fill text-ink-800 hover:bg-surface-fill-hover hover:text-ink-900 active:bg-surface-fill light:border light:border-line",
         // Outline — the ONE bordered exception to the fills-only rule (button-spec §8).
         // Transparent + hairline (border-line-strong), for actions on an already-filled
         // surface where a 12% fill would read as a nested tile. Stays monochrome.
@@ -51,7 +100,11 @@ export const button = cva(
         // B&G tinted: the neutral selected wash — no colored washes in chrome.
         tinted: "bg-surface-selected text-ink-900 hover:bg-surface-fill active:bg-surface-fill",
         // Solid red is reserved for confirm dialogs (§5.1); distinct pressed fill (B2.8).
-        danger: "bg-danger-500 text-onsolid hover:bg-danger-600 active:bg-danger-700",
+        // Pressed RETURNS to the resting fill, as primary and secondary do: hover
+        // moves the fill, pressing lets go of it. This was `active:bg-danger-700`,
+        // a step the danger ramp has never had (100/300/500/600) — Tailwind drew
+        // nothing, so a pressed danger button looked exactly like a hovered one.
+        danger: "bg-danger-500 text-onsolid hover:bg-danger-600 active:bg-danger-500",
         // The DEFAULT destructive: ghost style, danger ink, pale-chip hover (§5.1).
         dangerGhost:
           "border border-transparent text-danger-600 hover:bg-danger-100 active:bg-danger-100",
@@ -59,27 +112,44 @@ export const button = cva(
         link: "text-ink-800 underline underline-offset-2 hover:text-ink-900 active:text-ink-900",
       },
       size: {
-        // B&G ladder = the app's control grid (28/32/36; --ctl-* in globals),
-        // anchored to the Figma home CTAs (28px, radius 6, 10px pad).
-        // xs (24) is the dense inline/editor-toolbar size below the grid.
-        xs: "h-6 gap-1 rounded-xs px-2 text-meta",       // 24px · dense inline
-        sm: "h-7 gap-1 rounded-sm px-2.5 text-ui",       // 28px · Figma 1:811/1:838
-        md: "h-8 gap-1.5 rounded-md px-3 text-ui",       // 32px · default (= input height)
-        lg: "h-9 gap-2 rounded-md px-4 text-ui",         // 36px · prominent
+        // THE CONTROL LADDER (24 · 28 · 32 · 36 · 40) — the same heights an Input
+        // and a Select take, so a field and a button side by side line up exactly.
+        //
+        // ONE CORNER at every size (--r-sm, 6px). Radius used to grow with the
+        // button (4 → 6 → 8), so a 28px toolbar button and the 32px one beside it
+        // in a dialog were visibly different shapes; a control is a control.
+        //
+        // The icon↔label gap and the glyph scale TOGETHER: a 12px glyph sits 4px
+        // from its word, a 16px glyph 6px (8px from 36 up). It was 4px beside a
+        // 16px glyph on every 28px button — the "icon too close to the text" in
+        // the toolbar. The glyph size is set here rather than by each caller,
+        // because callers had drifted to 12, 14 and 16 inside the same button.
+        xs: "h-6 gap-1 rounded-sm px-2 text-meta",       // 24px · dense inline
+        sm: "h-7 gap-1.5 rounded-sm px-2.5 text-ui",     // 28px · toolbars, headers
+        md: "h-8 gap-1.5 rounded-sm px-3 text-ui",       // 32px · default (= input height)
+        lg: "h-9 gap-2 rounded-sm px-3.5 text-ui",       // 36px · prominent
         // xl (40) is the hero/auth CTA — the only step above the grid.
-        xl: "h-10 gap-2 rounded-md px-5 text-body-lg",
+        xl: "h-10 gap-2 rounded-sm px-4 text-body-lg",
       },
       fullWidth: { true: "w-full" },
-      iconOnly: { true: "aspect-square px-0" },
+      // Icon-only: square, and the glyph keeps the size its caller chose (a 20px
+      // navigation glyph in a 36px button is deliberate) — see compoundVariants.
+      iconOnly: { true: "aspect-square px-0", false: "" },
       // Toggle styling is opt-in, not baked into the base — a toggled primary must
-      // never flip berry → paper-4 with unreadable text (B2.9). Pair with aria-pressed.
-      toggle: { true: "aria-[pressed=true]:bg-paper-4 aria-[pressed=true]:text-ink-900" },
+      // never flip to a surface with unreadable text (B2.9). Pair with aria-pressed.
+      // Pressed is a WASH, not an elevation: it was paper-4, which IS the card in
+      // light, so a toggle pressed on a card or inside a menu showed no change.
+      toggle: { true: "aria-[pressed=true]:bg-surface-active aria-[pressed=true]:text-ink-900" },
     },
     compoundVariants: [
       // A link is inline text, not a box: no height or padding, and no hit-area ::after.
       { variant: "link", class: "inline h-auto rounded-none p-0 align-baseline after:hidden" },
+      // A LABELLED button sets its glyph's size, so every button of one size carries the same
+      // glyph (12 at xs, 16 from sm up) whatever its caller passed.
+      { iconOnly: false, size: "xs", class: "[&>span>svg]:size-3" },
+      { iconOnly: false, size: ["sm", "md", "lg", "xl"], class: "[&>span>svg]:size-4" },
     ],
-    defaultVariants: { variant: "secondary", size: "md" },
+    defaultVariants: { variant: "secondary", size: "md", iconOnly: false },
   },
 );
 
@@ -100,6 +170,11 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
   return (
     <Comp
       ref={ref}
+      // The design system marks its own parts, so a SKIN can reach them without any
+      // component learning that a skin exists (CLAUDE.md). Paper stamps a button's face
+      // in mono and hatches the danger variant, both through these two attributes.
+      data-slot="button"
+      data-variant={variant ?? "secondary"}
       className={cn(button({ variant, size, fullWidth, iconOnly, toggle }), className)}
       aria-busy={loading || undefined}
       data-loading={loading || undefined}
@@ -112,7 +187,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
     >
       {loading && (
         <span className="absolute inset-0 grid place-items-center" aria-hidden>
-          <Loader2 className="size-4 animate-spin motion-reduce:animate-[spin_1.4s_linear_infinite]" />
+          <Spinner size={16} />
         </span>
       )}
       {/* The label stays in the DOM and the a11y tree under opacity-0 (NOT

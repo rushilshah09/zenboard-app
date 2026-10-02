@@ -1,3 +1,4 @@
+import { MARK_PATH } from "@/components/ds/icons";
 import * as React from "react";
 import type { IconType } from "@/lib/icons";
 import { cn } from "@/lib/cn";
@@ -12,11 +13,59 @@ import { cn } from "@/lib/cn";
 // 1.75 stroke, bold → 2.25, fill → solid glyph (fill=currentColor, for the
 // closed-path icons that were solid under legacy's "fill" weight). An explicit
 // `strokeWidth` always wins.
+/**
+ * THE ICON SCALE — five steps, and they are named so a call site has to pick
+ * one rather than measure one.
+ *
+ * The app had ELEVEN sizes in ~800 places (10, 11, 12, 13, 14, 15, 16, 18, 20,
+ * 22, 24, 28) because `size` was a free `number` and nothing ever said no. Most
+ * of them differed by a single pixel from a neighbour, which is not a decision
+ * anyone can see — it is just drift. 141 call sites moved to their nearest
+ * legal step.
+ *
+ *   xs 12  dense meta — chips, inline marks, tag glyphs
+ *   sm 14  list rows and secondary controls
+ *   md 16  the default: buttons, nav, row actions
+ *   lg 20  page headers and empty states
+ *   xl 24  hero glyphs
+ *
+ * `size` still accepts a number, deliberately: a handful of glyphs are optically
+ * sized against a specific neighbour and a union type would force a lie. The
+ * scale is enforced by `app/design-system.test.ts` instead, which flags a NEW
+ * off-scale value while leaving the documented exceptions alone.
+ */
+export const ICON_SIZE = { xs: 12, sm: 14, md: 16, lg: 20, xl: 24 } as const;
+export type IconSize = (typeof ICON_SIZE)[keyof typeof ICON_SIZE];
+
 export interface IconProps {
   icon: IconType;
+  /** One of ICON_SIZE. Numbers are accepted for optical exceptions. */
   size?: number;
   strokeWidth?: number;
   weight?: "regular" | "bold" | "fill";
+  /**
+   * AN ICON THAT LIGHTS UP. Pass the thing's own selected/active state and the glyph draws BOTH
+   * cuts — outline at rest, filled when active — stacked and cross-faded, instead of being
+   * swapped in one frame (user, 2026-09-26: "I want all icons animated"; better-ui: animate an
+   * icon with opacity and scale, never by toggling visibility; outline is the resting variant and
+   * fill marks the active one).
+   *
+   * It is NOT better-ui's contextual-icon recipe (scale .25 → 1 with a 4px blur) — that is for an
+   * icon whose MEANING changes, which `IconSwap` handles. This one's meaning is constant and only
+   * its state moved, and a nav row is seen a hundred times a day (Emil's first question). So it
+   * gets the hover-and-colour budget: a 100ms cross-fade, and the fill growing the last sixth of
+   * the way in. The static cue is the fill itself, which survives reduced motion.
+   *
+   * `weight` and `state` are exclusive; `state` wins.
+   */
+  state?: boolean;
+  /**
+   * A DIRECTIONAL GLYPH MOVES IN ITS OWN DIRECTION while its row is hovered or focused: an arrow
+   * that means "go" goes, a chevron that means "open" turns. Only for glyphs that point — motion
+   * on a glyph that does not point is decoration, and this is the whole of the budget for it.
+   * Driven by the nearest `.group`, so the row owns the hover and the icon owns the gesture.
+   */
+  nudge?: "end" | "down" | "up" | "turn";
   className?: string;
   style?: React.CSSProperties;
   "aria-label"?: string;
@@ -27,41 +76,129 @@ export function Icon({
   size = 16,
   strokeWidth,
   weight,
+  state,
+  nudge,
   className,
   style,
   "aria-label": ariaLabel,
 }: IconProps) {
   const sw = strokeWidth ?? (weight === "bold" ? 2.25 : 1.75);
+  const gesture = nudge ? `zb-nudge zb-nudge-${nudge}` : undefined;
+  const common = {
+    size,
+    strokeWidth: sw,
+    "data-slot": "icon" as const,
+    style,
+    "aria-hidden": ariaLabel ? undefined : true,
+    "aria-label": ariaLabel,
+  };
+  if (state !== undefined) {
+    // Both cuts, on one cell of a grid, so they occupy exactly the same box and the swap has no
+    // width. The animation lives in CSS (globals.css `.zb-icon-*`), which keeps it off the main
+    // thread and lets `prefers-reduced-motion` drop the movement without a component knowing.
+    return (
+      <span
+        data-slot="icon-state"
+        data-state={state ? "active" : "inactive"}
+        className={cn("zb-icon-state grid shrink-0 place-items-center", gesture, className)}
+        style={{ width: size, height: size }}
+      >
+        <Glyph {...common} fill="none" className="zb-icon-line col-start-1 row-start-1" />
+        <Glyph {...common} fill="currentColor" className="zb-icon-fill col-start-1 row-start-1" aria-hidden />
+      </span>
+    );
+  }
   return (
     <Glyph
-      size={size}
-      strokeWidth={sw}
+      {...common}
       fill={weight === "fill" ? "currentColor" : "none"}
-      className={cn("shrink-0", className)}
-      style={style}
-      aria-hidden={ariaLabel ? undefined : true}
-      aria-label={ariaLabel}
+      // The house marks its parts so a SKIN can reach them without any component
+      // learning a skin exists. Paper breaks an icon's ink up the way a press does.
+      className={cn("shrink-0", gesture, className)}
     />
   );
 }
 
 // Zenboard mark — interlocking 4-petal starburst. B&G: the mark renders in ink
 // (currentColor, defaults to --ink); pass a style color to override.
-export function Mark({ size = 24, className, style }: { size?: number; className?: string; style?: React.CSSProperties }) {
+export function Mark({ size = 24, tone = "ink", className, style }: {
+  size?: number;
+  /** `brand` paints the mark in the accent — the brand's own hue, for the lockup
+   *  and the boot screen. Everywhere the mark is used AS AN ICON (a link to a
+   *  Zenboard record, an event's origin) it stays ink, like every other glyph. */
+  tone?: "ink" | "brand";
+  className?: string;
+  style?: React.CSSProperties;
+}) {
   return (
-    <svg width={size} height={size} viewBox="0 0 20 20" fill="currentColor" className={cn("shrink-0", className)} style={{ color: "var(--ink)", ...style }}>
-      <path d="M18.4226 8.14215L18.6403 7.92451C20.4532 6.11147 20.4532 3.1733 18.6403 1.36026L18.6383 1.35832C16.8254 -0.452773 13.8873 -0.452773 12.0763 1.35832L11.8567 1.57791C10.8326 2.60199 9.16736 2.60199 8.14137 1.57791L7.92373 1.36026C6.11076 -0.452773 3.1727 -0.452773 1.35973 1.36026C-0.453243 3.1733 -0.453243 6.11147 1.35973 7.92451L1.57736 8.14215C2.60141 9.16818 2.60141 10.8335 1.57736 11.8576L1.35973 12.0753C-0.453243 13.8883 -0.453243 16.8265 1.35973 18.6395C3.1727 20.4525 6.11076 20.4545 7.92373 18.6395L8.14137 18.4219C9.16736 17.3958 10.8326 17.3958 11.8567 18.4219L12.0743 18.6395C13.8873 20.4525 16.8254 20.4525 18.6383 18.6395H18.6403V18.6376C20.4532 16.8245 20.4532 13.8863 18.6403 12.0733L18.4226 11.8557C17.3966 10.8316 17.3966 9.16623 18.4226 8.1402V8.14215ZM4.85936 15.1397C7.69832 12.3007 7.69832 7.69909 4.85936 4.86003C7.69832 7.69909 12.3017 7.69909 15.1406 4.86003C12.3017 7.69909 12.3017 12.3007 15.1406 15.1397C12.3017 12.3007 7.69832 12.3007 4.85936 15.1397Z" />
+    <svg data-slot="mark" data-tone={tone} width={size} height={size} viewBox="0 0 20 20" fill="currentColor" className={cn("shrink-0", className)} style={{ color: tone === "brand" ? "var(--accent)" : "var(--ink)", ...style }}>
+      <path d={MARK_PATH} />
     </svg>
+  );
+}
+
+/**
+ * THE MARK, THINKING — what this app shows while Ask is composing an answer.
+ *
+ * USER DIRECTION 2026-09-29: "use my logo thinking and loading whol chting", pointing at Claude,
+ * whose own mark breathes while it thinks. So the indicator for THIS product is this product's
+ * mark, not a borrowed ring: a spinner says "a machine is fetching", and a breath says "something
+ * is considering", which is the true state — `lib/actions/ask.ts` is reading the caller's own
+ * records and choosing a command, not downloading anything.
+ *
+ * It is `<Spinner>`'s twin and follows its two rules exactly, because they were the right rules:
+ *   · `zb-busy` holds it back by `--delay-busy` (140ms), so an answer that arrives fast never
+ *     flashes an indicator — a flash makes an interface feel SLOWER than no indicator at all;
+ *   · it turns/breathes on ONE number (`--duration-think`), so no call site writes a duration.
+ * Reduced motion keeps the breath and drops the scale (ds-theme.css).
+ *
+ * `label` is spoken; omit it only where the surrounding text already says the app is working.
+ */
+export function MarkThinking({ size = 20, delayed = true, label = "Thinking", className }: {
+  size?: number;
+  /** Held back by `--delay-busy`, like every other busy indicator. Default true. */
+  delayed?: boolean;
+  /** Spoken while it breathes. */
+  label?: string;
+  className?: string;
+}) {
+  return (
+    <span
+      role="status"
+      aria-label={label}
+      className={cn("inline-flex shrink-0", delayed && "zb-busy", className)}
+    >
+      <Mark size={size} className="zb-think" aria-hidden />
+    </span>
   );
 }
 
 // Full brand lockup (mark + "Zenboard" wordmark). B&G: mark + wordmark both ink
 // (currentColor) per the B&G Figma navigation header.
-export function Logo({ height = 28, className, style }: { height?: number; className?: string; style?: React.CSSProperties }) {
+// `wordmarkStyle` styles the letters apart from the mark: the collapsing sidebar
+// fades the word while the mark, which is also the collapsed rail's, stays put.
+/**
+ * THE LOCKUP — the real artwork (illustration/logo.svg), mark and lettering.
+ *
+ * The lettering is DRAWN, not set: it is a logo, so it is the same shapes at every size and in
+ * every theme, and no font swap can change it. (The sign-up header set the name in the UI's own
+ * display face for a while, which is how a wordmark quietly becomes "whatever font is loaded".)
+ * The mark wears the brand hue — `#C41C72` in the source file, `--accent` here so a chosen accent
+ * and the dark theme's deeper berry both follow — and the lettering takes `currentColor`.
+ */
+export function Logo({ height = 28, tone = "brand", className, style, wordmarkStyle }: {
+  height?: number;
+  /** `ink` paints the mark in the surrounding ink, for a monochrome context (a print sheet, a favicon). */
+  tone?: "brand" | "ink";
+  className?: string;
+  style?: React.CSSProperties;
+  wordmarkStyle?: React.CSSProperties;
+}) {
+  const markFill = tone === "brand" ? "var(--accent)" : "currentColor";
   return (
-    <svg height={height} viewBox="0 0 152 32" fill="none" className={cn("block shrink-0", className)} style={style}>
-      <path fill="currentColor" d="M29.4762 13.0274L29.8244 12.6792C32.7252 9.77835 32.7252 5.07728 29.8244 2.17642L29.8213 2.17331C26.9206 -0.724438 22.2197 -0.724438 19.322 2.17331L18.9707 2.52465C17.3322 4.16318 14.6678 4.16318 13.0262 2.52465L12.678 2.17642C9.77722 -0.724437 5.07632 -0.724437 2.17556 2.17642C-0.725188 5.07728 -0.725188 9.77835 2.17556 12.6792L2.52378 13.0274C4.16225 14.6691 4.16225 17.3336 2.52378 18.9722L2.17556 19.3204C-0.725188 22.2213 -0.725188 26.9223 2.17556 29.8232C5.07632 32.724 9.77722 32.7272 12.678 29.8232L13.0262 29.475C14.6678 27.8333 17.3322 27.8333 18.9707 29.475L19.3189 29.8232C22.2197 32.724 26.9206 32.724 29.8213 29.8232H29.8244V29.8201C32.7252 26.9192 32.7252 22.2182 29.8244 19.3173L29.4762 18.9691C27.8346 17.3305 27.8346 14.666 29.4762 13.0243V13.0274ZM7.77498 24.2236C12.3173 19.6811 12.3173 12.3185 7.77498 7.77604C12.3173 12.3185 19.6827 12.3185 24.225 7.77604C19.6827 12.3185 19.6827 19.6811 24.225 24.2236C19.6827 19.6811 12.3173 19.6811 7.77498 24.2236Z" />
-      <g fill="currentColor">
+    <svg data-slot="logo" height={height} viewBox="0 0 152 32" fill="none" className={cn("block shrink-0", className)} style={style}>
+      <path fill={markFill} d="M29.4762 13.0274L29.8244 12.6792C32.7252 9.77835 32.7252 5.07728 29.8244 2.17642L29.8213 2.17331C26.9206 -0.724438 22.2197 -0.724438 19.322 2.17331L18.9707 2.52465C17.3322 4.16318 14.6678 4.16318 13.0262 2.52465L12.678 2.17642C9.77722 -0.724437 5.07632 -0.724437 2.17556 2.17642C-0.725188 5.07728 -0.725188 9.77835 2.17556 12.6792L2.52378 13.0274C4.16225 14.6691 4.16225 17.3336 2.52378 18.9722L2.17556 19.3204C-0.725188 22.2213 -0.725188 26.9223 2.17556 29.8232C5.07632 32.724 9.77722 32.7272 12.678 29.8232L13.0262 29.475C14.6678 27.8333 17.3322 27.8333 18.9707 29.475L19.3189 29.8232C22.2197 32.724 26.9206 32.724 29.8213 29.8232H29.8244V29.8201C32.7252 26.9192 32.7252 22.2182 29.8244 19.3173L29.4762 18.9691C27.8346 17.3305 27.8346 14.666 29.4762 13.0243V13.0274ZM7.77498 24.2236C12.3173 19.6811 12.3173 12.3185 7.77498 7.77604C12.3173 12.3185 19.6827 12.3185 24.225 7.77604C19.6827 12.3185 19.6827 19.6811 24.225 24.2236C19.6827 19.6811 12.3173 19.6811 7.77498 24.2236Z" />
+      <g fill="currentColor" style={wordmarkStyle}>
         <path d="M64.7345 12.1333C63.6461 11.5636 62.3855 11.2776 60.9479 11.2776C59.5103 11.2776 58.2764 11.5806 57.1903 12.1891C56.1212 12.7782 55.2824 13.6267 54.6739 14.7321C54.0848 15.8182 53.7891 17.1006 53.7891 18.5745C53.7891 20.0485 54.0945 21.3091 54.703 22.4145C55.3285 23.503 56.2133 24.3394 57.3551 24.9309C58.5164 25.52 59.8885 25.8133 61.4739 25.8133C62.6885 25.8133 63.7673 25.6024 64.7055 25.1782C65.6461 24.737 66.4 24.1382 66.9721 23.3818C67.5442 22.6279 67.903 21.7794 68.0509 20.8388H64.2085C64.0436 21.503 63.6921 22.0097 63.1588 22.3588C62.6424 22.6909 61.9879 22.8582 61.1976 22.8582C60.2012 22.8582 59.4182 22.5624 58.8485 21.9733C58.2764 21.3842 57.9442 20.5721 57.8521 19.5418V19.4303H68.16C68.2352 19.0424 68.2715 18.6012 68.2715 18.1042C68.2521 16.7224 67.9297 15.5248 67.3042 14.5115C66.6958 13.4788 65.84 12.6861 64.7345 12.1333ZM57.9345 16.8873C58.0461 16.0582 58.3879 15.4036 58.9576 14.9261C59.5467 14.4291 60.2667 14.1794 61.1127 14.1794C61.9588 14.1794 62.7248 14.4194 63.297 14.897C63.8861 15.3576 64.2448 16.0218 64.3733 16.8873H57.9345Z" />
         <path d="M127.518 22.1673C127.372 22.0364 127.297 21.7988 127.297 21.4473V16.4461C127.297 14.7685 126.744 13.4885 125.639 12.6036C124.553 11.7188 123.004 11.2776 120.996 11.2776C118.989 11.2776 117.542 11.6824 116.381 12.4945C115.219 13.2848 114.575 14.4097 114.446 15.8642H118.206C118.298 15.3309 118.575 14.9067 119.035 14.5939C119.496 14.2812 120.085 14.1236 120.802 14.1236C121.615 14.1236 122.259 14.3176 122.737 14.7055C123.217 15.0739 123.457 15.5806 123.457 16.2255V16.9164H120.638C118.519 16.9164 116.897 17.3309 115.772 18.16C114.667 18.9697 114.114 20.1309 114.114 21.6412C114.114 22.9673 114.594 24 115.552 24.737C116.528 25.4545 117.808 25.8133 119.394 25.8133C120.463 25.8133 121.375 25.6024 122.128 25.1782C122.885 24.7539 123.52 24.1382 124.036 23.3261C124 24.8752 124.875 25.6485 126.662 25.6485H128.652V22.3588H128.208C127.896 22.3588 127.665 22.2958 127.518 22.1673ZM123.457 19.7891C123.438 20.7661 123.135 21.5491 122.543 22.1382C121.954 22.7103 121.154 22.9964 120.141 22.9964C119.496 22.9964 118.979 22.8485 118.592 22.5527C118.223 22.2594 118.039 21.8618 118.039 21.3648C118.039 20.7758 118.259 20.3248 118.703 20.0097C119.164 19.68 119.799 19.5127 120.608 19.5127H123.457V19.7891Z" />
         <path d="M53.9176 9.04V6.30303H38.5503V9.84H48.223L38.303 22.9115V25.6485H54.1648V22.1115H43.9952L53.9176 9.04Z" />

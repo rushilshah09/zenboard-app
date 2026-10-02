@@ -1,0 +1,280 @@
+/* ============================================================================
+   THE BRIDGE — Zenboard's names, mapped onto the palette, per theme.
+   ============================================================================
+   `theme-shadcn.css` holds the VALUES. This file holds the MAPPING (the shared
+   rule) and the per-theme families that have no shadcn name: the ink ramp's
+   shape, washes, edges, shadows, status, the data and label palettes.
+
+   `html[data-theme=…]` (0,1,1), not `:root`: the legacy token files are plain
+   `:root` blocks imported later, and a `:root` here would tie on specificity
+   and lose on order.
+
+   Every family is declared in BOTH theme blocks below. A token that only one
+   theme declares is how dark values leaked into light five times; the older
+   files no longer carry any colour literal to leak (see their headers).
+   ========================================================================= */
+
+html[data-theme='light'],
+html[data-theme='dark'] {
+  /* ── Surfaces ── */
+  --color-canvas: var(--background);
+  /* THE DESK — the ground the shell's panels lie on (app-shell.tsx). One rung
+     below the canvas in both themes, so a panel reads as an object. */
+  --color-surface-desk: var(--desk);
+  --color-paper: var(--card);
+  --color-paper-2: var(--muted);
+  --color-paper-3: var(--popover);
+  /* A card's head (`<Panel>`'s band, a composer footer) — NOT the recessed fill
+     (`--color-surface-sunken`), which steps down from whatever holds it. */
+  --color-surface-band: var(--band);
+  --color-tan: var(--border);
+  --color-elements-1: var(--border);
+
+  /* ── Ink — THREE TEXT LEVELS ─────────────────────────────────────────────
+       primary    900 = 800   titles AND body. Size and weight separate a title
+                              from its body (Notion, Linear and Claude all set
+                              them in one ink); a second near-identical black
+                              (#44423C beside #37352F) was noise, not hierarchy.
+       secondary  700 = 600   labels, descriptions, inactive navigation.
+       tertiary   500         meta, timestamps, placeholders. The faintest TEXT.
+     Below that are TINTS, never text: 400 (disabled glyphs, quiet icons),
+     300 (rules, tracks), 200 (faint decoration).
+     Derived from the ink over the canvas, so the hierarchy follows the ink.
+     Solved against the LIGHTEST ground each level meets, washes included
+     (app/theme-bridge.test.ts resolves the mix for real): secondary 86% is
+     5.8:1 on a hovered recessed row in light and 4.5:1 on a pressed row inside
+     the dark popover; tertiary 72% is 4.6:1 on the light recessed fill and on
+     the dark popover. Gaps between the three are even (ΔL ≈ 0.09). */
+  --color-ink-900: var(--foreground);
+  --color-ink-800: var(--color-ink-900);
+  --color-ink-700: color-mix(in oklab, var(--foreground) 86%, var(--background));
+  --color-ink-600: var(--color-ink-700);
+  --color-ink-500: color-mix(in oklab, var(--foreground) 72%, var(--background));
+  --color-ink-400: color-mix(in oklab, var(--foreground) 42%, var(--background));
+  --color-ink-300: color-mix(in oklab, var(--foreground) 28%, var(--background));
+  --color-ink-200: color-mix(in oklab, var(--foreground) 18%, var(--background));
+  --color-ink-100: var(--muted);
+  --color-ink-050: var(--muted);
+
+  /* ── State surfaces — RELATIVE. An elevation is one tone; a state lands on a
+     card, a band, a popover and a sheet, so it must composite (a wash). ── */
+  --color-surface-hover: var(--wash-1);
+  --color-surface-active: var(--wash-2);
+  --color-surface-selected: var(--wash-3);
+  --color-surface-disabled: var(--wash-1);
+  --color-surface-fill: var(--wash-fill);
+  --color-surface-fill-hover: var(--wash-fill-hover);
+  --color-surface-row: var(--wash-row);
+
+  /* The accent pressed harder: toward the theme's own ink (darker in light,
+     lighter in dark), so one declaration serves both and follows any accent. */
+  --accent-hover: color-mix(in oklab, var(--accent) 86%, var(--foreground));
+
+  /* ── Edges ── */
+  --line: var(--border);
+  --line-2: color-mix(in oklab, var(--border) 60%, var(--background));
+  --line-3: color-mix(in oklab, var(--border) 100%, var(--foreground) 8%);
+
+  /* ── The primary solid, and text ON it ── */
+  --primary: var(--primary-solid);
+  --color-text-onsolid: var(--primary-solid-foreground);
+  --on-primary: var(--primary-solid-foreground);
+  --ink-disable: var(--color-ink-300);
+
+  /* The monochrome fallback for the accent, which the appearance switcher
+     overrides inline with the person's choice (lib/theme.ts). */
+  --accent: var(--foreground);
+  --on-accent: var(--background);
+}
+
+/* ── What each theme says for itself ─────────────────────────────────────── */
+
+html[data-theme='light'] {
+  /* The accent as TEXT: the light accents all clear 5:1 on white, so the hue
+     is used unchanged. Dark lifts it toward its own ink (below). */
+  --accent-text: var(--accent);
+  color-scheme: light;
+  /* The ink as an RGB triplet, for the legacy `--ink-a-*` alpha names. */
+  --ink-base: 55, 53, 47;
+
+  /* Light has no headroom above white: a "more raised" surface IS the card, and
+     the border and shadow carry the lift. The well is the recessed fill. */
+  --color-paper-4: var(--card);
+  --color-paper-5: var(--muted);
+
+  /* Edges: the tint at a percentage, so a hairline reads the same on a card, a
+     band and a popover. Focus clears 3:1 by rule (45% of the line tint). */
+  --color-border-soft: color-mix(in oklab, var(--tint) 7%, transparent);
+  --color-border-strong: color-mix(in oklab, var(--tint) 28%, transparent);
+  --color-border-panel: color-mix(in oklab, var(--tint) 5%, transparent);
+  --color-border-focus: color-mix(in oklab, var(--tint-line) 45%, transparent);
+  /* The control tier is a SOLID: a ≥3:1 promise must not depend on the ground. */
+  --color-border-control: var(--border-control);
+
+  /* The glyph on a palette dot or a scope fill. */
+  --pal-on: #FFFFFF;
+  /* A control raised OUT of a well (segmented thumb, switch knob): in light it
+     IS the card, and its shadow carries the lift. */
+  --color-surface-thumb: var(--card);
+
+  /* Washes, made of the theme's tint at ONE set of strengths (dark matches). */
+  --wash-1: color-mix(in oklab, var(--tint) 5%, transparent);
+  --wash-2: color-mix(in oklab, var(--tint) 9%, transparent);
+  --wash-3: color-mix(in oklab, var(--tint) 7%, transparent);
+  --wash-row: color-mix(in oklab, var(--tint) 2.5%, transparent);
+  --wash-fill: color-mix(in oklab, var(--tint) 6%, transparent);
+  --wash-fill-hover: color-mix(in oklab, var(--tint) 10%, transparent);
+
+  /* The scrim behind a modal layer, and the tooltip — warm, never pure black. */
+  --scrim-color: oklch(0.25 0.012 95);
+  --color-scrim: oklch(0.25 0.012 95 / 0.22);
+  --tip-bg: oklch(0.29 0.009 95);                    /* #2D2C28 */
+  --tip-text: oklch(0.975 0.004 95);
+
+  /* ── ELEVATION ────────────────────────────────────────────────────────────
+     Shadows are the ink's own warm black, layered so they fall off smoothly
+     instead of stopping at a hard edge (Kobra's sheet: five stacked layers at
+     2–6%, the light falling off over 80px). Four rungs:
+       xs/sm    a control's contact (thumb, raised chip)
+       lift-1   a panel lying on the desk — contact only, no bloom
+       lift-2   a popover, a menu, a select list, a hover card
+       lift-3   a dialog, a drawer, a sheet, the command palette
+       lift-4   the thing being dragged */
+  --edge-light: inset 0 0 0 0 transparent;
+  --shadow-xs: 0 1px 2px oklch(0.25 0.012 95 / 0.05);
+  --shadow-sm: 0 1px 2px oklch(0.25 0.012 95 / 0.08), 0 1px 1px oklch(0.25 0.012 95 / 0.04);
+  --shadow-crisp: 0 1px 1px -0.5px oklch(0.25 0.012 95 / 0.09);
+  --shadow-lift-1: 0 1px 2px oklch(0.25 0.012 95 / 0.04);
+  --shadow-lift-2: 0 1px 2px oklch(0.25 0.012 95 / 0.04), 0 4px 8px -2px oklch(0.25 0.012 95 / 0.05), 0 12px 28px -6px oklch(0.25 0.012 95 / 0.10);
+  --shadow-lift-3: 0 2px 4px oklch(0.25 0.012 95 / 0.03), 0 6px 12px oklch(0.25 0.012 95 / 0.04), 0 14px 28px oklch(0.25 0.012 95 / 0.05), 0 32px 64px oklch(0.25 0.012 95 / 0.07);
+  --shadow-lift-4: 0 4px 8px oklch(0.25 0.012 95 / 0.06), 0 16px 32px -8px oklch(0.25 0.012 95 / 0.16);
+  --shadow-toast: 0 2px 4px oklch(0.25 0.012 95 / 0.04), 0 8px 16px -4px oklch(0.25 0.012 95 / 0.08), 0 20px 40px -12px oklch(0.25 0.012 95 / 0.12);
+
+  /* ── STATUS — one recipe, four hues (success 150° · warning 72° · danger 27°
+     · info 245°). Per role: 700 deep text · 600 text (≥ 5.2:1 on the hardest
+     ground) · 500 solid (dots, bars, fills; ≥ 4.5:1 on white) · 300 soft edge ·
+     100 soft fill (a whisper, 1.1:1 off the card). Danger's solid IS the
+     destructive red, so a "Delete" word and a "Delete" button are one colour. */
+  --color-success-700: #1B552C; --color-success-600: #206B38;
+  --color-success-500: #238744; --color-success-300: #B8DCBE; --color-success-100: #E9F7EB;
+  --color-warning-700: #633F03; --color-warning-600: #7D5002;
+  --color-warning-500: #9B6403; --color-warning-300: #E8CCAA; --color-warning-100: #FCF0E3;
+  --color-danger-700: #70322C; --color-danger-600: #8E3E38;
+  --color-danger-500: var(--destructive); --color-danger-300: #F3C4BE; --color-danger-100: #FFEEEC;
+  --color-info-700: #114B75; --color-info-600: #125F94;
+  --color-info-500: #0B77BA; --color-info-300: #B4D6F3; --color-info-100: #E9F4FE;
+
+  /* ── THE DATA PALETTE (events, tags, select options) — dot · fill · text ──
+     One recipe (dot L 0.62 · fill L 0.955 · text L 0.45) across nine hues, so
+     no tag is louder than another; Notion's hues, Zenboard's lightness. Every
+     text clears 6.3:1 on its own fill; every dot 3.4:1 on white. `default` is
+     the ink's own neutral and `gray` a step deeper, both on the 95° axis like every
+     other neutral (a gray fill solved at the recipe's chroma rounded to #F0F0EF —
+     chroma zero, a second tone — so the neutral rungs carry the frame's chroma). */
+  --default-dot: #575550; --default-bg: #F1F0EC; --default-text: #3F3D37;
+  --gray-dot:    #888680; --gray-bg:    #EBEAE6; --gray-text:    #57554F;
+  --brown-dot:   #A77B62; --brown-bg:   #F8EEE8; --brown-text:   #6C4D3C;
+  --orange-dot:  #BD7138; --orange-bg:  #FEECE1; --orange-text:  #7B461E;
+  --yellow-dot:  #A68024; --yellow-bg:  #F7EFDF; --yellow-text:  #6B510F;
+  --green-dot:   #529863; --green-bg:   #E7F5E9; --green-text:   #31623D;
+  --blue-dot:    #3E8CC9; --blue-bg:    #E4F2FE; --blue-text:    #225984;
+  --purple-dot:  #9772C0; --purple-bg:  #F4ECFE; --purple-text:  #61477D;
+  --pink-dot:    #BB6690; --pink-bg:    #FEEAF2; --pink-text:    #7A3F5C;
+  --red-dot:     #C46761; --red-bg:     #FFEBE9; --red-text:     #803F3B;
+  /* How much accent the DEFAULT event's fill carries (globals.css --event-accent-bg). */
+  --event-tint: 7%;
+
+  /* ── LABELS — the same recipe, ten hues (stone is the neutral). ── */
+  --color-label-stone: #888680;  --color-label-stone-fill: #EBEAE6;  --color-label-stone-text: #57554F;
+  --color-label-berry: #BD658A;  --color-label-berry-fill: #FEEAF1;  --color-label-berry-text: #7B3E58;
+  --color-label-rust: #C26B4C;   --color-label-rust-fill: #FEECE5;   --color-label-rust-text: #7F422D;
+  --color-label-ochre: #AA7D26;  --color-label-ochre-fill: #F8EFDF;  --color-label-ochre-text: #6E4F11;
+  --color-label-moss: #5A975C;   --color-label-moss-fill: #E8F4E7;   --color-label-moss-text: #366138;
+  --color-label-teal: #1A9994;   --color-label-teal-fill: #E2F5F3;   --color-label-teal-text: #04635F;
+  --color-label-slate: #3E8CC9;  --color-label-slate-fill: #E4F2FE;  --color-label-slate-text: #225984;
+  --color-label-indigo: #727FCE; --color-label-indigo-fill: #ECEFFE; --color-label-indigo-text: #475087;
+  --color-label-plum: #A16FB8;   --color-label-plum-fill: #F6ECFC;   --color-label-plum-text: #684577;
+  --color-label-clay: #A77B62;   --color-label-clay-fill: #F8EEE8;   --color-label-clay-text: #6C4D3C;
+}
+
+html[data-theme='dark'] {
+  --accent-text: color-mix(in oklab, var(--accent) 62%, var(--foreground));
+  color-scheme: dark;
+  --ink-base: 223, 222, 218;
+
+  /* Dark has headroom both ways: the inner raised card sits just under the
+     popover, the well between the desk and the canvas — a gentle recess, not a
+     hole (it was #0C0C0C, a black slot cut into every segmented control). */
+  --color-paper-4: oklch(0.305 0.005 95);            /* #302F2C */
+  --color-paper-5: oklch(0.198 0.004 95);            /* #161614 */
+
+  /* The SAME percentages light uses, off the same tint — except the panel edge,
+     9% here against light's 5%: dark separates surfaces with EDGES (its whole
+     ladder fits in a quarter of light's room), light with fills. */
+  --color-border-soft: color-mix(in oklab, var(--tint) 7%, transparent);
+  --color-border-strong: color-mix(in oklab, var(--tint) 28%, transparent);
+  --color-border-panel: color-mix(in oklab, var(--tint) 9%, transparent);
+  --color-border-focus: color-mix(in oklab, var(--tint-line) 45%, transparent);
+  --color-border-control: var(--border-control);
+  --pal-on: #171614;
+  --color-surface-thumb: var(--color-paper-3);
+
+  --wash-1: color-mix(in oklab, var(--tint) 5%, transparent);
+  --wash-2: color-mix(in oklab, var(--tint) 9%, transparent);
+  --wash-3: color-mix(in oklab, var(--tint) 7%, transparent);
+  --wash-row: color-mix(in oklab, var(--tint) 2.5%, transparent);
+  --wash-fill: color-mix(in oklab, var(--tint) 6%, transparent);
+  --wash-fill-hover: color-mix(in oklab, var(--tint) 10%, transparent);
+
+  --scrim-color: oklch(0 0 0);
+  --color-scrim: oklch(0 0 0 / 0.48);
+  --tip-bg: oklch(0.37 0.006 95);                    /* #46453F — above the popover */
+  --tip-text: oklch(0.95 0.004 95);
+
+  /* A black bloom on a dark ground is invisible work; dark's edges and its 1px
+     top light (--edge-light, globals.css) carry the lift, the shadows the depth. */
+  --edge-light: inset 0 1px 0 0 oklch(1 0 0 / 0.045);
+  --shadow-xs: 0 1px 2px oklch(0 0 0 / 0.24);
+  --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.3);
+  --shadow-crisp: 0 1px 2px oklch(0 0 0 / 0.28);
+  --shadow-lift-1: 0 1px 2px oklch(0 0 0 / 0.24);
+  --shadow-lift-2: 0 1px 2px oklch(0 0 0 / 0.24), 0 8px 16px -6px oklch(0 0 0 / 0.4);
+  --shadow-lift-3: 0 2px 4px oklch(0 0 0 / 0.2), 0 12px 24px oklch(0 0 0 / 0.24), 0 32px 64px oklch(0 0 0 / 0.36);
+  --shadow-lift-4: 0 12px 32px -8px oklch(0 0 0 / 0.48);
+  --shadow-toast: 0 4px 8px -2px oklch(0 0 0 / 0.28), 0 16px 32px -8px oklch(0 0 0 / 0.4);
+
+  /* ── STATUS (dark) — the same recipe, lifted: 700 L .88 · 600 L .80 ·
+     500 L .70 · 300 L .42 · 100 L .295. Text ≥ 5.7:1 on a washed popover. ── */
+  --color-success-700: #B7E5BF; --color-success-600: #8ED09C;
+  --color-success-500: #63B376; --color-success-300: #34563B; --color-success-100: #203124;
+  --color-warning-700: #F5D1A5; --color-warning-600: #E6B374;
+  --color-warning-500: #CC9140; --color-warning-300: #614826; --color-warning-100: #372A19;
+  --color-danger-700: #FEC9C2; --color-danger-600: #F8A59B;
+  --color-danger-500: var(--destructive); --color-danger-300: #6A403B; --color-danger-100: #3C2623;
+  --color-info-700: #B6DDFE; --color-info-600: #86C5FA;
+  --color-info-500: #58A5E4; --color-info-300: #30506C; --color-info-100: #1E2E3D;
+
+  /* ── THE DATA PALETTE (dark) — dot L 0.70 · fill L 0.305 · text L 0.83. ── */
+  --default-dot: #A6A5A0; --default-bg: #302F2C; --default-text: #D2D1CD;
+  --gray-dot:    #A09E99; --gray-bg:    #363532; --gray-text:    #C8C7C2;
+  --brown-dot:   #BE947D; --brown-bg:   #382C26; --brown-text:   #DEC0B0;
+  --orange-dot:  #D38B59; --orange-bg:  #3D2A1D; --orange-text:  #EEBB99;
+  --yellow-dot:  #BC994C; --yellow-bg:  #372E1B; --yellow-text:  #DDC492;
+  --green-dot:   #70B07D; --green-bg:   #233426; --green-text:   #A9D4B0;
+  --blue-dot:    #5FA5DE; --blue-bg:    #1F3140; --blue-text:    #9FCDF5;
+  --purple-dot:  #AE8CD5; --purple-bg:  #332A3E; --purple-text:  #D2BCEF;
+  --pink-dot:    #D281A8; --pink-bg:    #3D2832; --pink-text:    #EEB4CE;
+  --red-dot:     #DA827B; --red-bg:     #402826; --red-text:     #F5B5AF;
+  --event-tint: 12%;
+
+  --color-label-stone: #A09E99;  --color-label-stone-fill: #363532;  --color-label-stone-text: #C8C7C2;
+  --color-label-berry: #D481A2;  --color-label-berry-fill: #3E2730;  --color-label-berry-text: #F0B4CA;
+  --color-label-rust: #D88669;   --color-label-rust-fill: #3F2921;   --color-label-rust-text: #F3B7A3;
+  --color-label-ochre: #C0974D;  --color-label-ochre-fill: #382D1B;  --color-label-ochre-text: #E0C393;
+  --color-label-moss: #76AF78;   --color-label-moss-fill: #253425;   --color-label-moss-text: #ADD4AD;
+  --color-label-teal: #4DB1AB;   --color-label-teal-fill: #1C3432;   --color-label-teal-text: #97D5D0;
+  --color-label-slate: #5FA5DE;  --color-label-slate-fill: #1F3140;  --color-label-slate-text: #9FCDF5;
+  --color-label-indigo: #8A99E3; --color-label-indigo-fill: #2A2E41; --color-label-indigo-text: #B9C4F9;
+  --color-label-plum: #B889CD;   --color-label-plum-fill: #362A3C;   --color-label-plum-text: #DAB9E9;
+  --color-label-clay: #BE947D;   --color-label-clay-fill: #382C26;   --color-label-clay-text: #DEC0B0;
+}

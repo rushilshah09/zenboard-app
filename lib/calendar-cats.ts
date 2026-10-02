@@ -8,14 +8,17 @@ import type { CalEvent } from './calendar';
 
 export type Cal = { id: string; name: string; hue: PaletteName };
 
-// The fixed module calendars shown under "MY CALENDARS" (matches the HiFi rail).
+// The fixed module calendars shown under "MY CALENDARS" (matches the HiFi rail). Their NAMES are the
+// places' names in the sidebar (the glossary: Goals, Finance, Docs), never the route ids: the rail
+// read "Horizon" and "Money" beside a sidebar that says Goals and Finance. The ids stay, since an
+// event's calendar is derived from them.
 export const MY_CALENDARS: Cal[] = [
-  { id: 'task', name: 'Task', hue: 'blue' },
-  { id: 'horizon', name: 'Horizon', hue: 'purple' },
+  { id: 'task', name: 'Tasks', hue: 'blue' },
+  { id: 'horizon', name: 'Goals', hue: 'purple' },
   { id: 'projects', name: 'Projects', hue: 'green' },
   { id: 'clients', name: 'Clients', hue: 'orange' },
-  { id: 'money', name: 'Money', hue: 'yellow' },
-  { id: 'documents', name: 'Documents', hue: 'pink' },
+  { id: 'money', name: 'Finance', hue: 'yellow' },
+  { id: 'documents', name: 'Docs', hue: 'pink' },
 ];
 
 function hash(s: string): number {

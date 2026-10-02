@@ -4,7 +4,7 @@
 // pull re-fetches later Google changes using the stored refresh token (no
 // re-consent). RLS scopes event/profile writes; tokens live behind the service role.
 import { createClient, createServiceClient } from '@/lib/supabase/server';
-import { getValidAccessToken, importGoogleEvents } from '@/lib/google-calendar';
+import { getValidAccessToken, importGoogleEvents, hasConnection } from '@/lib/google-calendar';
 
 // Pull the latest Google events into Zenboard. Refreshes the access token via the
 // stored refresh token if needed. Returns skipped when not connected.
@@ -12,8 +12,12 @@ export async function syncGoogleCalendar(): Promise<{ error: string } | { ok: tr
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'Not authenticated' };
-  const conn = await getValidAccessToken(createServiceClient(), user.id);
-  if (!conn) return { skipped: true };
+  // `getValidAccessToken` clears the stored connection when Google reports the
+  // grant is gone, so "no token" after having had one means exactly one thing to
+  // tell the user: reconnect. Asking again afterwards is how we know which.
+  const svc = createServiceClient();
+  const conn = await getValidAccessToken(svc, user.id);
+  if (!conn) return (await hasConnection(svc, user.id)) ? { error: 'Google needs you to reconnect. The previous permission expired.' } : { skipped: true };
   const res = await importGoogleEvents(supabase, user.id, conn.token);
   if ('error' in res) return { error: res.error };
   return { ok: true, count: res.count };

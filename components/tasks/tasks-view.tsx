@@ -1,52 +1,72 @@
 'use client';
-// Tasks — HiFi two-pane layout: a views rail (Inbox / Today / Upcoming /
-// Completed + project Lists) beside the task pane (Filter + layout header,
-// quick-add that expands into a full composer, and roomy rows with tag lines).
+// Tasks, list layout — the shared rail (components/tasks/tasks-rail.tsx, drawn
+// identically by the week board) beside the task pane: Filter + layout header,
+// an add line that expands into a full composer, and the shared `TaskRow` —
+// the same row Home and a project's Tasks tab draw.
+// The Inbox is one of the rail's views, and Triage — processing it one thought
+// at a time — lives here too; both used to be a separate /inbox page.
 // All mutations reuse the shared task actions (optimistic w/ rollback), and the
 // natural-language capture lives on inside the composer title as live hints.
 //
-// Built entirely from the design system: §4.16 Checkbox, §4.9 PriorityBadge,
-// §4.34 DropdownMenu (rail/row/header menus), §4.3 IconButton, §5.1 Button,
-// §4.8 Tag/FigmaTag. No inline styles, no legacy Paper-OS tokens, no hand-rolled
-// popovers — every colour, size, radius, and motion value comes from a token.
+// Built entirely from the design system: TaskRow + TaskMeta (the one task
+// row and the one way to draw its facts), §4.34 DropdownMenu (rail/row/header
+// menus), §5.1 Button, AddLine. No inline styles, no legacy Paper-OS tokens,
+// no hand-rolled popovers — every colour, size, radius, and motion value comes
+// from a token.
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useFocusReturn } from '@/lib/use-focus-return';
 import { useRouter, usePathname } from 'next/navigation';
 import {
-  Plus, Sun, Inbox as Tray, SquareCheckBig as CheckSquare, CalendarCheck, CalendarDays as CalendarDots, Timer, Repeat, Trash2 as Trash, Star, Flag, Folder, Filter as FunnelSimple, ChevronDown as CaretDown, Ellipsis as DotsThree, LayoutGrid as SquaresFour, AlarmClock as Alarm, Tag as TagIcon, Check, Upload } from "@/components/ds/icons";
-import { QuickAddRow } from '@/components/ui/primitives';
-import {
-  Icon, Button, Checkbox, IconButton, Kbd, PriorityBadge, PriorityBars, EmptyState as EmptyStateBase,
-  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuCheckboxItem, DropdownMenuSeparator, DropdownMenuLabel,
-  MENU_PANEL_CLASS,
-} from '@/components/ds/ui';
-import { FigmaTag } from '@/components/ui/panels';
-import { ViewContainer } from '@/components/ui/view-container';
-import { fmtDur } from '@/components/tasks/task-row';
-import { addTask, toggleTask, setHighlight, deleteTask, rescheduleTask, updateTask, moveTaskToProject } from '@/lib/actions/tasks';
+  Plus, Sun, Inbox as Tray, CalendarDays as CalendarDots, Timer, Repeat, Trash2 as Trash, Flag, Folder, Filter as FunnelSimple, ChevronDown as CaretDown, AlarmClock as Alarm, Tag as TagIcon, Check, Upload, ListChecks, List as ListIcon, Rows3, Kanban } from "@/components/ds/icons";
+import { Icon, Button, AddLine, Kbd, PriorityBars, EmptyState as EmptyStateBase, DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuCheckboxItem, DropdownMenuSeparator, DropdownMenuLabel, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, MENU_PANEL_CLASS, SegmentedControl, EmptyLine, DatePicker, Presence, Move, MOTION, EXIT_ROW, toast, toastReverted, cardClass } from '@/components/ds/ui';
+import { TasksRail } from '@/components/tasks/tasks-rail';
+import { CompletedSection } from '@/components/tasks/completed-section';
+import { TaskRow } from '@/components/tasks/task-row';
+import { TasksBoard, type BoardColumn } from '@/components/tasks/tasks-board';
+import { useSettling, splitSettled } from '@/lib/use-settling';
+import { scopeFill } from '@/lib/entity-color';
+import { applyPending } from '@/lib/mutation-queue';
+import { push as queueMutation, MUTATION_REVERTED, type RevertedDetail } from '@/lib/mutation-store';
+import { usePendingMutations } from '@/lib/use-pending-mutations';
+import { useScopes } from '@/components/tasks/use-scopes';
+import { findScope, readRailState, railStateHref, NO_SAVED_VIEWS, type View, type TaskProject, type SavedViewDef, type ScopeCounts, type RailState } from '@/components/tasks/types';
+import { useUrlState } from '@/lib/use-url-state';
+import { afterProjectChange, taskScopes, visibleTasks, groupIntoColumns, NO_SCOPE, type Scope } from '@/lib/task-scopes';
+import { taskOpenHref } from '@/lib/task-address';
+import { setTaskList } from '@/lib/actions/task-lists';
+// Re-exported so the route and the harnesses keep one import site for the module.
+export type { View, TaskProject, SavedViewDef } from '@/components/tasks/types';
+import { HubLayout } from '@/components/ui/hub-layout';
+import { Triage, type InboxTask, type TriageSuggestResult, type UndoKind } from '@/components/tasks/triage';
+import { addTask, deleteTask, moveTaskToProject, returnToInbox, setTaskOrder } from '@/lib/actions/tasks';
 import { setTaskLabel } from '@/lib/actions/labels';
-import { goChordActive } from '@/components/shell/keyboard-shortcuts';
+import { useListCursor, useListKeys } from '@/lib/list-keys';
 import { parseTask } from '@/lib/task-parse';
-import { createSavedView, deleteSavedView } from '@/lib/actions/saved-views';
 import { signalTaskToggle } from '@/lib/sound';
+import { useNarrow } from '@/lib/use-narrow';
+import { formatDay, formatMinutes, formatRelativeDay, todayISO as dayToday, addDaysISO, isoDateIn } from '@/lib/date';
 import { cn } from '@/lib/cn';
-import { EmptyArt, type EmptyName } from '@/components/illustrations/ink';
+import { useServerState } from '@/lib/use-server-state';
+import { tempId } from '@/lib/temp-id';
+import { useChanged } from '@/lib/use-changed';
 
 export type TaskItem = {
   id: string; title: string; done: boolean;
   priority: 'low' | 'med' | 'high'; highlight: boolean;
   estimate_minutes: number | null; scheduled_date: string | null; is_inbox: boolean;
   project_id: string | null; recurrence: { freq?: string } | null; parent_task_id: string | null;
+  // 0038. Optional because the column does not exist until the migration is
+  // applied — the route omits it from the select and every rule below reads a
+  // missing value as "no list", which is exactly the pre-0038 behaviour.
+  list_id?: string | null;
+  // Triage drains the queue oldest-first and tells you how long a thought has
+  // been sitting there, so this is required by the Inbox view. Optional only
+  // because the dev-preview harnesses predate it.
+  created_at?: string;
 };
-export type TaskProject = { id: string; name: string; color: string | null };
 
-type View = 'inbox' | 'today' | 'upcoming' | 'completed';
 type Filter = 'all' | 'high' | 'highlights' | 'recurring' | 'noEstimate';
 
-const iso = (d: Date) => {
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-};
 const nextMonday = () => { const d = new Date(); d.setDate(d.getDate() + (((8 - d.getDay()) % 7) || 7)); return d; };
 
 // The keyboard grammar's inline picker (S/P/L) — one small popover reused for
@@ -54,7 +74,7 @@ const nextMonday = () => { const d = new Date(); d.setDate(d.getDate() + (((8 - 
 // rules: bg-surface-raised, hairline, radius-lg, h-8 rounded-md items, number
 // hotkeys. Kept dependency-free (fixed position from the row rect) so it never
 // fights the Radix menus already on the row.
-type RowMenuKind = 'schedule' | 'project' | 'label';
+type RowMenuKind = 'schedule' | 'project' | 'list' | 'label';
 type RowMenuOpt = { label: string; color?: string | null; isLabel?: boolean; on?: boolean; run: () => void };
 
 // Natural-language capture — delegates to the shared grammar in
@@ -101,80 +121,151 @@ function PrioGlyph({ id, size = 16 }: { id: CPrio; size?: number }) {
   return <PriorityBars level={id} size={size} />;
 }
 
-// Rail glyphs mirror the HiFi frames: filled tray / calendar-check / check-square.
-const VIEWS: { id: View; label: string; icon: typeof Sun }[] = [
-  { id: 'inbox', label: 'Inbox', icon: Tray },
-  { id: 'today', label: 'Today', icon: CalendarCheck },
-  { id: 'upcoming', label: 'Upcoming', icon: CalendarCheck },
-  { id: 'completed', label: 'Completed', icon: CheckSquare },
-];
 const FILTERS: { id: Filter; label: string }[] = [
   { id: 'all', label: 'All tasks' }, { id: 'high', label: 'High priority' }, { id: 'highlights', label: 'Highlights' },
   { id: 'recurring', label: 'Recurring' }, { id: 'noEstimate', label: 'No estimate' },
 ];
 
-// ── Shared class helpers (token-driven — the one place each row/chip look is
-//    defined, so the rail, header, and composer stay in lockstep). ──
-const railBtn = (on: boolean) => cn(
-  'focus-ring group relative flex h-[34px] items-center gap-2 rounded-sm px-2 text-left text-ui transition-colors duration-fast',
-  on ? 'bg-surface-selected font-medium text-ink-900' : 'font-normal text-ink-600 hover:bg-surface-hover hover:text-ink-800',
-);
-const headerBtn = (on: boolean) => cn(
-  'focus-ring inline-flex h-[30px] items-center gap-1.5 rounded-sm px-2.5 text-ui font-medium transition-colors duration-fast',
-  on ? 'bg-surface-selected text-ink-900' : 'text-ink-600 hover:bg-surface-hover hover:text-ink-800',
-);
-const sectionLabel = 'text-caption font-medium tracking-[0.02em] text-ink-500';
+// Triage sorts oldest-first on created_at and prints each thought's age. The
+// route always selects it; this only stands in for the dev-preview harnesses,
+// and it is a constant so the queue's sort can't shuffle between renders.
+const EPOCH = '1970-01-01T00:00:00.000Z';
 
 export type TaskLabelDef = { id: string; name: string; color?: string | null };
-export type SavedViewDef = { id: string; name: string; filter: { view?: string; filter?: string; labelId?: string | null; listId?: string | null } };
 
-export function TasksView({ initialTasks, projects, subByParent, labels = [], taskLabels = {}, savedViews = [], savedViewsSupported = false }: {
-  initialTasks: TaskItem[]; projects: Record<string, TaskProject>; subByParent: Record<string, { done: number; total: number }>; labels?: TaskLabelDef[]; taskLabels?: Record<string, string[]>; savedViews?: SavedViewDef[]; savedViewsSupported?: boolean; viewSwitch?: React.ReactNode;
+// STABLE EMPTY DEFAULTS, and they have to be module-level constants rather than
+// `= []` in the parameter list.
+//
+// A default parameter builds a NEW array every render the prop is omitted, and
+// `useServerState` compares the server value with `Object.is`. A fresh identity
+// each render therefore reads as "the server sent something new", so it sets
+// state during render, which restarts the render, which builds another new
+// array — an infinite loop that also wipes whatever the user just did. This
+// cost a real debugging round: the visibility toggle worked and then silently
+// undid itself. One shared frozen instance means the identity never changes.
+const NO_SCOPES: Scope[] = [];
+const NO_KEYS: string[] = [];
+const NO_TASK_LABELS: Record<string, string[]> = Object.freeze({});
+
+export function TasksView({
+  initialTasks, projects, subByParent, labels = [], taskLabels = NO_TASK_LABELS, savedViews = NO_SAVED_VIEWS as SavedViewDef[], savedViewsSupported = false,
+  lists = NO_SCOPES, listsSupported = false, hiddenScopes = NO_KEYS, onSuggestFiling,
+}: {
+  initialTasks: TaskItem[]; projects: Record<string, TaskProject>; subByParent: Record<string, { done: number; total: number }>; labels?: TaskLabelDef[]; taskLabels?: Record<string, string[]>; savedViews?: SavedViewDef[]; savedViewsSupported?: boolean;
+  /** 0038. Empty + unsupported until the migration is applied. */
+  lists?: Scope[]; listsSupported?: boolean;
+  /** Scope keys switched off in the rail, read from `profiles.preferences` by
+   *  the route so the first paint is already right. */
+  hiddenScopes?: string[];
+  /** Ask the clerk where the Inbox's thoughts go (§7Q *File*). Absent ⇒ triage offers nothing,
+   *  which is what the dev-preview harnesses get: they have no session to spend an allowance. */
+  onSuggestFiling?: () => Promise<TriageSuggestResult>;
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const projectList = Object.values(projects);
-  const [tasks, setTasks] = useState<TaskItem[]>(initialTasks);
-  useEffect(() => { setTasks(initialTasks); }, [initialTasks]);
 
-  const [view, setView] = useState<View>('inbox');
-  const [listId, setListId] = useState<string | null>(null); // project "List" filter
-  const [filter, setFilter] = useState<Filter>('all');
-  const [labelFilter, setLabelFilter] = useState<string | null>(null);
-  const [views, setViews] = useState<SavedViewDef[]>(savedViews);
-  const [savingView, setSavingView] = useState(false);
-  const [viewName, setViewName] = useState('');
-  useEffect(() => { setViews(savedViews); }, [savedViews]);
+  // ── WHERE THE RAIL'S SELECTION LIVES ──────────────────────────────────────
+  // Still the URL — linkable, shareable, Back works. But changing it no longer
+  // asks the server anything.
+  //
+  // It used to: the route read `?view` / `?scope` / `?filter`, passed them as
+  // props, and KEYED this component on them so a rail click remounted the whole
+  // thing. Which meant clicking "Today" re-fetched every task you own, to draw
+  // a subset of the tasks already sitting in this component's state, and threw
+  // away your scroll position and any open menu on the way.
+  //
+  // Every one of these choices is a question the browser can already answer, so
+  // it now answers them: `useUrlState` writes with `pushState`, `useSearchParams`
+  // re-renders, and nothing crosses the network. The one exception is the WEEK
+  // board, which loads a different seven-day window — `go` instead of `set`.
+  const url = useUrlState<RailState>(readRailState, railStateHref);
+  const { view, scope, layout } = url.value;
+  const filter = url.value.filter as Filter;
+  const labelFilter = url.value.labelId;
+  const setRail = (patch: Partial<RailState>) => {
+    const next = { ...url.value, ...patch };
+    // Only the week board needs the server. Everything else is already here.
+    if (next.layout === 'week') url.go(next); else url.set(next);
+  };
+
+  const projectList = Object.values(projects);
+  const [serverTasks, setTasks] = useServerState(initialTasks);
+
+  // THE SERVER'S ROWS, WITH UNDELIVERED EDITS RE-LAID ON TOP.
+  //
+  // `useServerState` snaps to whatever the server last said. That is right when
+  // everything has been delivered and wrong the instant something has not: a
+  // tick still sitting in the queue would vanish off the screen the moment
+  // anything refreshed — a realtime nudge from another device, the
+  // revalidate-on-stale pass, a `router.refresh()` after some unrelated edit.
+  //
+  // THE OVERLAY IS APPLIED AT RENDER, NOT FED INTO `useServerState`. Passing
+  // `applyPending(initialTasks, pending)` as the seed looks tidier and is a
+  // bug: the seed's identity changes on every queue movement — a push, an op
+  // going in flight, an op being delivered — and `useServerState` compares by
+  // reference, so each of those would snap local state back and silently
+  // discard optimistic edits that are NOT in the queue yet, like a task you
+  // had just created. Overlaying here leaves the server-backed state alone and
+  // only changes what is drawn.
+  const pending = usePendingMutations();
+  const tasks = useMemo(() => applyPending(serverTasks, pending), [serverTasks, pending]);
+
+  // The piles, their visibility, and the list CRUD the rail's menu drives —
+  // one hook so the list layout and the board can never disagree about which
+  // lists exist or which are switched off.
+  const projectScopes = useMemo<Scope[]>(
+    () => projectList.map((p) => ({ kind: 'project', id: p.id, name: p.name, color: p.color })),
+    // projectList is rebuilt from `projects` each render; the map's identity is
+    // what matters to the consumers below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [projects],
+  );
+  const scopes = useScopes({ projects: projectScopes, initialLists: lists, initialHidden: hiddenScopes });
+  const activeScope = findScope(scopes.all, scope);
+
+  const setFilter = (f: Filter) => setRail({ filter: f, ...(f === 'all' ? { labelId: null } : {}) });
+  const setLabelFilter = (id: string | null) => setRail({ labelId: id });
   const [composing, setComposing] = useState(false);
-  const [narrow, setNarrow] = useState(false);
+  const [triaging, setTriaging] = useState(false);
+  const narrow = useNarrow(760);
 
   // ── keyboard grammar (§6.3) — a roving focus over the visible rows plus the
   //    single-key actions ⏎/e/t/s/p/l/1·2·3. Focus is visual state (no DOM focus
   //    stealing), keys are handled at the window so they survive mouse clicks. ──
-  const [focusIdx, setFocusIdx] = useState(-1);
   const [menu, setMenu] = useState<{ kind: RowMenuKind; id: string; rect: { top: number; bottom: number; left: number } } | null>(null);
+  useFocusReturn(!!menu);
   const [menuSel, setMenuSel] = useState(0);
   const [labelOverride, setLabelOverride] = useState<Record<string, string[]>>({});
-  const rowsRef = useRef<(HTMLDivElement | null)[]>([]);
 
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 760px)');
-    const on = () => setNarrow(mq.matches);
-    on(); mq.addEventListener('change', on);
-    return () => mq.removeEventListener('change', on);
-  }, []);
+  // The day ids come from the vocabulary, not from a private copy of the rule
+  // and a raw clock read during render. `todayISO()` is also the app's answer
+  // to *which* day it is — the local calendar date, never the UTC one.
+  const todayISO = dayToday();
+  const tomorrowISO = addDaysISO(todayISO, 1);
+  const nextWeekISO = isoDateIn(nextMonday())!;
 
-  const todayISO = iso(new Date());
-  const tomorrowISO = iso(new Date(Date.now() + 86400000));
-
+  // A pile (project OR list) is its own scope — everything filed under it, no
+  // matter when it's due. It used to leave `view` untouched, so picking one
+  // showed the intersection of that pile and whichever view you happened to be
+  // in: from the default Inbox that meant "project tasks still in the inbox",
+  // which is close to none, because filing a task IS what takes it out of the
+  // inbox. The rail's most-used section looked empty.
+  //
+  // `matchesView` deliberately no longer excludes finished tasks. A task you
+  // tick off has to stay in the list long enough to settle into the Completed
+  // group below it — filtering `!t.done` here is exactly what made a row vanish
+  // out from under the finger that ticked it. `splitSettled` decides which of
+  // the two sections draws it.
   const matchesView = (t: TaskItem) => {
-    if (view === 'inbox') return t.is_inbox && !t.done;
-    if (view === 'today') return t.scheduled_date === todayISO && !t.is_inbox && !t.done;
-    if (view === 'upcoming') return !!t.scheduled_date && t.scheduled_date > todayISO && !t.done;
+    if (scope) return true;
+    if (view === 'inbox') return t.is_inbox;
+    if (view === 'today') return t.scheduled_date === todayISO && !t.is_inbox;
     return t.done;
   };
   const matchesFilter = (t: TaskItem) => {
-    if (listId && t.project_id !== listId) return false;
+    // Scope membership, not the board's column rule: a Life-studio task filed
+    // under Priority is still Life studio's, so clicking that project shows it.
+    if (scope && !taskScopes(t).includes(scope)) return false;
     if (labelFilter && !(taskLabels[t.id] ?? []).includes(labelFilter)) return false;
     if (filter === 'high') return t.priority === 'high';
     if (filter === 'highlights') return t.highlight;
@@ -182,47 +273,133 @@ export function TasksView({ initialTasks, projects, subByParent, labels = [], ta
     if (filter === 'noEstimate') return t.estimate_minutes == null;
     return true;
   };
+  // The rail's switched-off piles apply BEFORE anything else, in every view:
+  // "when turned off, its tasks should not appear in the current view" is not a
+  // rule about one screen. Standing on the pile itself is the one exception —
+  // you asked for it by name, so it is shown even while its box is unticked,
+  // rather than presenting an empty list with no explanation.
+  const shown = useMemo(
+    () => (scope ? tasks : visibleTasks(tasks, scopes.hidden)),
+    [tasks, scopes.hidden, scope],
+  );
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const visible = useMemo(() => tasks.filter((t) => matchesView(t) && matchesFilter(t)), [tasks, view, filter, labelFilter, taskLabels, listId, todayISO]);
+  const inView = useMemo(() => shown.filter((t) => matchesView(t) && matchesFilter(t)), [shown, view, filter, labelFilter, taskLabels, scope, todayISO]);
 
-  const counts = useMemo(() => ({
+  // Just-ticked rows stay in place for a beat, then settle into Completed —
+  // lib/use-settling.ts, the same behaviour Home and the project tabs use.
+  const settling = useSettling();
+  // The Completed VIEW is already nothing but finished work; splitting it would
+  // leave an empty list above a collapsed group holding everything.
+  const grouped = view !== 'completed' || !!scope;
+  const split = useMemo(() => splitSettled(inView, settling.ids), [inView, settling.ids]);
+  const visible = grouped ? split.active : inView;
+  // The roving cursor is shared (lib/list-keys.ts) — visual state, never DOM
+  // focus. It takes the list length so IT clamps when the list shrinks; this
+  // view used to do that by hand a few hundred lines below. `focusIdx` stays as
+  // a local alias so the read sites below are unchanged.
+  const cursor = useListCursor(visible.length);
+  const focusIdx = cursor.index;
+  const completed = grouped ? split.completed : [];
+
+  const counts: Record<View, number> = useMemo(() => ({
     inbox: tasks.filter((t) => t.is_inbox && !t.done).length,
     today: tasks.filter((t) => t.scheduled_date === todayISO && !t.is_inbox && !t.done).length,
-    upcoming: tasks.filter((t) => !!t.scheduled_date && t.scheduled_date > todayISO && !t.done).length,
     completed: tasks.filter((t) => t.done).length,
   }), [tasks, todayISO]);
 
+  // ── The board's columns ───────────────────────────────────────────────────
+  // The board ignores the rail's VIEW on purpose. Inbox and Today are two ways
+  // of slicing time; a board is a way of seeing your piles, and a board that
+  // only ever showed today's tasks would leave most columns empty. It still
+  // honours the switched-off piles and the Filter menu, because those are
+  // statements about what you want to see at all.
+  const boardTasks = useMemo(
+    () => visibleTasks(tasks, scopes.hidden).filter((t) => matchesFilter(t)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tasks, scopes.hidden, filter, labelFilter, taskLabels, scope],
+  );
+  const boardColumns: BoardColumn[] = useMemo(
+    () => groupIntoColumns(boardTasks, scopes.visible).map((c) => ({
+      key: c.key,
+      // "Unfiled", not "No list": this column also holds tasks that are in no
+      // PROJECT, and calling it "No list" would be a half-truth about half of them.
+      name: c.scope?.name ?? 'Unfiled',
+      swatch: scopeFill(c.scope?.color),
+      tasks: c.tasks,
+    })),
+    [boardTasks, scopes.visible],
+  );
+
+  // The number beside each pile: open work in it. Membership, so a task in a
+  // project AND a list counts once in each — both rows are telling the truth
+  // about their own pile.
+  const scopeCounts: ScopeCounts = useMemo(() => {
+    const c: ScopeCounts = {};
+    for (const t of tasks) {
+      if (t.done) continue;
+      for (const k of taskScopes(t)) c[k] = (c[k] ?? 0) + 1;
+    }
+    return c;
+  }, [tasks]);
+
   // ── mutations (optimistic) ──
-  async function toggle(id: string) {
+  /**
+   * Tick a task off — QUEUED, not awaited.
+   *
+   * This used to `await toggleTask(id, nd)` and roll back on error. Close the
+   * tab inside that ~300ms and the tick was gone, after the interface had
+   * already told you it was saved. Now the intent is written to disk before
+   * this function returns and delivered by the worker — this tab, the next one
+   * you open, or, if the server finally refuses, undone in front of you with a
+   * reason (`MUTATION_REVERTED`, handled below).
+   */
+  function toggle(id: string) {
     const t = tasks.find((x) => x.id === id); if (!t) return;
     const nd = !t.done;
+    // Start (or cancel) the settle beat BEFORE the optimistic write, so the row
+    // is already held in place by the time it is marked done and never blinks
+    // through the Completed group on its way.
+    if (nd) settling.hold(id); else settling.release(id);
     setTasks((ts) => ts.map((x) => (x.id === id ? { ...x, done: nd } : x)));
     signalTaskToggle(nd);
-    const res = await toggleTask(id, nd);
-    if ('error' in res) setTasks((ts) => ts.map((x) => (x.id === id ? { ...x, done: !nd } : x)));
+    queueMutation({
+      kind: 'task.toggle', recordId: id, args: [id, nd],
+      patch: { done: nd }, revert: { done: t.done },
+    });
   }
-  async function highlight(id: string) {
+  /** QUEUED, for the same reason `toggle` is — see the note there. */
+  function highlight(id: string) {
     const t = tasks.find((x) => x.id === id); if (!t) return;
     const nh = !t.highlight;
     setTasks((ts) => ts.map((x) => (x.id === id ? { ...x, highlight: nh } : x)));
-    const res = await setHighlight(id, nh);
-    if ('error' in res) setTasks((ts) => ts.map((x) => (x.id === id ? { ...x, highlight: !nh } : x)));
+    queueMutation({
+      kind: 'task.highlight', recordId: id, args: [id, nh],
+      patch: { highlight: nh }, revert: { highlight: t.highlight },
+    });
   }
   async function remove(id: string) {
     const snap = tasks;
     setTasks((ts) => ts.filter((x) => x.id !== id));
     const res = await deleteTask(id);
-    if ('error' in res) setTasks(snap);
+    if ('error' in res) { setTasks(snap); toastReverted(res.error); }
   }
-  async function reschedule(id: string, target: string) {
+  /** QUEUED. Dragging a task to another day is the edit most likely to be
+   *  followed immediately by closing the tab, so it is the one that most needs
+   *  to survive it. `rescheduleTask` takes the target VALUE, not a delta, so it
+   *  is safe to retry and safe to collapse. */
+  function reschedule(id: string, target: string) {
     const prev = tasks.find((x) => x.id === id); if (!prev) return;
     const isInbox = target === 'inbox';
-    setTasks((ts) => ts.map((x) => (x.id === id ? { ...x, is_inbox: isInbox, scheduled_date: isInbox ? null : target } : x)));
-    const res = await rescheduleTask(id, target);
-    if ('error' in res) setTasks((ts) => ts.map((x) => (x.id === id ? prev : x)));
+    const next = { is_inbox: isInbox, scheduled_date: isInbox ? null : target };
+    setTasks((ts) => ts.map((x) => (x.id === id ? { ...x, ...next } : x)));
+    queueMutation({
+      kind: 'task.reschedule', recordId: id, args: [id, target],
+      patch: next,
+      revert: { is_inbox: prev.is_inbox, scheduled_date: prev.scheduled_date },
+    });
   }
 
-  type ComposerSpec = { title: string; notes: string; date: string | null; priority: TaskItem['priority'] | null; projectId: string | null; dest: 'inbox' | 'today' | 'tomorrow' };
+  type ComposerSpec = { title: string; notes: string; date: string | null; priority: TaskItem['priority'] | null; projectId: string | null; dest: 'inbox' | 'today' | 'tomorrow'; estimate: number | null };
   async function create(spec: ComposerSpec) {
     const hint = parse(spec.title, projectList);
     if (!hint.title) return;
@@ -231,30 +408,138 @@ export function TasksView({ initialTasks, projects, subByParent, labels = [], ta
     const isInbox = spec.date ? false : (hint.date ? false : spec.dest === 'inbox');
     const scheduledDate = spec.date ?? hint.date ?? (spec.dest === 'today' ? todayISO : spec.dest === 'tomorrow' ? tomorrowISO : null);
     const recurrence = hint.freq ? { freq: hint.freq } : null;
-    const tempId = 'temp-' + Date.now();
-    setTasks((ts) => [...ts, { id: tempId, title: hint.title, done: false, priority, highlight: false, estimate_minutes: hint.estimate, scheduled_date: isInbox ? null : scheduledDate, is_inbox: isInbox, project_id: projectId, recurrence, parent_task_id: null }]);
-    const res = await addTask({ title: hint.title, priority, estimateMinutes: hint.estimate, scheduledDate: isInbox ? null : scheduledDate, isInbox, projectId, recurrence, dueDate: hint.dueDate, notes: spec.notes || null });
-    if ('id' in res) setTasks((ts) => ts.map((t) => (t.id === tempId ? { ...t, id: res.id } : t)));
-    else setTasks((ts) => ts.filter((t) => t.id !== tempId));
+    const tmp = tempId();
+    setTasks((ts) => [...ts, { id: tmp, title: hint.title, done: false, priority, highlight: false, estimate_minutes: spec.estimate ?? hint.estimate, scheduled_date: isInbox ? null : scheduledDate, is_inbox: isInbox, project_id: projectId, recurrence, parent_task_id: null }]);
+    const res = await addTask({ title: hint.title, priority, estimateMinutes: spec.estimate ?? hint.estimate, scheduledDate: isInbox ? null : scheduledDate, isInbox, projectId, recurrence, dueDate: hint.dueDate, notes: spec.notes || null });
+    if ('id' in res) setTasks((ts) => ts.map((t) => (t.id === tmp ? { ...t, id: res.id } : t)));
+    else setTasks((ts) => ts.filter((t) => t.id !== tmp));
   }
 
-  const open = (id: string) => router.push(`${pathname}?task=${id}`);
-  const activeViewDef = VIEWS.find((v) => v.id === view)!;
-  const activeList = listId ? projects[listId] : null;
+  // ── Board mutations ───────────────────────────────────────────────────────
+  /** Quick-add straight into a column: the pile the column stands for is the
+   *  pile the new task lands in. It goes to the Inbox in the sense that matters
+   *  — no date — but it is already filed, so it never needs triaging. */
+  async function addToColumn(key: string, title: string) {
+    const clean = title.trim();
+    if (!clean) return;
+    const [kind, id] = key === NO_SCOPE ? ['none', null] : (key.split(':') as [string, string]);
+    const projectId = kind === 'project' ? id : null;
+    const listId = kind === 'list' ? id : null;
+    const tmp = tempId();
+    setTasks((ts) => [...ts, {
+      id: tmp, title: clean, done: false, priority: 'low', highlight: false,
+      estimate_minutes: null, scheduled_date: null, is_inbox: kind === 'none',
+      project_id: projectId, list_id: listId, recurrence: null, parent_task_id: null,
+      created_at: new Date().toISOString(),
+    }]);
+    const res = await addTask({ title: clean, isInbox: kind === 'none', projectId, scheduledDate: null });
+    if (!('id' in res)) { setTasks((ts) => ts.filter((t) => t.id !== tmp)); return; }
+    setTasks((ts) => ts.map((t) => (t.id === tmp ? { ...t, id: res.id } : t)));
+    // `addTask` predates lists, so filing is a second write rather than a
+    // widened signature — the alternative is a `listId` parameter that every
+    // pre-0038 account would send to a column that does not exist.
+    if (listId) await setTaskList(res.id, listId);
+  }
+
+  /**
+   * A card was dropped into a column.
+   *
+   * TWO WRITES, deliberately kept apart: where the task is FILED, and where it
+   * sits in the column. Re-filing is the meaningful change and must land even
+   * if the ordering write fails; ordering is cosmetic and never worth rolling
+   * a re-file back for.
+   */
+  async function dropTask(taskId: string, key: string, index: number) {
+    const t = tasks.find((x) => x.id === taskId); if (!t) return;
+    const [kind, id] = key === NO_SCOPE ? ['none', null] : (key.split(':') as [string, string]);
+
+    // Dropping onto a PROJECT column has to clear the list as well, because the
+    // list wins the column (lib/task-scopes.ts, rule 2) — leaving it set would
+    // spring the card straight back to where it came from. Dropping onto a LIST
+    // column leaves the project alone: the two answer different questions, and
+    // quietly un-filing the client work would lose who gets billed.
+    // "Unfiled" means exactly that, so it clears both.
+    const patch: Partial<TaskItem> =
+      kind === 'list' ? { list_id: id, is_inbox: false }
+        : kind === 'project' ? { project_id: id, list_id: null, is_inbox: false }
+          : { project_id: null, list_id: null };
+
+    const before = { project_id: t.project_id, list_id: t.list_id ?? null, is_inbox: t.is_inbox };
+    // Reorder locally by moving the row to sit just before whatever currently
+    // occupies that slot in the target column — the column order is the array
+    // order, so this is the whole of "put it at index n".
+    const target = boardColumns.find((c) => c.key === key);
+    const anchorId = target?.tasks.filter((x) => x.id !== taskId)[index]?.id ?? null;
+    setTasks((ts) => {
+      const moved = { ...t, ...patch };
+      const rest = ts.filter((x) => x.id !== taskId);
+      const at = anchorId ? rest.findIndex((x) => x.id === anchorId) : -1;
+      if (at < 0) return [...rest, moved];
+      return [...rest.slice(0, at), moved, ...rest.slice(at)];
+    });
+
+    const res = kind === 'list'
+      ? await setTaskList(taskId, id)
+      : kind === 'project'
+        ? await moveTaskToProject(taskId, id!)
+        : await Promise.all([setTaskList(taskId, null), moveTaskToProject(taskId, null)])
+          .then((rs) => rs.find((r) => 'error' in r) ?? ({ ok: true as const }));
+    if ('error' in res) { setTasks((ts) => ts.map((x) => (x.id === taskId ? { ...x, ...before } : x))); toastReverted(res.error); return; }
+
+    // Renumber the whole target column rather than computing a midpoint: a
+    // column holds tens of rows, not thousands, and one pass can never produce
+    // the tie that a fractional index eventually does.
+    const after = groupIntoColumns(
+      visibleTasks(tasks.map((x) => (x.id === taskId ? { ...x, ...patch } : x)), scopes.hidden),
+      scopes.visible,
+    ).find((c) => c.key === key);
+    if (after) void setTaskOrder(after.tasks.map((x, i) => ({ id: x.id, sortOrder: i })));
+  }
+
+  // Over the list, not instead of it: the scope and view behind the task stay put (lib/task-address.ts).
+  const open = (id: string) => router.push(taskOpenHref(pathname, window.location.search, id));
 
   // ── keyboard-grammar mutations (optimistic, same rollback shape as above) ──
   const labelsFor = (id: string) => labelOverride[id] ?? taskLabels[id] ?? [];
-  async function setPriorityFor(id: string, level: TaskItem['priority']) {
+  // ALL THREE ARE QUEUED. These are the keyboard-grammar edits — the fastest
+  // interactions in the app, fired in bursts and the most likely to be followed
+  // straight away by closing the tab or navigating. Awaiting the server here
+  // meant the row said "saved" while the write was still in flight, and the
+  // edit was lost if you left inside that window. Each action takes the VALUE,
+  // not a delta, so it is safe for the queue to retry and to collapse.
+  function setPriorityFor(id: string, level: TaskItem['priority']) {
     const prev = tasks.find((x) => x.id === id); if (!prev || prev.priority === level) return;
     setTasks((ts) => ts.map((x) => (x.id === id ? { ...x, priority: level } : x)));
-    const res = await updateTask(id, { priority: level });
-    if ('error' in res) setTasks((ts) => ts.map((x) => (x.id === id ? { ...x, priority: prev.priority } : x)));
+    queueMutation({
+      kind: 'task.priority', recordId: id, args: [id, level],
+      patch: { priority: level }, revert: { priority: prev.priority },
+    });
   }
-  async function moveToProject(id: string, pid: string) {
+  /** File under a project, or under none. The rule is `afterProjectChange` — the server applies the same one —
+   *  so choosing the project a task already has writes nothing, and one left with nowhere to be goes back to
+   *  the Inbox instead of disappearing from the rail. */
+  function moveToProject(id: string, pid: string | null) {
     const prev = tasks.find((x) => x.id === id); if (!prev) return;
-    setTasks((ts) => ts.map((x) => (x.id === id ? { ...x, project_id: pid, is_inbox: false } : x)));
-    const res = await moveTaskToProject(id, pid);
-    if ('error' in res) setTasks((ts) => ts.map((x) => (x.id === id ? prev : x)));
+    const change = afterProjectChange(prev, pid);
+    if (!change) return;
+    const next = { project_id: change.project_id, is_inbox: change.is_inbox };
+    setTasks((ts) => ts.map((x) => (x.id === id ? { ...x, ...next } : x)));
+    queueMutation({
+      kind: 'task.setProject', recordId: id, args: [id, pid],
+      patch: next, revert: { project_id: prev.project_id, is_inbox: prev.is_inbox },
+    });
+  }
+  /** File into a list, or out of every list. Never touches `project_id` — the
+   *  two piles answer different questions and a "move" that quietly un-filed
+   *  the client work would lose the fact that decides who is billed. */
+  function moveToList(id: string, lid: string | null) {
+    const prev = tasks.find((x) => x.id === id); if (!prev) return;
+    const next = { list_id: lid, is_inbox: lid ? false : prev.is_inbox };
+    setTasks((ts) => ts.map((x) => (x.id === id ? { ...x, ...next } : x)));
+    queueMutation({
+      kind: 'task.setList', recordId: id, args: [id, lid],
+      patch: next, revert: { list_id: prev.list_id, is_inbox: prev.is_inbox },
+    });
   }
   async function toggleLabel(id: string, labelId: string) {
     const cur = labelsFor(id);
@@ -262,15 +547,11 @@ export function TasksView({ initialTasks, projects, subByParent, labels = [], ta
     const next = on ? [...cur, labelId] : cur.filter((x) => x !== labelId);
     setLabelOverride((o) => ({ ...o, [id]: next }));
     const res = await setTaskLabel(id, labelId, on);
-    if ('error' in res) setLabelOverride((o) => ({ ...o, [id]: cur }));
+    if ('error' in res) { setLabelOverride((o) => ({ ...o, [id]: cur })); toastReverted(res.error); }
   }
 
-  const focusRow = (n: number) => {
-    setFocusIdx(n);
-    requestAnimationFrame(() => rowsRef.current[n]?.scrollIntoView({ block: 'nearest' }));
-  };
   const openRowMenu = (kind: RowMenuKind, i: number, id: string) => {
-    const el = rowsRef.current[i]; if (!el) return;
+    const el = cursor.el(i); if (!el) return;
     const r = el.getBoundingClientRect();
     setMenu({ kind, id, rect: { top: r.top, bottom: r.bottom, left: r.left } });
     setMenuSel(0);
@@ -284,25 +565,50 @@ export function TasksView({ initialTasks, projects, subByParent, labels = [], ta
     if (menu.kind === 'schedule') return [
       { label: 'Today', run: () => reschedule(menu.id, todayISO) },
       { label: 'Tomorrow', run: () => reschedule(menu.id, tomorrowISO) },
-      { label: 'Next week', run: () => reschedule(menu.id, iso(nextMonday())) },
+      { label: 'Next week', run: () => reschedule(menu.id, nextWeekISO) },
       { label: 'Inbox', run: () => reschedule(menu.id, 'inbox') },
     ];
-    if (menu.kind === 'project') return projectList.map((p) => ({ label: p.name, color: p.color, run: () => moveToProject(menu.id, p.id) }));
+    if (menu.kind === 'project') return [
+      { label: 'No project', run: () => moveToProject(menu.id, null) },
+      ...projectList.map((p) => ({ label: p.name, color: p.color, run: () => moveToProject(menu.id, p.id) })),
+    ];
+    if (menu.kind === 'list') return [
+      { label: 'No list', run: () => moveToList(menu.id, null) },
+      ...scopes.lists.map((l) => ({ label: l.name, color: l.color, run: () => moveToList(menu.id, l.id) })),
+    ];
     return labels.map((l) => ({ label: l.name, isLabel: true, on: labelsFor(menu.id).includes(l.id), run: () => toggleLabel(menu.id, l.id) }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [menu, projectList, labels, labelOverride, taskLabels, tasks]);
 
+  // Declared before the key grammar, which reads it: `handleKey` closes over
+  // `inboxQueue` to decide whether "t" opens Triage, and JS hoisting made that
+  // work while reading bottom-up. The compiler is stricter and it is right —
+  // a value should exist above the code that uses it.
+  const inboxQueue: InboxTask[] = useMemo(
+    () => tasks.filter((t) => t.is_inbox && !t.done).map((t) => ({
+      id: t.id, title: t.title, priority: t.priority, done: t.done, is_inbox: t.is_inbox,
+      project_id: t.project_id, created_at: t.created_at ?? EPOCH,
+    })),
+    [tasks],
+  );
+
   // The grammar. Window-level (via a ref, like Triage) so it survives clicks and
   // always reads fresh state. Yields to inputs, the "g" navigation chord, an open
   // task drawer (?task=), the composer, and any open Radix menu/popover.
+  // The guard — modifiers, the `g` chord, typing targets, an open menu, an open
+  // record — is `lib/list-keys.ts` now, shared with every other list. What stays
+  // here is what these keys DO, which is the part that legitimately differs.
+  // `composing` and `triaging` are this view's own suspensions: triage is a
+  // full-screen layer with its own single-key grammar, and the list underneath
+  // must not also act on those keys.
   const handleKey = (e: KeyboardEvent) => {
-    if (e.metaKey || e.ctrlKey || e.altKey) return;
-    if (goChordActive()) return;
-    const el = e.target as HTMLElement | null;
-    if (el && (/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName) || el.isContentEditable)) return;
-    if (composing) return;
-    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('task')) return;
-    if (document.querySelector('[data-radix-popper-content-wrapper]')) return;
+
+    // ⇧T starts triage from anywhere on the Inbox — the shortcut Settings →
+    // Keyboard already advertises, which moved here with the flow.
+    if (e.shiftKey && (e.key === 'T' || e.key === 't')) {
+      if (layout === 'list' && view === 'inbox' && !scope && inboxQueue.length > 0) { e.preventDefault(); setTriaging(true); }
+      return;
+    }
 
     if (menu) {
       if (e.key === 'Escape') { e.preventDefault(); closeMenu(); }
@@ -316,9 +622,7 @@ export function TasksView({ initialTasks, projects, subByParent, labels = [], ta
     const list = visible;
     if (!list.length) return;
     const k = e.key.toLowerCase();
-    if (e.key === 'ArrowDown' || k === 'j') { e.preventDefault(); focusRow(focusIdx < 0 ? 0 : Math.min(list.length - 1, focusIdx + 1)); return; }
-    if (e.key === 'ArrowUp' || k === 'k') { e.preventDefault(); focusRow(focusIdx < 0 ? 0 : Math.max(0, focusIdx - 1)); return; }
-    if (e.key === 'Escape' && focusIdx >= 0) { e.preventDefault(); setFocusIdx(-1); return; }
+    if (cursor.arrows(e)) return;
     const t = list[focusIdx];
     if (!t) return;
     if (e.key === 'Enter' || k === 'o') { e.preventDefault(); open(t.id); }
@@ -329,19 +633,33 @@ export function TasksView({ initialTasks, projects, subByParent, labels = [], ta
     else if (k === '3') { e.preventDefault(); setPriorityFor(t.id, 'high'); }
     else if (k === 's') { e.preventDefault(); openRowMenu('schedule', focusIdx, t.id); }
     else if (k === 'p') { e.preventDefault(); if (projectList.length) openRowMenu('project', focusIdx, t.id); }
+    // "m" for move-to-list. `l` was already labels and stays labels — silently
+    // re-pointing a key someone has in their fingers is worse than one more key.
+    else if (k === 'm') { e.preventDefault(); if (listsSupported) openRowMenu('list', focusIdx, t.id); }
     else if (k === 'l') { e.preventDefault(); if (labels.length) openRowMenu('label', focusIdx, t.id); }
   };
-  const keyRef = useRef(handleKey);
-  keyRef.current = handleKey;
+  // A queued edit that the server finally refused. The worker raises this from
+  // wherever it happens to be draining, which may not be the tab that made the
+  // edit — so the handler works from the op's own `revert` map rather than any
+  // closure it could not have.
   useEffect(() => {
-    const fn = (e: KeyboardEvent) => keyRef.current(e);
-    window.addEventListener('keydown', fn);
-    return () => window.removeEventListener('keydown', fn);
+    const onReverted = (e: Event) => {
+      const d = (e as CustomEvent<RevertedDetail>).detail;
+      settling.release(d.recordId);
+      setTasks((ts) => ts.map((x) => (x.id === d.recordId ? { ...x, ...d.revert } : x)));
+    };
+    window.addEventListener(MUTATION_REVERTED, onReverted);
+    return () => window.removeEventListener(MUTATION_REVERTED, onReverted);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  // Keep focus in range as the list changes; reset it (and any menu) when the
-  // view/filter changes so the cursor never points at a stale row.
-  useEffect(() => { setFocusIdx((i) => (i < 0 ? i : Math.min(i, visible.length - 1))); }, [visible.length]);
-  useEffect(() => { setFocusIdx(-1); setMenu(null); }, [view, listId, filter, labelFilter]);
+
+  useListKeys(handleKey, { suspended: composing || triaging });
+  // Clamping as the list shrinks is the cursor's job now. What stays here is
+  // this view's own rule: a change of VIEW or FILTER is a different list, so the
+  // cursor starts over rather than pointing at whatever is now in that slot.
+  // One composite key, because `useChanged` compares a single value and four
+  // separate calls could not be combined without short-circuiting a hook.
+  if (useChanged(`${view}|${scope ?? ''}|${filter}|${labelFilter ?? ''}`)) { cursor.set(-1); setMenu(null); }
   // A popover anchored to a rect must not linger through scroll/resize.
   useEffect(() => {
     if (!menu) return;
@@ -351,123 +669,115 @@ export function TasksView({ initialTasks, projects, subByParent, labels = [], ta
     return () => { window.removeEventListener('scroll', close, true); window.removeEventListener('resize', close); };
   }, [menu]);
 
-  // Saved views — a named filter combo (spec §3.5). Any active filter can be
-  // saved; clicking one restores view + filter + label + list at once. Which
-  // view is "active" is derived from current state, so it self-detaches the
-  // moment any filter is changed by hand — no bookkeeping through mutations.
-  const filterActive = filter !== 'all' || !!labelFilter || !!listId;
-  const viewMatches = (v: SavedViewDef) => {
-    const f = v.filter || {};
-    return (f.view ?? 'inbox') === view && (f.filter ?? 'all') === filter && (f.labelId ?? null) === labelFilter && (f.listId ?? null) === listId;
+  // The combo the rail's "save this view" would capture, and the one it matches
+  // an existing saved view against. Saving and restoring live in the rail now,
+  // because the rail is the thing that shows them — this view only has to say
+  // what it is currently looking at.
+  const currentCombo = { view, filter, labelId: labelFilter, scope };
+  const filterActive = filter !== 'all' || !!labelFilter || !!scope;
+
+  // ── Triage (§7A) — the Inbox processed one thought at a time, full-screen,
+  //    every decision one key and every decision reversible. It used to live on
+  //    a separate /inbox page that duplicated this very view in the sidebar; the
+  //    page is gone and the flow came here rather than being dropped, because
+  //    the flow was the only thing that page had and this list didn't.
+
+  // Triage's decisions are the mutations this view already has: each one takes
+  // the task out of the inbox, and `inboxQueue` is derived from `tasks`, so the
+  // row leaves the queue on its own. No toasts here — triage owns its undo (Z).
+  const triageDone = (t: InboxTask) => { void toggle(t.id); };
+  const triageSchedule = (t: InboxTask, date: string) => { void reschedule(t.id, date); };
+  const triageProject = (t: InboxTask, pid: string) => { void moveToProject(t.id, pid); };
+  const triageDelete = (t: InboxTask) => { void remove(t.id); };
+
+  // Accepting the clerk's answer (§7Q *File*) is ONE decision made of the mutations this view
+  // already has — no new write path, and therefore nothing new for Z to know about: both of these
+  // take the thought out of the Inbox, and `triageUndo` puts it back the same way for either.
+  const triageFile = (t: InboxTask, filing: { projectId?: string; date?: string }) => {
+    if (filing.projectId) moveToProject(t.id, filing.projectId);
+    if (filing.date) reschedule(t.id, filing.date);
   };
-  const applyView = (v: SavedViewDef) => {
-    const f = v.filter || {};
-    setView((f.view as View) ?? 'inbox');
-    setFilter((f.filter as Filter) ?? 'all');
-    setLabelFilter(f.labelId ?? null);
-    setListId(f.listId ?? null);
-    setComposing(false);
-  };
-  async function saveView() {
-    const name = viewName.trim();
-    if (!name) return;
-    setViewName(''); setSavingView(false);
-    const snapshot: SavedViewDef['filter'] = { view, filter, labelId: labelFilter, listId };
-    const tmp = { id: 'tmp-' + Date.now(), name, filter: snapshot };
-    setViews((vs) => [...vs, tmp]);
-    const res = await createSavedView(name, snapshot);
-    if ('error' in res) setViews((vs) => vs.filter((v) => v.id !== tmp.id));
-    else setViews((vs) => vs.map((v) => (v.id === tmp.id ? { ...v, id: res.id } : v)));
-  }
-  async function removeView(id: string) {
-    setViews((vs) => vs.filter((v) => v.id !== id));
-    await deleteSavedView(id);
+
+  // Z steps a decision back. A delete is the one that can't be patched back —
+  // the row is gone from the table — so it is undone by re-creating it, which
+  // means a new id, which is why this returns the restored task.
+  async function triageUndo(t: InboxTask, kind: UndoKind): Promise<InboxTask> {
+    if (kind === 'delete') {
+      const res = await addTask({ title: t.title, priority: t.priority, isInbox: true });
+      // The row is already gone from the table; a failed re-create with no word
+      // is a deletion the person thought they had taken back.
+      if ('error' in res) { toast({ message: res.error, variant: 'error' }); return t; }
+      setTasks((ts) => [...ts, {
+        id: res.id, title: t.title, done: false, priority: t.priority, highlight: false,
+        estimate_minutes: null, scheduled_date: null, is_inbox: true, project_id: null,
+        recurrence: null, parent_task_id: null, created_at: t.created_at,
+      }]);
+      return { ...t, id: res.id };
+    }
+    // Mirrors returnToInbox's patch exactly, so the optimistic row matches the
+    // one the server writes.
+    setTasks((ts) => ts.map((x) => (x.id === t.id
+      ? { ...x, is_inbox: true, done: false, scheduled_date: null, project_id: null }
+      : x)));
+    await returnToInbox(t.id);
+    return t;
   }
 
-  // ── rail (or pills when narrow) — same row language as the global sidebar:
-  //    34px row, 8px gap, rounded-sm, ink-600 → ink-900 with the neutral selected
-  //    wash when active (B&G — no edge bar), 16px regular icons. ──
+  // A row's facts, minus the one every row in the view shares: inside a project's own list, naming that project on
+  // every line is wallpaper (the same for a list), so the row names only where a task lives when that varies.
+  const rowFacts = (t: TaskItem) => ({
+    task: t,
+    sub: subByParent[t.id],
+    recurring: !!t.recurrence,
+    project: t.project_id && !(activeScope?.kind === 'project' && activeScope.id === t.project_id) ? projects[t.project_id] ?? null : null,
+    list: t.list_id && !(activeScope?.kind === 'list' && activeScope.id === t.list_id) ? scopes.lists.find((l) => l.id === t.list_id) ?? null : null,
+    labels: labelsFor(t.id).flatMap((id) => {
+      const l = labels.find((x) => x.id === id);
+      return l ? [{ name: l.name, color: l.color ?? 'stone' }] : [];
+    }),
+  });
+  // The row's own verbs, below the Open and Highlight every task row carries.
+  const rowMenu = (t: TaskItem) => (
+    <RowMenu t={t}
+      project={t.project_id ? projects[t.project_id] ?? null : null}
+      list={t.list_id ? scopes.lists.find((l) => l.id === t.list_id) ?? null : null}
+      todayISO={todayISO} tomorrowISO={tomorrowISO} nextWeekISO={nextWeekISO}
+      projects={projectList} lists={scopes.lists}
+      onMove={(target) => reschedule(t.id, target)} onProject={(pid) => moveToProject(t.id, pid)}
+      onList={(lid) => moveToList(t.id, lid)} onDelete={() => remove(t.id)} />
+  );
+
+  // The rail. Shared verbatim with the board — see components/tasks/tasks-rail.tsx.
   const rail = (
-    <aside
-      className={narrow
-        ? 'flex gap-1.5 overflow-x-auto border-b border-line-soft px-3.5 py-2.5'
-        : 'flex w-[232px] shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-line-soft px-3.5 py-3'}
-    >
-      {VIEWS.map((v) => {
-        const on = view === v.id && !listId;
-        const count = counts[v.id];
-        return (
-          <button key={v.id} onClick={() => { setView(v.id); setListId(null); setComposing(false); }} className={cn(railBtn(on), 'shrink-0')}>
-            <Icon icon={v.icon} size={16} className="shrink-0" />
-            <span className={narrow ? undefined : 'flex-1 overflow-hidden text-ellipsis whitespace-nowrap'}>{v.label}</span>
-            {!narrow && count > 0 && <span className="text-caption tabular-nums text-ink-500">{count}</span>}
-          </button>
-        );
+    <TasksRail
+      counts={counts}
+      scopeCounts={scopeCounts}
+      projects={scopes.projects}
+      lists={scopes.lists}
+      listsSupported={listsSupported}
+      savedViews={savedViews}
+      savedViewsSupported={savedViewsSupported}
+      // On the board nothing in the rail is lit: a layout is not one of the
+      // rail's views, and picking any row takes you to the list showing it.
+      active={{ view: layout === 'board' ? 'board' : view, scope }}
+      current={currentCombo}
+      saveSnapshot={filterActive ? currentCombo : undefined}
+      narrow={narrow}
+      // Shallow: every rail row filters tasks this component already holds.
+      onSelect={(f) => setRail({
+        view: (f.view as View) ?? 'inbox',
+        scope: f.scope ?? (f.listId ? `project:${f.listId}` : null),
+        filter: f.filter ?? 'all',
+        labelId: f.labelId ?? null,
+        layout: 'list',
       })}
-
-      {!narrow && savedViewsSupported && (
-        <>
-          <div aria-hidden className="mx-[-14px] mt-2 mb-[3px] h-px bg-line-soft" />
-          <div className="flex items-center gap-1.5 px-2 py-1">
-            <span className="flex flex-1 items-center gap-1.5">
-              <Icon icon={CaretDown} size={12} className="text-ink-500" />
-              <span className={sectionLabel}>Views</span>
-            </span>
-            {filterActive && !savingView && (
-              <IconButton size="xs" variant="ghost" onClick={() => setSavingView(true)} label="Save this view" icon={<Icon icon={Plus} size={12} />} />
-            )}
-          </div>
-          {savingView && (
-            <div className="flex items-center gap-1.5 px-1 pb-1">
-              <input autoFocus value={viewName} onChange={(e) => setViewName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') saveView(); if (e.key === 'Escape') { setViewName(''); setSavingView(false); } }}
-                placeholder="View name…" autoComplete="off" data-1p-ignore data-lpignore="true"
-                className="focus-ring min-w-0 flex-1 rounded-sm border border-line-strong bg-surface-raised px-2 py-1.5 text-caption text-ink-800 outline-none placeholder:text-ink-400" />
-            </div>
-          )}
-          {views.map((v) => {
-            const on = viewMatches(v);
-            return (
-              <button key={v.id} onClick={() => applyView(v)} className={cn(railBtn(on), 'group shrink-0')}>
-                <Icon icon={FunnelSimple} size={14} className="shrink-0 text-ink-500" />
-                <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{v.name}</span>
-                <span role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); removeView(v.id); }} aria-label={`Delete ${v.name}`}
-                  className="focus-ring grid size-[18px] place-items-center rounded-xs text-ink-500 opacity-0 transition-opacity hover:text-ink-800 group-hover:opacity-100">
-                  <Icon icon={Trash} size={12} />
-                </span>
-              </button>
-            );
-          })}
-          {views.length === 0 && !savingView && (
-            <div className="px-2 pb-1 pt-0.5 text-caption text-ink-500">
-              {filterActive ? 'Save the current filter with +' : 'Filter tasks, then save the view.'}
-            </div>
-          )}
-        </>
-      )}
-
-      {!narrow && projectList.length > 0 && (
-        <>
-          <div aria-hidden className="mx-[-14px] mt-2 mb-[3px] h-px bg-line-soft" />
-          <div className="flex items-center gap-1.5 px-2 py-1">
-            <span className="flex flex-1 items-center gap-1.5">
-              <Icon icon={CaretDown} size={12} className="text-ink-500" />
-              <span className={sectionLabel}>List</span>
-            </span>
-            <IconButton size="xs" variant="ghost" onClick={() => router.push('/projects')} label="New list" icon={<Icon icon={Plus} size={12} />} />
-          </div>
-          {projectList.map((p) => {
-            const on = listId === p.id;
-            return (
-              <button key={p.id} onClick={() => { setListId(on ? null : p.id); setComposing(false); }} className={cn(railBtn(on), 'shrink-0')}>
-                <span aria-hidden className="size-2 shrink-0 rounded-[2px]" style={{ background: p.color ?? 'var(--color-ink-500)' }} />
-                <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{p.name}</span>
-              </button>
-            );
-          })}
-        </>
-      )}
-    </aside>
+      hidden={scopes.hidden}
+      onToggleScope={scopes.toggle}
+      onCreateList={scopes.createList}
+      onRenameList={scopes.renameList}
+      onRecolourList={scopes.recolourList}
+      onDeleteList={scopes.deleteList}
+    />
   );
 
   const activeParts = [
@@ -476,173 +786,273 @@ export function TasksView({ initialTasks, projects, subByParent, labels = [], ta
   ].filter(Boolean);
   const filtering = activeParts.length > 0;
 
+  // Tasks is a HUB whose detail is a list OR a board, so the pane drops the
+  // reading column only for the board (`bleed`) — the list keeps the same
+  // centred column and vertical rhythm every other page has. Its rail brings
+  // its own section rhythm, hence railPadding={false}. Both are use-case
+  // divergences from the default hub, named here per CONSISTENCY_PRINCIPLE.
   return (
-    <div className={cn('flex h-full animate-ds-fadein', narrow ? 'flex-col' : 'flex-row')}>
-      {rail}
+    <HubLayout
+      railLabel="Task views"
+      rail={rail}
+      railPadding={false}
+      bleed={layout === 'board'}
+      // The list is a READING column, not a hub's wide detail: it is one column
+      // of rows you read down, the same shape Home and Inbox have. A hub's
+      // default `wide` is for a detail that lays content out in columns beside
+      // the rail, which the board does — and the board takes `bleed` anyway.
+      width="reading"
+      overlays={(
+        <>
+          {triaging && (
+            <Triage
+              items={inboxQueue} projects={projectList} labels={labels}
+              onComplete={triageDone} onSchedule={triageSchedule} onProject={triageProject} onDelete={triageDelete}
+              onFile={onSuggestFiling ? triageFile : undefined} onSuggest={onSuggestFiling}
+              onLabel={(id, labelId) => { void setTaskLabel(id, labelId, true); }}
+              onUnlabel={(id, labelId) => { void setTaskLabel(id, labelId, false); }}
+              onUndo={triageUndo}
+              onClose={() => setTriaging(false)}
+            />
+          )}
 
-      {/* ── Task pane ── */}
-      <main className="flex min-h-0 min-w-0 flex-1 flex-col">
-        {/* Header: view context left · Filter + layout right. Full-width border
-            bar, but the content centers in the same column as the body below. */}
-        <div className="h-12 shrink-0 border-b border-line-soft">
-          <ViewContainer className="flex h-full items-center gap-2">
-          <span className="text-ui font-medium text-ink-900">{activeList ? activeList.name : activeViewDef.label}</span>
-          {visible.length > 0 && <span className="text-caption tabular-nums text-ink-500">{visible.length}</span>}
-          <span className="flex-1" />
+          {/* Keyboard-grammar popover (S schedule · P project · L label) */}
+          {menu && (
+            <>
+              <div className="fixed inset-0 z-dropdown" aria-hidden onClick={closeMenu} />
+              <div role="menu" aria-label={menu.kind === 'schedule' ? 'Schedule' : menu.kind === 'project' ? 'Move to project' : menu.kind === 'list' ? 'Move to list' : 'Labels'}
+                className={cn(MENU_PANEL_CLASS, 'fixed z-dropdown max-h-[min(320px,60vh)] w-56 overflow-y-auto origin-top-left')}
+                style={{ top: Math.min(menu.rect.bottom + 4, (typeof window !== 'undefined' ? window.innerHeight : 800) - 320), left: Math.min(menu.rect.left + 28, (typeof window !== 'undefined' ? window.innerWidth : 1000) - 240) }}>
+                {menuOpts.length === 0 ? (
+                  <div className="px-2.5 py-2 text-caption text-ink-500">Nothing to pick</div>
+                ) : menuOpts.map((o, i) => (
+                  <button key={i} role="menuitem" type="button" onMouseEnter={() => setMenuSel(i)}
+                    onClick={() => { o.run(); closeMenu(); }}
+                    className={cn('flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-left text-ui', i === menuSel ? 'bg-surface-active' : 'hover:bg-surface-hover')}>
+                    {o.isLabel
+                      ? <Icon icon={TagIcon} size={12} className="shrink-0 text-ink-500" />
+                      : o.color !== undefined
+                        ? <span aria-hidden className="size-2.5 shrink-0 rounded-xs" style={{ background: scopeFill(o.color) }} />
+                        : <span className="w-0.5" />}
+                    <span className="min-w-0 flex-1 truncate text-ink-800">{o.label}</span>
+                    {o.on && <Icon icon={Check} size={14} className="shrink-0 text-ink-500" />}
+                    {i < 9 && <Kbd keys={[String(i + 1)]} />}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </>
+      )}
+        actions={(
+          <>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant={filtering ? 'tinted' : 'ghost'}
+                  icon={<Icon icon={FunnelSimple} size={16} />}
+                  iconRight={<Icon icon={CaretDown} size={12} className="text-ink-500" />}>
+                  {filtering ? activeParts.join(' · ') : 'Filter'}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuRadioGroup value={filter} onValueChange={(v) => { setFilter(v as Filter); if (v === 'all') setLabelFilter(null); }}>
+                  {FILTERS.map((f) => <DropdownMenuRadioItem key={f.id} value={f.id}>{f.label}</DropdownMenuRadioItem>)}
+                </DropdownMenuRadioGroup>
+                {labels.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel>Labels</DropdownMenuLabel>
+                    {labels.map((l) => (
+                      <DropdownMenuCheckboxItem key={l.id} checked={labelFilter === l.id}
+                        onCheckedChange={() => setLabelFilter(labelFilter === l.id ? null : l.id)}>
+                        <span className="size-2.5 shrink-0 rounded-full" style={{ background: `var(--color-label-${l.color ?? 'stone'})` }} /> {l.name}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger className={headerBtn(filtering)}>
-              <Icon icon={FunnelSimple} size={16} /> {filtering ? activeParts.join(' · ') : 'Filter'}
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuRadioGroup value={filter} onValueChange={(v) => { setFilter(v as Filter); if (v === 'all') setLabelFilter(null); }}>
-                {FILTERS.map((f) => <DropdownMenuRadioItem key={f.id} value={f.id}>{f.label}</DropdownMenuRadioItem>)}
-              </DropdownMenuRadioGroup>
-              {labels.length > 0 && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel>Labels</DropdownMenuLabel>
-                  {labels.map((l) => (
-                    <DropdownMenuCheckboxItem key={l.id} checked={labelFilter === l.id}
-                      onCheckedChange={() => setLabelFilter((cur) => (cur === l.id ? null : l.id))}>
-                      <span className="size-2.5 shrink-0 rounded-full" style={{ background: `var(--color-label-${l.color ?? 'stone'})` }} /> {l.name}
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+            {/* Triage belongs to the Inbox and nowhere else — there is nothing to
+                process on Today or Completed, so the button isn't there. */}
+            {layout === 'list' && view === 'inbox' && !scope && inboxQueue.length > 0 && (
+              <Button size="sm" variant="secondary" icon={<Icon icon={ListChecks} size={16} />} onClick={() => setTriaging(true)}>
+                Triage {inboxQueue.length}
+              </Button>
+            )}
 
-          <DropdownMenu>
-            <DropdownMenuTrigger className={headerBtn(false)}>
-              <Icon icon={SquaresFour} size={16} /> Layout <Icon icon={CaretDown} size={12} />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem icon={<Icon icon={SquaresFour} size={16} />}>List</DropdownMenuItem>
-              <DropdownMenuItem icon={<Icon icon={CalendarDots} size={16} />} onSelect={() => router.push('/tasks?view=week')}>Week board</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          </ViewContainer>
-        </div>
-
-        {/* Body — same centered container as the header, so the task list sits in
-            a max-width column centered in the workspace (not hugging the left). */}
-        <div className={cn('min-h-0 flex-1 overflow-y-auto', narrow ? 'pb-16 pt-4' : 'pb-20 pt-[18px]')}>
-          <ViewContainer>
-            {visible.length === 0 && !composing ? (
-              <EmptyState view={view} listName={activeList?.name} onAdd={() => setComposing(true)} onImport={() => router.push('/settings?section=import')} />
+            {/* The layout switch, and the board's grouping beside it.
+                Rendered HERE rather than handed down from the route, because
+                switching List⇄Board is now a client-side change — the tasks are
+                already in this component and the server has nothing to add. The
+                route cannot pass a control that flips state it does not own. */}
+            {layout === 'board' && (
+              <SegmentedControl
+                aria-label="Group board by"
+                value="scope"
+                onValueChange={(v) => setRail({ layout: v === 'week' ? 'week' : 'board' })}
+                options={[{ value: 'scope', label: 'Lists' }, { value: 'week', label: 'Week' }]}
+              />
+            )}
+            <SegmentedControl
+              aria-label="Task layout"
+              value={layout === 'list' ? 'list' : 'board'}
+              onValueChange={(v) => setRail({ layout: v === 'board' ? 'board' : 'list' })}
+              options={[
+                { value: 'list', 'aria-label': 'List', label: <Icon icon={Rows3} size={16} /> },
+                { value: 'board', 'aria-label': 'Board', label: <Icon icon={Kanban} size={16} /> },
+              ]}
+            />
+          </>
+        )}
+    >
+      {layout === 'board' ? (
+            <TasksBoard
+              columns={boardColumns}
+              subByParent={subByParent}
+              settling={settling.ids}
+              onToggle={(id) => toggle(id)}
+              onOpen={open}
+              onAdd={addToColumn}
+              onDrop={dropTask}
+              // The same act as the rail's "New list" — a name, then Enter —
+              // through the same `createList`, so there is one way to make a
+              // list and two places to start it.
+              newColumn={listsSupported ? { label: 'New list', placeholder: 'List name…', onCreate: scopes.createList } : undefined}
+              emptyText="Make a list, or file a task into a project, and its column appears here."
+            />
+      ) : (
+        <>
+            {/* The empty state has to account for the Completed group: a day
+                where you finished everything has no active rows but is the
+                opposite of empty, and "Capture now, plan later" over a list of
+                fifteen things you just did would be absurd. */}
+            {visible.length === 0 && completed.length === 0 && !composing ? (
+              <EmptyState view={view} scopeName={activeScope?.name} onAdd={() => setComposing(true)} onImport={() => router.push('/settings?section=import')} />
             ) : (
               <>
                 {composing ? (
                   <Composer
                     projects={projectList}
                     defaultDest={view === 'inbox' ? 'inbox' : 'today'}
-                    defaultProject={listId}
+                    defaultProject={activeScope?.kind === 'project' ? activeScope.id : null}
                     onCancel={() => setComposing(false)}
                     onSubmit={(spec) => { create(spec); setComposing(false); }}
                   />
                 ) : (
-                  <QuickAddRow onClick={() => setComposing(true)} className="mb-4" />
+                  // The one add line every list grows from (the DS `AddLine`), its + on the checkboxes' vertical and
+                  // its word on the titles' — not a 48px grey slab reading "Add Task" above the list.
+                  <AddLine lead="checkbox" onClick={() => setComposing(true)} className="border-b border-line-soft">Add task</AddLine>
                 )}
 
-                <div>
+                {/* A container, so a row's facts give up their words before its title does at phone width. */}
+                <div className="@container">
+                  {/* Rows ARRIVE and LEAVE. A list where items blink in and out
+                      is the other half of "the app feels static" — the press
+                      answers "did you hear me", this answers "where did that go".
+                      `Presence` keeps a removed row on screen long enough to
+                      leave; `Move` animates the rows below it closing the gap,
+                      which CSS cannot do because it has no idea where a row used
+                      to be. Both are no-ops under reduced motion. */}
+                  <Presence>
                   {visible.map((t, i) => (
-                    <Row key={t.id} t={t} project={t.project_id ? projects[t.project_id] : null} sub={subByParent[t.id]}
-                      rowLabels={labelsFor(t.id).map((id) => labels.find((l) => l.id === id)).filter(Boolean).map((l) => ({ name: l!.name, color: l!.color ?? 'stone' }))}
-                      last={i === visible.length - 1} todayISO={todayISO} tomorrowISO={tomorrowISO}
-                      focused={i === focusIdx} innerRef={(el) => { rowsRef.current[i] = el; }}
-                      onToggle={() => toggle(t.id)} onOpen={() => open(t.id)} onStar={() => highlight(t.id)}
-                      onMove={(target) => reschedule(t.id, target)} onDelete={() => remove(t.id)} />
+                    <Move key={t.id} exit={EXIT_ROW} initial={{ opacity: 0, transform: 'translateY(4px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }}
+                      transition={{ duration: MOTION.base, ease: MOTION.ease, delay: Math.min(i, 6) * 0.02 }}>
+                    <div ref={cursor.ref(i)}>
+                    <TaskRow {...rowFacts(t)} last={i === visible.length - 1} selected={i === focusIdx}
+                      onToggle={() => toggle(t.id)} onOpen={() => open(t.id)} onHighlight={() => highlight(t.id)} showHighlightToggle
+                      menu={rowMenu(t)} />
+                    </div>
+                    </Move>
                   ))}
-                  {visible.length === 0 && (
-                    <div className="px-2 py-7 text-center text-ui text-ink-600">Nothing here yet.</div>
+                  </Presence>
+                  {visible.length === 0 && completed.length === 0 && (
+                    <EmptyLine className="px-2 py-7">Nothing open here. Add a task above.</EmptyLine>
                   )}
                 </div>
-              </>
-            )}
-          </ViewContainer>
-        </div>
-      </main>
 
-      {/* Keyboard-grammar popover (S schedule · P project · L label) */}
-      {menu && (
-        <>
-          <div className="fixed inset-0 z-[120]" aria-hidden onClick={closeMenu} />
-          <div role="menu" aria-label={menu.kind === 'schedule' ? 'Schedule' : menu.kind === 'project' ? 'Move to project' : 'Labels'}
-            className={cn(MENU_PANEL_CLASS, 'fixed z-[121] max-h-[min(320px,60vh)] w-56 overflow-y-auto')}
-            style={{ top: Math.min(menu.rect.bottom + 4, (typeof window !== 'undefined' ? window.innerHeight : 800) - 320), left: Math.min(menu.rect.left + 28, (typeof window !== 'undefined' ? window.innerWidth : 1000) - 240) }}>
-            {menuOpts.length === 0 ? (
-              <div className="px-2.5 py-2 text-caption text-ink-500">Nothing to pick</div>
-            ) : menuOpts.map((o, i) => (
-              <button key={i} role="menuitem" type="button" onMouseEnter={() => setMenuSel(i)}
-                onClick={() => { o.run(); closeMenu(); }}
-                className={cn('flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-left text-ui', i === menuSel ? 'bg-surface-active' : 'hover:bg-surface-hover')}>
-                {o.isLabel
-                  ? <Icon icon={TagIcon} size={13} className="shrink-0 text-ink-500" />
-                  : o.color !== undefined
-                    ? <span aria-hidden className="size-2.5 shrink-0 rounded-xs" style={{ background: o.color ?? 'var(--color-ink-400)' }} />
-                    : <span className="w-0.5" />}
-                <span className="min-w-0 flex-1 truncate text-ink-800">{o.label}</span>
-                {o.on && <Icon icon={Check} size={14} className="shrink-0 text-ink-500" />}
-                {i < 9 && <Kbd keys={[String(i + 1)]} />}
-              </button>
-            ))}
-          </div>
+                {/* Finished work, out of the way but one click from being undone.
+                    The same component Home and the project tabs use — this list
+                    used to be the one place a ticked task simply disappeared. */}
+                <CompletedSection count={completed.length} className="mt-2 @container">
+                  {completed.map((t, i) => (
+                    <TaskRow key={t.id} {...rowFacts(t)} last={i === completed.length - 1}
+                      onToggle={() => toggle(t.id)} onOpen={() => open(t.id)} onHighlight={() => highlight(t.id)}
+                      menu={rowMenu(t)} />
+                  ))}
+                </CompletedSection>
+              </>
+          )}
         </>
       )}
-    </div>
+    </HubLayout>
   );
 }
 
-// ── Task row (design: roomy row · checkbox · title · tag line · hover ⋮ menu) ──
-function Row({ t, project, sub, rowLabels = [], last, todayISO, tomorrowISO, focused = false, innerRef, onToggle, onOpen, onStar, onMove, onDelete }: {
-  t: TaskItem; project: TaskProject | null; sub?: { done: number; total: number }; rowLabels?: { name: string; color: string }[]; last: boolean;
-  todayISO: string; tomorrowISO: string; focused?: boolean; innerRef?: (el: HTMLDivElement | null) => void;
-  onToggle: () => void; onOpen: () => void; onStar: () => void; onMove: (target: string) => void; onDelete: () => void;
+// ── A task row's own menu ──────────────────────────────────────────────────
+// The row itself is the shared `TaskRow` (components/tasks/task-row.tsx), which carries Open and Highlight; these
+// are the Tasks page's verbs below them. Every edit a pointer can reach: Schedule, Project and List were the `s`,
+// `p` and `l` keys and nothing else, so filing a task under a project with a mouse was impossible from the list
+// (user report, 2026-09-19). Each is a submenu showing the task's current answer, the way Linear's are; a specific
+// date, notes and everything else are in the task itself — Open.
+function RowMenu({ t, project, list = null, todayISO, tomorrowISO, nextWeekISO, projects, lists, onMove, onProject, onList, onDelete }: {
+  t: TaskItem; project: TaskProject | null; list?: Scope | null;
+  todayISO: string; tomorrowISO: string; nextWeekISO: string;
+  /** Everything the task could be filed under — the menu's twin of the `p` and `l` keys. */
+  projects: TaskProject[]; lists: Scope[];
+  onMove: (target: string) => void; onProject: (projectId: string | null) => void; onList: (listId: string | null) => void; onDelete: () => void;
 }) {
-  const hasMeta = t.priority !== 'low' || project || t.estimate_minutes != null || t.recurrence || t.highlight || rowLabels.length > 0 || (sub && sub.total > 0);
   return (
-    <div ref={innerRef} aria-selected={focused}
-      className={cn('group relative flex gap-3 px-2.5 py-4 transition-colors duration-fast', !last && 'border-b border-line-soft', focused ? 'bg-surface-selected' : 'hover:bg-surface-hover')}>
-      <Checkbox size="md" checked={t.done} onCheckedChange={() => onToggle()} aria-label={t.done ? 'Mark not done' : 'Mark done'} className="mt-0.5 shrink-0" />
-      <button onClick={onOpen} className="focus-ring min-w-0 flex-1 rounded-xs text-left">
-        <div className={cn('truncate text-ui leading-normal', t.done ? 'text-ink-500 line-through' : 'text-ink-800')}>{t.title}</div>
-        {hasMeta && (
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            {t.priority !== 'low' && <PriorityBadge level={t.priority} variant="chip" />}
-            {project && (
-              <FigmaTag icon={<Icon icon={Folder} size={12} weight="fill" style={{ color: project.color ?? 'var(--color-ink-500)' }} />}>
-                {project.name}
-              </FigmaTag>
-            )}
-            {rowLabels.map((l) => (
-              <FigmaTag key={l.name} bar={`var(--color-label-${l.color})`}>{l.name}</FigmaTag>
+    <>
+      {!t.done && (
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger icon={<Icon icon={CalendarDots} size={16} />}
+            value={t.scheduled_date ? formatRelativeDay(t.scheduled_date) : t.is_inbox ? 'Inbox' : null}>
+            Schedule
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent className="w-44">
+            <DropdownMenuItem icon={<Icon icon={Sun} size={16} />} active={t.scheduled_date === todayISO} onSelect={() => onMove(todayISO)}>Today</DropdownMenuItem>
+            <DropdownMenuItem icon={<Icon icon={CalendarDots} size={16} />} active={t.scheduled_date === tomorrowISO} onSelect={() => onMove(tomorrowISO)}>Tomorrow</DropdownMenuItem>
+            <DropdownMenuItem icon={<Icon icon={CalendarDots} size={16} />} active={t.scheduled_date === nextWeekISO} onSelect={() => onMove(nextWeekISO)}>Next week</DropdownMenuItem>
+            <DropdownMenuItem icon={<Icon icon={Tray} size={16} />} active={t.is_inbox && !t.scheduled_date} onSelect={() => onMove('inbox')}>Inbox</DropdownMenuItem>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+      )}
+      <DropdownMenuSub>
+        <DropdownMenuSubTrigger icon={<Icon icon={Folder} size={16} />} value={project?.name ?? null}>
+          Project
+        </DropdownMenuSubTrigger>
+        <DropdownMenuSubContent className="max-h-[min(360px,var(--radix-dropdown-menu-content-available-height))] w-52 overflow-y-auto">
+          <DropdownMenuRadioGroup value={t.project_id ?? ''} onValueChange={(v) => onProject(v || null)}>
+            <DropdownMenuRadioItem value="">No project</DropdownMenuRadioItem>
+            {projects.map((p) => (
+              <DropdownMenuRadioItem key={p.id} value={p.id}>
+                <Icon icon={Folder} size={14} weight="fill" style={{ color: scopeFill(p.color, 'var(--color-ink-500)') }} />
+                <span className="min-w-0 flex-1 truncate">{p.name}</span>
+              </DropdownMenuRadioItem>
             ))}
-            {sub && sub.total > 0 && <span className="text-caption tabular-nums text-ink-500">{sub.done}/{sub.total}</span>}
-            {t.estimate_minutes != null && <span className="text-caption tabular-nums text-ink-500">{fmtDur(t.estimate_minutes)}</span>}
-            {t.recurrence && <Icon icon={Repeat} size={12} className="text-ink-500" />}
-            {t.highlight && <Icon icon={Star} size={12} weight="fill" className="text-ink-600" />}
-          </div>
-        )}
-      </button>
-      <div className="self-start">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="ghost" iconOnly aria-label="Task actions"
-              className="opacity-0 transition-opacity group-hover:opacity-100 data-[state=open]:opacity-100"
-              icon={<Icon icon={DotsThree} size={16} weight="bold" />} />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem icon={<Icon icon={Star} size={16} />} onSelect={onStar}>{t.highlight ? 'Remove highlight' : 'Highlight'}</DropdownMenuItem>
-            {!t.done && <DropdownMenuItem icon={<Icon icon={Sun} size={16} />} onSelect={() => onMove(todayISO)}>Today</DropdownMenuItem>}
-            {!t.done && <DropdownMenuItem icon={<Icon icon={CalendarDots} size={16} />} onSelect={() => onMove(tomorrowISO)}>Tomorrow</DropdownMenuItem>}
-            {!t.done && <DropdownMenuItem icon={<Icon icon={Tray} size={16} />} onSelect={() => onMove('inbox')}>Inbox</DropdownMenuItem>}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem danger icon={<Icon icon={Trash} size={16} />} onSelect={onDelete}>Delete</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </div>
+          </DropdownMenuRadioGroup>
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>
+      <DropdownMenuSub>
+        <DropdownMenuSubTrigger icon={<Icon icon={ListIcon} size={16} />} value={list?.name ?? null}>
+          List
+        </DropdownMenuSubTrigger>
+        <DropdownMenuSubContent className="max-h-[min(360px,var(--radix-dropdown-menu-content-available-height))] w-52 overflow-y-auto">
+          <DropdownMenuRadioGroup value={t.list_id ?? ''} onValueChange={(v) => onList(v || null)}>
+            <DropdownMenuRadioItem value="">No list</DropdownMenuRadioItem>
+            {lists.map((l) => (
+              <DropdownMenuRadioItem key={l.id} value={l.id}>
+                <Icon icon={ListIcon} size={14} style={{ color: scopeFill(l.color, 'var(--color-ink-500)') }} />
+                <span className="min-w-0 flex-1 truncate">{l.name}</span>
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem danger icon={<Icon icon={Trash} size={16} />} onSelect={onDelete}>Delete</DropdownMenuItem>
+    </>
   );
 }
 
@@ -650,12 +1060,17 @@ function Row({ t, project, sub, rowLabels = [], last, todayISO, tomorrowISO, foc
 //    destination + Cancel/Add task). NL hints still parse from the title. ──
 export function Composer({ projects, defaultDest, defaultProject, onCancel, onSubmit }: {
   projects: TaskProject[]; defaultDest: 'inbox' | 'today'; defaultProject: string | null;
-  onCancel: () => void; onSubmit: (spec: { title: string; notes: string; date: string | null; priority: 'low' | 'med' | 'high' | null; projectId: string | null; dest: 'inbox' | 'today' | 'tomorrow' }) => void;
+  onCancel: () => void; onSubmit: (spec: { title: string; notes: string; date: string | null; priority: 'low' | 'med' | 'high' | null; projectId: string | null; dest: 'inbox' | 'today' | 'tomorrow'; estimate: number | null }) => void;
 }) {
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [date, setDate] = useState<string | null>(null);
   const [priority, setPriority] = useState<CPrio>(null);
+  // How long you think this will take. The value was ALWAYS reachable — `parse`
+  // reads "30m" out of the title — but only if you knew the syntax, so most
+  // tasks arrived with no estimate and Focus had nothing to count against.
+  // Picking one is now a chip like every other property.
+  const [estimate, setEstimate] = useState<number | null>(null);
   const [projectId, setProjectId] = useState<string | null>(defaultProject);
   const [dest, setDest] = useState<'inbox' | 'today' | 'tomorrow'>(defaultDest);
   const titleRef = useRef<HTMLInputElement>(null);
@@ -664,7 +1079,9 @@ export function Composer({ projects, defaultDest, defaultProject, onCancel, onSu
   const hint = title.trim() ? parse(title, projects) : null;
   const canAdd = !!(hint && hint.title);
   // Urgent is a composer-only convenience; persist it as High.
-  const submit = () => { if (canAdd) onSubmit({ title, notes, date, priority: priority === 'urgent' ? 'high' : priority, projectId, dest }); };
+  // An explicitly picked estimate wins over one parsed from the title: the chip
+  // is the deliberate act, the text is a shortcut.
+  const submit = () => { if (canAdd) onSubmit({ title, notes, date, priority: priority === 'urgent' ? 'high' : priority, projectId, dest, estimate: estimate ?? hint?.estimate ?? null }); };
   const proj = projectId ? projects.find((p) => p.id === projectId) : null;
   const destLabel = dest === 'inbox' ? 'Inbox' : dest === 'today' ? 'Today' : 'Tomorrow';
 
@@ -676,14 +1093,14 @@ export function Composer({ projects, defaultDest, defaultProject, onCancel, onSu
   );
 
   return (
-    <div className="mb-4 overflow-hidden rounded-lg border border-line-soft bg-surface-raised px-4 pt-3.5 shadow-lift-1">
-      <input ref={titleRef} value={title} onChange={(e) => setTitle(e.target.value)}
+    <div className={cardClass('mb-4 overflow-hidden px-4 pt-3.5 shadow-lift-1')}>
+      <input data-chromeless ref={titleRef} value={title} onChange={(e) => setTitle(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') onCancel(); }}
         placeholder="New task" autoComplete="off" data-1p-ignore data-lpignore="true"
-        className="w-full border-0 bg-transparent p-0 text-lead font-normal text-ink-900 outline-none placeholder:text-ink-400" />
-      <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Description" rows={notes.includes('\n') ? 3 : 2}
+        className="w-full border-0 bg-transparent p-0 text-lead font-normal text-ink-900 outline-none placeholder:text-ink-500" />
+      <textarea data-chromeless value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Description" rows={notes.includes('\n') ? 3 : 2}
         onKeyDown={(e) => { if (e.key === 'Escape') onCancel(); }}
-        className="mt-1 w-full resize-none border-0 bg-transparent p-0 text-ui leading-relaxed text-ink-800 outline-none placeholder:text-ink-400" />
+        className="mt-1 w-full resize-none border-0 bg-transparent p-0 text-ui leading-relaxed text-ink-800 outline-none placeholder:text-ink-500" />
 
       {hint && (hint.priority || hint.projectId || hint.estimate != null || hint.freq || hint.date || hint.dueDate || hint.isInbox) && (
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
@@ -692,17 +1109,25 @@ export function Composer({ projects, defaultDest, defaultProject, onCancel, onSu
           {hint.isInbox && <Hint><Icon icon={Tray} size={12} /> inbox</Hint>}
           {hint.priority && <Hint><PriorityBars level={hint.priority} size={12} /> {PRIO_LABEL[hint.priority]}</Hint>}
           {hint.projectId && <Hint><Icon icon={Folder} size={12} /> {projects.find((p) => p.id === hint.projectId)?.name}</Hint>}
-          {hint.estimate != null && <Hint><Icon icon={Timer} size={12} /> {fmtDur(hint.estimate)}</Hint>}
+          {hint.estimate != null && <Hint><Icon icon={Timer} size={12} /> {formatMinutes(hint.estimate)}</Hint>}
           {hint.freq && <Hint><Icon icon={Repeat} size={12} /> {hint.freq}</Hint>}
         </div>
       )}
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <label className={chip(!!date)}>
-          <Icon icon={CalendarDots} size={16} /> {date ? new Date(date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Date'}
-          <input type="date" value={date ?? ''} onChange={(e) => setDate(e.target.value || null)} aria-label="Due date"
-            className="absolute inset-0 cursor-pointer opacity-0" />
-        </label>
+        {/* The chip IS the trigger. It used to be a <label> with an invisible
+            native date input stretched over it, which opened Chrome's calendar
+            from inside our own composer. */}
+        <DatePicker
+          aria-label="Due date"
+          value={date}
+          onValueChange={(iso) => setDate(iso || null)}
+          trigger={(
+            <button type="button" className={chip(!!date)}>
+              <Icon icon={CalendarDots} size={16} /> {formatDay(date) ?? 'Date'}
+            </button>
+          )}
+        />
 
         <DropdownMenu>
           <DropdownMenuTrigger className={chip(!!priority)} title="Change priority">
@@ -721,9 +1146,24 @@ export function Composer({ projects, defaultDest, defaultProject, onCancel, onSu
         </DropdownMenu>
 
         <DropdownMenu>
+          <DropdownMenuTrigger className={chip(estimate != null)} aria-label="Estimate">
+            <Icon icon={Timer} size={16} /> {estimate != null ? formatMinutes(estimate) : 'Estimate'}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuLabel>How long will it take?</DropdownMenuLabel>
+            <DropdownMenuRadioGroup value={String(estimate ?? '')} onValueChange={(v) => setEstimate(v ? Number(v) : null)}>
+              <DropdownMenuRadioItem value="">No estimate</DropdownMenuRadioItem>
+              {[5, 15, 30, 45, 60, 90, 120].map((m) => (
+                <DropdownMenuRadioItem key={m} value={String(m)}>{formatMinutes(m)}</DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <DropdownMenu>
           <DropdownMenuTrigger className={chip(!!proj)} aria-label="Project">
             {proj
-              ? <><span aria-hidden className="size-2.5 rounded-[3px]" style={{ background: proj.color ?? 'var(--color-ink-500)' }} /> {proj.name}</>
+              ? <><span aria-hidden className="size-2.5 rounded-[3px]" style={{ background: scopeFill(proj.color, 'var(--color-ink-500)') }} /> {proj.name}</>
               : <><Icon icon={Folder} size={16} /> Project</>}
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="max-h-72 overflow-y-auto">
@@ -731,7 +1171,7 @@ export function Composer({ projects, defaultDest, defaultProject, onCancel, onSu
               <DropdownMenuRadioItem value="">No project</DropdownMenuRadioItem>
               {projects.map((p) => (
                 <DropdownMenuRadioItem key={p.id} value={p.id}>
-                  <span aria-hidden className="size-2.5 rounded-[3px]" style={{ background: p.color ?? 'var(--color-ink-500)' }} /> {p.name}
+                  <span aria-hidden className="size-2.5 rounded-[3px]" style={{ background: scopeFill(p.color, 'var(--color-ink-500)') }} /> {p.name}
                 </DropdownMenuRadioItem>
               ))}
             </DropdownMenuRadioGroup>
@@ -766,21 +1206,18 @@ function Hint({ children }: { children: React.ReactNode }) {
 }
 
 // ── Empty states (design copy for Inbox; calm equivalents elsewhere) ──
-function EmptyState({ view, listName, onAdd, onImport }: { view: View; listName?: string; onAdd: () => void; onImport: () => void }) {
+function EmptyState({ view, scopeName, onAdd, onImport }: { view: View; scopeName?: string; onAdd: () => void; onImport: () => void }) {
   const copy: Record<View, { h: string; sub: string }> = {
     inbox: { h: 'Capture now, plan later', sub: 'Inbox is your go-to spot for quick task entry. Clear your mind now, organize when you’re ready.' },
     today: { h: 'All clear for today', sub: 'Nothing on today’s plate. Add a task, or pull something in from your Inbox.' },
-    upcoming: { h: 'Nothing scheduled ahead', sub: 'Tasks with a future date will line up here so you can see what’s coming.' },
-    completed: { h: 'Nothing completed yet', sub: 'Finished tasks land here — your quiet record of progress.' },
+    completed: { h: 'Nothing completed yet', sub: 'Finished tasks land here. Your quiet record of progress.' },
   };
-  const c = listName ? { h: `Nothing in ${listName}`, sub: 'Tasks you file under this list will show up here.' } : copy[view];
+  const c = scopeName ? { h: `Nothing in ${scopeName}`, sub: 'Tasks you file here will show up in this list.' } : copy[view];
   // Coming from another app? Offer the CSV import on the Inbox empty state (§7U:
   // "Importers offered on the Tasks empty state, not the first run").
-  const showImport = view === 'inbox' && !listName;
-  const art: Record<View, EmptyName> = { inbox: 'inboxCapture', today: 'dayClear', upcoming: 'upcoming', completed: 'completed' };
+  const showImport = view === 'inbox' && !scopeName;
   return (
     <EmptyStateBase
-      illustration={<EmptyArt name={listName ? 'inboxCapture' : art[view]} />}
       title={c.h}
       description={c.sub}
       primary={view !== 'completed'

@@ -3,15 +3,21 @@
 // Progress rolls up from linked tasks (done/total), then milestones, then a
 // manual value. Set a target date, link a project, complete/drop/reopen.
 // Optimistic; persisted via goals.ts. 'month' needs migration 0008.
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { Flag, Target, CalendarDays, Plus, Check, ChevronDown, Repeat, Ellipsis, Kanban } from "@/components/ds/icons";
-import { PageHeader } from '@/components/ui/page-header';
-import { Button } from '@/components/ui/primitives';
-import { Icon, SegmentedControl } from "@/components/ds/ui";
-import { EmptyState } from '@/components/ui/states';
-import { EmptyArt } from '@/components/illustrations/ink';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Flag, Target, CalendarDays, Plus, Check, Repeat, Ellipsis, Kanban, Folder, X } from "@/components/ds/icons";
+import { PageLayout } from '@/components/ui/page-layout';
+import {
+  Icon, Button, IconButton, SegmentedControl, Modal, Field, TextInput, Textarea, EmptyState, DatePicker, Badge, Checkbox,
+  CircularProgress, MenuSelect, addLine, DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+  toastReverted, cardClass } from "@/components/ds/ui";
+import { cn } from '@/lib/cn';
+import { scopeFill } from '@/lib/entity-color';
+
 import { addGoal, updateGoal, addMilestone, toggleMilestone } from '@/lib/actions/goals';
+import { formatDay } from '@/lib/date';
+import { useServerState } from '@/lib/use-server-state';
+import { tempId } from '@/lib/temp-id';
 
 type Milestone = { id: string; title: string; done: boolean };
 type Horizon = 'month' | 'quarter' | 'year';
@@ -20,6 +26,8 @@ export type Goal = {
   id: string; title: string; note: string | null; horizon: Horizon;
   target_date: string | null; status: string; progress: number; project_id: string | null;
   milestones: Milestone[]; linkedDone: number; linkedTotal: number;
+  /** One line written when the goal was finished (0026). */
+  retro?: string | null;
 };
 
 const SECTIONS: { id: Horizon; label: string; icon: typeof Flag }[] = [
@@ -27,7 +35,7 @@ const SECTIONS: { id: Horizon; label: string; icon: typeof Flag }[] = [
   { id: 'quarter', label: 'Quarter', icon: Flag },
   { id: 'year', label: 'Year', icon: Target },
 ];
-const fmtDate = (iso: string) => new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+const fmtDate = (iso: string) => formatDay(iso) ?? '';
 
 function goalFrac(g: Goal) {
   if (g.linkedTotal > 0) return g.linkedDone / g.linkedTotal;
@@ -35,115 +43,140 @@ function goalFrac(g: Goal) {
   return Math.max(0, Math.min(1, g.progress > 1 ? g.progress / 100 : g.progress));
 }
 
-function Ring({ frac, tone }: { frac: number; tone: string }) {
-  const r = 22, c = 2 * Math.PI * r;
-  return (
-    <div style={{ position: 'relative', width: 52, height: 52, flexShrink: 0 }}>
-      <svg width={52} height={52} viewBox="0 0 52 52" style={{ transform: 'rotate(-90deg)' }}>
-        <circle cx={26} cy={26} r={r} stroke="color-mix(in srgb, var(--ink) 8%, transparent)" strokeWidth={4} fill="none" />
-        <circle cx={26} cy={26} r={r} stroke={tone} strokeWidth={4} fill="none" strokeDasharray={c} strokeDashoffset={(1 - frac) * c} strokeLinecap="round" style={{ transition: 'stroke-dashoffset var(--dur-mid) var(--ease)' }} />
-      </svg>
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'var(--text-caption-size)', fontWeight: 500 }}>{Math.round(frac * 100)}</div>
-    </div>
-  );
-}
-
-function GoalCard({ goal, projects, onAddMilestone, onToggleMilestone, onSaveNote, onStatus, onTarget, onProject }: {
+/**
+ * One goal — the house card (`bg-surface-raised`, a hairline, `rounded-lg`), not a grey-filled panel on the grey page.
+ *
+ * Rebuilt on the design system 2026-09-22 (plans/PRODUCT_POLISH_2026-09-22.md sprint 5). It drew ONE percentage
+ * twice — a 52px ring with the number in it and a 5px bar under the title; a dropped goal faded its whole card with
+ * `opacity: 0.6` (text included); its ••• was a hand-rolled menu that closed when the pointer left it; the project
+ * was a native `<select>`; steps ticked into an accent box where every other box in the app is ink; and the note and
+ * the retro line were set in an italic serif, a second typeface on a page of one.
+ */
+function GoalCard({ goal, projects, onAddMilestone, onToggleMilestone, onSaveNote, onStatus, onTarget, onProject, onFinish, goalsV2 = false }: {
   goal: Goal; projects: GoalProject[];
   onAddMilestone: (t: string) => void; onToggleMilestone: (id: string) => void; onSaveNote: (note: string) => void;
   onStatus: (s: 'active' | 'done' | 'dropped') => void; onTarget: (d: string | null) => void; onProject: (id: string | null) => void;
+  /** Finish with a one-line retro (§7G "completed goal → archive with retro line"). */
+  onFinish: (retro: string) => void;
+  /** Migration 0026 applied — without it there is nowhere to store a retro. */
+  goalsV2?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const [menu, setMenu] = useState(false);
   const [draft, setDraft] = useState('');
-  const frac = goal.status === 'done' ? 1 : goalFrac(goal);
-  const tone = goal.status === 'done' ? 'var(--green-text)' : goal.status === 'dropped' ? 'var(--text-muted)' : 'var(--ink-2)';
+  const [retro, setRetro] = useState<string | null>(null);
+  const done = goal.status === 'done';
+  const dropped = goal.status === 'dropped';
+  const frac = done ? 1 : goalFrac(goal);
   const project = goal.project_id ? projects.find((p) => p.id === goal.project_id) : null;
   const progressLabel = goal.linkedTotal > 0 ? `${goal.linkedDone}/${goal.linkedTotal} tasks` : goal.milestones.length > 0 ? `${goal.milestones.filter((m) => m.done).length}/${goal.milestones.length} steps` : `${Math.round(frac * 100)}%`;
+  const finish = (line: string) => { onFinish(line.trim()); setRetro(null); };
 
   return (
-    <div style={{ background: 'var(--paper-2)', border: '1px solid var(--line)', borderRadius: 'var(--r-xl)', overflow: 'hidden', opacity: goal.status === 'dropped' ? 0.6 : 1 }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, padding: 18 }}>
-        <Ring frac={frac} tone={tone} />
-        <button onClick={() => setOpen((o) => !o)} style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-            <h3 style={{ margin: 0, fontFamily: 'var(--font-display)', fontWeight: 500, fontSize: 'var(--text-h3-size)', letterSpacing: '-0.01em', color: 'var(--ink)', textDecoration: goal.status === 'dropped' ? 'line-through' : 'none' }}>{goal.title}</h3>
-            {goal.status === 'done' && <span style={{ fontSize: 'var(--text-label-size)', fontWeight: 500, padding: '2px 8px', borderRadius: 'var(--r-full)', background: 'color-mix(in srgb, var(--green) 14%, transparent)', color: 'var(--green-text)' }}>Done</span>}
-            {goal.status === 'dropped' && <span style={{ fontSize: 'var(--text-label-size)', fontWeight: 500, padding: '2px 8px', borderRadius: 'var(--r-full)', background: 'var(--paper-3)', color: 'var(--text-secondary)' }}>Dropped</span>}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 'var(--text-caption-size)', color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
-            <span>{progressLabel}</span>
-            {goal.target_date && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Icon icon={CalendarDays} size={12} />{fmtDate(goal.target_date)}</span>}
-            {project && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: project.color || 'var(--text-secondary)' }} />{project.name}</span>}
-          </div>
-          <div style={{ height: 5, borderRadius: 'var(--r-full)', background: 'color-mix(in srgb, var(--ink) 8%, transparent)', overflow: 'hidden', marginTop: 10 }}>
-            <div style={{ height: '100%', width: `${frac * 100}%`, background: tone, transition: 'width var(--dur-mid) var(--ease)' }} />
-          </div>
+    <article className={cardClass()}>
+      <div className="flex items-start gap-3 px-[var(--panel-px)] py-3.5">
+        {/* The one progress mark: a ring the size of a glyph, beside the name — the count beneath says the figure. */}
+        <CircularProgress value={frac * 100} size={16} className="mt-[3px] shrink-0" />
+        <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open}
+          className="focus-ring min-w-0 flex-1 rounded-xs text-left">
+          <span className="flex flex-wrap items-center gap-2">
+            <span className={cn('text-h4', dropped ? 'text-ink-500 line-through' : 'text-ink-900')}>{goal.title}</span>
+            {done && <Badge status="success">Done</Badge>}
+            {dropped && <Badge>Dropped</Badge>}
+          </span>
+          <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-ink-500">
+            <span className="tabular-nums">{progressLabel}</span>
+            {goal.target_date && <span className="inline-flex items-center gap-1 tabular-nums"><Icon icon={CalendarDays} size={12} />{fmtDate(goal.target_date)}</span>}
+            {project && (
+              <span className="inline-flex items-center gap-1">
+                <Icon icon={Folder} size={12} weight="fill" style={{ color: scopeFill(project.color, 'var(--color-ink-500)') }} />{project.name}
+              </span>
+            )}
+          </span>
         </button>
-        <div style={{ position: 'relative', flexShrink: 0 }}>
-          <button onClick={() => setMenu((m) => !m)} aria-label="Goal menu" style={{ display: 'grid', placeItems: 'center', width: 28, height: 28, borderRadius: 'var(--r-md)', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)' }}><Icon icon={Ellipsis} size={16} /></button>
-          {menu && (
-            <div onMouseLeave={() => setMenu(false)} style={{ position: 'absolute', top: 30, right: 0, zIndex: 60, width: 180, background: 'var(--color-surface-raised)', border: '1px solid var(--color-line-strong)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--shadow-lg)', padding: 8 }}>
-              {goal.status !== 'done' && <MenuBtn icon={Check} label="Mark done" onClick={() => { setMenu(false); onStatus('done'); }} />}
-              {goal.status !== 'active' && <MenuBtn icon={Flag} label="Reopen" onClick={() => { setMenu(false); onStatus('active'); }} />}
-              {goal.status !== 'dropped' && <MenuBtn icon={ChevronDown} label="Drop" onClick={() => { setMenu(false); onStatus('dropped'); }} />}
-            </div>
-          )}
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <IconButton size="sm" variant="ghost" label="Goal actions" className="-me-1.5 -mt-0.5" icon={<Icon icon={Ellipsis} size={16} />} />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            {!done && <DropdownMenuItem icon={<Icon icon={Check} size={16} />} onSelect={() => { if (goalsV2) setRetro(''); else onStatus('done'); }}>Mark done</DropdownMenuItem>}
+            {goal.status !== 'active' && <DropdownMenuItem icon={<Icon icon={Flag} size={16} />} onSelect={() => onStatus('active')}>Reopen</DropdownMenuItem>}
+            {!dropped && <DropdownMenuItem icon={<Icon icon={X} size={16} />} onSelect={() => onStatus('dropped')}>Drop</DropdownMenuItem>}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
-      {open && (
-        <div style={{ borderTop: '1px solid var(--line-2)', padding: '12px 18px 16px' }}>
-          {/* target date + project link */}
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 'var(--text-label-size)', color: 'var(--text-secondary)' }}>Target date
-              <input type="date" defaultValue={goal.target_date ?? ''} onChange={(e) => onTarget(e.target.value || null)} style={fieldStyle} />
-            </label>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 'var(--text-label-size)', color: 'var(--text-secondary)' }}>Project
-              <select defaultValue={goal.project_id ?? ''} onChange={(e) => onProject(e.target.value || null)} style={fieldStyle}>
-                <option value="">None</option>
-                {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-            </label>
+      {/* The retro is the point of writing one — a finished goal reads back its line instead of just going quiet. */}
+      {done && goal.retro && (
+        <p className="border-t border-line-soft px-[var(--panel-px)] py-2.5 text-ui text-ink-600">&ldquo;{goal.retro}&rdquo;</p>
+      )}
+
+      {/* Finishing a goal asks for one sentence before it is archived (§7G). Skipping is one click — a retro you
+          resent isn't worth having. */}
+      {retro !== null && (
+        <div className="flex flex-col gap-2 border-t border-line-soft px-[var(--panel-px)] pt-3 pb-3.5">
+          <Field label="How did it go?">
+            <TextInput autoFocus value={retro} onChange={(e) => setRetro(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') finish(retro); if (e.key === 'Escape') setRetro(null); }}
+              placeholder="One line you'd want to read next year" autoComplete="off" data-1p-ignore data-lpignore="true" />
+          </Field>
+          <div className="flex gap-1.5">
+            {/* Secondary, not primary: "New goal" is this view's one filled action. */}
+            <Button size="sm" variant="secondary" onClick={() => finish(retro)}>Mark done</Button>
+            <Button size="sm" variant="ghost" onClick={() => finish('')}>Skip</Button>
           </div>
-          {goal.linkedTotal > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-caption-size)', color: 'var(--text-secondary)', marginBottom: 8 }}><Icon icon={Kanban} size={12} />Progress tracks {goal.linkedTotal} linked task{goal.linkedTotal === 1 ? '' : 's'}.</div>
-          )}
-          {goal.milestones.map((m) => (
-            <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0' }}>
-              <button onClick={() => onToggleMilestone(m.id)} aria-label="toggle" style={{ width: 16, height: 16, flexShrink: 0, borderRadius: 'var(--r-xs)', cursor: 'pointer', border: m.done ? 'none' : '1.5px solid color-mix(in srgb, var(--ink) 28%, transparent)', background: m.done ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {m.done && <Icon icon={Check} size={12} strokeWidth={2.5} style={{ color: 'var(--on-accent)' }} />}
-              </button>
-              <span style={{ fontSize: 'var(--text-small-size)', color: m.done ? 'var(--text-secondary)' : 'var(--ink-2)', textDecoration: m.done ? 'line-through' : 'none' }}>{m.title}</span>
-            </div>
-          ))}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0 4px' }}>
-            <Icon icon={Plus} size={14} style={{ color: 'var(--text-secondary)' }} />
-            <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && draft.trim()) { onAddMilestone(draft.trim()); setDraft(''); } }} placeholder="Add a step…" autoComplete="off" data-1p-ignore data-lpignore="true" style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 'var(--text-small-size)', padding: '4px 0', color: 'var(--ink)' }} />
-          </div>
-          <textarea defaultValue={goal.note ?? ''} placeholder="Add a note…" rows={1} onBlur={(e) => e.target.value !== (goal.note ?? '') && onSaveNote(e.target.value)} onInput={(e) => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }}
-            style={{ width: '100%', marginTop: 8, border: '1px solid var(--line)', borderRadius: 'var(--r-md)', outline: 'none', background: 'var(--paper)', resize: 'none', fontFamily: 'var(--font-editorial)', fontSize: 'var(--text-small-size)', lineHeight: 1.5, color: 'var(--ink-2)', padding: '8px 10px' }} />
         </div>
       )}
-    </div>
+
+      {open && (
+        <div className="flex flex-col gap-3 border-t border-line-soft px-[var(--panel-px)] pt-3 pb-3.5">
+          <div className="flex flex-wrap gap-3">
+            <Field label="Target date">
+              <DatePicker aria-label="Target date" className="w-[168px]"
+                value={goal.target_date ?? null} onValueChange={(iso) => onTarget(iso || null)} />
+            </Field>
+            <Field label="Project">
+              <MenuSelect aria-label="Project" className="w-[200px]" value={goal.project_id ?? ''}
+                onValueChange={(v) => onProject(v || null)}
+                options={[{ value: '', label: 'None' }, ...projects.map((p) => ({ value: p.id, label: p.name }))]} />
+            </Field>
+          </div>
+          {goal.linkedTotal > 0 && (
+            <p className="flex items-center gap-1.5 text-caption text-ink-500">
+              <Icon icon={Kanban} size={12} />Progress tracks {goal.linkedTotal} linked task{goal.linkedTotal === 1 ? '' : 's'}.
+            </p>
+          )}
+          {/* Steps: the house checkbox, and the house add line for the next one. */}
+          <div>
+            {goal.milestones.map((m) => (
+              <label key={m.id} className="flex h-8 cursor-pointer items-center gap-3">
+                <Checkbox checked={m.done} onCheckedChange={() => onToggleMilestone(m.id)} aria-label={m.done ? `Mark ${m.title} not done` : `Mark ${m.title} done`} />
+                <span className={cn('min-w-0 flex-1 truncate text-ui', m.done ? 'text-ink-500 line-through' : 'text-ink-800')}>{m.title}</span>
+              </label>
+            ))}
+            <label className={cn(addLine({ as: 'field' }), 'h-8 gap-3 px-0')}>
+              <Icon icon={Plus} size={14} className="mx-px shrink-0" />
+              <input value={draft} onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && draft.trim()) { onAddMilestone(draft.trim()); setDraft(''); } }}
+                placeholder="Add a step" aria-label="Add a step" autoComplete="off" data-1p-ignore data-lpignore="true"
+                className="min-w-0 flex-1 bg-transparent text-ui text-ink-800 outline-none placeholder:text-ink-500" />
+            </label>
+          </div>
+          <Textarea defaultValue={goal.note ?? ''} placeholder="Add a note" aria-label="Note" rows={2}
+            onBlur={(e) => { if (e.target.value !== (goal.note ?? '')) onSaveNote(e.target.value); }} />
+        </div>
+      )}
+    </article>
   );
 }
 
-function MenuBtn({ icon, label, onClick }: { icon: typeof Flag; label: string; onClick: () => void }) {
-  return (
-    <button onClick={onClick} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: 'transparent', border: 'none', borderRadius: 'var(--r-sm)', cursor: 'pointer', textAlign: 'left', color: 'var(--ink-2)', fontSize: 'var(--text-small-size)' }}
-      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--hover)'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>
-      <Icon icon={icon} size={14} style={{ color: 'var(--text-secondary)' }} />{label}
-    </button>
-  );
-}
-
-const fieldStyle: React.CSSProperties = { border: '1px solid var(--line)', borderRadius: 'var(--r-md)', outline: 'none', background: 'var(--paper)', fontSize: 'var(--text-small-size)', padding: '6px 8px', color: 'var(--ink)' };
-
-export function HorizonView({ initialGoals, projects }: { initialGoals: Goal[]; projects: Record<string, GoalProject> }) {
-  const [goals, setGoals] = useState(initialGoals);
-  useEffect(() => { setGoals(initialGoals); }, [initialGoals]);
+export function HorizonView({ initialGoals, projects, goalsV2 = false }: {
+  initialGoals: Goal[]; projects: Record<string, GoalProject>;
+  /** Migration 0026 applied — unlocks the retro line when finishing a goal. */
+  goalsV2?: boolean;
+}) {
+  const [goals, setGoals] = useServerState(initialGoals);
   const [active, setActive] = useState<Horizon>('quarter');
+  const router = useRouter();
   const [adding, setAdding] = useState(false);
   const [title, setTitle] = useState('');
   const [target, setTarget] = useState('');
@@ -153,74 +186,113 @@ export function HorizonView({ initialGoals, projects }: { initialGoals: Goal[]; 
   async function createGoal() {
     const t = title.trim(); if (!t) return;
     setTitle(''); setTarget(''); setAdding(false); setErr(null);
-    const tmp = 'tmp-' + Date.now();
+    const tmp = tempId();
     setGoals((g) => [...g, { id: tmp, title: t, note: null, horizon: active, target_date: target || null, status: 'active', progress: 0, project_id: null, milestones: [], linkedDone: 0, linkedTotal: 0 }]);
     const res = await addGoal({ title: t, horizon: active, targetDate: target || null });
     if ('id' in res) setGoals((g) => g.map((x) => (x.id === tmp ? { ...x, id: res.id } : x)));
-    else { setGoals((g) => g.filter((x) => x.id !== tmp)); setErr(active === 'month' ? 'Month goals need migration 0008 applied.' : res.error); }
+    else { setGoals((g) => g.filter((x) => x.id !== tmp)); setErr(res.error); }
   }
   const patch = (id: string, p: Partial<Goal>) => setGoals((g) => g.map((x) => (x.id === id ? { ...x, ...p } : x)));
-  function setStatus(id: string, status: 'active' | 'done' | 'dropped') { patch(id, { status }); updateGoal(id, { status }); }
-  function setTargetDate(id: string, d: string | null) { patch(id, { target_date: d }); updateGoal(id, { target_date: d }); }
-  function setProjectLink(id: string, projectId: string | null) { patch(id, { project_id: projectId }); updateGoal(id, { project_id: projectId }); }
-  function saveNote(id: string, note: string) { patch(id, { note }); updateGoal(id, { note }); }
-  function addMs(goalId: string, t: string) {
-    const tmp = 'tmpm-' + Date.now();
-    setGoals((g) => g.map((x) => (x.id === goalId ? { ...x, milestones: [...x.milestones, { id: tmp, title: t, done: false }] } : x)));
-    addMilestone(goalId, t).then((res) => { if ('id' in res) setGoals((g) => g.map((x) => x.id === goalId ? { ...x, milestones: x.milestones.map((m) => m.id === tmp ? { ...m, id: res.id } : m) } : x)); });
+  // Every edit is optimistic AND answers for itself: a save the server refuses puts the old value back and says so,
+  // as a task's does. These were fire-and-forget — `updateGoal(…)` unawaited — so a refused "Drop" or a refused
+  // target date stayed on screen as if it had saved, until the next refresh quietly undid it.
+  async function save(id: string, next: Partial<Goal>) {
+    const before = goals.find((x) => x.id === id);
+    if (!before) return;
+    const prev = Object.fromEntries(Object.keys(next).map((k) => [k, before[k as keyof Goal]])) as Partial<Goal>;
+    patch(id, next);
+    const res = await updateGoal(id, next as Parameters<typeof updateGoal>[1]);
+    if ('error' in res) { patch(id, prev); toastReverted(res.error); }
   }
-  function toggleMs(goalId: string, msId: string) {
-    let next = false;
-    setGoals((g) => g.map((x) => x.id === goalId ? { ...x, milestones: x.milestones.map((m) => { if (m.id === msId) { next = !m.done; return { ...m, done: next }; } return m; }) } : x));
-    toggleMilestone(msId, next);
+  const setStatus = (id: string, status: 'active' | 'done' | 'dropped') => save(id, { status });
+  // Archive with the retro in one write; an empty line just means they skipped it. The retro is patched locally too
+  // — otherwise the card marks itself done and the line you just wrote doesn't appear until a refresh.
+  const finishGoal = (id: string, retro: string) => save(id, retro ? { status: 'done', retro } : { status: 'done' });
+  const setTargetDate = (id: string, d: string | null) => save(id, { target_date: d });
+  const setProjectLink = (id: string, projectId: string | null) => save(id, { project_id: projectId });
+  const saveNote = (id: string, note: string) => save(id, { note });
+  async function addMs(goalId: string, t: string) {
+    const tmp = tempId();
+    setGoals((g) => g.map((x) => (x.id === goalId ? { ...x, milestones: [...x.milestones, { id: tmp, title: t, done: false }] } : x)));
+    const res = await addMilestone(goalId, t);
+    if ('id' in res) setGoals((g) => g.map((x) => x.id === goalId ? { ...x, milestones: x.milestones.map((m) => m.id === tmp ? { ...m, id: res.id } : m) } : x));
+    else { setGoals((g) => g.map((x) => x.id === goalId ? { ...x, milestones: x.milestones.filter((m) => m.id !== tmp) } : x)); toastReverted(res.error); }
+  }
+  async function toggleMs(goalId: string, msId: string) {
+    const was = goals.find((x) => x.id === goalId)?.milestones.find((m) => m.id === msId)?.done;
+    if (was === undefined) return;
+    const flip = (done: boolean) => setGoals((g) => g.map((x) => x.id === goalId ? { ...x, milestones: x.milestones.map((m) => (m.id === msId ? { ...m, done } : m)) } : x));
+    flip(!was);
+    const res = await toggleMilestone(msId, !was);
+    if ('error' in res) { flip(was); toastReverted(res.error); }
   }
 
   const list = goals.filter((g) => g.horizon === active).sort((a, b) => (a.status === 'active' ? -1 : 1) - (b.status === 'active' ? -1 : 1));
 
+  // Goals is a CONTENT page — one column of goal cards you read down — so it
+  // comes through <PageLayout> like Home and Finance. It used to hand-roll the
+  // container in inline styles: `maxWidth: 1000` (a FIFTH page width, next to
+  // 978/1200/720/none), its own `fadein 220ms`, and the padding tokens spelled
+  // out by hand. Inline styles are also why the ViewContainer guard never saw
+  // it — it reads Tailwind classes.
   return (
-    <div style={{ padding: 'var(--view-pt) var(--view-px) var(--view-pb)', maxWidth: 1000, margin: '0 auto', animation: 'fadein 220ms' }}>
-      <PageHeader hideTitle icon={Target} title="Goals" subtitle="The few outcomes that matter. Everything else is just this week." style={{ marginBottom: 20 }}
+    <PageLayout
+        tabs={
+          <SegmentedControl
+            aria-label="Goal horizon"
+            value={active}
+            onValueChange={(v) => setActive(v as Horizon)}
+            options={SECTIONS.map((s) => ({ value: s.id, label: s.label }))}
+            fit="content"
+          />
+        }
         actions={<>
-          <Link href="/rituals?type=weekly_review" className="zb-press" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 32, padding: '0 12px', color: 'var(--text-secondary)', borderRadius: 'var(--r-md)', fontSize: 'var(--text-small-size)', fontWeight: 500, textDecoration: 'none' }}><Icon icon={Repeat} size={14} /> Weekly review</Link>
-          <Button variant="primary" icon={Plus} onClick={() => setAdding((a) => !a)}>New goal</Button>
-        </>} />
-
-      {/* horizon switch — the shared segmented control */}
-      <div style={{ marginBottom: 20 }}>
-        <SegmentedControl
-          aria-label="Goal horizon"
-          value={active}
-          onValueChange={(v) => setActive(v as Horizon)}
-          options={SECTIONS.map((s) => ({ value: s.id, label: s.label }))}
-        />
-      </div>
-
-      {adding && (
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16, padding: 12, background: 'var(--paper-2)', border: '1px solid var(--line)', borderRadius: 'var(--r-lg)', flexWrap: 'wrap' }}>
-          <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') createGoal(); if (e.key === 'Escape') setAdding(false); }} placeholder={`What outcome matters this ${active}?`} style={{ flex: 1, minWidth: 200, border: '1px solid var(--line)', borderRadius: 'var(--r-md)', outline: 'none', background: 'var(--paper)', fontSize: 'var(--text-body-size)', padding: '8px 12px', color: 'var(--ink)' }} />
-          <input type="date" value={target} onChange={(e) => setTarget(e.target.value)} title="Target date (optional)" style={fieldStyle} />
-          <Button variant="primary" onClick={createGoal}>Add</Button>
+          <Button variant="ghost" size="sm" icon={<Icon icon={Repeat} size={16} />} onClick={() => router.push('/rituals?type=weekly_review')}>Weekly review</Button>
+          <Button variant="primary" size="sm" icon={<Icon icon={Plus} size={16} />} onClick={() => setAdding((a) => !a)}>New goal</Button>
+        </>}
+    >
+      <Modal
+        open={adding}
+        onOpenChange={setAdding}
+        size="sm"
+        title="New goal"
+        description={`An outcome that matters this ${active}, track it through to done.`}
+        dirty={!!title.trim()}
+        footer={<>
+          <Button variant="ghost" onClick={() => setAdding(false)}>Cancel</Button>
+          <Button variant="primary" disabled={!title.trim()} onClick={createGoal}>Create goal</Button>
+        </>}
+      >
+        <div className="flex flex-col gap-4">
+          <Field label="Outcome">
+            <TextInput value={title} onChange={(e) => setTitle(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') createGoal(); }}
+              placeholder={`What outcome matters this ${active}?`}
+              autoComplete="off" data-1p-ignore data-lpignore="true" />
+          </Field>
+          <Field label="Target date" optional>
+            <DatePicker aria-label="Target date" value={target || null} onValueChange={setTarget} />
+          </Field>
         </div>
-      )}
-      {err && <div style={{ fontSize: 'var(--text-caption-size)', color: 'var(--red-text)', marginBottom: 14 }}>{err}</div>}
+      </Modal>
+      {err && <p role="alert" className="mb-3.5 text-caption text-danger-600">{err}</p>}
 
       {list.length === 0 ? (
         <EmptyState
-          className="border border-line rounded-xl bg-paper-2"
-          illustration={<EmptyArt name="goals" />}
+          illustration={<Icon icon={Target} size={20} />}
           title={`No ${active} goals yet`}
-          hint={`Name an outcome that matters this ${active} and track it through to done.`}
-          action={{ label: 'New goal', icon: Plus, onClick: () => setAdding(true) }}
+          description={`Name one outcome that matters this ${active}.`}
+          primary={<Button variant="primary" icon={<Icon icon={Plus} size={16} />} onClick={() => setAdding(true)}>New goal</Button>}
         />
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div className="flex flex-col gap-2.5">
           {list.map((g) => (
             <GoalCard key={g.id} goal={g} projects={projList}
               onAddMilestone={(t) => addMs(g.id, t)} onToggleMilestone={(id) => toggleMs(g.id, id)} onSaveNote={(n) => saveNote(g.id, n)}
-              onStatus={(s) => setStatus(g.id, s)} onTarget={(d) => setTargetDate(g.id, d)} onProject={(p) => setProjectLink(g.id, p)} />
+              onStatus={(s) => setStatus(g.id, s)} onFinish={(r) => finishGoal(g.id, r)} goalsV2={goalsV2} onTarget={(d) => setTargetDate(g.id, d)} onProject={(p) => setProjectLink(g.id, p)} />
           ))}
         </div>
       )}
-    </div>
+    </PageLayout>
   );
 }

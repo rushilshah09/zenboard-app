@@ -11,23 +11,21 @@ import { useRouter } from 'next/navigation';
 import { Plus, Link2, Check, Trash, ArrowRight, Copy } from '@/components/ds/icons';
 import {
   Icon, Button, IconButton, Badge, toast,
-  Popover, PopoverTrigger, PopoverContent, MenuItem, MenuLabel, type BadgeStatus,
+  Popover, PopoverTrigger, PopoverContent, MenuItem, MenuLabel, useConfirm, EmptyLine, type BadgeStatus,
 } from '@/components/ds/ui';
+import { formDeleteConfirm } from './form-delete';
 import { createForm, deleteForm, duplicateForm } from '@/lib/actions/forms';
 import { FORM_TEMPLATES } from '@/lib/form-templates';
 import { cn } from '@/lib/cn';
 import type { FormSummary } from '@/lib/forms';
+import { formatAgo } from '@/lib/date';
 
 const STATUS_TONE: Record<string, BadgeStatus> = { draft: 'neutral', live: 'success', closed: 'neutral' };
 const STATUS_LABEL: Record<string, string> = { draft: 'Draft', live: 'Live', closed: 'Closed' };
 
-const rel = (iso: string) => {
-  const days = Math.floor((Date.now() - Date.parse(iso)) / 86400000);
-  if (days <= 0) return 'today';
-  if (days === 1) return 'yesterday';
-  if (days < 30) return `${days}d ago`;
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-};
+// Elapsed time comes from the one date vocabulary (lib/date.ts) — this used to
+// be a private copy here AND in forms-hub, both hardcoding 'en-US'.
+const rel = (iso: string) => formatAgo(iso) ?? '';
 
 export function FormsPanel({ forms, clientId, projectId, className }: {
   forms: FormSummary[]; clientId?: string; projectId?: string; className?: string;
@@ -35,6 +33,7 @@ export function FormsPanel({ forms, clientId, projectId, className }: {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
+  const [confirm, confirmUI] = useConfirm();
 
   async function create(template?: string) {
     setBusy(true);
@@ -58,10 +57,11 @@ export function FormsPanel({ forms, clientId, projectId, className }: {
     } catch { toast({ message: 'Couldn’t copy the link.', variant: 'error' }); }
   }
 
-  async function remove(id: string, title: string) {
-    const res = await deleteForm(id);
+  async function remove(f: FormSummary) {
+    if (!(await confirm(formDeleteConfirm(f)))) return;
+    const res = await deleteForm(f.id);
     if ('error' in res) { toast({ message: res.error, variant: 'error' }); return; }
-    toast({ message: `“${title}” deleted.` });
+    toast({ message: `“${f.title}” deleted.` });
     router.refresh();
   }
 
@@ -89,9 +89,7 @@ export function FormsPanel({ forms, clientId, projectId, className }: {
       </div>
 
       {forms.length === 0 ? (
-        <div className="py-1.5 text-ui text-ink-500">
-          No forms yet. Collect a brief or feedback — they fill it in without an account.
-        </div>
+        <EmptyLine>No forms yet. Collect a brief or feedback. They fill it in without an account.</EmptyLine>
       ) : (
         forms.map((f) => (
           <div key={f.id} className="group flex items-center gap-3 border-b border-line-soft py-2 last:border-0">
@@ -106,7 +104,7 @@ export function FormsPanel({ forms, clientId, projectId, className }: {
               </span>
             </button>
 
-            <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+            <div className="reveal-on-hover flex shrink-0 items-center gap-0.5">
               {f.shareToken && f.status === 'live' && (
                 <IconButton
                   label={copied === f.id ? 'Copied' : 'Copy link'}
@@ -117,7 +115,7 @@ export function FormsPanel({ forms, clientId, projectId, className }: {
                 />
               )}
               <IconButton label="Duplicate form" variant="ghost" size="xs" icon={<Icon icon={Copy} size={14} />} onClick={() => duplicate(f.id)} />
-              <IconButton label="Delete form" variant="ghost" size="xs" icon={<Icon icon={Trash} size={14} />} onClick={() => remove(f.id, f.title)} />
+              <IconButton label="Delete form" variant="ghost" size="xs" icon={<Icon icon={Trash} size={14} />} onClick={() => remove(f)} />
             </div>
 
             <Badge status={STATUS_TONE[f.status]}>{STATUS_LABEL[f.status]}</Badge>
@@ -128,11 +126,12 @@ export function FormsPanel({ forms, clientId, projectId, className }: {
               className="focus-ring flex shrink-0 items-center gap-1 rounded-sm text-ink-500 transition-colors hover:text-ink-900"
             >
               <span className="tabular-nums text-ui text-ink-800">{f.responses}</span>
-              <Icon icon={ArrowRight} size={13} />
+              <Icon icon={ArrowRight} size={12} />
             </button>
           </div>
         ))
       )}
+      {confirmUI}
     </section>
   );
 }

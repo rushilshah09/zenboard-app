@@ -8,9 +8,9 @@
 //
 // DS-built: §4.7 Badge, §5.1 Button, §4.14 Textarea, §4.18 Switch, §4.45
 // EmptyState. Reads from RLS-scoped tables; portal inserts come from the server.
-import { useEffect, useState } from 'react';
-import { Check, X, MessageSquare, RotateCcw, ArrowUpRight, ChevronDown, ChevronRight, Send } from "@/components/ds/icons";
-import { Icon, Button, Badge, EmptyState, Textarea, Switch, type BadgeStatus } from '@/components/ds/ui';
+import { useState } from 'react';
+import { Inbox, Check, X, MessageSquare, RotateCcw, ArrowUpRight, ChevronDown, ChevronRight, Send } from "@/components/ds/icons";
+import { Icon, Button, Badge, EmptyState, Textarea, Switch, toast, type BadgeStatus } from '@/components/ds/ui';
 import {
   approveRequest, declineRequest, requestMoreInfo, reopenRequest, postRequestMessage,
 } from '@/lib/actions/portal';
@@ -18,17 +18,12 @@ import { clientRequestLabel, CLIENT_LABEL_TONE } from '@/lib/request-status';
 import { RequestThread, type ThreadMessage } from '@/components/portal/request-thread';
 import { cn } from '@/lib/cn';
 import type { PRequest, PRequestMessage } from '@/components/projects/projects-workspace';
-import { ShapeIcon } from '@/components/illustrations/ink';
+import { formatAgo } from '@/lib/date';
+import { useServerState } from '@/lib/use-server-state';
+import { tempId } from '@/lib/temp-id';
 
-const relTime = (iso: string) => {
-  const diff = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(diff / 60000), h = Math.floor(m / 60), d = Math.floor(h / 24);
-  if (m < 1) return 'just now';
-  if (m < 60) return `${m}m ago`;
-  if (h < 24) return `${h}h ago`;
-  if (d < 30) return `${d}d ago`;
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-};
+// One vocabulary (lib/date.ts); a request thread wants sub-day resolution.
+const relTime = (iso: string) => formatAgo(iso, { precise: true }) ?? '';
 
 type Mode = null | 'decline' | 'info';
 
@@ -41,16 +36,15 @@ export function RequestsTab({
   portalSupported: boolean;
   onAccepted?: (taskId: string) => void;
 }) {
-  const [requests, setRequests] = useState(initial);
-  const [messages, setMessages] = useState(initMessages);
-  useEffect(() => { setRequests(initial); }, [initial]);
-  useEffect(() => { setMessages(initMessages); }, [initMessages]);
+  const [requests, setRequests] = useServerState(initial);
+  const [messages, setMessages] = useServerState(initMessages);
 
   const patch = (id: string, p: Partial<PRequest>) =>
     setRequests((rs) => rs.map((r) => (r.id === id ? { ...r, ...p } : r)));
 
   if (!portalSupported) {
-    return <Empty title="Requests" line="Apply migration 0006_portal.sql to receive client requests." />;
+    // Needs migration 0006 (the portal tables); the developer is told by the portal loader.
+    return <Empty title="Requests" line="Client requests aren’t available yet." />;
   }
   if (requests.length === 0) {
     return <Empty title="No requests yet" line="When your client sends a request from the portal, it lands here to approve, decline, or ask about." />;
@@ -103,31 +97,32 @@ function RequestCard({
     setBusy(true);
     const res = await approveRequest(req.id);
     setBusy(false);
-    if ('error' in res) return;
+    // A refused action that says nothing looks exactly like one that worked.
+    if ('error' in res) return toast({ message: res.error, variant: 'error' });
     onPatch({ status: 'approved', task_id: res.taskId });
     onAccepted?.(res.taskId);
   }
 
   async function confirmDecline() {
     const reason = draft.trim();
-    if (reason.length < 2) return;
+    if (reason.length < 2) return toast({ message: 'Write a reason first. Your client sees it.' });
     setBusy(true);
     const res = await declineRequest(req.id, reason);
     setBusy(false);
-    if ('error' in res) return;
+    if ('error' in res) return toast({ message: res.error, variant: 'error' });
     onPatch({ status: 'declined', resolution_note: reason });
     setMode(null); setDraft('');
   }
 
   async function confirmInfo() {
     const msg = draft.trim();
-    if (msg.length < 2) return;
+    if (msg.length < 2) return toast({ message: 'Write your question first.' });
     setBusy(true);
     const res = await requestMoreInfo(req.id, msg);
     setBusy(false);
-    if ('error' in res) return;
+    if ('error' in res) return toast({ message: res.error, variant: 'error' });
     onPatch({ status: 'needs_info' });
-    onAppendMessage({ id: `tmp-${Date.now()}`, request_id: req.id, author: 'team', body: msg, client_facing: true, created_at: new Date().toISOString() });
+    onAppendMessage({ id: tempId(), request_id: req.id, author: 'team', body: msg, client_facing: true, created_at: new Date().toISOString() });
     setMode(null); setDraft(''); setOpen(true);
   }
 
@@ -135,18 +130,18 @@ function RequestCard({
     setBusy(true);
     const res = await reopenRequest(req.id);
     setBusy(false);
-    if ('error' in res) return;
+    if ('error' in res) return toast({ message: res.error, variant: 'error' });
     onPatch({ status: 'pending', resolution_note: null });
   }
 
   async function sendNote() {
     const body = note.trim();
-    if (body.length < 1) return;
+    if (body.length < 1) return toast({ message: 'Write something first.' });
     setBusy(true);
     const res = await postRequestMessage(req.id, body, noteToClient);
     setBusy(false);
-    if ('error' in res) return;
-    onAppendMessage({ id: `tmp-${Date.now()}`, request_id: req.id, author: 'team', body, client_facing: noteToClient, created_at: new Date().toISOString() });
+    if ('error' in res) return toast({ message: res.error, variant: 'error' });
+    onAppendMessage({ id: tempId(), request_id: req.id, author: 'team', body, client_facing: noteToClient, created_at: new Date().toISOString() });
     setNote('');
   }
 
@@ -164,20 +159,19 @@ function RequestCard({
       {/* Decline reason — the client reads this exact text. */}
       {closed && req.resolution_note && (
         <div className="mt-2.5 rounded-md border border-line-soft bg-surface-sunken px-3 py-2">
-          <span className="text-overline uppercase text-ink-500">Reason sent to client</span>
+          <span className="text-overline text-ink-500">Reason sent to client</span>
           <p className="mt-0.5 whitespace-pre-wrap text-ui text-ink-700">{req.resolution_note}</p>
         </div>
       )}
 
       {/* Linked task chip — the return path. */}
       {approved && req.task_id && (
-        <button
-          onClick={() => onAccepted?.(req.task_id!)}
-          className="mt-2.5 inline-flex items-center gap-1.5 rounded-md border border-line-soft bg-surface px-2.5 py-1.5 text-caption text-ink-700 transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
-        >
-          <Icon icon={ArrowUpRight} size={13} />
-          <span>Linked task · {taskDone ? 'Completed' : 'In progress'}</span>
-        </button>
+        // The DS button. The hand-rolled chip asked for `bg-surface`, which was
+        // never a token — it had no fill, only an edge.
+        <Button size="xs" variant="secondary" className="mt-2.5" icon={<Icon icon={ArrowUpRight} size={12} />}
+          onClick={() => onAccepted?.(req.task_id!)}>
+          Linked task · {taskDone ? 'Completed' : 'In progress'}
+        </Button>
       )}
 
       {/* Thread toggle */}
@@ -186,7 +180,7 @@ function RequestCard({
           onClick={() => setOpen((o) => !o)}
           className="mt-2.5 inline-flex items-center gap-1 text-caption text-ink-500 transition-colors hover:text-ink-800"
         >
-          <Icon icon={open ? ChevronDown : ChevronRight} size={13} />
+          <Icon icon={open ? ChevronDown : ChevronRight} size={12} />
           {thread.length} {thread.length === 1 ? 'message' : 'messages'}
         </button>
       )}
@@ -238,7 +232,7 @@ function RequestCard({
           <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Add a note or message…" />
           <div className="flex items-center justify-between">
             <Switch checked={noteToClient} onCheckedChange={setNoteToClient} label={<span className="text-caption text-ink-600">Visible to client</span>} />
-            <Button size="sm" variant="secondary" icon={<Icon icon={Send} size={13} />} loading={busy} onClick={sendNote}>{noteToClient ? 'Send' : 'Save note'}</Button>
+            <Button size="sm" variant="secondary" icon={<Icon icon={Send} size={12} />} loading={busy} onClick={sendNote}>{noteToClient ? 'Send' : 'Save note'}</Button>
           </div>
         </div>
       )}
@@ -249,7 +243,7 @@ function RequestCard({
 function Empty({ title, line }: { title: string; line: string }) {
   return (
     <div className="rounded-lg border border-dashed border-line-strong">
-      <EmptyState size="inline" illustration={<ShapeIcon name="requests" size={56} />} title={title} description={line} />
+      <EmptyState size="inline" illustration={<Icon icon={Inbox} size={20} />} title={title} description={line} />
     </div>
   );
 }

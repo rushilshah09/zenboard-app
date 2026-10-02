@@ -78,7 +78,7 @@ export function Pagination({ page, pageCount, onPageChange, pageSize, onPageSize
               aria-label="Previous page"
               disabled={page <= 1}
               onClick={() => onPageChange(page - 1)}
-              className="focus-ring grid h-8 min-w-8 place-items-center rounded-sm text-ink-600 hover:bg-paper-3 hover:text-ink-900 disabled:pointer-events-none disabled:text-ink-300"
+              className="focus-ring grid h-8 min-w-8 place-items-center rounded-sm text-ink-600 hover:bg-surface-hover hover:text-ink-900 disabled:pointer-events-none disabled:text-ink-500"
             >
               <ChevronLeft className="size-4" aria-hidden />
             </button>
@@ -98,8 +98,8 @@ export function Pagination({ page, pageCount, onPageChange, pageSize, onPageSize
                   className={cn(
                     "focus-ring grid h-8 min-w-8 place-items-center rounded-sm px-1 text-ui transition-colors duration-instant",
                     p === page
-                      ? "bg-paper-4 font-medium text-ink-900"
-                      : "text-ink-600 hover:bg-paper-3 hover:text-ink-900",
+                      ? "bg-surface-active font-medium text-ink-900"
+                      : "text-ink-600 hover:bg-surface-hover hover:text-ink-900",
                   )}
                   data-numeric
                 >
@@ -114,7 +114,7 @@ export function Pagination({ page, pageCount, onPageChange, pageSize, onPageSize
               aria-label="Next page"
               disabled={page >= pageCount}
               onClick={() => onPageChange(page + 1)}
-              className="focus-ring grid h-8 min-w-8 place-items-center rounded-sm text-ink-600 hover:bg-paper-3 hover:text-ink-900 disabled:pointer-events-none disabled:text-ink-300"
+              className="focus-ring grid h-8 min-w-8 place-items-center rounded-sm text-ink-600 hover:bg-surface-hover hover:text-ink-900 disabled:pointer-events-none disabled:text-ink-500"
             >
               <ChevronRight className="size-4" aria-hidden />
             </button>

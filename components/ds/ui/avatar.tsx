@@ -1,3 +1,6 @@
+"use client";
+// A client component: the image falls back to initials when it fails to load (a `useState`), so a
+// server component rendering an avatar must get the client boundary from here, not crash on the hook.
 import * as React from "react";
 import { cn } from "@/lib/cn";
 import { labelColorFor, LABEL_FILL, type LabelColor } from "@/lib/labelColor";

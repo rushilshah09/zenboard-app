@@ -8,28 +8,31 @@
 // usually absolute within a relative wrapper); these components own the
 // surface itself.
 import { useEffect, useRef } from 'react';
+import { useFocusReturn } from '@/lib/use-focus-return';
 import type { IconType } from "@/components/ds/icons";
-import { Icon } from "@/components/ds/ui";
+import { Icon, MENU_ITEM_CLASS, MENU_LABEL_CLASS, MENU_SEPARATOR_CLASS, OVERLAY_CLASS } from "@/components/ds/ui";
 import { cx } from './primitives';
 import { Check } from "@/components/ds/icons";
 
 // ── Popover ──────────────────────────────────────────────────
-// bg --paper-2 · 1px --line-pop ring · --shadow-lg (overlay) · entrance per
-// §4.7 (fade + 4px rise + 0.98 scale, --dur-base). `variant`:
+// The one overlay chrome (OVERLAY_CLASS) · entrance per §4.7 (fade +
+// 0.98 scale, --duration-base). `variant`:
 //   menu  → radius --r-md, 4px body padding (plain dropdowns)
 //   rich  → radius --r-lg, no padding (headers/sections pad themselves)
 // Max-height 60vh with internal scroll (§5.24).
 export function Popover({ variant = 'menu', width, className, style, children, ...props }: React.HTMLAttributes<HTMLDivElement> & {
   variant?: 'menu' | 'rich'; width?: number | string;
 }) {
+  // Mounted only while open, so the cleanup is the close: focus goes back to
+  // whatever opened this panel instead of falling to <body>.
+  useFocusReturn();
   return (
     <div
       className={cx(
-        // Canonical overlay chrome — matches DS MenuPanel/DropdownMenu/Popover
-        // (surface-raised lifted gray, line-strong, rounded-lg, shadow-lift-2).
-        'bg-surface-raised border border-line-strong shadow-lift-2 overflow-y-auto max-h-[60vh] rounded-lg',
-        'animate-[zb-pop-in_var(--dur-base)_var(--ease-out)]',
-        variant === 'menu' ? 'p-1.5' : '',
+        // The one overlay chrome (OVERLAY_CLASS, components/ds/ui/menu.tsx).
+        OVERLAY_CLASS, 'overflow-y-auto max-h-[60vh]',
+        'origin-top zb-enter animate-[zb-pop-in_var(--duration-base)_var(--ease-out-quiet)]',
+        variant === 'menu' ? 'p-1' : '',
         className,
       )}
       style={{ width, ...style }}
@@ -65,9 +68,9 @@ export function MenuRow({ icon: Lead, selected, destructive, trailing, disabled,
       type="button"
       disabled={disabled}
       className={cx(
-        'flex items-center gap-2 w-full h-8 px-2 rounded-sm text-left text-[13px] cursor-pointer',
-        'bg-transparent border-0 transition-colors [transition-duration:var(--dur-instant)]',
-        destructive ? 'text-(--red-text) hover:bg-(--red-bg)' : 'text-ink-2 hover:bg-hover',
+        MENU_ITEM_CLASS,
+        'bg-transparent border-0 transition-colors [transition-duration:var(--duration-fast)]',
+        destructive ? 'text-(--red-text) hover:bg-(--red-bg)' : 'hover:bg-surface-hover',
         disabled && 'pointer-events-none text-disabled-text',
         className,
       )}
@@ -82,13 +85,13 @@ export function MenuRow({ icon: Lead, selected, destructive, trailing, disabled,
 }
 
 export function MenuSeparator() {
-  return <div aria-hidden className="h-px bg-line-2 my-1 -mx-1" />;
+  return <div aria-hidden className={MENU_SEPARATOR_CLASS} />;
 }
 
-// micro uppercase group label (§5.12/§5.16).
+// Micro group label (§5.12/§5.16) — the text-overline role, sentence case.
 export function MenuGroupLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="px-2 pt-2 pb-1 text-micro uppercase text-ink-5">
+    <div className={MENU_LABEL_CLASS}>
       {children}
     </div>
   );
@@ -96,13 +99,14 @@ export function MenuGroupLabel({ children }: { children: React.ReactNode }) {
 
 // ── Modal (DS §5.20) ─────────────────────────────────────────
 // Centered panel: sm 400 / md 520 / lg 680 · --paper-3 · radius --r-lg ·
-// --shadow-lg (overlay) · scrim rgba(21,19,17,0.4) fading in over --dur-base,
-// panel scaling 0.97→1 over --dur-slow. Esc + scrim click close.
+// --shadow-lg (overlay) · scrim rgba(21,19,17,0.4) fading in over --duration-base,
+// panel scaling 0.97→1 over --duration-slow. Esc + scrim click close.
 const MODAL_W = { sm: 400, md: 520, lg: 680 } as const;
 
 export function Modal({ size = 'md', onClose, scrimClose = true, className, children, ...props }: React.HTMLAttributes<HTMLDivElement> & {
   size?: keyof typeof MODAL_W; onClose?: () => void; scrimClose?: boolean;
 }) {
+  useFocusReturn();
   const panel = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose?.(); };
@@ -111,7 +115,7 @@ export function Modal({ size = 'md', onClose, scrimClose = true, className, chil
   }, [onClose]);
   return (
     <div
-      className="fixed inset-0 z-[1000] flex items-start justify-center pt-[18vh] px-4 bg-(--scrim) animate-[fadein_var(--dur-base)_var(--ease-out)]"
+      className="fixed inset-0 z-modal flex items-start justify-center pt-[18vh] px-4 bg-(--scrim) zb-enter animate-[fadein_var(--duration-base)_var(--ease-out-quiet)]"
       style={{ ['--scrim' as string]: 'rgba(21,19,17,0.4)' }}
       onMouseDown={(e) => { if (scrimClose && e.target === e.currentTarget) onClose?.(); }}
     >
@@ -121,7 +125,7 @@ export function Modal({ size = 'md', onClose, scrimClose = true, className, chil
         aria-modal="true"
         className={cx(
           'bg-paper-3 rounded-lg shadow-(--shadow-lg) w-full max-h-[70vh] overflow-y-auto',
-          'animate-[zb-modal-in_var(--dur-slow)_var(--ease-out)]',
+          'zb-enter animate-[zb-modal-in_var(--duration-slow)_var(--ease-out-quiet)]',
           className,
         )}
         style={{ maxWidth: MODAL_W[size] }}

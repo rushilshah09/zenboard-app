@@ -21,12 +21,12 @@ export function ParsedChips({ chips, onDismiss, className }: {
     <div className={cn("flex flex-wrap items-center gap-1.5", className)}>
       {chips.map((c) => (
         <span key={c.kind} className="inline-flex h-6 items-center gap-1.5 rounded-full border border-line bg-paper-3 pl-2 pr-1 text-label text-ink-700">
-          <Icon icon={CHIP_ICON[c.kind]} size={11} className="text-accent-text" />
+          <Icon icon={CHIP_ICON[c.kind]} size={12} className="text-accent-text" />
           {c.label}
           {onDismiss && (
             <button type="button" onClick={() => onDismiss(c.kind)} aria-label={`Keep “${c.label}” as text`} title="Keep as text"
-              className="focus-ring grid size-4 place-items-center rounded-full text-ink-400 transition-colors hover:text-ink-700">
-              <Icon icon={X} size={10} />
+              className="focus-ring grid size-4 place-items-center rounded-full text-ink-500 transition-colors hover:text-ink-700">
+              <Icon icon={X} size={12} />
             </button>
           )}
         </span>

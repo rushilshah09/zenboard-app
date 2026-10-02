@@ -9,10 +9,14 @@ export const PALETTE_NAMES = [
 ] as const;
 export type PaletteName = (typeof PALETTE_NAMES)[number];
 
-export type PaletteColor = { name: PaletteName; dot: string; bg: string; text: string };
+export type PaletteColor = {
+  name: PaletteName; dot: string; bg: string; text: string;
+  /** The ground of a whole group in this colour — a board column. Paler than `bg`. */
+  wash: string;
+};
 
 function tokens(name: PaletteName): PaletteColor {
-  return { name, dot: `var(--pal-${name}-dot)`, bg: `var(--pal-${name}-bg)`, text: `var(--pal-${name}-text)` };
+  return { name, dot: `var(--pal-${name}-dot)`, bg: `var(--pal-${name}-bg)`, text: `var(--pal-${name}-text)`, wash: `var(--pal-${name}-wash)` };
 }
 
 /** Deterministic palette color for a string key (same key → same hue). */

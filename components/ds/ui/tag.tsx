@@ -16,14 +16,20 @@ export interface TagProps {
   /** aria-label for the remove control, e.g. "Remove tag Design". */
   removeLabel?: string;
   children: React.ReactNode;
+  /** Classes for the LABEL alone — how a dense row drops the word in a narrow
+   *  container (`@max-md:sr-only`) and keeps the glyph. It styles the label's
+   *  own box, so the gap after the glyph leaves with it; a hidden span nested
+   *  INSIDE the label would leave that box at zero width and 4px of lopsided
+   *  padding behind. Same prop, same meaning, as PriorityBadge's. */
+  labelClassName?: string;
   className?: string;
 }
 
-export function Tag({ color = "stone", size = "md", icon, onRemove, removeLabel, children, className }: TagProps) {
+export function Tag({ color = "stone", size = "md", icon, onRemove, removeLabel, children, labelClassName, className }: TagProps) {
   return (
     <span
       className={cn(
-        "inline-flex max-w-[160px] items-center rounded-sm font-medium",
+        "inline-flex max-w-[160px] items-center rounded-xs font-medium",
         size === "sm" ? "h-5 gap-1 px-1.5 text-caption" : "h-6 gap-1 px-2 text-meta",
         onRemove && "-me-0.5 pe-1",
         LABEL_FILL[color],
@@ -31,7 +37,7 @@ export function Tag({ color = "stone", size = "md", icon, onRemove, removeLabel,
       )}
     >
       {icon && <span className="grid shrink-0 place-items-center">{icon}</span>}
-      <span className="truncate">{children}</span>
+      <span className={cn("truncate", labelClassName)}>{children}</span>
       {onRemove && (
         <button
           type="button"

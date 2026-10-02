@@ -1,55 +1,100 @@
 import * as React from "react";
 import * as RP from "@radix-ui/react-popover";
-import * as chrono from "chrono-node";
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "@/lib/icons";
+import { CalendarDays as CalendarIcon, ChevronLeft, ChevronRight } from "@/components/ds/icons";
 import { cn } from "@/lib/cn";
 import { useFieldProps } from "./field";
+import { inputBox } from "./input";
 import { IconButton } from "./icon-button";
+import { MENU_PANEL_CLASS } from "./menu";
 import { Button } from "./button";
+import { formatDay, formatMonthYear, formatWeekday, isoDateIn, WEEK_STARTS_ON } from "@/lib/date";
+import { loadNaturalDate, naturalDateParser, parseNaturalDate } from "@/lib/natural-date";
 
 // design-system.md §4.23 — the input ACCEPTS TYPING ("tomorrow", "next fri",
-// "in 3 days"), parsed with Chrono. Presets are used 10× more than the grid.
+// "in 3 days"), parsed with Chrono, which loads when the field is first focused
+// (lib/natural-date.ts). Presets are used 10× more than the grid.
 // The grid is ONE tab stop; cells announce the full date.
 
-const fmt = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short", year: "numeric" });
-const fmtFull = new Intl.DateTimeFormat(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-const fmtMonth = new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" });
+// All three used to be `new Intl.DateTimeFormat(undefined, …)` — the ambient
+// locale, which is the same defect the date vocabulary exists to stop, just
+// spelled with `Intl` instead of `toLocaleDateString` (which is how it hid from
+// the guard in lib/date-vocabulary.test.ts). A date typed into this picker
+// rendered "Sep 4" while the same date in a task row rendered "4 Sep", and a
+// `'use client'` component is server-rendered first, so it also mismatched on
+// hydration.
+const fmt = (d: Date) => formatDay(d, { year: true }) ?? "";
+const fmtFull = (d: Date) => formatDay(d, { weekday: "long", long: true, year: true }) ?? "";
+const fmtMonth = (d: Date) => formatMonthYear(d, { long: true }) ?? "";
 
 const sameDay = (a: Date | null, b: Date | null) =>
   !!a && !!b && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
-function weekStart(): number {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const info = (new Intl.Locale(navigator.language) as any).getWeekInfo?.() ?? (new Intl.Locale(navigator.language) as any).weekInfo;
-    return info?.firstDay === 7 ? 0 : 1; // 1 = Monday default
-  } catch {
-    return 1;
-  }
-}
 
+/**
+ * A calendar date, `YYYY-MM-DD`, in and out.
+ *
+ * It used to hand `Date` objects across the boundary, and every caller paid for
+ * it: `new Date(iso + 'T00:00:00')` going in and a hand-rolled `dateToISO`
+ * coming back. That helper existed FOUR times — `lib/date`'s `isoDateIn`,
+ * `lib/calendar`'s `localISODate`, and a private copy each in
+ * projects-workspace and new-project-modal — which is exactly the shape of the
+ * UTC-date bug this codebase has already paid for once: `toISOString()` on a
+ * local Date is the previous day for anyone west of UTC.
+ *
+ * A calendar date is not an instant. Strings are what the database, the URL and
+ * `lib/date` already speak, so the picker speaks them too and the conversions
+ * disappear. `''` means no date, matching the field it replaces.
+ */
 export interface DatePickerProps {
-  value: Date | null;
-  onValueChange: (d: Date | null) => void;
+  value: string | null;
+  onValueChange: (iso: string) => void;
   placeholder?: string;
+  /** Accessible name. Required when no visible <label> is attached via Field. */
+  "aria-label"?: string;
+  /**
+   * Render the caller's own control instead of the text field, keeping the same
+   * popover. For the places a date is edited from a DISPLAY rather than a field:
+   * a task's date chip, a database grid cell, a document property, a triage
+   * button. All four had reached for the same hack — an invisible
+   * `<input type="date">` stretched over the element with `opacity-0` — which
+   * opened the BROWSER's calendar from inside our UI, and could not be styled,
+   * keyboard-driven or made to agree with the picker one row above.
+   *
+   * The trade is real and deliberate: a trigger has nowhere to type, so this
+   * form loses the "next friday" parsing. The presets rail carries most of that
+   * weight, and a chip has no room for a text field anyway.
+   */
+  trigger?: React.ReactNode;
   id?: string;
   disabled?: boolean;
   className?: string;
 }
 
-export function DatePicker({ value, onValueChange, placeholder = "tomorrow, next fri, 12/3…", id, disabled, className }: DatePickerProps) {
+const fromISO = (iso: string | null): Date | null => (iso ? new Date(`${iso}T00:00:00`) : null);
+const toISO = (d: Date | null): string => (d ? isoDateIn(d) ?? "" : "");
+
+export function DatePicker({ value: isoValue, onValueChange, placeholder = "tomorrow, next fri, 12/3…", id, disabled, className, trigger, ...rest }: DatePickerProps) {
+  const value = React.useMemo(() => fromISO(isoValue), [isoValue]);
   const fieldProps = useFieldProps({ id });
   const [open, setOpen] = React.useState(false);
   const [draft, setDraft] = React.useState("");
+  // The text as last typed, for a parse that finishes after later keystrokes.
+  const draftRef = React.useRef("");
   const [view, setView] = React.useState(() => startOfDay(value ?? new Date()));
   const [focused, setFocused] = React.useState<Date>(() => startOfDay(value ?? new Date()));
   const gridRef = React.useRef<HTMLDivElement>(null);
   const today = startOfDay(new Date());
-  const ws = React.useMemo(weekStart, []);
+  // Monday. One week start for the whole app: `getWeekDays` in lib/date.ts is
+  // Monday-first, so a Sunday-first picker would disagree with the Week view
+  // beside it. This used to read `navigator.language` — undefined on the
+  // server, so it rendered Monday there and Sunday in a US browser: a
+  // hydration mismatch AND two calendars.
+  const ws = WEEK_STARTS_ON;
 
   const commit = (d: Date | null, close = true) => {
-    onValueChange(d ? startOfDay(d) : null);
+    onValueChange(toISO(d ? startOfDay(d) : null));
+    draftRef.current = "";
     setDraft("");
     if (d) {
       setView(startOfDay(d));
@@ -58,10 +103,21 @@ export function DatePicker({ value, onValueChange, placeholder = "tomorrow, next
     if (close) setOpen(false);
   };
 
+  // The parser started loading when the field was focused, so it is almost
+  // always here by now. When it is not, read the text once it arrives, unless
+  // it has been edited or committed in the meantime.
   const parseDraft = () => {
-    if (!draft.trim()) return;
-    const parsed = chrono.parseDate(draft);
-    if (parsed) commit(parsed);
+    const text = draft;
+    if (!text.trim()) return;
+    const chrono = naturalDateParser();
+    if (chrono) {
+      const parsed = chrono.parseDate(text);
+      if (parsed) commit(parsed);
+      return;
+    }
+    void parseNaturalDate(text).then((parsed) => {
+      if (parsed && draftRef.current === text) commit(parsed);
+    });
   };
 
   // Build the visible 6×7 grid.
@@ -82,7 +138,7 @@ export function DatePicker({ value, onValueChange, placeholder = "tomorrow, next
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(base);
       d.setDate(base.getDate() + i);
-      return new Intl.DateTimeFormat(undefined, { weekday: "narrow" }).format(d);
+      return (formatWeekday(d) ?? "").charAt(0);
     });
   }, [ws]);
 
@@ -133,49 +189,57 @@ export function DatePicker({ value, onValueChange, placeholder = "tomorrow, next
   ];
 
   return (
-    <RP.Root open={open} onOpenChange={setOpen}>
+    <RP.Root open={open} onOpenChange={(o) => { if (!disabled) setOpen(o); }}>
+      {trigger ? (
+        <RP.Trigger asChild disabled={disabled}>{trigger}</RP.Trigger>
+      ) : (
       <div className={cn("relative", className)}>
         <input
           {...fieldProps}
           disabled={disabled}
-          value={draft || (value ? fmt.format(value) : "")}
+          aria-label={rest["aria-label"]}
+          value={draft || (value ? fmt(value) : "")}
           placeholder={placeholder}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => { draftRef.current = e.target.value; setDraft(e.target.value); }}
+          onFocus={() => { void loadNaturalDate(); }}
           onBlur={parseDraft}
           onKeyDown={(e) => {
             if (e.key === "Enter") { e.preventDefault(); parseDraft(); }
             if (e.key === "ArrowDown") setOpen(true);
           }}
+          // CHARACTER FOR CHARACTER the <TimePicker> field. The two sit side by
+          // side in the event composer and in every scheduling row, and they had
+          // drifted apart on radius (sm vs md), surface (paper vs surface-raised)
+          // and type size (body vs ui) — a date box and a time box that were
+          // visibly not the same control.
           className={cn(
-            "h-8 w-full rounded-sm border border-line-strong bg-paper px-2.5 pe-9 text-body text-ink-900",
-            "placeholder:text-ink-500 transition-colors duration-instant hover:border-ink-300",
-            "focus:border-berry-500 focus:outline-none focus:ring-2 focus:ring-berry-alpha-20",
-            "disabled:border-transparent disabled:bg-surface-disabled disabled:text-ink-300",
+            // THE field recipe (see the twin note in time-picker.tsx).
+            inputBox({ size: "sm" }),
+            "ps-2.5 pe-8 tabular-nums disabled:cursor-not-allowed",
           )}
         />
-        <span className="absolute inset-y-0 end-1 flex items-center">
+        <span className="absolute inset-y-0 end-0.5 flex items-center">
           <RP.Trigger asChild disabled={disabled}>
             <IconButton label="Open calendar" icon={<CalendarIcon className="size-4" />} variant="ghost" size="sm" tooltipDisabled />
           </RP.Trigger>
         </span>
       </div>
+      )}
       <RP.Portal>
         <RP.Content
           align="end"
           sideOffset={4}
-          className={cn(
-            "z-dropdown flex overflow-hidden rounded-md border border-line bg-paper shadow-lift-2",
-            "data-[state=open]:animate-emerge data-[state=closed]:animate-exit origin-top",
-          )}
+          collisionPadding={8}
+          className={cn(MENU_PANEL_CLASS, "z-dropdown flex overflow-hidden p-0")}
         >
           {/* Presets rail (§4.23 — used 10× more than the grid) */}
-          <div className="flex w-32 flex-col gap-0.5 border-e border-line-soft p-2">
+          <div className="flex w-32 flex-col gap-0.5 border-e border-line-soft p-1.5">
             {presets.map((p) => (
               <button
                 key={p.label}
                 type="button"
                 onClick={() => commit(p.get())}
-                className="focus-ring rounded-sm px-2 py-1.5 text-start text-ui text-ink-700 hover:bg-paper-3 hover:text-ink-900"
+                className="focus-ring rounded-md px-2.5 py-1.5 text-start text-ui text-ink-800 hover:bg-surface-hover hover:text-ink-900"
               >
                 {p.label}
               </button>
@@ -193,7 +257,7 @@ export function DatePicker({ value, onValueChange, placeholder = "tomorrow, next
                 onClick={() => setView(new Date(view.getFullYear(), view.getMonth() - 1, 1))}
               />
               <span className="text-body font-medium text-ink-900" aria-live="polite">
-                {fmtMonth.format(view)}
+                {fmtMonth(view)}
               </span>
               <IconButton
                 label="Next month"
@@ -208,7 +272,7 @@ export function DatePicker({ value, onValueChange, placeholder = "tomorrow, next
             <div
               ref={gridRef}
               role="grid"
-              aria-label={fmtMonth.format(view)}
+              aria-label={fmtMonth(view)}
               tabIndex={0}
               onKeyDown={gridKeyDown}
               className="focus-ring grid grid-cols-7 gap-y-0.5 rounded-sm outline-none"
@@ -228,20 +292,26 @@ export function DatePicker({ value, onValueChange, placeholder = "tomorrow, next
                     <button
                       type="button"
                       tabIndex={-1}
-                      aria-label={fmtFull.format(d)}
+                      aria-label={fmtFull(d)}
                       onClick={() => commit(d)}
                       className={cn(
                         "relative grid size-8 place-items-center rounded-sm text-ui transition-colors duration-instant",
-                        otherMonth ? "text-ink-400" : "text-ink-800",
+                        otherMonth ? "text-ink-500" : "text-ink-800",
                         isToday && "font-medium text-ink-900",
-                        !isSel && "hover:bg-paper-3",
-                        isSel && "bg-berry-500 font-medium text-onsolid",
-                        isFocus && !isSel && "ring-2 ring-berry-500 ring-offset-1 ring-offset-paper",
+                        // Selection is INK and TODAY is ACCENT — the same split
+                        // the calendar grid uses, and the same one the standing
+                        // accent rule draws: accent marks what is live, ink
+                        // marks what is chosen. These read `berry-500`, which is
+                        // remapped to ink and so rendered correctly while naming
+                        // a colour the app does not have.
+                        !isSel && "hover:bg-surface-hover",
+                        isSel && "bg-ink-900 font-medium text-onsolid",
+                        isFocus && !isSel && "ring-2 ring-ink-500 ring-offset-1 ring-offset-surface-raised",
                       )}
                     >
                       {d.getDate()}
                       {isToday && !isSel && (
-                        <span aria-hidden className="absolute bottom-1 size-1 rounded-full bg-berry-500" />
+                        <span aria-hidden className="absolute bottom-1 size-1 rounded-full bg-[var(--accent)]" />
                       )}
                     </button>
                   </span>

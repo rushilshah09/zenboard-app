@@ -18,10 +18,18 @@
 //   inbox     inbox · someday (explicitly file to Inbox)
 
 import { describeRecurrence, type Recurrence } from './recurrence';
+import { formatDay } from '@/lib/date';
 
 export type ChipKind = 'when' | 'due' | 'priority' | 'estimate' | 'project' | 'repeat' | 'inbox';
 
 export type ParsedChip = { kind: ChipKind; label: string };
+
+/**
+ * Every kind the grammar knows, in one place. `ignore` is a set of these, so a caller that wants
+ * exactly one rule to run has to be able to name all the others — see lib/inbox-file.ts, which
+ * recovers the words a rule consumed by running it alone.
+ */
+export const CHIP_KINDS: ChipKind[] = ['when', 'due', 'priority', 'estimate', 'project', 'repeat', 'inbox'];
 
 export type ParsedTask = {
   title: string;
@@ -52,8 +60,7 @@ const dayLabel = (iso: string) => {
   const today = isoOf(new Date());
   if (iso === today) return 'Today';
   if (iso === isoOf(addDays(1))) return 'Tomorrow';
-  const d = new Date(iso + 'T00:00:00');
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  return formatDay(iso, { weekday: true }) ?? '';
 };
 
 // A date phrase inside `due …` or standing alone as a "when".

@@ -3,7 +3,8 @@
 // data surface, with Zen Shape art, so even a dead end feels like Zenboard.
 import { useRouter } from 'next/navigation';
 import { EmptyArt } from '@/components/illustrations/ink';
-import { EmptyState } from '@/components/ui/states';
+import { EmptyState } from '@/components/ds/ui/states';
+import { Button } from '@/components/ds/ui/button';
 
 export function NotFoundState() {
   const router = useRouter();
@@ -12,9 +13,9 @@ export function NotFoundState() {
       <EmptyState
         illustration={<EmptyArt name="notFound" />}
         title="This page wandered off"
-        hint="The link may be old, or the page was moved. Everything else is right where you left it."
-        action={{ label: 'Back to Today', onClick: () => router.push('/today') }}
-        secondaryAction={{ label: 'Go back', onClick: () => router.back() }}
+        description="The link may be old, or the page was moved. Everything else is right where you left it."
+        primary={<Button onClick={() => router.push('/today')}>Back to Today</Button>}
+        secondary={<Button variant="ghost" onClick={() => router.back()}>Go back</Button>}
       />
     </main>
   );
@@ -27,9 +28,9 @@ export function ErrorState({ onRetry }: { onRetry: () => void }) {
       <EmptyState
         illustration={<EmptyArt name="error" />}
         title="Something slipped"
-        hint="This view hit an unexpected error. Your work is saved — try again, or head back to Today."
-        action={{ label: 'Try again', onClick: onRetry }}
-        secondaryAction={{ label: 'Back to Today', onClick: () => router.push('/today') }}
+        description="This view hit an unexpected error. Your work is saved — try again, or head back to Today."
+        primary={<Button onClick={onRetry}>Try again</Button>}
+        secondary={<Button variant="ghost" onClick={() => router.push('/today')}>Back to Today</Button>}
       />
     </div>
   );

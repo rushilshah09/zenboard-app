@@ -19,13 +19,28 @@ import {
   MapPin, Plane, Car, House, Building2, Briefcase, ChartBar, ChartPie, Wallet, CreditCard,
   ShoppingCart, Gift, GraduationCap, Brain, MessageCircle, Mail, Phone, Users, User,
   Gamepad2, Dumbbell, Bike, Cross, Shield, Key, Settings, Wrench, FlaskConical, Atom, Orbit,
+  PICKER_ICONS,
   type IconType,
 } from '@/components/ds/icons';
 import { Icon } from '@/components/ds/ui/icon';
 
-// The curated "Icons" tab set — stored key → component. Stored on the page as
-// "ph:Key"; keys stay stable (legacy) while the glyphs are Tabler.
-export const PAGE_ICONS: Record<string, IconType> = {
+// ── THE ICONS TAB ───────────────────────────────────────────────────────────
+// Two sets, merged, and the order of the merge is the whole point.
+//
+// LEGACY_ICONS are the ~70 keys that shipped first. They are STORED on rows
+// (`ph:BookmarkSimple`, `ph:RocketLaunch`, `ph:Fire`), and several of them are
+// Phosphor's old names or outright aliases — `Fire` is Flame, `Planet` is
+// Orbit. They must keep resolving forever, so they are listed explicitly and
+// they WIN on a key collision: a row that chose `ph:Tree` years ago must not
+// silently become a different glyph because the catalogue also has a `Tree`.
+//
+// PICKER_ICONS is the seam's catalogue — 260 object glyphs, one family, added
+// because 70 was not a set you could find yourself in. The user's words:
+// "we have limited emoji and icons right now".
+//
+// Merging rather than replacing means nothing stored can break, and the picker
+// still shows everything.
+const LEGACY_ICONS: Record<string, IconType> = {
   FileText, Notebook, Book, BookOpen, BookmarkSimple: Bookmark, Files, Folder, Archive, Calendar, Clock,
   Star, Heart, Flag, Tag, Target, Trophy, Medal, Lightbulb, RocketLaunch: Rocket, Fire: Flame, Sparkle: Sparkles,
   Leaf, Flower, FlowerLotus: Flower2, Tree: Trees, Sun, Moon, CloudSun, Umbrella, Mountains: Mountain, Waves,
@@ -34,6 +49,9 @@ export const PAGE_ICONS: Record<string, IconType> = {
   ShoppingCart, Gift, GraduationCap, Brain, ChatCircle: MessageCircle, EnvelopeSimple: Mail, Phone, Users, User,
   GameController: Gamepad2, Barbell: Dumbbell, Bicycle: Bike, FirstAid: Cross, Shield, Key, Gear: Settings, Wrench, Flask: FlaskConical, Atom, Planet: Orbit,
 };
+
+export const PAGE_ICONS: Record<string, IconType> = { ...PICKER_ICONS, ...LEGACY_ICONS };
+
 
 export function PageIcon({ icon, size = 16, style }: { icon?: string | null; size?: number; style?: React.CSSProperties }) {
   if (!icon) return null;

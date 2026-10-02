@@ -16,7 +16,8 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
   Skeleton, Breadcrumbs,
 } from '@/components/ds/ui';
-import { Panel, PanelHeader, PanelBody, FigmaTag } from '@/components/ui/panels';
+import { Panel, PanelHeader, PanelBody } from '@/components/ui/panels';
+import { TaskMeta } from '@/components/tasks/task-meta';
 import { DS_USAGE } from './usage.generated';
 import {
   Spot, Scene, IconBadge, BoldScene, SiteIllustration, ShapeScene, ShapeIcon, ShapeHero, SITE, SITE_ICONS, SCENES, BADGES, BOLD_SCENES, SHAPE_SCENES, SHAPE_ICONS,
@@ -39,7 +40,7 @@ function Swatch({ token, label }: { token: string; label: string }) {
     <div className="flex w-[120px] flex-col gap-1.5">
       <div className="h-12 rounded-md border border-line" style={{ background: `var(${token})` }} />
       <div className="text-[12px]" style={{ color: 'var(--color-ink-600)' }}>{label}</div>
-      <code className="text-[11px]" style={{ color: 'var(--color-ink-400)' }}>{token}</code>
+      <code className="text-[11px]" style={{ color: 'var(--color-ink-500)' }}>{token}</code>
     </div>
   );
 }
@@ -101,7 +102,7 @@ const GROUPS: Group[] = [
     label: 'Foundations',
     items: [
       {
-        name: 'Color tokens', keys: [], desc: 'B&G surfaces and ink — black canvas, #121212 panels, white-alpha fills. Color is reserved for status and priority.',
+        name: 'Color tokens', keys: [], desc: 'B&G surfaces and ink: black canvas, #121212 panels, white-alpha fills. Color is reserved for status and priority.',
         render: () => (
           <div className="flex flex-col gap-5">
             <div className="flex flex-wrap gap-3">
@@ -136,7 +137,7 @@ const GROUPS: Group[] = [
             <span className="text-[16px] leading-5" style={{ color: 'var(--color-ink-800)' }}>Subheading 16 · Regular</span>
             <span className="text-[14px] leading-5" style={{ color: 'var(--color-ink-800)' }}>Body 14 · the default UI size</span>
             <span className="text-[12px]" style={{ color: 'var(--color-ink-600)' }}>Label 12 · secondary</span>
-            <span className="text-[11px] uppercase tracking-[0.04em]" style={{ color: 'var(--color-ink-500)' }}>Section label 11</span>
+            <span className="text-overline" style={{ color: 'var(--color-ink-500)' }}>Section label 12 · sentence case</span>
             <span className="text-[14px] tabular-nums" style={{ color: 'var(--color-ink-800)' }}>0123456789 · tabular-nums</span>
           </div>
         ),
@@ -148,7 +149,7 @@ const GROUPS: Group[] = [
             <Mark size={24} />
             <Logo height={22} />
             <span className="relative inline-flex">
-              <Icon icon={Star} size={18} />
+              <Icon icon={Star} size={20} />
               <span className="absolute -top-1 -right-1 size-2.5 rounded-full border" style={{ background: 'var(--color-berry-500)', borderColor: 'var(--paper)' }} />
             </span>
           </div>
@@ -222,7 +223,7 @@ const GROUPS: Group[] = [
     label: 'Primitives',
     items: [
       {
-        name: 'Button', keys: ['Button'], desc: 'The foundation control — 11 variants, one interaction model. Primary = ink solid (one per view); secondary = 12% fill (default); outline is the one bordered variant; danger is the only color. Sizes on the 24/28/32/36/40 grid; touch ≥44px. Full spec: components/design-system/button-spec.md.',
+        name: 'Button', keys: ['Button'], desc: 'The foundation control: 11 variants, one interaction model. Primary = ink solid (one per view); secondary = 12% fill (default); outline is the one bordered variant; danger is the only color. Sizes on the 24/28/32/36/40 grid; touch ≥44px. Full spec: components/design-system/button-spec.md.',
         render: () => (
           <div className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center gap-3">
@@ -245,7 +246,7 @@ const GROUPS: Group[] = [
         ),
       },
       {
-        name: 'IconButton', keys: ['IconButton'], desc: 'Icon-only control — always carries a label (tooltip + aria) and a ≥44×44 touch target. selected = monochrome toggled wash + aria-pressed. Full spec: button-spec.md §5.',
+        name: 'IconButton', keys: ['IconButton'], desc: 'Icon-only control: always carries a label (tooltip + aria) and a ≥44×44 touch target. Selected = monochrome toggled wash + aria-pressed. Full spec: button-spec.md §5.',
         render: () => (
           <div className="flex items-center gap-3">
             <IconButton label="Search" icon={<Search className="size-4" />} />
@@ -268,7 +269,7 @@ const GROUPS: Group[] = [
         ),
       },
       {
-        name: 'Inline confirm', keys: ['InlineConfirm'], desc: 'Row-level destructive confirm — swaps a row’s actions for “Delete? [Delete] [Keep]” in place. Confirm is dangerGhost (solid danger stays in dialogs); both xs so 36px rows never stretch.',
+        name: 'Inline confirm', keys: ['InlineConfirm'], desc: 'Row-level destructive confirm, swaps a row’s actions for “Delete? [Delete] [Keep]” in place. Confirm is dangerGhost (solid danger stays in dialogs); both xs so 36px rows never stretch.',
         render: () => (
           <div className="flex items-center gap-6">
             <InlineConfirm onConfirm={() => {}} onCancel={() => {}} />
@@ -289,31 +290,35 @@ const GROUPS: Group[] = [
         ),
       },
       {
-        name: 'Tag', keys: ['Tag', 'FigmaTag', 'Pill'], desc: 'White-12% fill chips. User/label colour is allowed; chrome stays neutral.',
+        name: 'Tag', keys: ['Tag', 'Pill'], desc: 'White-12% fill chips. User/label colour is allowed; chrome stays neutral.',
         render: () => (
           <div className="flex flex-wrap items-center gap-3">
             <Tag>Design</Tag>
             <Tag color="stone" size="sm" icon={<Icon icon={Star} size={12} />}>Starred</Tag>
-            <FigmaTag icon={<Icon icon={Folder} size={12} weight="fill" style={{ color: 'var(--yellow-dot)' }} />}>TechSpark</FigmaTag>
           </div>
         ),
       },
       {
-        name: 'PriorityBadge', keys: ['PriorityBadge', 'PriorityBars', 'priority', 'signal'], desc: 'The one priority representation app-wide. Semantic signal-bars: low = neutral ink, med = warning, high = danger. Colour carries meaning; nothing else does.',
+        name: 'TaskMeta', keys: ['TaskMeta', 'task facts', 'FigmaTag', 'chips'], desc: 'The facts of a task, drawn one way on every surface: glyph and word, never capsules, in one order; only what is set. Words give way to glyphs in a narrow container.',
+        render: () => (
+          <div className="flex flex-col gap-3">
+            <TaskMeta project={{ name: 'Northwind', color: 'amber' }} priority="high" sub={{ done: 2, total: 5 }} estimate={90} />
+            <TaskMeta blocked labels={[{ name: 'Errand', color: 'teal' }]} priority="med" recurring when="2026-09-24" estimate={30} highlight />
+          </div>
+        ),
+      },
+      {
+        name: 'PriorityBadge', keys: ['PriorityBadge', 'PriorityBars', 'priority', 'signal'], desc: 'The one priority representation app-wide. Semantic signal-bars: low = neutral ink, med = warning, high = danger. The colour is the glyph’s alone; the word is meta ink.',
         render: () => (
           <div className="flex flex-wrap items-center gap-4">
-            <PriorityBadge level="high" variant="chip" />
-            <PriorityBadge level="med" variant="chip" />
-            <PriorityBadge level="low" variant="chip" />
-            <span className="h-4 w-px bg-line-soft" />
-            <PriorityBadge level="high" variant="bars" />
-            <PriorityBadge level="med" variant="bars" />
-            <PriorityBadge level="low" variant="bars" />
+            <PriorityBadge level="high" />
+            <PriorityBadge level="med" />
+            <PriorityBadge level="low" />
           </div>
         ),
       },
       {
-        name: 'Avatar', keys: ['Avatar'], desc: 'Neutral fills, rounded square. Letters over ink washes — never colored.',
+        name: 'Avatar', keys: ['Avatar'], desc: 'Neutral fills, rounded square. Letters over ink washes, never colored.',
         render: () => (
           <div className="flex items-center gap-3">
             <Avatar name="Rushil Shah" size="sm" />
@@ -335,11 +340,11 @@ const GROUPS: Group[] = [
         ),
       },
       {
-        name: 'Icon', keys: ['Icon'], desc: 'One icon seam (components/ds/icons) — 16px in rows and buttons, 18–20px in headers.',
+        name: 'Icon', keys: ['Icon'], desc: 'One icon seam (components/ds/icons): 16px in rows and buttons, 18–20px in headers.',
         render: () => (
           <div className="flex items-center gap-4">
             <Icon icon={Search} size={16} />
-            <Icon icon={Settings} size={18} />
+            <Icon icon={Settings} size={20} />
             <Icon icon={Check} size={20} weight="bold" />
             <Icon icon={Trash} size={24} strokeWidth={1.25} />
           </div>
@@ -360,13 +365,13 @@ const GROUPS: Group[] = [
         ),
       },
       {
-        name: 'Textarea', keys: ['Textarea'], desc: 'Multiline input — same field grammar.',
+        name: 'Textarea', keys: ['Textarea'], desc: 'Multiline input, same field grammar.',
         render: () => (
           <div className="w-[320px]"><Field label="Notes"><Textarea placeholder="Write something…" rows={3} /></Field></div>
         ),
       },
       { name: 'Select', keys: ['Select'], desc: 'Radix select styled to the B&G popover spec.', render: () => <SelectDemo /> },
-      { name: 'Checkbox · Switch', keys: ['Checkbox', 'Switch', 'Toggle', 'SwitchTrack'], desc: 'Square checkboxes (tasks are never radio circles). Toggles are monochrome — ink track when on.', render: () => <StatefulDemos /> },
+      { name: 'Checkbox · Switch', keys: ['Checkbox', 'Switch', 'Toggle', 'SwitchTrack'], desc: 'Square checkboxes (tasks are never radio circles). Toggles are monochrome, ink track when on.', render: () => <StatefulDemos /> },
     ],
   },
   {
@@ -376,7 +381,7 @@ const GROUPS: Group[] = [
       { name: 'Segmented', keys: ['SegmentedControl', 'Segmented'], desc: 'All view toggles (List/Board/Calendar…) use the segmented control.', render: () => <SegmentedDemo /> },
       {
         name: 'Breadcrumbs', keys: ['Breadcrumbs'], desc: 'Quiet path trail in panel headers.',
-        render: () => <Breadcrumbs items={[{ label: 'Projects', href: '#' }, { label: 'TechSpark', href: '#' }, { label: 'Invoice' }]} />,
+        render: () => <Breadcrumbs items={[{ label: 'Projects', href: '#' }, { label: 'Northwind', href: '#' }, { label: 'Invoice' }]} />,
       },
     ],
   },
@@ -429,10 +434,10 @@ const GROUPS: Group[] = [
         render: () => (
           <div className="w-full max-w-[520px]">
             <Panel frame="shadow">
-              <PanelHeader icon={<Icon icon={Star} size={18} />} title="Panel title" count={3} />
+              <PanelHeader icon={<Icon icon={Star} size={20} />} title="Panel title" count={3} />
               <PanelBody>
                 <div className="p-4 text-[14px] leading-5" style={{ color: 'var(--color-ink-800)' }}>
-                  Inner card body — surfaces separate by contrast, not borders.
+                  Inner card body: surfaces separate by contrast, not borders.
                 </div>
               </PanelBody>
             </Panel>
@@ -440,7 +445,7 @@ const GROUPS: Group[] = [
         ),
       },
       {
-        name: 'Skeleton', keys: ['Skeleton'], desc: 'Loading placeholders — quiet ink washes, no shimmer color.',
+        name: 'Skeleton', keys: ['Skeleton'], desc: 'Loading placeholders: quiet ink washes, no shimmer color.',
         render: () => (
           <div className="flex w-[280px] flex-col gap-2">
             <Skeleton className="h-4 w-3/4" />
@@ -469,10 +474,10 @@ export function DsPortal() {
     <TooltipProvider>
       <div className="flex h-full min-h-0">
         {/* Side rail — the component list */}
-        <nav aria-label="Components" className="flex w-[230px] shrink-0 flex-col gap-4 overflow-y-auto border-r p-3" style={{ borderColor: 'var(--color-border-soft)' }}>
+        <nav aria-label="Components" className="flex w-[var(--rail-w)] shrink-0 flex-col gap-4 overflow-y-auto border-r p-3" style={{ borderColor: 'var(--color-border-soft)' }}>
           {GROUPS.map((g) => (
             <div key={g.label} className="flex flex-col gap-1">
-              <div className="px-2 pb-1 text-[11px] font-medium uppercase tracking-[0.04em]" style={{ color: 'var(--color-ink-500)' }}>{g.label}</div>
+              <div className="px-2 pb-1 text-overline" style={{ color: 'var(--color-ink-500)' }}>{g.label}</div>
               {g.items.map((e) => {
                 const active = e.name === selected;
                 const count = e.keys.reduce((n, k) => n + (DS_USAGE[k]?.length ?? 0), 0);
@@ -489,7 +494,7 @@ export function DsPortal() {
                     }}
                   >
                     <span className="truncate">{e.name}</span>
-                    {count > 0 && <span className="shrink-0 text-[11px] tabular-nums" style={{ color: 'var(--color-ink-400)' }}>{count}</span>}
+                    {count > 0 && <span className="shrink-0 text-[11px] tabular-nums" style={{ color: 'var(--color-ink-500)' }}>{count}</span>}
                   </button>
                 );
               })}
@@ -512,7 +517,7 @@ export function DsPortal() {
 
             {/* Used in — the real import scan */}
             <section className="flex flex-col gap-2">
-              <div className="text-[11px] font-medium uppercase tracking-[0.04em]" style={{ color: 'var(--color-ink-500)' }}>
+              <div className="text-overline" style={{ color: 'var(--color-ink-500)' }}>
                 Used in {usedIn.length > 0 ? `${usedIn.length} ${usedIn.length === 1 ? 'file' : 'files'}` : 'the design system only'}
               </div>
               {usedIn.length > 0 && (

@@ -19,12 +19,11 @@
    ========================================================== */
 
 :root {
-  /* ─── LAYER 1 · PRIMITIVES — GENERATED, see tokens.generated.css ──
-     Color primitives (--color-canvas … --color-label-*) and the Layer-2
-     semantic colors come from design-system/src/tokens/tokens.json via
-     `npm run tokens:build`. Never re-declare them here. ─────────────── */
-
-  /* ─── LEGACY ALIASES → primitives (kept for existing call sites) ── */
+  /* ─── COLOUR: legacy aliases, REFERENCES ONLY ─────────────────────
+     Every value lives in theme-shadcn.css / tokens-light.css, declared in both
+     themes. These are the older names the app still speaks; none of them may
+     hold a literal again (a dark literal here is read by light — see the
+     header of tokens.generated.css for the five bugs that rule came from). */
 
   /* Surfaces */
   --canvas:        var(--color-canvas);
@@ -34,64 +33,42 @@
   --paper-4:       var(--color-paper-4);
   --paper-5:       var(--color-paper-5);
   --tan:           var(--color-tan);
-  --surface-dark:  #303030;                 /* inverted tooltip surface (elevated dark) */
-  --bg-disable:    rgba(242, 241, 235, 0.10);
+  /* The inverted tooltip surface — per theme (tokens-light.css --tip-bg). */
+  --surface-dark:  var(--tip-bg);
+  --bg-disable:    var(--color-surface-disabled);
 
-  /* Ink (text) */
+  /* Ink (text) — three levels: ink/ink-2 primary, ink-3 secondary, ink-4 tertiary */
   --ink:              var(--color-ink-900);
   --ink-2:            var(--color-ink-800);
   --ink-3:            var(--color-ink-600);
   --ink-4:            var(--color-ink-500);
   --ink-5:            var(--color-ink-400);
   --ink-6:            var(--color-ink-300);
-  --ink-disable:      rgba(242, 241, 235, 0.24);
-  --ink-placeholder:  var(--color-ink-500);   /* §2.2.2: placeholders are ink-500 (AA) */
+  --ink-placeholder:  var(--color-ink-500);   /* placeholders are the tertiary level (AA) */
 
-  /* Ink alpha scale (Notion-style neutrals) — over the B&G ink #F2F1EB */
-  --ink-base: 242, 241, 235;                  /* #F2F1EB as RGB triplet */
-  --ink-a-100: rgba(var(--ink-base), 1);
-  --ink-a-80:  rgba(var(--ink-base), 0.84);
-  --ink-a-62:  rgba(var(--ink-base), 0.68);
-  --ink-a-45:  rgba(var(--ink-base), 0.50);
-  --ink-a-28:  rgba(var(--ink-base), 0.34);
-  --ink-a-16:  rgba(var(--ink-base), 0.24);
-  --ink-a-12:  rgba(var(--ink-base), 0.16);
-  --ink-a-8:   rgba(var(--ink-base), 0.08);
-  --ink-a-6:   rgba(var(--ink-base), 0.10);
+  /* Ink alpha scale — the theme's TINT at a strength, so a hairline drawn with
+     one of these is the same warm family as every wash (never a grey). */
+  --ink-a-100: var(--foreground);
+  --ink-a-80:  color-mix(in oklab, var(--foreground) 84%, transparent);
+  --ink-a-62:  color-mix(in oklab, var(--foreground) 68%, transparent);
+  --ink-a-45:  color-mix(in oklab, var(--foreground) 50%, transparent);
+  --ink-a-28:  color-mix(in oklab, var(--tint) 34%, transparent);
+  --ink-a-16:  color-mix(in oklab, var(--tint) 24%, transparent);
+  --ink-a-12:  color-mix(in oklab, var(--tint) 16%, transparent);
+  --ink-a-8:   color-mix(in oklab, var(--tint) 8%, transparent);
+  --ink-a-6:   color-mix(in oklab, var(--tint) 10%, transparent);
 
-  /* Borders — white-alpha ink hairlines over dark surfaces */
-  --line:          rgba(242, 241, 235, 0.12);
-  --line-2:        rgba(242, 241, 235, 0.08);
-  --line-3:        rgba(242, 241, 235, 0.20);
+  /* Borders (per-theme values in tokens-light.css) */
   --line-paper-5:  var(--color-paper-5);
 
-  /* Accent — B&G: the interaction accent IS ink (monochrome chrome). Every
-     legacy var(--accent) site (selected days, focus states, today rings, …)
-     renders grayscale through this one alias. TRUE berry is reserved for the
-     notification dot / brand via var(--color-berry-500) directly. The
-     appearance switcher may still pin --accent to a custom color. */
+  /* Accent fallbacks — the appearance switcher pins --accent inline; the
+     derived -soft/-border/-deep/-text live in globals.css and the bridge. */
   --accent:        var(--ink);
-  --accent-deep:   var(--color-ink-700);
-  --accent-text:   var(--color-ink-800);
-  --accent-soft:   rgba(242, 241, 235, 0.16);
-  --accent-border: rgba(242, 241, 235, 0.28);
 
-  /* Hover wash — follows the semantic token (Figma "States/Hover 1") */
+  /* Hover wash — follows the semantic token */
   --hover-1: var(--color-surface-hover);
 
-  /* Status trios — dot / chip-bg / chip-text (app palette; user data) — dark-tuned */
-  --default-dot: #A8A39A; --default-bg: #2A2722; --default-text: #C8C3BA;
-  --gray-dot:    #A39E97; --gray-bg:    #2A2825; --gray-text:    #C6C1BA;
-  --brown-dot:   #C08A5E; --brown-bg:   #2F261E; --brown-text:   #DBB089;
-  --orange-dot:  #DBA45A; --orange-bg:  #332518; --orange-text:  #ECC084;
-  --yellow-dot:  #D8BB5A; --yellow-bg:  #302B16; --yellow-text:  #E8D588;
-  --green-dot:   #6FB35F; --green-bg:   #1F2C1A; --green-text:   #9CCF8E;
-  --blue-dot:    #5E92DE; --blue-bg:    #1A2740; --blue-text:    #93BEF5;
-  --purple-dot:  #B173C4; --purple-bg:  #2A1E30; --purple-text:  #D2A6E0;
-  --pink-dot:    #E06FB3; --pink-bg:    #321E2B; --pink-text:    #ECA0CC;
-  --red-dot:     #FF6B66; --red-bg:     #361E1D; --red-text:     #F5A8A4;
-
-  /* Semantic status aliases → doc §2.1.4 values */
+  /* Semantic status aliases (values per theme in tokens-light.css) */
   --success: var(--color-success-500);  --success-bg: var(--color-success-100);  --success-text: var(--color-success-600);
   --warning: var(--color-warning-500);  --warning-bg: var(--color-warning-100);  --warning-text: var(--color-warning-600);
   --danger:  var(--color-danger-500);   --danger-bg:  var(--color-danger-100);   --danger-text:  var(--color-danger-600);
@@ -102,8 +79,11 @@
   --font-sans:    var(--font-geist-sans), "Geist", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono:    var(--font-geist-mono), "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
   --font-serif:   var(--font-source-serif), "Source Serif 4", ui-serif, Georgia, serif;
+  /* TITLES (2026-09-25). One face for every heading in the product, so a title
+     is recognisably a title wherever it appears. */
+  --font-title:   var(--font-rubik), "Rubik", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   /* Legacy family aliases */
-  --font-display: var(--font-sans);
+  --font-display: var(--font-title);
   --font-ui:      var(--font-sans);
 
   --text-display: 600 40px/44px var(--font-display);
@@ -129,34 +109,54 @@
   --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
   --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px;
 
-  /* Elevation — B&G: shadows barely exist; borders define hierarchy.
-     Quiet black ambient only (Figma panel shadow = 0 1px 2px @4%). */
-  --shadow-lift-1: 0 1px 2px rgba(0,0,0,0.24);
-  --shadow-lift-2: 0 1px 2px rgba(0,0,0,0.24), 0 8px 16px -6px rgba(0,0,0,0.40);
-  --shadow-lift-3: 0 2px 4px rgba(0,0,0,0.24), 0 24px 48px -12px rgba(0,0,0,0.56);
-  --shadow-lift-4: 0 12px 32px -8px rgba(0,0,0,0.48);
-  --shadow-toast:  0 4px 8px -2px rgba(0,0,0,0.28), 0 16px 32px -8px rgba(0,0,0,0.40);
-  /* Legacy shadow names (globals.css re-tunes to the app's quiet stack) */
-  --shadow-xs:    rgba(0,0,0,0.24) 0px 1px 2px 0px;
-  --shadow-sm:    rgba(0,0,0,0.30) 0px 1px 2px 0px;
-  --shadow-crisp: rgba(0,0,0,0.28) 0px 1px 1px -0.5px;
+  /* Elevation — values per theme in tokens-light.css (xs · sm · crisp ·
+     lift-1..4 · toast). These two are role names onto that scale. */
   --shadow-card:    var(--shadow-lift-1);
   --shadow-overlay: var(--shadow-lift-2);
 
   /* Motion (§2.10) */
-  --ease-out:        cubic-bezier(0.16, 1, 0.30, 1);
-  --ease-out-quiet:  cubic-bezier(0.16, 1, 0.30, 1);
-  --ease-standard:   cubic-bezier(0.20, 0, 0.00, 1);
-  --ease-in-quiet:   cubic-bezier(0.40, 0, 1, 1);
-  --ease-spring:     cubic-bezier(0.34, 1.40, 0.64, 1);
-  --ease-inout:      cubic-bezier(0.65, 0, 0.35, 1);
-  --dur-instant: 80ms; --dur-fast: 120ms; --dur-base: 180ms; --dur-slow: 240ms; --dur-slower: 320ms;
+  /* ONE curve for arrivals, departures and colour. There were three names for
+     two curves: --ease-out and --ease-out-quiet were byte-identical, and
+     globals.css kept a third, --ease (.2,.8,.2,1), on 61 hover and colour
+     transitions. A name nobody can tell apart from another name is not a
+     vocabulary. */
+  /* Emil Kowalski's curves, the project's source of truth for motion. The built-in
+     CSS easings are too weak to read as intentional; these are the strong ease-out,
+     the ease-in-out for movement on screen, and the iOS drawer curve. */
+  --ease-out-quiet:  cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-standard:   cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer:     cubic-bezier(0.32, 0.72, 0, 1);
+  /* CSS `ease`, spelled out: hover and colour changes (Emil's decision tree:
+     entering or leaving → ease-out, moving on screen → ease-in-out, hover or
+     colour → ease). */
+  --ease-hover:      cubic-bezier(0.25, 0.1, 0.25, 1);
+  /* ONE duration ladder, and it is the DS one in ds-theme.css: instant 20 · fast
+     100 · base 150 · slow 200 · hold 700. There used to be a second set here —
+     --dur-instant/fast/base/slow/slower at 80/120/180/240/320 — so "fast" meant
+     120ms in the app layer and 100ms in the DS layer, and "instant" differed by
+     4x. 76 uses folded into the ladder the other 178 already spoke. */
 
-  /* Z-index registry (§2.8.2) */
-  --z-sticky: 10; --z-dropdown: 40; --z-overlay: 45; --z-modal: 50; --z-toast: 55; --z-drag: 60; --z-tooltip: 70;
+  /* Z-index registry — DELETED FROM HERE, and this note is the reason.
+     It lived in BOTH this file and ds-theme.css's `@theme` block, with different
+     numbers. Tailwind hoists `@theme` variables to the top of the output, so
+     this plain `:root` — imported earlier but emitted LATER — silently won, and
+     ds-theme's values never reached the browser. The registry there carries a
+     long comment explaining that toast and tooltip were raised from 55/70 to
+     320/330 so an Undo toast could clear the command palette; measured on
+     2026-09-07, the served values were still 55 and 70. The fix had been
+     written, reviewed and never applied for as long as both copies existed.
+     ds-theme.css is now the only declaration. Do not re-add one here. */
 
   /* Layout (§2.5) */
   --sidebar-w: 230px;   /* Figma HIfi sidebar panel (476:13435) */
+  /* SECONDARY rails — the record list beside a detail on Tasks, Documents,
+     Clients and Projects — are the same width as the primary sidebar, so the
+     two vertical edges on screen line up as one rhythm rather than missing each
+     other by a hair. Four rails had drifted to TWO numbers: 230 (Tasks and
+     Documents, both citing the Figma panel above) and 240 (Clients, Projects —
+     Tailwind's `w-60`, adopted for being a scale step rather than for being
+     right). 230 wins because it is the one with a source. */
+  --rail-w: var(--sidebar-w);
   --topbar-h: 56px;
   --content-max: 1200px;
 

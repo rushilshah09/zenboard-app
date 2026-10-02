@@ -10,13 +10,16 @@ export type BadgeStatus = "neutral" | "accent" | "success" | "warning" | "danger
 
 // `error` is the handoff's name for the danger family — same tokens.
 const STATUS: Record<BadgeStatus, string> = {
-  neutral: "bg-surface-sunken border-line-soft text-ink-600",
-  accent: "bg-berry-050 border-berry-200 text-berry-600",
-  success: "bg-success-100 border-success-300 text-success-600",
-  warning: "bg-warning-100 border-warning-300 text-warning-600",
-  danger: "bg-danger-100 border-danger-300 text-danger-600",
-  error: "bg-danger-100 border-danger-300 text-danger-600",
-  info: "bg-info-100 border-info-300 text-info-600",
+  // A STATUS IS A SOFT FILL AND ITS OWN TEXT — never a coloured box drawn round it. Every badge
+  // carried a -300 edge, which turned a one-word state into a little framed panel and made four
+  // of them in a row read as boxes (the "overly boxed" note). Notion and Linear draw none.
+  neutral: "bg-surface-sunken text-ink-600",
+  accent: "bg-[var(--accent-wash)] text-accent-text",
+  success: "bg-success-100 text-success-600",
+  warning: "bg-warning-100 text-warning-600",
+  danger: "bg-danger-100 text-danger-600",
+  error: "bg-danger-100 text-danger-600",
+  info: "bg-info-100 text-info-600",
 };
 
 export interface BadgeProps {
@@ -49,8 +52,10 @@ export function Badge({ variant = "status", count = 0, status = "neutral", surfa
   }
   return (
     <span
+      data-slot="badge"
+      data-status={status}
       className={cn(
-        "inline-flex h-5 items-center gap-1 whitespace-nowrap rounded-sm border px-2 text-meta font-medium leading-none",
+        "inline-flex h-5 items-center gap-1 whitespace-nowrap rounded-xs px-1.5 text-meta font-medium leading-none",
         STATUS[status],
         className,
       )}

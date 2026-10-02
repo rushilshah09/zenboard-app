@@ -24,7 +24,7 @@ export function ActivityFeed({ entries, className }: { entries: ActivityEntry[];
         }
         const time = (
           <Tooltip content={e.absoluteTime ?? e.time} disabled={!e.absoluteTime}>
-            <span className="shrink-0 cursor-default font-mono text-mono-sm text-ink-400">{e.time}</span>
+            <span className="shrink-0 cursor-default font-mono text-mono-sm text-ink-500">{e.time}</span>
           </Tooltip>
         );
         return (
@@ -45,7 +45,7 @@ export function ActivityFeed({ entries, className }: { entries: ActivityEntry[];
                   {e.kind === "diff" && (
                     <>
                       changed {e.property}:{" "}
-                      <span className="text-ink-400 line-through">{e.from}</span>{" "}
+                      <span className="text-ink-500 line-through">{e.from}</span>{" "}
                       <span aria-hidden>→</span>
                       <span className="sr-only">to</span>{" "}
                       <span className="text-ink-800">{e.to}</span>

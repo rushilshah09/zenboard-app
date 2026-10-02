@@ -106,8 +106,10 @@ function voice(
 }
 
 // Runs a cue, honouring the user preference and the anti-overlap throttle.
-function play(recipe: (c: AudioContext, master: AudioNode, t: number) => void, minGap = 90): void {
-  if (!taskSoundEnabled()) return;
+// `force` bypasses the global task-sound preference — used by cues that carry
+// their own on/off switch (e.g. the focus timer's silent mode).
+function play(recipe: (c: AudioContext, master: AudioNode, t: number) => void, minGap = 90, force = false): void {
+  if (!force && !taskSoundEnabled()) return;
   const c = getCtx();
   if (!c) return;
   const now = performance.now();
@@ -138,6 +140,39 @@ export function playTaskUncheck(): void {
   play((c, master, t) => {
     voice(c, master, t, { freq: 460, to: 380, gain: 0.05, dur: 0.11 });
   });
+}
+
+// Focus timer — session complete. A gentle three-note ascending resolve (a
+// calm, rewarding "you're done" rather than an alarm). Carries its own switch,
+// so it plays even when the task-completion sound is off, unless the caller's
+// silent mode is on (the caller decides whether to invoke it).
+export function playFocusChime(): void {
+  play(
+    (c, master, t) => {
+      voice(c, master, t, { freq: 587.33, gain: 0.14, dur: 0.16 }); // D5
+      voice(c, master, t, { freq: 783.99, gain: 0.14, dur: 0.18, delay: 0.11 }); // G5
+      voice(c, master, t, { freq: 1174.66, gain: 0.12, dur: 0.28, delay: 0.22 }); // D6
+    },
+    0,
+    true,
+  );
+}
+
+// Focus timer — break over / gentle nudge back. A single soft mid tone, quieter
+// than the completion resolve.
+export function playFocusResume(): void {
+  play((c, master, t) => {
+    voice(c, master, t, { freq: 659.25, gain: 0.1, dur: 0.14 }); // E5
+  }, 0, true);
+}
+
+// Focus timer — dial "tick": a tiny, dry click as the analog dial crosses each
+// minute while dragging. Very short + quiet so a fast scrub reads as a mechanical
+// ratchet, not a melody. A 24ms min-gap keeps rapid drags from machine-gunning.
+export function playFocusTick(): void {
+  play((c, master, t) => {
+    voice(c, master, t, { freq: 2400, gain: 0.03, dur: 0.012 });
+  }, 24, true);
 }
 
 // Convenience for optimistic toggle handlers. Completion plays after the check

@@ -1,5 +1,9 @@
 import * as React from "react";
 import { cn } from "@/lib/cn";
+import { Pencil } from "@/lib/icons";
+import { Icon } from "./icon";
+import { IconButton } from "./icon-button";
+import { AnchorRow } from "./anchor-row";
 
 // Settings pattern — grouped preference rows (reference-measured density,
 // Zenboard skin). A pane opens with SettingsPaneHeader (title-3 + one quiet
@@ -51,32 +55,53 @@ export interface SettingsRowProps {
   /** Leading 16px glyph in a 32px well — integrations/providers, not plain prefs. */
   icon?: React.ReactNode;
   control?: React.ReactNode;
+  /**
+   * The setting's CURRENT VALUE as readable text ("Disabled", "One page",
+   * "3 responses"). Pair with `onEdit` for values that need a picker or a field.
+   *
+   * This is the row grammar that makes a settings page scannable: because every
+   * row reads `label | value | edit`, you can take in the whole current state by
+   * running down one column. A page of expanded inputs shows you controls, not
+   * answers. Prefer `control` only where the control IS the answer — a Switch
+   * already shows its state, so it toggles in place and needs no value or pencil.
+   */
+  value?: React.ReactNode;
+  /** Opens the editor for `value`. Renders the trailing pencil. */
+  onEdit?: () => void;
+  /** Accessible name for the pencil; defaults to "Edit <title>". */
+  editLabel?: string;
   /** stack = control on its own line under the text, for full-width controls. */
   layout?: "inline" | "stack";
   className?: string;
 }
 
-export function SettingsRow({ title, description, icon, control, layout = "inline", className }: SettingsRowProps) {
+export function SettingsRow({
+  title, description, icon, control, value, onEdit, editLabel, layout = "inline", className,
+}: SettingsRowProps) {
+  // THE row (components/ds/ui/anchor-row.tsx) with settings' own trailing grammar on it:
+  // `label | value | edit`, so you can take in a whole pane by running down one column.
   return (
-    <div
-      className={cn(
-        "flex gap-x-6 gap-y-3 py-3",
-        layout === "inline" ? "flex-wrap items-center justify-between" : "flex-col",
-        className,
-      )}
-    >
-      <div className="flex min-w-0 flex-1 basis-52 items-start gap-3">
-        {icon && (
-          <span className="grid size-8 shrink-0 place-items-center rounded-sm bg-paper-3 text-ink-600 [&_svg]:size-4">
-            {icon}
-          </span>
-        )}
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <div className="text-ui text-ink-800">{title}</div>
-          {description && <div className="text-meta text-ink-500">{description}</div>}
-        </div>
-      </div>
-      {control && <div className={cn("flex shrink-0 items-center gap-2", layout === "stack" && "self-start")}>{control}</div>}
-    </div>
+    <AnchorRow
+      icon={icon}
+      title={title}
+      description={description}
+      layout={layout}
+      className={cn("py-3", className)}
+      trailing={(control || value != null || onEdit) ? (
+        <>
+          {value != null && <span className="truncate text-ui text-ink-600">{value}</span>}
+          {control}
+          {onEdit && (
+            <IconButton
+              label={editLabel ?? (typeof title === "string" ? `Edit ${title.toLowerCase()}` : "Edit")}
+              variant="ghost"
+              size="xs"
+              icon={<Icon icon={Pencil} size={14} />}
+              onClick={onEdit}
+            />
+          )}
+        </>
+      ) : undefined}
+    />
   );
 }

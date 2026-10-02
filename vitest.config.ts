@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 import { fileURLToPath } from 'node:url';
 
 // Vitest needs the same `@/…` path alias tsconfig gives the app, otherwise any
@@ -6,6 +6,16 @@ import { fileURLToPath } from 'node:url';
 // without this only because none of them had crossed an aliased import yet.
 export default defineConfig({
   resolve: {
-    alias: { '@': fileURLToPath(new URL('.', import.meta.url)) },
+    alias: {
+      '@': fileURLToPath(new URL('.', import.meta.url)),
+      // See test/stubs/server-only.ts for why this is safe.
+      'server-only': fileURLToPath(new URL('./test/stubs/server-only.ts', import.meta.url)),
+    },
+  },
+  test: {
+    // The launch film (`launch-video/`) and the agent skills (`.agents/`) are separate projects
+    // with their own toolchains, merged in from GitHub's main. Their scripts' tests run on
+    // `node:test`, which vitest would collect and report as files with no suite.
+    exclude: [...configDefaults.exclude, '.agents/**', 'launch-video/**'],
   },
 });

@@ -1,0 +1,239 @@
+/* ============================================================================
+   THE PALETTE — every colour value Zenboard paints, light and dark.
+   ============================================================================
+   This file holds VALUES and nothing else. `tokens-light.css` maps the app's
+   names onto them per theme; `tokens.generated.css`, `tokens.css` and the
+   `:root` in `globals.css` hold only REFERENCES (no colour literal lives
+   outside the theme files), so a token can no longer exist in one theme's
+   dialect and be read by the other — the failure this codebase hit five times.
+
+   ── THE SYSTEM (user directive 2026-10-02) ────────────────────────────────
+   "Clean, consistent, minimal, human-feeling … the subtle, calm quality of
+   Claude's interface … as refined and intentional as Notion and Linear. No
+   restrictions on the colours." Measured before it was rebuilt: 13 screens
+   painted 45 distinct backgrounds, 16 text colours, 26 border colours and 20
+   icon colours, with neutrals spread over twelve hues (surfaces on a 68° axis,
+   ink on 92°, washes composited grey, a dark mode built from chroma-zero
+   greys beside warm ones) and status colours that were raw Tailwind.
+
+   Five rules now, each one guarded (app/design-system.test.ts,
+   app/theme-bridge.test.ts):
+
+   1. ONE NEUTRAL HUE — 95°, the hue Claude's ivory (#FAF9F5 = 0.982/0.0054/95)
+      and Notion's ink (#37352F = 0.329/0.0107/92) both sit on. Every surface,
+      border, wash, ink and neutral tag rung, in both themes, is on it. There is
+      no chroma-zero grey anywhere in the product.
+
+   2. CHROMA SCALES WITH AREA. The large reading surfaces stay white or a
+      whisper (card/popover pure white; canvas 0.0045); the small FRAME
+      surfaces carry the warmth (desk, fills, bands ≤ 0.007); edges a touch more
+      (≤ 0.008); ink the most (≤ 0.012). Below Claude's own ground and
+      parchment (0.0054 / 0.011), so it reads as ivory, never as the khaki cast
+      that reversed the 2026-09-08 paper pass (0.0070 spread over the canvas).
+
+   3. THREE TEXT LEVELS. Primary (titles AND body), secondary (labels,
+      descriptions), tertiary (meta). The ramp had five text steps inside 0.17
+      of lightness — #37352F / #44423C / #52504A / #5B5953 / #64625C — which is
+      the muddiness, not a hierarchy. Each level clears 4.5:1 on every ground it
+      can land on, hovered and pressed rows inside a popover included.
+
+   4. ONE RECIPE FOR EVERY HUE. Status, tags, labels, event colours and project
+      colours are all solved from the same lightness/chroma per role (dot ·
+      soft fill · text), so a green tag and a success badge are one family and
+      no single hue is louder than the rest.
+
+   5. THE ACCENT IS CALM. Berry keeps its hue (357°) and gives up the neon:
+      0.544/0.207 → 0.525/0.165, about a fifth less saturated. One filled
+      accent per view (CLAUDE.md), so the colour says "this one" and nothing
+      else. The brand ARTWORK keeps #C41C72 (lib/brand.ts); the UI accent is
+      lib/theme.ts.
+
+   The dark selector is `html[data-theme='dark']` (0,1,1), not `.dark`: the
+   appearance switcher writes `data-theme` (lib/theme.ts), and the higher
+   specificity beats the plain `:root` blocks of the older token files.
+   ========================================================================= */
+
+:root {
+  --radius: 0.375rem;
+
+  /* ── SURFACES (light) ─────────────────────────────────────────────────────
+     desk 0.945  →  canvas 0.975  →  band 0.982  →  card / popover 1.000
+     The shell's panels lie on the DESK (1.17:1 against a white panel — the
+     Kobra/Claude frame weight, softer than the 1.25:1 grey it replaces). The
+     CANVAS is a page's own ground where one shows (onboarding, full-screen
+     modes, the portal). Cards and popovers are pure white: warmth lives in the
+     ground, the band, the fills and the edges, never in the card. */
+  --background: oklch(0.975 0.0045 95);               /* #F8F7F3 canvas — Claude's ivory, a step deeper */
+  --desk: oklch(0.945 0.006 95);                      /* #EEEDE8 the ground the shell's panels lie on */
+  --card: oklch(1 0 0);                               /* #FFFFFF */
+  --popover: oklch(1 0 0);                            /* #FFFFFF */
+  /* A card's header band: lifted off the canvas, stopping short of the body
+     (band→body 1.04:1), so a card reads as one object with a head. */
+  --band: oklch(0.982 0.0035 95);                     /* #FAF9F6 */
+  /* The recessed fill: a segmented track, a chip, a code block, a well. */
+  --secondary: oklch(0.958 0.0055 95);                /* #F2F1ED */
+  --muted: oklch(0.958 0.0055 95);                    /* #F2F1ED */
+  --accent-surface: oklch(0.935 0.0065 95);           /* #EBE9E5 the firmer solid fill */
+
+  /* ── INK (light) ──────────────────────────────────────────────────────────
+     Notion's ink, kept: warm, never blue-black. The secondary and tertiary
+     levels are DERIVED from it in tokens-light.css (86% / 72% over the canvas),
+     so moving this one value moves the whole hierarchy with it. */
+  --foreground: oklch(0.329 0.0107 95);               /* #37352F */
+  --card-foreground: oklch(0.329 0.0107 95);
+  --popover-foreground: oklch(0.329 0.0107 95);
+  --secondary-foreground: oklch(0.329 0.0107 95);
+  --accent-surface-foreground: oklch(0.329 0.0107 95);
+  --muted-foreground: oklch(0.51 0.009 95);           /* #676660 = the tertiary level, 5.4:1 on white */
+  --primary: oklch(0.329 0.0107 95);
+  --primary-foreground: oklch(1 0 0);
+  /* `--primary` exists in globals.css too, so the bridge reads the solid through
+     this alias (a self-reference would be dropped at computed-value time). */
+  --primary-solid: oklch(0.329 0.0107 95);
+  --primary-solid-foreground: oklch(0.985 0.003 95);  /* #FBFAF8 */
+
+  /* ── THE TINT — what every wash and hairline is made of ───────────────────
+     The ink's own lightness on the 95° axis, at the chroma a wash needs to keep
+     its hue once it is composited at a few percent (5% of this over white lands
+     at chroma 0.0026 on 95°, 10% at 0.0042 — warm rather than grey, and inside
+     the fill cap; 0.042 rounded to a grey at 5%, measured).
+     `--tint-line` carries less, for the one edge dense enough (the 45% focus
+     edge) to out-tint the ink beside it. */
+  --tint: oklch(0.329 0.048 95);
+  --tint-line: oklch(0.329 0.024 95);
+
+  /* ── EDGES (light) ────────────────────────────────────────────────────────
+     decorative  --border        1.30:1 on white — dividers, card edges
+     field       28% tint        ≥ 1.6:1 — inputs, selects (tokens-light.css)
+     control     --border-control ≥ 3:1 on EVERY surface — checkbox, radio,
+                                  switch track, slider thumb (3.36:1 at worst,
+                                  on the desk) */
+  --border: oklch(0.912 0.0075 95);                   /* #E3E2DC */
+  --border-control: #82807A;                          /* oklch(0.6 0.01 95) — a SOLID, see the tier note */
+  --input: var(--border-control);
+  --ring: oklch(0.78 0.008 95);                       /* #B9B7B2 */
+  /* A PICTURE'S edge (a cover, an illustration, a photo): pure black at 10%.
+     A tinted edge picks up the surface behind it and reads as dirt on the image. */
+  --edge-image: oklch(0 0 0 / 0.1);
+
+  /* ── DESTRUCTIVE INK — "Delete", an error line, a danger fill ─────────────
+     One red for the word and the fill: 4.6:1 on the hardest ground it meets (a
+     hovered row on the recessed fill), and white text on it measures 5.7:1. */
+  --destructive: oklch(0.53 0.15 27);                 /* #B24039 */
+
+  /* ── ENTITY COLOUR — a project's / list's own hue (lib/entity-color.ts) ───
+     The five are the ACCENT family at the accent's lightness (0.525), so a
+     project's dot and the chosen accent are one family. Every fill clears 4.4:1
+     on the desk (its darkest ground) and carries a white glyph at ≥ 5.2:1. */
+  --scope-plum: #9C428C;    --scope-plum-on: #FFFFFF;
+  --scope-sage: #5D733F;    --scope-sage-on: #FFFFFF;
+  --scope-amber: #975A02;   --scope-amber-on: #FFFFFF;
+  --scope-blue: #206ABE;    --scope-blue-on: #FFFFFF;
+  --scope-indigo: #5D5DB8;  --scope-indigo-on: #FFFFFF;
+
+  --sidebar: oklch(0.975 0.0045 95);
+  --sidebar-foreground: oklch(0.329 0.0107 95);
+  --sidebar-primary: oklch(0.329 0.0107 95);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.958 0.0055 95);
+  --sidebar-accent-foreground: oklch(0.329 0.0107 95);
+  --sidebar-border: oklch(0.912 0.0075 95);
+  --sidebar-ring: oklch(0.78 0.008 95);
+}
+
+/* shadcn's `--accent` is a SURFACE (a hover/menu highlight); Zenboard's `--accent`
+   is the person's chosen hue, pinned inline by the appearance switcher. One name,
+   two meanings — so shadcn's surface is `--accent-surface` here. */
+
+html[data-theme='dark'] {
+  /* ── SURFACES (dark) ──────────────────────────────────────────────────────
+     desk 0.180 → canvas 0.213 → card 0.244 → band 0.289 → popover 0.321
+     Each step at least Notion's own page→card step (0.030), so the layers read
+     by value; dark also separates with EDGES (the 9% panel edge, bridge), which
+     is what Linear does. The popover is the MOST raised surface. Same 95° axis
+     as light — a chroma-zero grey under a warm accent reads as dirty, not neutral. */
+  --background: oklch(0.213 0.0045 95);               /* #1A1917 */
+  --desk: oklch(0.18 0.004 95);                       /* #121210 */
+  --card: oklch(0.244 0.0048 95);                     /* #21201E */
+  --popover: oklch(0.321 0.0052 95);                  /* #343330 */
+  /* Dark's band IS its recessed rung, already above the card. */
+  --band: var(--muted);
+  --secondary: oklch(0.289 0.005 95);                 /* #2C2B28 */
+  --muted: oklch(0.289 0.005 95);                     /* #2C2B28 */
+  --accent-surface: oklch(0.321 0.0052 95);           /* #343330 */
+
+  /* ── INK (dark) ─────────────────────────────────────────────────────────── */
+  --foreground: oklch(0.9 0.006 95);                  /* #DFDEDA */
+  --card-foreground: oklch(0.9 0.006 95);
+  --popover-foreground: oklch(0.9 0.006 95);
+  --secondary-foreground: oklch(0.9 0.006 95);
+  --accent-surface-foreground: oklch(0.9 0.006 95);
+  --muted-foreground: oklch(0.708 0.0056 95);         /* #A2A19D = the tertiary level */
+  --primary: oklch(0.9 0.006 95);
+  --primary-foreground: oklch(0.213 0.0045 95);
+  --primary-solid: oklch(0.9 0.006 95);
+  --primary-solid-foreground: oklch(0.213 0.0045 95);
+  /* Dark's washes are made of its own ink (which is already on the axis). */
+  --tint: var(--foreground);
+  --tint-line: var(--foreground);
+
+  /* ── EDGES (dark) ───────────────────────────────────────────────────────── */
+  --border: oklch(0.36 0.0055 95);                    /* #3E3D3A — above the popover */
+  --border-control: #81807C;                          /* oklch(0.6 0.006 95) — 3.20:1 on the popover, dark's hardest ground */
+  --input: var(--border-control);
+  --ring: oklch(0.47 0.005 95);
+  --edge-image: oklch(1 0 0 / 0.1);
+
+  /* 4.5:1 on a pressed row inside the popover, dark's hardest ground. */
+  --destructive: oklch(0.785 0.11 25);                /* #F0958D */
+
+  /* Lifted until each clears 4.2:1 on the popover; every dark fill is light, so
+     the glyph on it is near-black. */
+  --scope-plum: #CB7CBB;    --scope-plum-on: #171614;
+  --scope-sage: #8FA476;    --scope-sage-on: #171614;
+  --scope-amber: #C98D50;   --scope-amber-on: #171614;
+  --scope-blue: #629EE9;    --scope-blue-on: #171614;
+  --scope-indigo: #8D92E4;  --scope-indigo-on: #171614;
+
+  --sidebar: oklch(0.244 0.0048 95);
+  --sidebar-foreground: oklch(0.9 0.006 95);
+  --sidebar-primary: oklch(0.9 0.006 95);
+  --sidebar-primary-foreground: oklch(0.213 0.0045 95);
+  --sidebar-accent: oklch(0.321 0.0052 95);
+  --sidebar-accent-foreground: oklch(0.9 0.006 95);
+  --sidebar-border: oklch(0.36 0.0055 95);
+  --sidebar-ring: oklch(0.47 0.005 95);
+}
+
+/* Expose them to Tailwind, so `bg-background` / `text-muted-foreground` /
+   `border-border` / `ring-ring` are real utilities. */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent-surface: var(--accent-surface);
+  --color-accent-surface-foreground: var(--accent-surface-foreground);
+  --color-destructive: var(--destructive);
+  /* Load-bearing: the base rule in globals.css gives every registry component
+     its border colour from this; without it `border-border` is a dead class. */
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}

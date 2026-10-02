@@ -55,7 +55,7 @@ describe('eventsToIcs — timed events', () => {
   it('writes UTC DTSTART/DTEND and a stamped UID', () => {
     const L = lines(ics([timed]));
     expect(L).toContain('BEGIN:VEVENT');
-    expect(L).toContain('UID:e1@zenboard.app');
+    expect(L).toContain('UID:e1@zenboard.life');
     expect(L).toContain('DTSTAMP:20260724T090000Z');
     expect(L).toContain('DTSTART:20260724T110000Z');
     expect(L).toContain('DTEND:20260724T130000Z');
@@ -91,8 +91,8 @@ describe('eventsToIcs — edges', () => {
     const out = ics([timed, allday, { ...timed, id: 'e9', starts_at: '' }]);
     const L = lines(out);
     expect(L.filter((l) => l === 'BEGIN:VEVENT')).toHaveLength(2);
-    expect(L).toContain('UID:e1@zenboard.app');
-    expect(L).toContain('UID:e2@zenboard.app');
-    expect(L).not.toContain('UID:e9@zenboard.app');
+    expect(L).toContain('UID:e1@zenboard.life');
+    expect(L).toContain('UID:e2@zenboard.life');
+    expect(L).not.toContain('UID:e9@zenboard.life');
   });
 });

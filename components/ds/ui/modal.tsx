@@ -5,6 +5,7 @@ import { cn } from "@/lib/cn";
 import { Button } from "./button";
 import { IconButton } from "./icon-button";
 import { TextInput } from "./input";
+import { useChanged } from "@/lib/use-changed";
 
 // design-system.md §4.36 — a decision or focused task that must not be
 // interrupted. Focus goes to the first input, never the × and never the
@@ -57,7 +58,7 @@ export function Modal({ open, onOpenChange, size = "md", title, description, dir
     <>
       <RDlg.Root open={open} onOpenChange={onOpenChange}>
         <RDlg.Portal>
-          <RDlg.Overlay className="fixed inset-0 z-overlay bg-[var(--color-scrim)] backdrop-blur-[2px] data-[state=open]:animate-[fadein_var(--duration-base)_var(--ease-out-quiet)]" />
+          <RDlg.Overlay className="fixed inset-0 z-overlay bg-[var(--color-scrim)] backdrop-blur-[2px] zb-enter data-[state=open]:animate-fadein data-[state=closed]:animate-fadeout" />
           <RDlg.Content
             onEscapeKeyDown={guard}
             onPointerDownOutside={guard}
@@ -72,8 +73,8 @@ export function Modal({ open, onOpenChange, size = "md", title, description, dir
             }}
             className={cn(
               "fixed left-1/2 top-1/2 z-modal flex max-h-[calc(100vh-96px)] -translate-x-1/2 -translate-y-1/2 flex-col",
-              "rounded-xl border border-line bg-surface-raised shadow-lift-3",
-              "data-[state=open]:animate-rise data-[state=closed]:animate-exit",
+              "rounded-lg border border-line bg-surface-raised shadow-lift-3",
+              "zb-enter data-[state=open]:animate-rise data-[state=closed]:animate-exit",
               // Never wider than the viewport — the fixed SIZE widths (up to 720px)
               // otherwise overflow small screens off both edges.
               "max-w-[calc(100vw-2rem)]",
@@ -99,7 +100,7 @@ export function Modal({ open, onOpenChange, size = "md", title, description, dir
               {children}
             </div>
             {footer && (
-              <footer className="flex flex-col-reverse gap-2 rounded-b-xl border-t border-line-soft bg-paper-2 px-5 py-4 sm:flex-row sm:justify-end">
+              <footer className="flex flex-col-reverse gap-2 rounded-b-lg border-t border-line-soft bg-paper-2 px-5 py-4 sm:flex-row sm:justify-end">
                 {footer}
               </footer>
             )}
@@ -142,15 +143,13 @@ export interface ConfirmModalProps {
 
 export function ConfirmModal({ open, onOpenChange, tone = "danger", title, body, actionLabel, onConfirm, confirmText }: ConfirmModalProps) {
   const [typed, setTyped] = React.useState("");
-  React.useEffect(() => {
-    if (!open) setTyped("");
-  }, [open]);
+  if (useChanged(open) && !open) setTyped("");
   const blocked = confirmText !== undefined && typed !== confirmText;
 
   return (
     <RDlg.Root open={open} onOpenChange={onOpenChange}>
       <RDlg.Portal>
-        <RDlg.Overlay className="fixed inset-0 z-overlay bg-[var(--color-scrim)] backdrop-blur-[2px] data-[state=open]:animate-[fadein_var(--duration-base)_var(--ease-out-quiet)]" />
+        <RDlg.Overlay className="fixed inset-0 z-overlay bg-[var(--color-scrim)] backdrop-blur-[2px] zb-enter data-[state=open]:animate-fadein data-[state=closed]:animate-fadeout" />
         <RDlg.Content
           onOpenAutoFocus={(e) => {
             // Never auto-focus the destructive button (§4.36).
@@ -159,8 +158,8 @@ export function ConfirmModal({ open, onOpenChange, tone = "danger", title, body,
           }}
           className={cn(
             "fixed left-1/2 top-1/2 z-modal w-[400px] -translate-x-1/2 -translate-y-1/2 outline-none",
-            "rounded-xl border border-line bg-surface-raised p-5 shadow-lift-3",
-            "data-[state=open]:animate-rise data-[state=closed]:animate-exit",
+            "rounded-lg border border-line bg-surface-raised p-5 shadow-lift-3",
+            "zb-enter data-[state=open]:animate-rise data-[state=closed]:animate-exit",
           )}
           tabIndex={-1}
         >

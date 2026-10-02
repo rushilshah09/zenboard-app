@@ -3,24 +3,20 @@
 import { createClient } from '@/lib/supabase/server';
 import { activeSpaceId } from '@/lib/active-space';
 import { PROJECT_TEMPLATES, buildTemplatePlan } from '@/lib/project-templates';
+import { requireSession } from '@/lib/auth';
 
-async function requireUser() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-  return { supabase, user };
-}
 async function spaceId(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
   return activeSpaceId(supabase, userId);
 }
 
-const COLORS = ['#9A1B6F', '#7B8B5F', '#C88A3B', '#2B5CB0', '#5C4FB8'];
+// Was a second, identical copy of the five hexes. One home now.
+import { DEFAULT_SCOPE_COLOR } from '@/lib/entity-color';
 
 export async function addProject(input: { name: string; color?: string; clientId?: string | null }): Promise<{ error: string } | { id: string }> {
-  const { supabase, user } = await requireUser();
+  const { supabase, user } = await requireSession();
   const sid = await spaceId(supabase, user.id);
   const { data, error } = await supabase.from('projects')
-    .insert({ user_id: user.id, space_id: sid, name: input.name.trim(), color: input.color ?? COLORS[0], client_id: input.clientId ?? null, status: 'active' })
+    .insert({ user_id: user.id, space_id: sid, name: input.name.trim(), color: input.color ?? DEFAULT_SCOPE_COLOR, client_id: input.clientId ?? null, status: 'active' })
     .select('id').single();
   if (error || !data) return { error: error?.message ?? 'Could not add project.' };
   return { id: data.id };
@@ -37,13 +33,13 @@ export async function createProjectFromTemplate(input: {
   if (!tpl) return { error: 'Unknown template.' };
   const name = input.name.trim();
   if (!name) return { error: 'Project name is required.' };
-  const { supabase, user } = await requireUser();
+  const { supabase, user } = await requireSession();
   const sid = await spaceId(supabase, user.id);
   const plan = buildTemplatePlan(tpl);
 
   // 1) The project.
   const proj = await supabase.from('projects').insert({
-    user_id: user.id, space_id: sid, name, color: input.color ?? COLORS[0], client_id: input.clientId ?? null, status: 'active',
+    user_id: user.id, space_id: sid, name, color: input.color ?? DEFAULT_SCOPE_COLOR, client_id: input.clientId ?? null, status: 'active',
     ...(input.deadline ? { deadline: input.deadline, deadline_label: input.deadlineLabel?.trim() || null } : {}),
   }).select('id').single();
   if (proj.error || !proj.data) return { error: proj.error?.message ?? 'Could not create project.' };
@@ -75,7 +71,7 @@ export async function createProjectFromTemplate(input: {
 }
 
 export async function setProjectClient(projectId: string, clientId: string | null): Promise<{ error: string } | { ok: true }> {
-  const { supabase } = await requireUser();
+  const { supabase } = await requireSession();
   const { error } = await supabase.from('projects').update({ client_id: clientId }).eq('id', projectId);
   return error ? { error: error.message } : { ok: true };
 }
@@ -85,12 +81,16 @@ export async function setProjectClient(projectId: string, clientId: string | nul
 // migration 0003 — only sent when the columns exist (UI-gated).
 export async function updateProject(
   id: string,
-  patch: { name?: string; color?: string; status?: string; deadline?: string | null; deadline_label?: string | null },
+  patch: { name?: string; color?: string; icon?: string | null; status?: string; deadline?: string | null; deadline_label?: string | null },
 ): Promise<{ error: string } | { ok: true }> {
-  const { supabase } = await requireUser();
-  const clean: { name?: string; color?: string; status?: string; deadline?: string | null; deadline_label?: string | null } = {};
+  const { supabase } = await requireSession();
+  const clean: { name?: string; color?: string; icon?: string | null; status?: string; deadline?: string | null; deadline_label?: string | null } = {};
   if (patch.name != null) clean.name = patch.name.trim();
   if (patch.color != null) clean.color = patch.color;
+  // `undefined` means "not being changed"; `null` means "remove the icon".
+  // The distinction matters here because clearing is a real action the
+  // picker offers, and `!= null` would silently swallow it.
+  if (patch.icon !== undefined) clean.icon = patch.icon;
   if (patch.status != null) clean.status = patch.status;
   if (patch.deadline !== undefined) clean.deadline = patch.deadline || null;
   if (patch.deadline_label !== undefined) clean.deadline_label = patch.deadline_label?.trim() || null;
@@ -102,12 +102,15 @@ export async function updateProject(
 // Append a project-level activity entry (manual note or status change).
 // Requires migration 0003 (project_activity). UI only calls this when the
 // table exists; a missing-table error is returned, not thrown.
+// `type` widened to carry `client_update` (S2, lib/updates.ts): an update
+// addressed to the client is the same row with a different kind, so the ONE
+// composer that has always written this table can now write either.
 export async function logProjectActivity(
   projectId: string,
   body: string,
-  type: 'note' | 'status_change' = 'note',
+  type: 'note' | 'status_change' | 'client_update' = 'note',
 ): Promise<{ error: string } | { id: string; created_at: string }> {
-  const { supabase, user } = await requireUser();
+  const { supabase, user } = await requireSession();
   const { data, error } = await supabase.from('project_activity')
     .insert({ project_id: projectId, user_id: user.id, type, body: body.trim() })
     .select('id, created_at').single();
@@ -116,7 +119,7 @@ export async function logProjectActivity(
 }
 
 export async function addProjectTask(projectId: string, title: string, sectionId?: string | null): Promise<{ error: string } | { id: string }> {
-  const { supabase, user } = await requireUser();
+  const { supabase, user } = await requireSession();
   const { data: proj } = await supabase.from('projects').select('space_id').eq('id', projectId).maybeSingle();
   if (!proj) return { error: 'Project not found.' };
   const { data, error } = await supabase.from('tasks')

@@ -2,20 +2,26 @@
   "name": "zenboard-web",
   "version": "0.1.0",
   "private": true,
+  "sideEffects": [
+    "*.css"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "check": "tsc --noEmit && vitest run",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
-    "cf-typegen": "wrangler types"
+    "deploy": "npm run check && opennextjs-cloudflare build && opennextjs-cloudflare deploy --keep-vars",
+    "cf-typegen": "wrangler types",
+    "deploy:dry": "opennextjs-cloudflare build && npx wrangler deploy --dry-run",
+    "ship": "node scripts/ship.mjs",
+    "ship:dry": "node scripts/ship.mjs --dry"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.129.0",
     "@dnd-kit/core": "^6.3.1",
-    "@dnd-kit/modifiers": "^9.0.0",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@floating-ui/dom": "^1.8.0",
@@ -35,9 +41,6 @@
     "@radix-ui/react-tooltip": "^1.2.12",
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.108.2",
-    "@tabler/icons-react": "^3.44.0",
-    "@tanstack/react-query": "^5.101.0",
-    "@tanstack/react-table": "^8.21.3",
     "@tiptap/core": "^3.28.0",
     "@tiptap/extension-code-block-lowlight": "^3.28.0",
     "@tiptap/extension-list": "^3.28.0",
@@ -56,12 +59,11 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "cn": "^0.2.6",
     "date-fns": "^4.4.0",
     "fuse.js": "^7.5.0",
-    "jotai": "^2.20.2",
     "lodash.throttle": "^4.1.1",
     "lowlight": "^3.3.0",
-    "lucide-react": "^1.25.0",
     "motion": "^12.42.2",
     "next": "16.2.9",
     "prosemirror-commands": "^1.7.1",
@@ -73,12 +75,10 @@
     "radix-ui": "^1.6.2",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "react-hook-form": "^7.79.0",
     "tailwind-merge": "^3.6.0",
     "tippy.js": "^6.3.7",
     "tunnel-rat": "^0.1.2",
-    "zod": "^4.4.3",
-    "zustand": "^5.0.14"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@opennextjs/cloudflare": "^1.19.11",

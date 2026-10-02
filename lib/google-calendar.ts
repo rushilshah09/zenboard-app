@@ -15,7 +15,7 @@ export const GCAL_SCOPES = 'https://www.googleapis.com/auth/calendar email';
 const PAST_DAYS = 1;
 const AHEAD_DAYS = 60;
 
-type GEvent = {
+export type GEvent = {
   id?: string;
   status?: string;
   summary?: string;
@@ -23,10 +23,46 @@ type GEvent = {
   end?: { date?: string; dateTime?: string };
 };
 
-type EventRow = {
+export type EventRow = {
   user_id: string; space_id: string | null; title: string;
   starts_at: string; ends_at: string | null; all_day: boolean; source: string; external_id: string | null;
 };
+
+/**
+ * Google's events → Zenboard rows. PURE, and separated from the fetch so the
+ * mapping can be argued with in a test rather than only through a live account —
+ * which matters here more than usual, because the live half needs someone's real
+ * Google consent and cannot be exercised from a test at all.
+ *
+ * TWO SHAPES, and Google distinguishes them by WHICH FIELD IS PRESENT rather
+ * than by a flag: a timed event carries `dateTime`, an all-day event carries
+ * `date`. Everything below follows from that.
+ */
+export function mapGoogleEvents(items: GEvent[], userId: string, spaceId: string | null): EventRow[] {
+  return items
+    .filter((e) => e.status !== 'cancelled' && (e.start?.dateTime || e.start?.date))
+    .map((e) => {
+      const allDay = !!e.start?.date && !e.start?.dateTime;
+      const startsAt = e.start?.dateTime ?? new Date(`${e.start!.date}T00:00:00Z`).toISOString();
+      // An all-day event kept NO end at all, so a three-day conference arrived
+      // as a single day and left the feed claiming the wrong thing. Google's
+      // `end.date` is EXCLUSIVE, which is also what ICS DTEND means and what
+      // lib/ics.ts already assumed — so it carries across unchanged.
+      const endsAt = allDay
+        ? (e.end?.date ? new Date(`${e.end.date}T00:00:00Z`).toISOString() : null)
+        : (e.end?.dateTime ?? null);
+      return {
+        user_id: userId,
+        space_id: spaceId,
+        title: (e.summary?.trim() || '(no title)').slice(0, 500),
+        starts_at: startsAt,
+        ends_at: endsAt,
+        all_day: allDay,
+        source: 'google',
+        external_id: e.id ?? null,
+      };
+    });
+}
 
 // Fetch + map the primary calendar's events in the window. Recurring events are
 // expanded into instances (singleEvents=true), so a weekly meeting shows on each day.
@@ -41,28 +77,11 @@ async function fetchPrimaryEvents(
     `&timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`;
 
   const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-  if (res.status === 401 || res.status === 403) return { ok: false, error: 'Google access expired — reconnect to sync.' };
+  if (res.status === 401 || res.status === 403) return { ok: false, error: 'Google access expired. Reconnect to sync.' };
   if (!res.ok) return { ok: false, error: 'Could not reach Google Calendar. Try again.' };
 
   const json = (await res.json()) as { items?: GEvent[] };
-  const rows: EventRow[] = (json.items ?? [])
-    .filter((e) => e.status !== 'cancelled' && (e.start?.dateTime || e.start?.date))
-    .map((e) => {
-      const allDay = !!e.start?.date && !e.start?.dateTime;
-      const startsAt = e.start?.dateTime ?? new Date(`${e.start!.date}T00:00:00Z`).toISOString();
-      const endsAt = !allDay && e.end?.dateTime ? e.end.dateTime : null;
-      return {
-        user_id: userId,
-        space_id: spaceId,
-        title: (e.summary?.trim() || '(no title)').slice(0, 500),
-        starts_at: startsAt,
-        ends_at: endsAt,
-        all_day: allDay,
-        source: 'google',
-        external_id: e.id ?? null,
-      };
-    });
-  return { ok: true, rows };
+  return { ok: true, rows: mapGoogleEvents(json.items ?? [], userId, spaceId) };
 }
 
 // Replace the user's google events with a fresh window and record sync metadata
@@ -143,7 +162,20 @@ export async function getValidAccessToken(
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ client_id: clientId, client_secret: clientSecret, refresh_token: conn.refresh_token, grant_type: 'refresh_token' }),
   });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    // A DEAD GRANT IS NOT A FAILED REQUEST. Google answers `invalid_grant` when
+    // the refresh token has been revoked, expired (apps still in "Testing"
+    // publishing status get seven days), or the account password changed —
+    // none of which any amount of retrying fixes. Left alone, the connection row
+    // survives forever: every sync spends a round trip to be told the same
+    // thing, the app keeps offering a Sync button that cannot work, and the user
+    // is never told the one thing they need to know, which is to reconnect.
+    //
+    // A transient failure is the opposite and must NOT clear anything, or a
+    // flaky minute would silently sign someone out of their calendar.
+    if (await isRevoked(res)) await forgetConnection(service, userId);
+    return null;
+  }
   const j = (await res.json()) as { access_token?: string; expires_in?: number };
   if (!j.access_token) return null;
   await service.from('calendar_connections').update({
@@ -154,19 +186,63 @@ export async function getValidAccessToken(
   return { token: j.access_token, calendarId };
 }
 
+/**
+ * Is this refresh failure permanent?
+ *
+ * Pure enough to test: the decision is entirely "what did Google say", and
+ * getting it wrong in either direction is costly — treating a transient blip as
+ * fatal disconnects someone who was fine, and treating a revocation as
+ * transient leaves a connection that can never work.
+ */
+export function isFatalGrantStatus(status: number, body: string): boolean {
+  if (status >= 500) return false;              // Google having a bad minute
+  if (status === 429) return false;             // rate limited, come back later
+  if (status !== 400 && status !== 401) return false;
+  return /invalid_grant|invalid_client|unauthorized_client/.test(body);
+}
+
+async function isRevoked(res: Response): Promise<boolean> {
+  let body = '';
+  try { body = await res.text(); } catch { /* unreadable body → treat as transient */ }
+  return isFatalGrantStatus(res.status, body);
+}
+
+/**
+ * Forget a connection whose grant is gone, so the app's state matches Google's.
+ * Clearing `gcal_connected` is what puts the UI back to offering "Connect"
+ * instead of a Sync that silently does nothing.
+ */
+async function forgetConnection(service: SB, userId: string): Promise<void> {
+  try {
+    await service.from('calendar_connections').delete().eq('user_id', userId).eq('provider', 'google');
+    const { data: prof } = await service.from('profiles').select('preferences').eq('id', userId).maybeSingle();
+    const prefs = { ...((prof?.preferences as Record<string, unknown>) ?? {}) };
+    delete prefs.gcal_connected;
+    delete prefs.gcal_last_synced;
+    delete prefs.gcal_event_count;
+    await service.from('profiles').update({ preferences: prefs }).eq('id', userId);
+  } catch { /* best-effort: never let cleanup break the caller */ }
+}
+
 export async function hasConnection(service: SB, userId: string): Promise<boolean> {
   const { data } = await service.from('calendar_connections').select('id').eq('user_id', userId).eq('provider', 'google').maybeSingle();
   return !!data;
 }
 
 // ── Write-back (Zenboard → Google) ─────────────────────────────────────────────
-type EvtInput = { title: string; startsAt: string; endsAt: string | null; allDay: boolean };
+export type EvtInput = { title: string; startsAt: string; endsAt: string | null; allDay: boolean };
 
-function gBody(ev: EvtInput) {
+export function gBody(ev: EvtInput) {
   if (ev.allDay) {
     const day = ev.startsAt.slice(0, 10);
-    const next = new Date(new Date(`${day}T00:00:00Z`).getTime() + 86400000).toISOString().slice(0, 10);
-    return { summary: ev.title, start: { date: day }, end: { date: next } };
+    const nextDay = (iso: string) => new Date(new Date(`${iso.slice(0, 10)}T00:00:00Z`).getTime() + 86400000).toISOString().slice(0, 10);
+    // Honour a real end. This used to hard-code one day, so pushing a multi-day
+    // event to Google silently shortened it — the same collapse the read path
+    // had, which is why the round trip looked consistent while both were wrong.
+    // `end.date` is exclusive at both ends of the wire, so it passes straight
+    // through; the guard is only for a stored end that is missing or backwards.
+    const end = ev.endsAt && ev.endsAt.slice(0, 10) > day ? ev.endsAt.slice(0, 10) : nextDay(day);
+    return { summary: ev.title, start: { date: day }, end: { date: end } };
   }
   const end = ev.endsAt || new Date(new Date(ev.startsAt).getTime() + 3600000).toISOString();
   return { summary: ev.title, start: { dateTime: ev.startsAt }, end: { dateTime: end } };

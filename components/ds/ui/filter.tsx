@@ -2,7 +2,9 @@ import * as React from "react";
 import * as RP from "@radix-ui/react-popover";
 import { ListFilter, Search, X } from "@/lib/icons";
 import { cn } from "@/lib/cn";
+import { OVERLAY_CLASS } from "./menu";
 import { Button } from "./button";
+import { useChanged } from "@/lib/use-changed";
 
 // design-system.md §4.26 — the bar above every list. Chips ARE the state; each
 // segment is editable in place. "+ Filter" is a 3-step wizard in ONE popover
@@ -43,13 +45,13 @@ function WizardList({
 }) {
   return (
     <div className="flex w-56 flex-col p-1">
-      <span className="px-2 py-1 text-overline uppercase text-ink-500">{title}</span>
+      <span className="px-2 py-1 text-overline text-ink-500">{title}</span>
       {items.map((i) => (
         <button
           key={i.value}
           type="button"
           onClick={() => onPick(i.value)}
-          className="focus-ring flex h-8 items-center rounded-sm px-2 text-start text-ui text-ink-800 hover:bg-paper-3 hover:text-ink-900"
+          className="focus-ring flex h-8 items-center rounded-sm px-2 text-start text-ui text-ink-800 hover:bg-surface-hover hover:text-ink-900"
         >
           {i.label}
         </button>
@@ -79,9 +81,7 @@ function FilterWizard({
   children: React.ReactNode;
 }) {
   const [draft, setDraft] = React.useState<Partial<ActiveFilter>>(initial ?? {});
-  React.useEffect(() => {
-    if (open) setDraft(initial ?? {});
-  }, [open, initial]);
+  if (useChanged(open) && open) setDraft(initial ?? {});
 
   const step = draft.property === undefined ? 0 : draft.operator === undefined ? 1 : 2;
   const prop = properties.find((p) => p.id === draft.property);
@@ -94,8 +94,9 @@ function FilterWizard({
           align="start"
           sideOffset={4}
           className={cn(
-            "z-dropdown overflow-hidden rounded-md border border-line bg-paper shadow-lift-2",
-            "data-[state=open]:animate-emerge data-[state=closed]:animate-exit origin-top-left",
+            "z-dropdown overflow-hidden",
+            OVERLAY_CLASS,
+            "zb-enter data-[state=open]:animate-emerge data-[state=closed]:animate-exit origin-(--radix-popover-content-transform-origin)",
           )}
         >
           <div
@@ -164,7 +165,7 @@ export function FilterBar({ properties, filters, onFiltersChange, search, onSear
     <div className={cn("flex flex-wrap items-center gap-2", className)}>
       {/* Search */}
       <div className="relative">
-        <Search className="pointer-events-none absolute inset-y-0 start-2.5 my-auto size-3.5 text-ink-400" aria-hidden />
+        <Search className="pointer-events-none absolute inset-y-0 start-2.5 my-auto size-3.5 text-ink-500" aria-hidden />
         <input
           type="search"
           value={search}
@@ -173,8 +174,9 @@ export function FilterBar({ properties, filters, onFiltersChange, search, onSear
           aria-label="Search"
           className={cn(
             "h-7 w-44 rounded-sm border border-transparent bg-paper-3 ps-8 pe-2 text-ui text-ink-900",
-            "placeholder:text-ink-500 transition-colors duration-instant hover:bg-paper-4",
-            "focus:border-berry-500 focus:bg-paper focus:outline-none focus:ring-2 focus:ring-berry-alpha-20",
+            "placeholder:text-ink-500 transition-colors duration-instant hover:wash-over",
+            // One focus recipe app-wide; the berry ring compiled to nothing (see input.tsx).
+            "focus-ring",
           )}
         />
       </div>

@@ -16,5 +16,7 @@ export default async function OnboardingPage() {
   if (profile?.onboarding_complete) redirect('/today');
 
   const suggestedName = profile?.full_name?.trim() || user.email?.split('@')[0] || '';
-  return <OnboardingFlow email={user.email ?? ''} suggestedName={suggestedName} />;
+  // The hour comes from here so the preview's greeting is the same on the server and in the
+  // browser (today-view.tsx does the same for Home's).
+  return <OnboardingFlow email={user.email ?? ''} suggestedName={suggestedName} nowHour={new Date().getHours()} />;
 }

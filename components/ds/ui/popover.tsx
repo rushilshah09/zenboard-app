@@ -1,6 +1,7 @@
 import * as React from "react";
 import * as RP from "@radix-ui/react-popover";
 import { cn } from "@/lib/cn";
+import { OVERLAY_CLASS } from "./menu";
 
 // design-system.md §4.35 — small, NON-modal, interactive panel anchored to a
 // trigger. The page behind stays live. Emerge from the anchor; auto-flip/shift
@@ -29,13 +30,13 @@ export const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentPro
         sideOffset={sideOffset}
         collisionPadding={collisionPadding}
         className={cn(
-          // Canonical overlay chrome — matches MenuPanel/DropdownMenu (surface-raised
-          // lifted gray, rounded-lg, line-strong). Content popovers keep p-3; list
-          // popovers pass flush for p-0.
-          "z-dropdown min-w-[200px] max-w-[360px] rounded-lg border border-line-strong bg-surface-raised shadow-lift-2",
+          // The one overlay chrome (OVERLAY_CLASS, menu.tsx) — a popover and a menu
+          // are siblings. Content popovers keep p-3; list popovers pass flush for p-0.
+          "z-dropdown min-w-[200px] max-w-[360px]",
+          OVERLAY_CLASS,
           flush ? "p-0" : "p-3",
-          "data-[state=open]:animate-emerge data-[state=closed]:animate-exit",
-          "data-[side=bottom]:origin-top data-[side=top]:origin-bottom data-[side=left]:origin-right data-[side=right]:origin-left",
+          "zb-enter data-[state=open]:animate-emerge data-[state=closed]:animate-exit",
+          "origin-(--radix-popover-content-transform-origin)",
           className,
         )}
         {...props}

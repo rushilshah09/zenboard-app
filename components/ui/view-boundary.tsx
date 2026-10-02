@@ -2,7 +2,7 @@
 // Crash containment (PRD §9/§14): a view error degrades to a calm message +
 // retry, never a blank page. Wrap each major view in <ViewBoundary>.
 import { Component, type ReactNode } from 'react';
-import { ErrorState } from './states';
+import { ErrorState } from '@/components/ds/ui';
 
 export class ViewBoundary extends Component<
   { children: ReactNode; label?: string },
@@ -24,7 +24,7 @@ export class ViewBoundary extends Component<
       return (
         <ErrorState
           title="This view hit a snag"
-          hint={this.props.label ? `${this.props.label} couldn’t render.` : undefined}
+          description={this.props.label ? `${this.props.label} couldn’t render.` : undefined}
           onRetry={() => this.setState({ error: null })}
         />
       );

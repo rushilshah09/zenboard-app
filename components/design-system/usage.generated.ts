@@ -84,8 +84,7 @@ export const DS_USAGE: Record<string, string[]> = {
     "components/documents/rich-text.tsx",
     "components/focus/focus-view.tsx",
     "components/horizon/horizon-view.tsx",
-    "components/inbox/inbox-view.tsx",
-    "components/inbox/triage.tsx",
+        "components/tasks/triage.tsx",
     "components/money/invoice-detail.tsx",
     "components/money/money-view.tsx",
     "components/onboarding/onboarding-flow.tsx",
@@ -120,7 +119,6 @@ export const DS_USAGE: Record<string, string[]> = {
     "components/ui/popover.tsx",
     "components/ui/primitives.tsx",
     "components/ui/select.tsx",
-    "components/ui/states.tsx",
     "components/ui/upload-zone.tsx",
     "components/ui/zen.tsx",
     "components/week/week-view.tsx"

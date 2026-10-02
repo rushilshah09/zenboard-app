@@ -1,10 +1,14 @@
 import * as React from "react";
+import { useFocusReturn } from '@/lib/use-focus-return';
 import * as RP from "@radix-ui/react-popover";
 import { Check, ChevronDown, Plus } from "@/lib/icons";
 import { cn } from "@/lib/cn";
+import { Skeleton } from "./skeleton";
+import { OVERLAY_CLASS } from "./menu";
 import { useFieldProps } from "./field";
 import { Tag } from "./tag";
 import type { LabelColor } from "@/lib/labelColor";
+import { useChanged } from "@/lib/use-changed";
 
 // design-system.md §4.15 — Select + search; the workhorse for assignees,
 // projects, clients, tags. The trigger IS the input; the list opens on focus.
@@ -77,6 +81,7 @@ export function Combobox(props: ComboboxProps | MultiComboboxProps) {
   const { options, placeholder = "Search…", onCreate, loading, disabled, className } = props;
   const fieldProps = useFieldProps({ id: props.id });
   const [open, setOpen] = React.useState(false);
+  useFocusReturn(open);
   const [query, setQuery] = React.useState("");
   const [active, setActive] = React.useState(0);
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -104,7 +109,11 @@ export function Combobox(props: ComboboxProps | MultiComboboxProps) {
     return () => clearTimeout(t);
   }, [results.length, open]);
 
-  React.useEffect(() => setActive(0), [query, open]);
+  // Both hooks run before the branch: `useChanged(a) || useChanged(b)` would
+  // short-circuit and skip a hook call, which breaks the rules of hooks.
+  const queryChanged = useChanged(query);
+  const openChanged = useChanged(open);
+  if (queryChanged || openChanged) setActive(0);
 
   const commit = (opt: ComboOption) => {
     if (props.multiple) {
@@ -154,9 +163,11 @@ export function Combobox(props: ComboboxProps | MultiComboboxProps) {
       <RP.Anchor asChild>
         <div
           className={cn(
-            "flex min-h-8 w-full cursor-text flex-wrap items-center gap-1 rounded-sm border bg-paper px-1.5 py-1",
-            "border-line-strong transition-colors duration-instant hover:border-ink-300",
-            "focus-within:border-berry-500 focus-within:ring-2 focus-within:ring-berry-alpha-20",
+            "flex min-h-8 w-full cursor-text flex-wrap items-center gap-1 rounded-sm border px-1.5 py-1",
+            // Same field rule as TextInput / Select / Textarea.
+            "border-transparent bg-surface-fill transition-colors duration-instant hover:wash-over focus-within:bg-transparent focus-within:border-[var(--accent)]",
+            // One focus recipe app-wide; the berry ring compiled to nothing (see input.tsx).
+            "focus-within:shadow-[0_0_0_2px_var(--color-surface-panel),0_0_0_4px_var(--color-border-focus)]",
             props.multiple && "max-h-24 overflow-y-auto",
             disabled && "pointer-events-none border-transparent bg-surface-disabled",
             className,
@@ -199,7 +210,7 @@ export function Combobox(props: ComboboxProps | MultiComboboxProps) {
             )}
           />
           <ChevronDown
-            className={cn("me-1 size-3.5 shrink-0 text-ink-500 transition-transform duration-fast", open && "rotate-180")}
+            className={cn("me-1 size-3.5 shrink-0 text-ink-500 transition-transform duration-fast ease-standard", open && "rotate-180")}
             aria-hidden
           />
         </div>
@@ -220,14 +231,15 @@ export function Combobox(props: ComboboxProps | MultiComboboxProps) {
             role="listbox"
             aria-multiselectable={props.multiple || undefined}
             className={cn(
-              "z-dropdown max-h-80 w-[var(--radix-popover-trigger-width,16rem)] min-w-56 overflow-y-auto rounded-md border border-line bg-paper p-1 shadow-lift-2",
-              "data-[state=open]:animate-emerge data-[state=closed]:animate-exit origin-top",
+              "z-dropdown max-h-80 w-[var(--radix-popover-trigger-width,16rem)] min-w-56 overflow-y-auto p-1",
+              OVERLAY_CLASS,
+              "zb-enter data-[state=open]:animate-emerge data-[state=closed]:animate-exit origin-(--radix-popover-content-transform-origin)",
             )}
           >
             {loading ? (
               <div className="flex flex-col gap-1 p-1" aria-hidden>
                 {[0, 1, 2].map((i) => (
-                  <div key={i} className="h-7 animate-pulse rounded-sm bg-paper-5" />
+                  <Skeleton key={i} shape="block" className="h-7" />
                 ))}
               </div>
             ) : (
@@ -251,7 +263,7 @@ export function Combobox(props: ComboboxProps | MultiComboboxProps) {
                       onClick={() => !o.disabled && commit(o)}
                       className={cn(
                         "flex h-8 cursor-pointer items-center justify-between gap-2 rounded-sm px-2 text-ui text-ink-800",
-                        "data-[active]:bg-paper-3 data-[active]:text-ink-900",
+                        "data-[active]:bg-surface-hover data-[active]:text-ink-900",
                         isSel && "bg-berry-100 text-berry-700 data-[active]:bg-berry-100",
                         o.disabled && "pointer-events-none text-ink-300",
                       )}
@@ -272,7 +284,7 @@ export function Combobox(props: ComboboxProps | MultiComboboxProps) {
                     onMouseEnter={() => setActive(results.length)}
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={doCreate}
-                    className="flex h-8 cursor-pointer items-center gap-2 rounded-sm px-2 text-ui text-berry-600 data-[active]:bg-paper-3"
+                    className="flex h-8 cursor-pointer items-center gap-2 rounded-sm px-2 text-ui text-berry-600 data-[active]:bg-surface-hover"
                   >
                     <Plus className="size-3.5 shrink-0" aria-hidden />
                     Create “{query.trim()}”

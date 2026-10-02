@@ -7,7 +7,7 @@
 // Tokens only: scrim/z/ink-solid ladder utilities — no legacy Paper-OS vars.
 import { useEffect, useState } from 'react';
 import { X, Eye } from "@/components/ds/icons";
-import { Icon } from "@/components/ds/ui";
+import { Icon, FullScreenLayer } from "@/components/ds/ui";
 import { getPortalPreview } from '@/lib/actions/portal';
 import { PortalDocument } from '@/components/portal/portal-document';
 import type { PortalView } from '@/lib/portal';
@@ -24,18 +24,13 @@ export function PreviewOverlay({ projectId, onClose }: { projectId: string; onCl
     return () => { alive = false; };
   }, [projectId]);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
+  // Escape, the scrim, the z value, the dialog role, focus in and focus back are
+  // all the layer's now — this overlay only had two of those six.
   return (
-    <div onClick={onClose}
-      className="fixed inset-0 z-modal flex animate-ds-fadein flex-col items-center overflow-y-auto bg-[var(--color-scrim)] p-[clamp(12px,3vw,32px)] backdrop-blur-[2px]">
+    <FullScreenLayer label="Preview as client" onClose={onClose} surface="scrim" dismissOnBackdrop
+      className="flex flex-col items-center overflow-y-auto p-[clamp(12px,3vw,32px)]">
       {/* Previewing bar — the ink-solid fill with its onsolid ink/line steps */}
-      <div onClick={(e) => e.stopPropagation()}
-        className="flex w-full max-w-[1080px] shrink-0 items-center gap-2.5 rounded-t-lg bg-ink-900 px-4 py-2.5 text-onsolid">
+      <div className="flex w-full max-w-[1080px] shrink-0 items-center gap-2.5 rounded-t-lg bg-ink-900 px-4 py-2.5 text-onsolid">
         <Icon icon={Eye} size={16} />
         <span className="flex-1 text-ui font-medium">Previewing as client</span>
         <span className="text-caption">This is exactly what they see</span>
@@ -48,14 +43,14 @@ export function PreviewOverlay({ projectId, onClose }: { projectId: string; onCl
       {/* Framed portal — a windowed view of the live client dashboard. The
           shell owns its own background + padding, so the frame just clips it to
           the rounded bottom and caps the height to scroll internally. */}
-      <div onClick={(e) => e.stopPropagation()}
+      <div
         className="w-full max-w-[1080px] shrink-0 overflow-y-auto rounded-b-lg border border-t-0 border-line-soft"
         style={{ maxHeight: 'calc(100dvh - 96px)' }}>
         {state === 'loading' && <Center>Loading preview…</Center>}
         {state === 'error' && <Center>Couldn’t load the preview. Try again.</Center>}
         {state === 'ready' && view && <PortalDocument view={view} preview embedded />}
       </div>
-    </div>
+    </FullScreenLayer>
   );
 }
 

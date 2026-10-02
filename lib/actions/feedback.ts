@@ -3,22 +3,15 @@
 // item is customer signal made durable: captured, linked to the deals that want
 // it (revenue rollup), then shipped by promoting it to a task. RLS scopes all of
 // it to the user. See supabase/migrations/0016_feedback.sql.
-import { createClient } from '@/lib/supabase/server';
 import { activeSpaceId } from '@/lib/active-space';
+import { requireSession } from '@/lib/auth';
 
 type FeedbackStatus = 'open' | 'planned' | 'in_progress' | 'shipped' | 'declined';
-
-async function requireUser() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-  return { supabase, user };
-}
 
 export async function addFeedback(
   input: { title: string; body?: string; source?: string; dealIds?: string[]; clientId?: string; meetingId?: string },
 ): Promise<{ error: string } | { id: string; number: number }> {
-  const { supabase, user } = await requireUser();
+  const { supabase, user } = await requireSession();
   const sid = await activeSpaceId(supabase, user.id);
   // Per-user contiguous number (#34). Fine for a business-of-one; the worst a
   // race does is reuse a number, which is cosmetic.
@@ -40,20 +33,20 @@ export async function updateFeedback(
   id: string,
   patch: { status?: FeedbackStatus; title?: string; body?: string | null },
 ): Promise<{ error: string } | { ok: true }> {
-  const { supabase } = await requireUser();
+  const { supabase } = await requireSession();
   const { error } = await supabase.from('feedback').update(patch).eq('id', id);
   return error ? { error: error.message } : { ok: true };
 }
 
 export async function linkFeedbackDeal(feedbackId: string, leadId: string): Promise<{ error: string } | { ok: true }> {
-  const { supabase, user } = await requireUser();
+  const { supabase, user } = await requireSession();
   const { error } = await supabase.from('feedback_deals')
     .upsert({ feedback_id: feedbackId, lead_id: leadId, user_id: user.id }, { onConflict: 'feedback_id,lead_id' });
   return error ? { error: error.message } : { ok: true };
 }
 
 export async function unlinkFeedbackDeal(feedbackId: string, leadId: string): Promise<{ error: string } | { ok: true }> {
-  const { supabase } = await requireUser();
+  const { supabase } = await requireSession();
   const { error } = await supabase.from('feedback_deals').delete().eq('feedback_id', feedbackId).eq('lead_id', leadId);
   return error ? { error: error.message } : { ok: true };
 }
@@ -61,7 +54,7 @@ export async function unlinkFeedbackDeal(feedbackId: string, leadId: string): Pr
 // "Ship it" — the loop's hinge. Turn the feedback into real work: create a task,
 // point the feedback at it, and move it to in-progress. Returns the new task id.
 export async function shipFeedback(id: string): Promise<{ error: string } | { taskId: string }> {
-  const { supabase, user } = await requireUser();
+  const { supabase, user } = await requireSession();
   const { data: fb } = await supabase.from('feedback').select('title, task_id').eq('id', id).maybeSingle();
   if (!fb) return { error: 'Feedback not found.' };
   if (fb.task_id) return { taskId: fb.task_id }; // already shipping

@@ -1,6 +1,7 @@
 import * as React from "react";
 import { CircleCheck, File as FileIcon, RotateCcw, UploadCloud, X } from "@/lib/icons";
 import { cn } from "@/lib/cn";
+import { useLatest } from '@/lib/use-latest';
 
 // design-system.md §4.25 — dashed zone = "something goes here". Validate
 // client-side BEFORE upload. Parallel uploads, max 3 concurrent. Paste (⌘V)
@@ -44,8 +45,7 @@ export function FileUpload({ accept, maxSizeMB = 10, multiple = true, upload, co
 
   // Report list changes to a mirroring caller without making them re-render this
   // component: keep the latest callback in a ref and fire it from one effect.
-  const onFilesChangeRef = React.useRef(onFilesChange);
-  onFilesChangeRef.current = onFilesChange;
+  const onFilesChangeRef = useLatest(onFilesChange);
   const firstFilesRun = React.useRef(true);
   React.useEffect(() => {
     if (firstFilesRun.current) { firstFilesRun.current = false; return; } // skip the mount echo
@@ -59,7 +59,12 @@ export function FileUpload({ accept, maxSizeMB = 10, multiple = true, upload, co
   const patch = (id: string, p: Partial<UploadFile>) =>
     setFiles((fs) => fs.map((f) => (f.id === id ? { ...f, ...p } : f)));
 
-  const pump = React.useCallback(() => {
+  // A NAMED function expression, so the recursive call resolves to the function
+  // itself rather than to the `const pump` binding being declared. Reaching
+  // outward meant referencing a variable inside its own initializer — harmless
+  // at call time, since `.finally` runs later, but the compiler cannot know
+  // that and refuses to optimize a component that does it.
+  const pump = React.useCallback(function pump() {
     while (activeCount.current < MAX_CONCURRENT && queue.current.length) {
       const item = queue.current.shift()!;
       activeCount.current++;
@@ -83,7 +88,7 @@ export function FileUpload({ accept, maxSizeMB = 10, multiple = true, upload, co
         continue;
       }
       if (file.size > maxSizeMB * 1024 * 1024) {
-        next.push({ id, file, status: "error", progress: 0, error: `Too large — max ${maxSizeMB} MB` });
+        next.push({ id, file, status: "error", progress: 0, error: `Too large: max ${maxSizeMB} MB` });
         continue;
       }
       const item: UploadFile = {
@@ -112,12 +117,18 @@ export function FileUpload({ accept, maxSizeMB = 10, multiple = true, upload, co
     if (e.dataTransfer.files.length) add(e.dataTransfer.files);
   };
 
+  // The zone's own fill (`bg-paper-3`) is STRUCTURE and sits in the base class;
+  // a state changes the edge and layers a wash over that fill — the `wash-over`
+  // rule for anything with a fill of its own. Invalid swaps the fill for danger
+  // (cn merges, so it wins). Valid was `bg-berry-alpha-10`, which Tailwind never
+  // generated, so a valid drag REMOVED the fill: in dark the zone dropped from
+  // #333333 to the page's #191919.
   const zoneState =
     drag === "valid"
-      ? "border-berry-500 border-solid bg-berry-alpha-10"
+      ? "border-berry-500 border-solid wash-over"
       : drag === "invalid"
         ? "border-line-danger border-solid bg-danger-100"
-        : "border-line-strong bg-paper-3 hover:border-ink-300 hover:bg-paper-4";
+        : "border-line-strong hover:border-ink-300 hover:wash-over";
 
   return (
     <div className={cn("flex flex-col gap-2", className)}>
@@ -137,11 +148,11 @@ export function FileUpload({ accept, maxSizeMB = 10, multiple = true, upload, co
           if (imgs.length) add(imgs);
         }}
         className={cn(
-          "focus-ring flex w-full flex-col items-center gap-2 rounded-md border border-dashed py-8 transition-colors duration-fast",
+          "focus-ring flex w-full flex-col items-center gap-2 rounded-md border border-dashed bg-paper-3 py-8 transition-colors duration-fast",
           zoneState,
         )}
       >
-        <UploadCloud className={cn("size-6", drag === "valid" ? "text-berry-500" : "text-ink-400")} aria-hidden />
+        <UploadCloud className={cn("size-6", drag === "valid" ? "text-berry-500" : "text-ink-500")} aria-hidden />
         <span className="text-body text-ink-800">
           {drag === "valid" ? (
             "Drop to upload"
@@ -184,7 +195,7 @@ export function FileUpload({ accept, maxSizeMB = 10, multiple = true, upload, co
               {f.preview ? (
                 <img src={f.preview} alt="" className="size-10 rounded-xs object-cover" />
               ) : (
-                <FileIcon className="size-4 shrink-0 text-ink-400" aria-hidden />
+                <FileIcon className="size-4 shrink-0 text-ink-500" aria-hidden />
               )}
               <span className="min-w-0 flex-1">
                 <span className="flex items-baseline gap-2">
@@ -195,7 +206,7 @@ export function FileUpload({ accept, maxSizeMB = 10, multiple = true, upload, co
                 </span>
                 {f.status === "uploading" && (
                   <span className="mt-1 block h-0.5 w-full overflow-hidden rounded-full bg-paper-5">
-                    <span className="block h-full rounded-full bg-berry-500 transition-[width]" style={{ width: `${f.progress}%` }} />
+                    <span className="block h-full w-full rounded-full bg-berry-500 transition-transform duration-base ease-standard" style={{ transform: `translateX(-${100 - Math.min(100, Math.max(0, f.progress))}%)` }} />
                   </span>
                 )}
                 {f.status === "error" && <span className="block text-meta text-danger-600">{f.error}</span>}
@@ -214,7 +225,7 @@ export function FileUpload({ accept, maxSizeMB = 10, multiple = true, upload, co
                 type="button"
                 aria-label={`Remove ${f.file.name}`}
                 onClick={() => setFiles((fs) => fs.filter((x) => x.id !== f.id))}
-                className="focus-ring grid size-6 shrink-0 place-items-center rounded-xs text-ink-400 hover:bg-paper-3 hover:text-ink-700"
+                className="focus-ring grid size-6 shrink-0 place-items-center rounded-xs text-ink-500 hover:bg-surface-hover hover:text-ink-700"
               >
                 <X className="size-3.5" aria-hidden />
               </button>

@@ -1,77 +1,70 @@
-import * as React from "react";
-import * as RC from "@radix-ui/react-checkbox";
-import { cn } from "@/lib/cn";
+"use client"
 
-// design-system.md §4.16 — the tick DRAWS itself left-to-right (stroke-dashoffset,
-// 140ms, ease-out-quiet): the system's one permitted flourish, on the most
-// satisfying action in a task app. Label is part of the hit target.
-// Handoff checkbox is 18px with a berry fill when checked.
-const BOX: Record<"sm" | "md" | "touch", string> = {
-  sm: "size-4",
-  md: "size-[18px]",
-  touch: "size-5",
-};
+import * as React from "react"
+import { cn } from "@/lib/cn"
+// The registry imports these from lucide-react. One icon seam here.
+import { Check as CheckIcon } from "@/lib/icons"
+import { Checkbox as CheckboxPrimitive } from "radix-ui"
 
 export interface CheckboxProps
-  extends Omit<React.ComponentPropsWithoutRef<typeof RC.Root>, "asChild"> {
-  size?: "sm" | "md" | "touch";
-  label?: React.ReactNode;
-  /** Extra line under the label, meta ink-500. */
-  description?: string;
+  extends React.ComponentProps<typeof CheckboxPrimitive.Root> {
+  /** The label BESIDE the box. */
+  label?: React.ReactNode
+  /** A second line under the label. */
+  description?: React.ReactNode
+  /** Box scale. A task row's box is smaller than a form's; the registry has one. */
+  size?: "sm" | "md"
+  /**
+   * Per-instance checked colour — a list's own hue, so a task in the "Design"
+   * list ticks in that list's colour. Set as a local `--accent` override rather
+   * than a class, because the value comes from user data and cannot be a
+   * Tailwind class at build time.
+   */
+  tint?: string | null
 }
 
-export const Checkbox = React.forwardRef<HTMLButtonElement, CheckboxProps>(function Checkbox(
-  { size = "md", label, description, className, checked, ...props },
-  ref,
-) {
+// The registry ships the box alone. Zenboard's takes a `label`, and that is not
+// a convenience: wrapping both in one <label> makes the TEXT part of the hit
+// target, which is the difference between a 16px tap target and a comfortable
+// one — and `[@media(pointer:coarse)]:min-h-11` then meets WCAG 2.5.5 on a
+// phone. A bare 16px box beside unlinked text is the single most common way a
+// checkbox becomes unusable on touch.
+function Checkbox({ className, label, description, size = "md", tint, style, ...props }: CheckboxProps) {
   const box = (
-    <RC.Root
-      ref={ref}
-      checked={checked}
+    <CheckboxPrimitive.Root
+      data-slot="checkbox"
+      style={tint ? ({ ...style, "--accent": tint, "--on-accent": "#fff" } as React.CSSProperties) : style}
       className={cn(
-        "peer relative shrink-0 rounded-[5px] border transition-colors duration-instant focus-ring",
-        BOX[size],
-        "border-line-strong bg-surface-raised hover:border-ink-500",
-        "data-[state=checked]:border-[var(--accent)] data-[state=checked]:bg-[var(--accent)]",
-        "data-[state=indeterminate]:border-[var(--accent)] data-[state=indeterminate]:bg-[var(--accent)]",
-        "aria-[invalid=true]:border-danger-500",
-        "disabled:cursor-not-allowed disabled:border-transparent disabled:bg-surface-disabled",
-        !label && className,
+        // A bare checkbox (no label) is 16px, and it is the most-tapped control
+        // in the product. The labelled form already gets a 44px row below;
+        // this gives the box itself the 24px floor on touch.
+        "touch-min",
+        "peer shrink-0 rounded-xs border border-input shadow-xs transition-shadow outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground dark:bg-input/30 dark:aria-invalid:ring-destructive/40 dark:data-[state=checked]:bg-primary",
+        size === "sm" ? "size-3.5" : "size-4",
+        className
       )}
       {...props}
     >
-      <RC.Indicator forceMount className="absolute inset-0 grid place-items-center text-[var(--on-accent)] data-[state=unchecked]:hidden">
-        {checked === "indeterminate" ? (
-          <span className="h-0.5 w-2 rounded-full bg-current" />
-        ) : (
-          <svg viewBox="0 0 12 12" fill="none" className="size-3" aria-hidden>
-            <path
-              d="M2.5 6.5 L5 9 L9.5 3.5"
-              stroke="currentColor"
-              strokeWidth="1.75"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              pathLength="1"
-              className="[stroke-dasharray:1] [stroke-dashoffset:1] data-[drawn]:[stroke-dashoffset:0] motion-safe:transition-[stroke-dashoffset] motion-safe:duration-fast motion-safe:ease-out-quiet"
-              // Draw on mount of the checked state: dashoffset 1 → 0.
-              ref={(el) => {
-                if (el) requestAnimationFrame(() => el.setAttribute("data-drawn", ""));
-              }}
-            />
-          </svg>
-        )}
-      </RC.Indicator>
-    </RC.Root>
-  );
+      <CheckboxPrimitive.Indicator
+        data-slot="checkbox-indicator"
+        className="grid place-content-center text-current transition-none zb-enter animate-tick"
+      >
+        <CheckIcon className="size-3.5" />
+      </CheckboxPrimitive.Indicator>
+    </CheckboxPrimitive.Root>
+  )
 
-  if (!label) return box;
+  if (!label) return box
+
   return (
-    <label className={cn("flex min-h-8 cursor-pointer items-start gap-2 py-1.5 [@media(pointer:coarse)]:min-h-11", className)}>
-      <span className="flex h-5 items-center">{box}</span>
-      <span className="flex flex-col gap-0.5">
-        <span className="text-body text-ink-800 peer-disabled:text-ink-300">{label}</span>
+    <label className="flex min-h-8 cursor-pointer items-start gap-2 py-1.5 [@media(pointer:coarse)]:min-h-11">
+      {box}
+      <span className="flex min-w-0 flex-col gap-0.5">
+        <span className="text-body text-ink-800 peer-disabled:text-ink-500">{label}</span>
         {description && <span className="text-meta text-ink-500">{description}</span>}
       </span>
     </label>
-  );
-});
+  )
+}
+
+export { Checkbox }

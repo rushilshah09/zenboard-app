@@ -1,36 +1,57 @@
 'use client';
-// The form builder — a document, not a canvas. You type the question, press
-// Enter for the next one, and hit "/" to change what kind of question it is.
-// That's the Tally lesson, in Zenboard's design system.
+// THE FORM BUILDER — the form itself, made editable.
 //
-// Three regions: the page (centre), a settings rail (right), and the app's
-// standard single 48px header row. Autosaves like the doc editor does; Publish
-// is the one filled-accent action on the screen.
+// It was a list of labels with each question's type written underneath in grey
+// ("Short text · Required"), and the user's word for it was "wireframe"
+// (2026-10-01). That was exact: it described a form instead of showing one, so
+// every author had to imagine what their client would see.
+//
+// Now the canvas IS the published form — the same sheet, masthead, title, fields
+// and button the respondent gets (form-sheet.tsx + field-controls.tsx) — with
+// its words editable in place, Tally's lesson. Three regions:
+//
+//   · the SHEET, centred on the recessed well (the Documents gallery's ground),
+//     where you type questions and options exactly where they will appear;
+//   · a GUTTER on the hovered question: + to add below it, ⋮⋮ to drag it (the
+//     house SortableList, so the handle, keyboard and screen-reader words match
+//     every other list you can reorder);
+//   · the PANEL on the right (question-panel.tsx): the outline when nothing is
+//     selected, a question's properties when one is, the ending when that is.
+//
+// Keyboard: Enter in a question adds the next one · "/" in an empty question
+// changes its kind · Alt+↑/↓ moves it · Backspace in an empty one removes it
+// (with Undo) · Escape lets go of the selection.
+//
+// Autosaves like the doc editor does; Publish is the one filled-accent action.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Eye, GitBranch, Link2, Plus, X } from '@/components/ds/icons';
+import { Button, button, cardClass, GrowText, Icon, IconButton, Modal, Rating, Select, toast, inlineEdit, inlineEditProps } from '@/components/ds/ui';
+import { SortableList } from '@/components/documents/sortable-list';
+import { FormRenderer, Ending } from '@/components/forms/form-renderer';
+import { FormChrome } from '@/components/forms/form-chrome';
+import { FormMasthead, SHEET_DESCRIPTION, SHEET_TITLE } from '@/components/forms/form-sheet';
+import { FieldControl, ScaleControl } from '@/components/forms/field-controls';
+import { BlockPicker } from '@/components/forms/block-picker';
+import { BLOCK_ICON } from '@/components/forms/block-icons';
+import { EndingPanel, OutlinePanel, QuestionPanel } from '@/components/forms/question-panel';
+import { formUrl } from '@/components/forms/share-view';
+import { cn } from '@/lib/cn';
 import {
-  Plus, Trash, Copy, ChevronUp, ChevronDown, Eye, Link2, Check,
-  ArrowLeft, Settings as SettingsIcon, X,
-} from '@/components/ds/icons';
-import {
-  Icon, Button, IconButton, Badge, TextInput, Textarea, Switch, Select,
-  SegmentedControl, Popover, PopoverTrigger, PopoverContent, MenuItem, MenuLabel,
-  Modal, toast, type BadgeStatus,
-} from '@/components/ds/ui';
-import { FormRenderer } from '@/components/forms/form-renderer';
-import {
-  BLOCK_META, FIELD_GROUPS, LOGIC_OPS, OP_LABEL, emptyBlock, hasOptions, isField,
-  isUnaryOp, conditionSentence,
-  type Condition, type FormBlock, type FormBlockType, type FormSettings, type LogicOp,
+  BLOCK_META, ENDING_DEFAULTS, blockName, conditionSentence, emptyBlock, hasOptions, isField,
+  type FormBlock, type FormBlockType, type FormSettings,
 } from '@/lib/form-schema';
-import { updateForm, publishForm, setFormStatus, rotateFormToken, setFormInPortal } from '@/lib/actions/forms';
+import { updateForm, publishForm } from '@/lib/actions/forms';
 import type { FormRecord } from '@/lib/forms';
+import { useLatest } from '@/lib/use-latest';
 
-const STATUS_TONE: Record<string, BadgeStatus> = { draft: 'neutral', live: 'success', closed: 'neutral' };
-const STATUS_LABEL: Record<string, string> = { draft: 'Draft', live: 'Live', closed: 'Closed' };
+/** The selection that is not a block: the button and what happens after it. */
+const ENDING = '__ending';
 
-export function FormBuilder({ form, studio, backHref, demo = false }: {
-  form: FormRecord; studio: string; backHref: string;
+export function FormBuilder({ form, studio, responseCount, demo = false }: {
+  form: FormRecord; studio: string;
+  /** Printed on the Responses tab by the shared chrome. */
+  responseCount?: number;
   /** Harness mode: render everything, touch no server (dev-preview has no auth). */
   demo?: boolean;
 }) {
@@ -42,31 +63,26 @@ export function FormBuilder({ form, studio, backHref, demo = false }: {
   const [status, setStatus] = useState(form.status);
   const [token, setToken] = useState(form.shareToken);
   const [selected, setSelected] = useState<string | null>(null);
+  /** Which picker is open: `add:<id>` (the gutter's +), `type:<id>` (a "/"), or `end`. */
+  const [picker, setPicker] = useState<string | null>(null);
   const [saving, setSaving] = useState<'idle' | 'saving' | 'saved'>('idle');
-  const [showSettings, setShowSettings] = useState(false);
   const [preview, setPreview] = useState(false);
-  const [shareOpen, setShareOpen] = useState(false);
-  const [inPortal, setInPortal] = useState(form.showInPortal);
 
   // ── Autosave (the Library idiom): debounce every edit into one write.
-  const dirty = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const latest = useRef({ title, description, blocks, settings });
-  latest.current = { title, description, blocks, settings };
+  const latest = useLatest({ title, description, blocks, settings });
 
   const queueSave = useCallback(() => {
-    dirty.current = true;
     setSaving('saving');
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(async () => {
-      if (demo) { dirty.current = false; setSaving('saved'); return; }
+      if (demo) { setSaving('saved'); return; }
       const { title: t, description: d, blocks: b, settings: s } = latest.current;
       const res = await updateForm(form.id, { title: t, description: d, blocks: b, settings: s });
-      dirty.current = false;
       setSaving('error' in res ? 'idle' : 'saved');
       if ('error' in res) toast({ message: res.error, variant: 'error' });
     }, 800);
-  }, [form.id, demo]);
+  }, [form.id, demo, latest]);
 
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
@@ -75,25 +91,69 @@ export function FormBuilder({ form, studio, backHref, demo = false }: {
   function patchBlock(id: string, patch: Partial<FormBlock>) {
     edit(blocks.map((b) => (b.id === id ? { ...b, ...patch } : b)));
   }
+  function setSetting(patch: Partial<FormSettings>) {
+    setSettings((s) => ({ ...s, ...patch }));
+    queueSave();
+  }
+
+  /** Focus a block's first editable line, on the next paint (it may not exist yet). */
+  const focusBlock = (id: string) => requestAnimationFrame(() => {
+    const el = document.getElementById(`block-${id}`);
+    el?.scrollIntoView({ block: 'nearest' });
+    el?.querySelector<HTMLElement>('[data-block-label]')?.focus();
+  });
+
   function insertBlock(type: FormBlockType, afterId?: string) {
     const block = emptyBlock(type);
     const at = afterId ? blocks.findIndex((b) => b.id === afterId) + 1 : blocks.length;
-    const next = [...blocks.slice(0, at), block, ...blocks.slice(at)];
-    edit(next);
+    edit([...blocks.slice(0, at), block, ...blocks.slice(at)]);
     setSelected(block.id);
-    // Focus the new question's label on the next paint.
-    requestAnimationFrame(() => document.getElementById(`label-${block.id}`)?.focus());
+    focusBlock(block.id);
   }
+
+  function changeType(id: string, type: FormBlockType) {
+    edit(blocks.map((b) => {
+      if (b.id !== id || b.type === type) return b;
+      const next: FormBlock = { ...b, type, min: undefined, max: undefined };
+      if (hasOptions(type) && !b.options?.length) next.options = emptyBlock(type).options;
+      if (type === 'scale') { next.min = 0; next.max = 10; }
+      if (type === 'hidden' && !b.param) next.param = 'source';
+      return next;
+    }));
+  }
+
   function removeBlock(id: string) {
+    const i = blocks.findIndex((b) => b.id === id);
+    if (i < 0) return;
+    const gone = blocks[i];
     edit(blocks.filter((b) => b.id !== id));
     if (selected === id) setSelected(null);
+    // Deliberately NOT a confirm (INTERACTION_STANDARDS §2.2): Backspace on an
+    // empty label removes a block too, so a dialog would fire mid-typing. Undo
+    // is the right safety net for an editor — it costs nothing to ignore.
+    // The label is in the message so rapid deletes don't dedupe into one toast
+    // whose Undo would restore the wrong block.
+    toast({
+      message: `“${gone.label?.trim() || BLOCK_META[gone.type].label}” removed.`,
+      action: {
+        label: 'Undo',
+        onAction: () => {
+          setBlocks((cur) => (cur.some((b) => b.id === gone.id) ? cur : [...cur.slice(0, i), gone, ...cur.slice(i)]));
+          queueSave();
+          setSelected(gone.id);
+        },
+      },
+    });
   }
+
   function duplicateBlock(id: string) {
     const i = blocks.findIndex((b) => b.id === id);
     if (i < 0) return;
     const copy = { ...blocks[i], id: emptyBlock(blocks[i].type).id };
     edit([...blocks.slice(0, i + 1), copy, ...blocks.slice(i + 1)]);
+    setSelected(copy.id);
   }
+
   function move(id: string, dir: -1 | 1) {
     const i = blocks.findIndex((b) => b.id === id);
     const j = i + dir;
@@ -103,21 +163,21 @@ export function FormBuilder({ form, studio, backHref, demo = false }: {
     edit(next);
   }
 
+  function reorder(ids: string[]) {
+    const byId = new Map(blocks.map((b) => [b.id, b]));
+    edit(ids.map((id) => byId.get(id)!).filter(Boolean));
+  }
+
   async function doPublish() {
-    if (demo) { setStatus('live'); setToken(token ?? 'demo-token-preview'); setShareOpen(true); return; }
+    // Publishing MOVES you to Share: the link lives at a URL, so the natural
+    // thing to do after making it is to go and stand where it is.
+    if (demo) { setStatus('live'); setToken(token ?? 'demo-token-preview'); return; }
     if (timer.current) clearTimeout(timer.current);
     await updateForm(form.id, latest.current); // flush before snapshotting
     const res = await publishForm(form.id);
     if ('error' in res) { toast({ message: res.error, variant: 'error' }); return; }
-    setStatus('live'); setToken(res.token); setSaving('saved'); setShareOpen(true);
-    router.refresh();
-  }
-
-  async function changeStatus(next: 'draft' | 'live' | 'closed') {
-    if (demo) { setStatus(next); return; }
-    const res = await setFormStatus(form.id, next);
-    if ('error' in res) { toast({ message: res.error, variant: 'error' }); return; }
-    setStatus(next);
+    setStatus('live'); setToken(res.token); setSaving('saved');
+    router.push(`/forms/${form.id}/share`);
     router.refresh();
   }
 
@@ -126,105 +186,190 @@ export function FormBuilder({ form, studio, backHref, demo = false }: {
     blocks, settings, studio,
   }), [form.id, form.version, title, description, blocks, settings, studio]);
 
-  const questionCount = blocks.filter((b) => isField(b.type)).length;
+  const link = token && status !== 'draft' ? formUrl(token) : null;
+  const selectedBlock = blocks.find((b) => b.id === selected) ?? null;
+  const select = (id: string | null) => setSelected(id);
+
+  // The panel — the same content wide (beside the sheet) and narrow (under the question).
+  const panelFor = (b: FormBlock) => (
+    <QuestionPanel
+      block={b}
+      blocks={blocks}
+      formUrl={link}
+      onPatch={(p) => patchBlock(b.id, p)}
+      onChangeType={(t) => changeType(b.id, t)}
+      onDuplicate={() => duplicateBlock(b.id)}
+      onRemove={() => removeBlock(b.id)}
+      onClose={() => select(null)}
+    />
+  );
+  const endingPanel = <EndingPanel settings={settings} onSettings={setSetting} onClose={() => select(null)} />;
+
+  // Which page each page break opens. Worked out once per edit — never counted while rendering,
+  // because the sortable list re-renders its rows on its own (mid-drag) and a running count would drift.
+  const pageOf = useMemo(() => {
+    const m = new Map<string, number>();
+    let p = 1;
+    for (const b of blocks) if (b.type === 'page_break') m.set(b.id, ++p);
+    return m;
+  }, [blocks]);
 
   return (
-    <div className="flex min-h-[100dvh] flex-col">
-      {/* One header row — title left, actions right (Design Constitution §3) */}
-      <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center gap-3 border-b border-line-soft bg-canvas px-4">
-        <IconButton label="Back" variant="ghost" size="sm" icon={<Icon icon={ArrowLeft} size={16} />} onClick={() => router.push(backHref)} />
-        <span className="min-w-0 flex-1 truncate text-ui font-medium text-ink-900">{title || 'Untitled form'}</span>
-        <Badge status={STATUS_TONE[status]}>{STATUS_LABEL[status]}</Badge>
-        <span className="hidden text-meta text-ink-500 sm:inline">
+    <FormChrome
+      form={{ id: form.id, title, status, projectId: form.projectId }}
+      responseCount={responseCount}
+      saving={
+        <span className="hidden text-meta text-ink-500 sm:inline" aria-live="polite">
           {saving === 'saving' ? 'Saving…' : saving === 'saved' ? 'Saved' : ''}
         </span>
-        <Button variant="ghost" size="sm" icon={<Icon icon={SettingsIcon} size={15} />} onClick={() => setShowSettings((v) => !v)}>
-          Settings
-        </Button>
-        <Button variant="secondary" size="sm" icon={<Icon icon={Eye} size={15} />} onClick={() => setPreview(true)}>
-          Preview
-        </Button>
-        {status === 'live' ? (
-          <Button variant="secondary" size="sm" icon={<Icon icon={Link2} size={15} />} onClick={() => setShareOpen(true)}>Share</Button>
-        ) : (
-          <Button variant="primary" size="sm" onClick={doPublish}>Publish</Button>
-        )}
-      </header>
+      }
+      actions={
+        <>
+          <span className="sm:hidden">
+            <IconButton label="Preview" variant="secondary" size="sm" icon={<Icon icon={Eye} size={16} />} onClick={() => setPreview(true)} />
+          </span>
+          <Button className="hidden sm:inline-flex" variant="secondary" size="sm" icon={<Icon icon={Eye} size={16} />} onClick={() => setPreview(true)}>
+            Preview
+          </Button>
+          {/* Share is a TAB, so a live form's primary action is nothing — the work
+              is done and the link is one click away. A draft's is the only one that matters. */}
+          {status === 'live' ? (
+            <Button variant="secondary" size="sm" icon={<Icon icon={Link2} size={16} />} onClick={() => router.push(`/forms/${form.id}/share`)}>
+              Share
+            </Button>
+          ) : (
+            <Button variant="primary" size="sm" onClick={doPublish}>Publish</Button>
+          )}
+        </>
+      }
+    >
+      <div
+        className="@container/builder flex h-full min-h-0"
+        onKeyDown={(e) => {
+          if (e.key !== 'Escape' || !selected) return;
+          // A picker or a select open inside the builder handles its own Escape.
+          if ((e.target as HTMLElement).closest('[data-radix-popper-content-wrapper],[role="dialog"]')) return;
+          select(null);
+          (document.activeElement as HTMLElement | null)?.blur();
+        }}
+      >
+        {/* ── The well, and the sheet on it ─────────────────────────────── */}
+        <div
+          className="scroll-region min-w-0 flex-1 bg-well"
+          // Pressing the ground (not the sheet) lets go of the selection, as clicking a desk does.
+          onMouseDown={(e) => { if (e.target === e.currentTarget || (e.target as HTMLElement).dataset.ground !== undefined) select(null); }}
+        >
+          <div data-ground className="px-3 py-6 @[640px]/builder:px-8 @[640px]/builder:py-10">
+            <article className="sheet mx-auto max-w-[720px] px-6 py-9 @[640px]/builder:px-14 @[640px]/builder:py-12">
+              <FormMasthead studio={studio} />
+              <GrowText
+                value={title}
+                singleLine
+                as="title"
+                textClassName={SHEET_TITLE}
+                onChange={(e) => { setTitle(e.target.value); queueSave(); }}
+                onFocus={() => select(null)}
+                placeholder="Untitled form"
+                aria-label="Form title"
+              />
+              <GrowText
+                value={description}
+                as="subtitle"
+                textClassName={SHEET_DESCRIPTION}
+                className="mt-3"
+                onChange={(e) => { setDescription(e.target.value); queueSave(); }}
+                onFocus={() => select(null)}
+                placeholder="Add a description: what this is for, and how long it takes."
+                aria-label="Form description"
+              />
 
-      <div className="flex min-h-0 flex-1">
-        {/* ── The page ─────────────────────────────────────────────── */}
-        <main className="min-w-0 flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-[720px] px-5 py-10 sm:px-8">
-            <input
-              value={title}
-              onChange={(e) => { setTitle(e.target.value); queueSave(); }}
-              placeholder="Untitled form"
-              aria-label="Form title"
-              className="w-full border-0 bg-transparent p-0 font-display text-h1 text-ink-900 outline-none placeholder:text-ink-400"
-            />
-            <textarea
-              value={description}
-              onChange={(e) => { setDescription(e.target.value); queueSave(); }}
-              placeholder="Add a short description…"
-              aria-label="Form description"
-              rows={2}
-              className="mt-3 w-full resize-none border-0 bg-transparent p-0 text-body-lg leading-relaxed text-ink-700 outline-none placeholder:text-ink-400"
-            />
+              <div className="mt-8">
+                {blocks.length === 0 ? (
+                  <p className="py-3 text-body text-ink-500">Add your first question below, or press <kbd className="font-sans">/</kbd> in a question to change its kind.</p>
+                ) : (
+                  <SortableList
+                    items={blocks.map((b) => ({ ...b, name: blockName(b) }))}
+                    noun="question"
+                    onReorder={reorder}
+                    rowClassName="rounded-lg"
+                    renderRow={(item, handle) => {
+                      const b = blocks.find((x) => x.id === item.id)!;
+                      const on = selected === b.id;
+                      return (
+                        <CanvasBlock
+                          block={b}
+                          blocks={blocks}
+                          pageNo={pageOf.get(b.id) ?? 1}
+                          selected={on}
+                          handle={handle}
+                          addOpen={picker === `add:${b.id}`}
+                          typeOpen={picker === `type:${b.id}`}
+                          onPicker={(which, open) => setPicker(open ? `${which}:${b.id}` : null)}
+                          onSelect={() => { if (!on) select(b.id); }}
+                          onPatch={(p) => patchBlock(b.id, p)}
+                          onChangeType={(t) => changeType(b.id, t)}
+                          onInsertAfter={(t) => insertBlock(t, b.id)}
+                          onRemove={() => removeBlock(b.id)}
+                          onMove={(d) => move(b.id, d)}
+                          inlinePanel={on ? panelFor(b) : null}
+                        />
+                      );
+                    }}
+                  />
+                )}
+              </div>
 
-            <div className="mt-8 flex flex-col gap-2">
-              {blocks.map((b, i) => (
-                <BlockEditor
-                  key={b.id}
-                  block={b}
-                  index={i}
-                  selected={selected === b.id}
-                  isFirst={i === 0}
-                  isLast={i === blocks.length - 1}
-                  onSelect={() => setSelected(b.id)}
-                  onPatch={(p) => patchBlock(b.id, p)}
-                  onRemove={() => removeBlock(b.id)}
-                  onDuplicate={() => duplicateBlock(b.id)}
-                  onMove={(d) => move(b.id, d)}
-                  onInsertAfter={(t) => insertBlock(t, b.id)}
-                  earlier={blocks.slice(0, i).filter((x) => isField(x.type))}
+              <BlockPicker open={picker === 'end'} onOpenChange={(o) => setPicker(o ? 'end' : null)} onPick={(t) => insertBlock(t)}>
+                <button
+                  type="button"
+                  className="focus-ring -mx-3 mt-2 flex h-10 w-[calc(100%+24px)] items-center gap-2 rounded-lg px-3 text-ui text-ink-500 transition-colors hover:bg-surface-hover hover:text-ink-800"
+                >
+                  <Icon icon={Plus} size={16} />
+                  Add a question
+                  <span className="ms-auto text-meta text-ink-500">Search every kind</span>
+                </button>
+              </BlockPicker>
+
+              {/* The button, exactly as it will read — and the way into the ending. */}
+              <div className="mt-7 border-t border-line-soft pt-3">
+                <div className={cn('-mx-3 rounded-lg px-3 py-3 transition-colors', selected === ENDING ? 'bg-surface-selected' : 'hover:bg-surface-hover')}>
+                  <button type="button" aria-label={`Submit button, “${settings.submitLabel?.trim() || ENDING_DEFAULTS.submit}”. Edit the ending`}
+                    className={button({ variant: 'neutral', size: 'lg' })} onClick={() => select(ENDING)}>
+                    {settings.submitLabel?.trim() || ENDING_DEFAULTS.submit}
+                  </button>
+                </div>
+              </div>
+              {selected === ENDING && (
+                <div className={cardClass('mt-3 overflow-hidden @[1000px]/builder:hidden')}>{endingPanel}</div>
+              )}
+            </article>
+
+            {/* What they see once it is sent — a second, shorter sheet, because it IS a second screen. */}
+            <p className="mx-auto mt-8 max-w-[720px] px-1 text-center text-overline text-ink-500">After submitting</p>
+            <div className="sheet mx-auto mt-3 max-w-[720px] px-6 py-3 @[640px]/builder:px-14">
+              <button
+                type="button"
+                aria-label="Edit the ending"
+                onClick={() => select(ENDING)}
+                className={cn('focus-ring -mx-3 block w-[calc(100%+24px)] rounded-lg px-3 transition-colors', selected === ENDING ? 'bg-surface-selected' : 'hover:bg-surface-hover')}
+              >
+                <Ending
+                  title={settings.thanksTitle?.trim() || ENDING_DEFAULTS.title}
+                  message={settings.thanks?.trim() || ENDING_DEFAULTS.message}
+                  redirect={settings.redirectUrl}
                 />
-              ))}
+              </button>
             </div>
-
-            <div className="mt-4">
-              <InsertMenu onPick={(t) => insertBlock(t)}>
-                <Button variant="ghost" size="sm" icon={<Icon icon={Plus} size={15} />}>Add question</Button>
-              </InsertMenu>
-            </div>
-
-            {blocks.length === 0 && (
-              <p className="mt-3 text-body text-ink-500">Start with a question — or press <kbd>/</kbd> in any question to change its type.</p>
-            )}
+            <div className="h-16" data-ground />
           </div>
-        </main>
+        </div>
 
-        {/* ── Settings rail ────────────────────────────────────────── */}
-        {showSettings && (
-          <aside className="hidden w-[300px] shrink-0 overflow-y-auto border-l border-line-soft bg-surface-secondary lg:block">
-            <SettingsRail
-              settings={settings}
-              status={status}
-              questionCount={questionCount}
-              blocks={blocks}
-              inPortal={inPortal}
-              canPortal={!!form.projectId}
-              onPortal={async (v) => {
-                setInPortal(v);
-                if (demo) return;
-                const res = await setFormInPortal(form.id, v);
-                if ('error' in res) { setInPortal(!v); toast({ message: res.error, variant: 'error' }); }
-              }}
-              onChange={(s) => { setSettings(s); queueSave(); }}
-              onStatus={changeStatus}
-              onClose={() => setShowSettings(false)}
-            />
-          </aside>
-        )}
+        {/* ── The panel ─────────────────────────────────────────────────── */}
+        <aside aria-label="Question settings" className="hidden w-[300px] shrink-0 flex-col border-l border-line-soft bg-paper @[1000px]/builder:flex">
+          {selected === ENDING ? endingPanel : selectedBlock ? panelFor(selectedBlock) : (
+            <OutlinePanel blocks={blocks} onSelect={(id) => { select(id); focusBlock(id); }} />
+          )}
+        </aside>
       </div>
 
       {preview && (
@@ -234,501 +379,289 @@ export function FormBuilder({ form, studio, backHref, demo = false }: {
           </div>
         </Modal>
       )}
-
-      {shareOpen && token && (
-        <ShareModal
-          token={token}
-          onClose={() => setShareOpen(false)}
-          onRotate={async () => {
-            if (demo) { toast({ message: 'Preview — the link is not rotated here.' }); return; }
-            const res = await rotateFormToken(form.id);
-            if ('error' in res) { toast({ message: 'Couldn’t create a new link.', variant: 'error' }); return; }
-            setToken(res.token);
-            toast({ message: 'New link created — the old one no longer works.', variant: 'success' });
-          }}
-        />
-      )}
-    </div>
+    </FormChrome>
   );
 }
 
-// ── One question in the builder ───────────────────────────────────────────
-function BlockEditor({
-  block, index, selected, isFirst, isLast, earlier,
-  onSelect, onPatch, onRemove, onDuplicate, onMove, onInsertAfter,
+// ── One block on the sheet ─────────────────────────────────────────────────
+
+function CanvasBlock({
+  block, blocks, pageNo, selected, handle, addOpen, typeOpen, inlinePanel,
+  onPicker, onSelect, onPatch, onChangeType, onInsertAfter, onRemove, onMove,
 }: {
-  block: FormBlock; index: number; selected: boolean; isFirst: boolean; isLast: boolean;
-  /** Fields ABOVE this one — the only valid condition sources, so logic can't cycle. */
-  earlier: FormBlock[];
-  onSelect: () => void; onPatch: (p: Partial<FormBlock>) => void; onRemove: () => void;
-  onDuplicate: () => void; onMove: (d: -1 | 1) => void; onInsertAfter: (t: FormBlockType) => void;
+  block: FormBlock; blocks: FormBlock[]; pageNo: number; selected: boolean; handle: React.ReactNode;
+  addOpen: boolean; typeOpen: boolean;
+  /** The properties, drawn under the question when the container is too narrow for the side panel. */
+  inlinePanel: React.ReactNode;
+  onPicker: (which: 'add' | 'type', open: boolean) => void;
+  onSelect: () => void;
+  onPatch: (p: Partial<FormBlock>) => void;
+  onChangeType: (t: FormBlockType) => void;
+  onInsertAfter: (t: FormBlockType) => void;
+  onRemove: () => void;
+  onMove: (d: -1 | 1) => void;
 }) {
-  const [slashOpen, setSlashOpen] = useState(false);
-  const meta = BLOCK_META[block.type];
   const field = isField(block.type);
 
-  function onLabelKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter') { e.preventDefault(); onInsertAfter('short_text'); }
-    if (e.key === '/' && block.label.length === 0) { e.preventDefault(); setSlashOpen(true); }
+  function onLabelKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === 'Enter' && !e.shiftKey && block.type !== 'statement') { e.preventDefault(); onInsertAfter('short_text'); }
+    if (e.key === '/' && block.label.length === 0) { e.preventDefault(); onPicker('type', true); }
     if (e.altKey && e.key === 'ArrowUp') { e.preventDefault(); onMove(-1); }
     if (e.altKey && e.key === 'ArrowDown') { e.preventDefault(); onMove(1); }
-    if (e.key === 'Backspace' && block.label.length === 0) { e.preventDefault(); onRemove(); }
+    if (e.key === 'Backspace' && block.label.length === 0 && block.type !== 'statement') { e.preventDefault(); onRemove(); }
   }
+
+  const sentence = block.showWhen ? conditionSentence(block.showWhen, blocks) : null;
 
   return (
     <div
-      onFocus={onSelect}
-      onClick={onSelect}
-      className={`group rounded-lg border px-3 py-2.5 transition-colors ${
-        selected ? 'border-line bg-surface-raised' : 'border-transparent hover:border-line-soft'
-      }`}
+      id={`block-${block.id}`}
+      onMouseDown={onSelect}
+      onFocusCapture={onSelect}
+      className={cn(
+        'group relative -mx-3 rounded-lg px-3 py-3.5 transition-colors',
+        selected ? 'bg-surface-selected' : 'hover:bg-surface-hover',
+      )}
     >
-      <div className="flex items-start gap-2">
-        <span className="num mt-1.5 w-5 shrink-0 text-right text-meta text-ink-400">{index + 1}</span>
-
-        <div className="min-w-0 flex-1">
-          <input
-            id={`label-${block.id}`}
-            value={block.label}
-            onChange={(e) => onPatch({ label: e.target.value })}
-            // Explicit, not relying on the wrapper's focus bubbling: tabbing into
-            // a question must expand it, same as clicking (keyboard-first §UX).
-            onFocus={onSelect}
-            onKeyDown={onLabelKeyDown}
-            placeholder={field ? 'Ask a question…' : meta.label}
-            aria-label={`Question ${index + 1}`}
-            className="w-full border-0 bg-transparent p-0 text-body font-medium text-ink-900 outline-none placeholder:font-normal placeholder:text-ink-400"
-          />
-
-          {/* Read-only shape of the answer, so the page reads like the real form */}
-          {selected ? (
-            <BlockSettings block={block} onPatch={onPatch} earlier={earlier} />
-          ) : (
-            <p className="mt-1 truncate text-meta text-ink-500">
-              {meta.label}{block.required ? ' · Required' : ''}{block.options?.length ? ` · ${block.options.length} options` : ''}{block.showWhen ? ' · Conditional' : ''}
-            </p>
-          )}
-        </div>
-
-        <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
-          <InsertMenu onPick={(t) => onPatch({ type: t, ...(hasOptions(t) && !block.options ? { options: ['Option 1', 'Option 2'] } : {}) })} open={slashOpen} onOpenChange={setSlashOpen} title="Change type">
-            <IconButton label="Change question type" variant="ghost" size="xs" icon={<Icon icon={SettingsIcon} size={14} />} />
-          </InsertMenu>
-          <IconButton label="Move up" variant="ghost" size="xs" disabled={isFirst} icon={<Icon icon={ChevronUp} size={14} />} onClick={() => onMove(-1)} />
-          <IconButton label="Move down" variant="ghost" size="xs" disabled={isLast} icon={<Icon icon={ChevronDown} size={14} />} onClick={() => onMove(1)} />
-          <IconButton label="Duplicate" variant="ghost" size="xs" icon={<Icon icon={Copy} size={14} />} onClick={onDuplicate} />
-          <IconButton label="Delete" variant="ghost" size="xs" icon={<Icon icon={Trash} size={14} />} onClick={onRemove} />
-        </div>
+      {/* The gutter: add below, and the drag handle. Hangs in the sheet's margin. */}
+      <div className={cn('absolute right-full top-3.5 hidden items-center pe-0.5 @[640px]/builder:flex', selected ? 'opacity-100' : 'reveal-on-hover')}>
+        <BlockPicker open={addOpen} onOpenChange={(o) => onPicker('add', o)} onPick={onInsertAfter}>
+          <button type="button" aria-label="Add a question below"
+            className="focus-ring grid h-6 w-5 place-items-center rounded-xs text-ink-500 transition-colors hover:bg-surface-hover hover:text-ink-700">
+            <Icon icon={Plus} size={16} />
+          </button>
+        </BlockPicker>
+        {handle}
       </div>
-    </div>
-  );
-}
 
-// Inline settings for the selected question — quiet, never a modal.
-function BlockSettings({ block, onPatch, earlier }: {
-  block: FormBlock; onPatch: (p: Partial<FormBlock>) => void; earlier: FormBlock[];
-}) {
-  if (!isField(block.type)) {
-    return (
-      <div className="mt-1.5 flex flex-col gap-2.5">
-        <p className="text-meta text-ink-500">{BLOCK_META[block.type].label}</p>
-        <ConditionEditor block={block} onPatch={onPatch} earlier={earlier} />
-      </div>
-    );
-  }
-  return (
-    <div className="mt-2.5 flex flex-col gap-2.5">
-      <TextInput
-        size="sm"
-        value={block.help ?? ''}
-        placeholder="Help text (optional)"
-        aria-label="Help text"
-        onChange={(e) => onPatch({ help: e.target.value })}
-      />
-
-      {hasOptions(block.type) && (
-        <OptionsEditor options={block.options ?? []} onChange={(options) => onPatch({ options })} />
+      {/* A condition is said in words above the question it governs. */}
+      {block.showWhen && (
+        <p className={cn('mb-1.5 flex items-center gap-1.5 text-meta', sentence ? 'text-ink-500' : 'text-warning-600')}>
+          <Icon icon={GitBranch} size={12} className="shrink-0" />
+          <span className="min-w-0 truncate">{sentence ? `Shown when ${sentence}` : 'Its rule points at a deleted question, so it always shows'}</span>
+        </p>
       )}
 
-      <label className="flex w-fit cursor-pointer items-center gap-2 text-meta text-ink-600">
-        <Switch checked={!!block.required} onCheckedChange={(v) => onPatch({ required: v })} />
-        Required
-      </label>
+      <BlockBody block={block} pageNo={pageNo} selected={selected} typeOpen={typeOpen}
+        onPicker={onPicker} onPatch={onPatch} onChangeType={onChangeType} onLabelKeyDown={onLabelKeyDown} />
 
-      <ConditionEditor block={block} onPatch={onPatch} earlier={earlier} />
+      {/* The help line, where the respondent will read it — under the answer. */}
+      {field && block.type !== 'hidden' && block.type !== 'checkbox' && (block.help || selected) && (
+        <GrowText
+          value={block.help ?? ''}
+          singleLine
+          onChange={(e) => onPatch({ help: e.target.value || undefined })}
+          placeholder="Add a hint (optional)"
+          aria-label="Hint"
+          className="mt-1.5"
+          textClassName="text-meta text-ink-500"
+        />
+      )}
+
+      {inlinePanel && (
+        <div className={cardClass('mt-3 overflow-hidden @[1000px]/builder:hidden')}>{inlinePanel}</div>
+      )}
     </div>
   );
 }
 
-/** The fixed answers a source question can produce, if it has any. */
-function sourceChoices(block?: FormBlock): string[] | null {
-  if (!block) return null;
-  if (block.type === 'yes_no') return ['Yes', 'No'];
-  return block.options?.length ? block.options : null;
+/** The block's own content: its editable words and a resting picture of its answer. */
+function BlockBody({ block, pageNo, selected, typeOpen, onPicker, onPatch, onChangeType, onLabelKeyDown }: {
+  block: FormBlock; pageNo: number; selected: boolean; typeOpen: boolean;
+  onPicker: (which: 'add' | 'type', open: boolean) => void;
+  onPatch: (p: Partial<FormBlock>) => void;
+  onChangeType: (t: FormBlockType) => void;
+  onLabelKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+}) {
+  switch (block.type) {
+    case 'heading':
+      return (
+        <GrowText data-block-label value={block.label} singleLine as="label" textClassName="font-display text-h3 text-ink-900"
+          onChange={(e) => onPatch({ label: e.target.value })} onKeyDown={onLabelKeyDown}
+          placeholder="Section heading" aria-label="Heading" />
+      );
+    case 'statement':
+      return (
+        <GrowText data-block-label value={block.label} textClassName="leading-relaxed text-ink-700"
+          onChange={(e) => onPatch({ label: e.target.value })} onKeyDown={onLabelKeyDown}
+          placeholder="Write something for the reader…" aria-label="Text" />
+      );
+    case 'divider':
+      return <hr data-block-label tabIndex={0} aria-label="Divider" className="focus-ring my-1 border-0 border-t border-line-soft" />;
+    case 'page_break':
+      return (
+        <div data-block-label tabIndex={0} aria-label={`Page break, page ${pageNo} starts here`} className="focus-ring flex items-center gap-3 rounded-sm">
+          <span className="h-px flex-1 bg-line" />
+          <span className="rounded-full bg-surface-fill px-2.5 py-0.5 text-meta font-medium text-ink-600">Page {pageNo}</span>
+          <span className="h-px flex-1 bg-line" />
+        </div>
+      );
+    case 'hidden':
+      return (
+        <div className="flex items-center gap-2 text-meta text-ink-500">
+          <Icon icon={BLOCK_ICON.hidden} size={14} className="shrink-0" />
+          <span>Hidden field</span>
+          <span className="rounded-sm bg-surface-fill px-1.5 py-0.5 text-ink-800">{block.param || 'unnamed'}</span>
+          <span className="truncate">filled from <span className="text-ink-700">?{block.param || 'name'}=</span> in the link</span>
+        </div>
+      );
+    case 'checkbox':
+      return (
+        <div className="flex items-center gap-2">
+          <span aria-hidden className="size-4 shrink-0 rounded-[4px] border border-line-strong bg-surface-raised" />
+          <LabelInput block={block} typeOpen={typeOpen} onPicker={onPicker} onPatch={onPatch} onChangeType={onChangeType} onKeyDown={onLabelKeyDown}
+            textClassName="font-normal text-ink-800" placeholder="What are they agreeing to?" />
+        </div>
+      );
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex min-w-0 items-baseline gap-2">
+        <LabelInput block={block} typeOpen={typeOpen} onPicker={onPicker} onPatch={onPatch} onChangeType={onChangeType} onKeyDown={onLabelKeyDown} />
+        {!block.required && <span className="shrink-0 text-meta text-ink-500">Optional</span>}
+      </div>
+      <AnswerPreview block={block} selected={selected} onPatch={onPatch} />
+    </div>
+  );
+}
+
+/** A question's words, typed where they will be read. "/" here changes what kind of question it is. */
+function LabelInput({ block, typeOpen, onPicker, onPatch, onChangeType, onKeyDown, textClassName, placeholder }: {
+  block: FormBlock; typeOpen: boolean;
+  onPicker: (which: 'add' | 'type', open: boolean) => void;
+  onPatch: (p: Partial<FormBlock>) => void;
+  onChangeType: (t: FormBlockType) => void;
+  onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  textClassName?: string;
+  placeholder?: string;
+}) {
+  return (
+    <BlockPicker open={typeOpen} onOpenChange={(o) => onPicker('type', o)} onPick={onChangeType} current={block.type} anchorOnly>
+      <GrowText
+        data-block-label
+        inline
+        singleLine
+        as="label"
+        value={block.label}
+        onChange={(e) => onPatch({ label: e.target.value })}
+        onKeyDown={onKeyDown}
+        placeholder={placeholder ?? 'Type a question, or / to change its kind'}
+        aria-label={`${BLOCK_META[block.type].label} question`}
+        textClassName={textClassName}
+      />
+    </BlockPicker>
+  );
 }
 
 /**
- * "Only show this when…" — the whole of conditional logic, in one row.
- * Sources are restricted to questions ABOVE this one, which is what makes
- * cycles impossible without a validation pass or a graph editor.
+ * The answer as the respondent will meet it. Choice questions are DRAWN with
+ * their options editable in place (that is where you write them); everything
+ * else is the real control, made inert — it looks exactly like itself and
+ * cannot be typed into, because there is nobody to answer yet.
  */
-function ConditionEditor({ block, onPatch, earlier }: {
-  block: FormBlock; onPatch: (p: Partial<FormBlock>) => void; earlier: FormBlock[];
-}) {
-  const cond = block.showWhen;
-
-  if (earlier.length === 0) {
-    return cond
-      ? <p className="text-meta text-ink-500">Move this below another question to use logic.</p>
-      : null;
+function AnswerPreview({ block, selected, onPatch }: { block: FormBlock; selected: boolean; onPatch: (p: Partial<FormBlock>) => void }) {
+  switch (block.type) {
+    case 'select':
+      return <OptionRows block={block} selected={selected} onPatch={onPatch} glyph="radio" />;
+    case 'multi_select':
+      return <OptionRows block={block} selected={selected} onPatch={onPatch} glyph="box" />;
+    case 'ranking':
+      return <OptionRows block={block} selected={selected} onPatch={onPatch} glyph="rank" />;
+    case 'dropdown':
+      return (
+        <>
+          <div inert className="pointer-events-none select-none">
+            <Select groups={[{ options: [] }]} placeholder={block.placeholder || 'Choose an answer'} aria-label="Preview" />
+          </div>
+          {selected
+            ? <OptionRows block={block} selected onPatch={onPatch} glyph="number" />
+            : <p className="text-meta text-ink-500"><span className="tabular-nums">{block.options?.length ?? 0}</span> options</p>}
+        </>
+      );
+    case 'scale':
+      return <div inert className="pointer-events-none select-none"><ScaleControl block={block} value={null} readOnly /></div>;
+    case 'rating':
+      return <div inert className="pointer-events-none select-none"><Rating value={0} aria-label="Preview" /></div>;
+    default:
+      return (
+        <div inert className="pointer-events-none select-none">
+          <FieldControl block={block} value={null} onChange={() => {}} />
+        </div>
+      );
   }
-
-  if (!cond) {
-    return (
-      <button
-        onClick={() => onPatch({ showWhen: { fieldId: earlier[earlier.length - 1].id, op: 'is', value: '' } })}
-        className="focus-ring w-fit rounded-sm text-meta text-ink-500 transition-colors hover:text-ink-900"
-      >
-        + Only show this when…
-      </button>
-    );
-  }
-
-  const source = earlier.find((b) => b.id === cond.fieldId);
-  const set = (patch: Partial<Condition>) => onPatch({ showWhen: { ...cond, ...patch } });
-
-  return (
-    <div className="flex flex-col gap-1.5 rounded-md border border-line-soft p-2">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-overline uppercase text-ink-500">Only show when</span>
-        <IconButton label="Remove condition" variant="ghost" size="xs" icon={<Icon icon={X} size={13} />} onClick={() => onPatch({ showWhen: undefined })} />
-      </div>
-
-      <div className="flex flex-wrap items-center gap-1.5">
-        <Select
-          size="sm"
-          aria-label="Condition question"
-          value={cond.fieldId}
-          onValueChange={(v) => set({ fieldId: v })}
-          groups={[{ options: earlier.map((b) => ({ value: b.id, label: b.label?.trim() || 'Untitled question' })) }]}
-        />
-        <Select
-          size="sm"
-          aria-label="Condition test"
-          value={cond.op}
-          onValueChange={(v) => set({ op: v as LogicOp })}
-          groups={[{ options: LOGIC_OPS.map((op) => ({ value: op, label: OP_LABEL[op] })) }]}
-        />
-        {!isUnaryOp(cond.op) && (
-          // A source with a KNOWN answer set offers those answers — free text
-          // here is a typo waiting to silently break a rule. yes/no has no
-          // `options` array but its answers are just as fixed.
-          sourceChoices(source)?.length ? (
-            <Select
-              size="sm"
-              aria-label="Condition value"
-              value={cond.value ?? ''}
-              onValueChange={(v) => set({ value: v })}
-              groups={[{ options: sourceChoices(source)!.map((o) => ({ value: o, label: o })) }]}
-            />
-          ) : (
-            <TextInput
-              size="sm"
-              className="w-[140px]"
-              aria-label="Condition value"
-              value={cond.value ?? ''}
-              placeholder="value"
-              onChange={(e) => set({ value: e.target.value })}
-            />
-          )
-        )}
-      </div>
-    </div>
-  );
 }
 
-// Options as plain lines: type, Enter, type. No per-option modals.
-function OptionsEditor({ options, onChange }: { options: string[]; onChange: (o: string[]) => void }) {
+// Options as plain lines with the respondent's own glyph in front: type, Enter,
+// type. No per-option modals.
+function OptionRows({ block, selected, onPatch, glyph }: {
+  block: FormBlock; selected: boolean; onPatch: (p: Partial<FormBlock>) => void; glyph: 'radio' | 'box' | 'rank' | 'number';
+}) {
+  const options = block.options ?? [];
+  const set = (next: string[]) => onPatch({ options: next });
   return (
-    <div className="flex flex-col gap-1">
+    <div data-options className="flex flex-col">
       {options.map((o, i) => (
-        <div key={i} className="flex items-center gap-1.5">
-          <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-ink-400" />
+        <div key={i} className="group/option flex min-h-8 items-center gap-2">
+          <Glyph kind={glyph} n={i + 1} />
           <input
             value={o}
             aria-label={`Option ${i + 1}`}
-            onChange={(e) => onChange(options.map((x, j) => (j === i ? e.target.value : x)))}
+            placeholder={`Option ${i + 1}`}
+            onChange={(e) => set(options.map((x, j) => (j === i ? e.target.value : x)))}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
-                const next = [...options.slice(0, i + 1), '', ...options.slice(i + 1)];
-                onChange(next);
-                requestAnimationFrame(() => {
-                  const inputs = (e.currentTarget.closest('[data-options]')?.querySelectorAll('input') ?? []) as NodeListOf<HTMLInputElement>;
-                  inputs[i + 1]?.focus();
-                });
+                set([...options.slice(0, i + 1), '', ...options.slice(i + 1)]);
+                const list = e.currentTarget.closest('[data-options]');
+                requestAnimationFrame(() => list?.querySelectorAll<HTMLInputElement>('input')[i + 1]?.focus());
               }
               if (e.key === 'Backspace' && o === '' && options.length > 1) {
                 e.preventDefault();
-                onChange(options.filter((_, j) => j !== i));
+                set(options.filter((_, j) => j !== i));
+                const list = e.currentTarget.closest('[data-options]');
+                requestAnimationFrame(() => list?.querySelectorAll<HTMLInputElement>('input')[Math.max(0, i - 1)]?.focus());
               }
             }}
-            className="min-w-0 flex-1 border-0 bg-transparent p-0 text-body text-ink-800 outline-none placeholder:text-ink-400"
-            placeholder="Option"
+            className={cn(inlineEdit({ as: 'body' }), 'min-w-0 flex-1')} {...inlineEditProps}
           />
-          {options.length > 1 && (
-            <IconButton label={`Remove option ${i + 1}`} variant="ghost" size="xs" icon={<Icon icon={X} size={13} />} onClick={() => onChange(options.filter((_, j) => j !== i))} />
+          {selected && options.length > 1 && (
+            <IconButton label={`Remove option ${i + 1}`} variant="ghost" size="xs" className="reveal-on-hover"
+              icon={<Icon icon={X} size={12} />} onClick={() => set(options.filter((_, j) => j !== i))} />
           )}
         </div>
       ))}
-      <button
-        onClick={() => onChange([...options, ''])}
-        className="focus-ring mt-0.5 w-fit rounded-sm text-meta text-ink-500 transition-colors hover:text-ink-800"
-      >
-        + Add option
-      </button>
-    </div>
-  );
-}
-
-// The insert menu — grouped exactly the way the field-picker research suggests,
-// rendered as the DS menu (no colored type chips).
-function InsertMenu({
-  children, onPick, open, onOpenChange, title,
-}: {
-  children: React.ReactNode; onPick: (t: FormBlockType) => void;
-  open?: boolean; onOpenChange?: (o: boolean) => void; title?: string;
-}) {
-  const [internal, setInternal] = useState(false);
-  const isOpen = open ?? internal;
-  const setOpen = onOpenChange ?? setInternal;
-
-  return (
-    <Popover open={isOpen} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>{children}</PopoverTrigger>
-      <PopoverContent align="start" className="max-h-[380px] w-[248px] overflow-y-auto p-1.5">
-        {title && <MenuLabel>{title}</MenuLabel>}
-        {FIELD_GROUPS.map((group) => {
-          const types = (Object.keys(BLOCK_META) as FormBlockType[]).filter((t) => BLOCK_META[t].group === group);
-          if (types.length === 0) return null;
-          return (
-            <div key={group}>
-              <MenuLabel>{group}</MenuLabel>
-              {types.map((t) => (
-                <MenuItem key={t} onClick={() => { onPick(t); setOpen(false); }}>
-                  <span className="flex-1">{BLOCK_META[t].label}</span>
-                  {BLOCK_META[t].hint && <span className="text-meta text-ink-500">{BLOCK_META[t].hint}</span>}
-                </MenuItem>
-              ))}
-            </div>
-          );
-        })}
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-// ── Settings rail ─────────────────────────────────────────────────────────
-function SettingsRail({
-  settings, status, questionCount, blocks, inPortal, canPortal, onPortal, onChange, onStatus, onClose,
-}: {
-  settings: FormSettings; status: string; questionCount: number; blocks: FormBlock[];
-  inPortal: boolean; canPortal: boolean; onPortal: (v: boolean) => void;
-  onChange: (s: FormSettings) => void; onStatus: (s: 'draft' | 'live' | 'closed') => void; onClose: () => void;
-}) {
-  const set = (patch: Partial<FormSettings>) => onChange({ ...settings, ...patch });
-  return (
-    <div className="flex flex-col gap-5 p-4">
-      <div className="flex items-center justify-between">
-        <span className="text-overline uppercase text-ink-500">Settings</span>
-        <IconButton label="Close settings" variant="ghost" size="xs" icon={<Icon icon={X} size={14} />} onClick={onClose} />
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <span className="text-meta text-ink-600">How it's answered</span>
-        <SegmentedControl
-          aria-label="Filling mode"
-          value={settings.mode ?? 'page'}
-          onValueChange={(v) => set({ mode: v === 'focus' ? 'focus' : 'page' })}
-          options={[{ value: 'page', label: 'One page' }, { value: 'focus', label: 'One question' }]}
-        />
-        <p className="text-meta text-ink-500">
-          {settings.mode === 'focus'
-            ? 'One question at a time — best for anything longer than a few questions.'
-            : 'The whole form on one calm page.'}
-        </p>
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <span className="text-meta text-ink-600">After submitting</span>
-        <Textarea
-          rows={3}
-          value={settings.thanks ?? ''}
-          placeholder="Thank you. Your response has been sent."
-          onChange={(e) => set({ thanks: e.target.value })}
-        />
-      </div>
-
-      {canPortal && (
-        <label className="flex cursor-pointer items-center justify-between gap-3 text-body text-ink-800">
-          <span className="min-w-0">
-            Show in the client portal
-            <span className="mt-0.5 block text-meta text-ink-500">
-              {status === 'live' ? 'Appears under Forms for this project’s client.' : 'Publish the form to surface it.'}
-            </span>
-          </span>
-          <Switch checked={inPortal} onCheckedChange={onPortal} />
-        </label>
-      )}
-
-      <LogicSummary blocks={blocks} />
-
-      <label className="flex cursor-pointer items-center justify-between gap-3 text-body text-ink-800">
-        <span className="min-w-0">
-          Ask who they are
-          <span className="mt-0.5 block text-meta text-ink-500">Adds name + email at the end</span>
-        </span>
-        <Switch checked={!!settings.collectIdentity} onCheckedChange={(v) => set({ collectIdentity: v })} />
-      </label>
-
-      <label className="flex cursor-pointer items-center justify-between gap-3 text-body text-ink-800">
-        <span className="min-w-0">
-          Email me on each response
-          <span className="mt-0.5 block text-meta text-ink-500">A note to your account email when someone completes it</span>
-        </span>
-        <Switch checked={!!settings.notifyByEmail} onCheckedChange={(v) => set({ notifyByEmail: v })} />
-      </label>
-
-      <label className="flex cursor-pointer items-center justify-between gap-3 text-body text-ink-800">
-        <span className="min-w-0">
-          Require a spam check
-          <span className="mt-0.5 block text-meta text-ink-500">Adds a Cloudflare Turnstile challenge before someone can submit</span>
-        </span>
-        <Switch checked={!!settings.turnstile} onCheckedChange={(v) => set({ turnstile: v })} />
-      </label>
-
-      <div className="flex flex-col gap-1.5">
-        <span className="text-meta text-ink-600">Send responses to a URL</span>
-        <TextInput
-          size="sm"
-          type="url"
-          value={settings.webhookUrl ?? ''}
-          placeholder="https://…"
-          onChange={(e) => set({ webhookUrl: e.target.value.trim() || null })}
-        />
-        <p className="text-meta text-ink-500">Each completed response is POSTed here as JSON (webhook).</p>
-      </div>
-
-      {/* Payments are on hold until we choose a provider available in India
-          (Stripe isn't; Razorpay is the likely pick). The schema + renderer are
-          kept dormant so wiring a provider later just re-enables this control. */}
-      <div className="flex flex-col gap-1.5 rounded-md border border-dashed border-line-soft px-3 py-2.5">
-        <span className="flex items-center gap-2 text-meta text-ink-600">
-          Collect a payment
-          <span className="rounded-full bg-surface-fill px-1.5 py-0.5 text-caption text-ink-500">Coming soon</span>
-        </span>
-        <p className="text-meta text-ink-500">Charge a deposit or fee when someone submits — provider setup is on the way.</p>
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <span className="text-meta text-ink-600">Stop after</span>
-        <TextInput
-          size="sm"
-          inputMode="numeric"
-          value={settings.limit ? String(settings.limit) : ''}
-          placeholder="No limit"
-          unit="responses"
-          onChange={(e) => {
-            const n = parseInt(e.target.value.replace(/\D/g, ''), 10);
-            set({ limit: Number.isFinite(n) && n > 0 ? n : null });
-          }}
-        />
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <span className="text-meta text-ink-600">Close on</span>
-        <TextInput
-          size="sm"
-          type="date"
-          value={settings.closeAt ?? ''}
-          onChange={(e) => set({ closeAt: e.target.value || null })}
-        />
-      </div>
-
-      <div className="border-t border-line-soft pt-4">
-        <p className="text-meta text-ink-500">{questionCount} question{questionCount === 1 ? '' : 's'}</p>
-        {status === 'live' && (
-          <Button variant="secondary" size="sm" fullWidth className="mt-2.5" onClick={() => onStatus('closed')}>
-            Stop accepting responses
-          </Button>
-        )}
-        {status === 'closed' && (
-          <Button variant="secondary" size="sm" fullWidth className="mt-2.5" onClick={() => onStatus('live')}>
-            Reopen the form
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Share sheet ───────────────────────────────────────────────────────────
-function ShareModal({ token, onClose, onRotate }: { token: string; onClose: () => void; onRotate: () => void }) {
-  const [copied, setCopied] = useState(false);
-  const url = typeof window === 'undefined' ? `/f/${token}` : `${window.location.origin}/f/${token}`;
-
-  return (
-    <Modal open onOpenChange={onClose} title="Share this form" description="Anyone with the link can fill it in — no account needed.">
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center gap-2">
-          <TextInput value={url} readOnly aria-label="Form link" className="flex-1" onFocus={(e) => e.currentTarget.select()} />
-          <Button
-            variant="primary"
-            icon={<Icon icon={copied ? Check : Copy} size={15} />}
-            onClick={async () => {
-              try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1600); }
-              catch { toast({ message: 'Copy failed — select the link and copy it manually.', variant: 'error' }); }
-            }}
-          >
-            {copied ? 'Copied' : 'Copy'}
-          </Button>
+      {block.other && (
+        <div className="flex min-h-8 items-center gap-2 text-body text-ink-500">
+          <Glyph kind={glyph} n={options.length + 1} />
+          Other, typed by them
         </div>
-        <button onClick={onRotate} className="focus-ring w-fit rounded-sm text-meta text-ink-500 underline underline-offset-2 transition-colors hover:text-ink-800">
-          Create a new link (breaks the old one)
+      )}
+      {selected && (
+        <button
+          type="button"
+          onClick={() => {
+            set([...options, '']);
+            const list = document.activeElement?.closest('[data-options]');
+            requestAnimationFrame(() => {
+              const inputs = (list ?? document).querySelectorAll<HTMLInputElement>('[data-options] input');
+              inputs[inputs.length - 1]?.focus();
+            });
+          }}
+          className="focus-ring mt-0.5 flex h-8 w-fit items-center gap-2 rounded-sm text-ui text-ink-500 transition-colors hover:text-ink-800"
+        >
+          <Icon icon={Plus} size={14} />
+          Add option
         </button>
-      </div>
-    </Modal>
+      )}
+    </div>
   );
 }
 
-/**
- * Every rule in the form, as sentences you can read top to bottom — the
- * "see the whole map" affordance, without building a node-graph editor.
- * A rule whose source question was deleted is called out rather than hidden.
- */
-function LogicSummary({ blocks }: { blocks: FormBlock[] }) {
-  const rules = blocks.filter((b) => b.showWhen);
-  if (rules.length === 0) return null;
-
-  return (
-    <div className="flex flex-col gap-1.5 border-t border-line-soft pt-4">
-      <span className="text-meta text-ink-600">Logic</span>
-      <ul className="flex flex-col gap-2">
-        {rules.map((b) => {
-          const sentence = conditionSentence(b.showWhen!, blocks);
-          return (
-            <li key={b.id} className="text-meta leading-relaxed text-ink-500">
-              {sentence ? (
-                <>Show <span className="text-ink-800">“{b.label?.trim() || 'Untitled'}”</span> when {sentence}</>
-              ) : (
-                <span className="text-warning-600">
-                  “{b.label?.trim() || 'Untitled'}” has a rule pointing at a deleted question — it always shows.
-                </span>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-  );
+/** The mark in front of an option — the same shape the respondent's control draws. */
+function Glyph({ kind, n }: { kind: 'radio' | 'box' | 'rank' | 'number'; n: number }) {
+  if (kind === 'radio') return <span aria-hidden className="size-[18px] shrink-0 rounded-full border border-line-strong bg-surface-raised" />;
+  if (kind === 'box') return <span aria-hidden className="size-4 shrink-0 rounded-[4px] border border-line-strong bg-surface-raised" />;
+  if (kind === 'rank') return <span aria-hidden className="size-5 shrink-0 rounded-full border border-line-strong" />;
+  return <span aria-hidden className="w-5 shrink-0 text-end text-meta tabular-nums text-ink-500">{n}.</span>;
 }

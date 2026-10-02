@@ -18,7 +18,7 @@ export function Divider({ variant = "rule", label, className }: DividerProps) {
     return (
       <div role="separator" aria-orientation="horizontal" className={cn("flex items-center gap-3", className)}>
         <span className="h-px flex-1 bg-line" />
-        <span className="text-overline uppercase text-ink-500">{label}</span>
+        <span className="text-overline text-ink-500">{label}</span>
         <span className="h-px flex-1 bg-line" />
       </div>
     );

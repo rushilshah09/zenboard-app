@@ -9,16 +9,21 @@
 // blue = synced Google events.
 import { useRef, useState } from 'react';
 import { cn } from "@/lib/cn";
-import { type CalEvent, WEEKDAYS, monthCells, localISODate, isToday, fmtTime, addDays } from '@/lib/calendar';
+import { type CalEvent, monthCells, monthHeader, localISODate, isToday, fmtTime, addDays } from '@/lib/calendar';
+import { MilestoneChip } from '@/components/calendar/milestone-chip';
+import type { CalendarMilestone } from '@/lib/milestones';
 import { eventTokens } from '@/lib/event-color';
 
 type Drag =
   | { kind: 'create'; key: string }
   | { kind: 'move'; e: CalEvent; fromKey: string; overKey: string };
 
-export function MonthGrid({ anchor, events, onCreateOn, onMove, onOpen, onMore }: {
+export function MonthGrid({ anchor, events, onCreateOn, onMove, onOpen, onMore, milestones, onOpenProject }: {
   anchor: Date;
   events: CalEvent[];
+  /** Project checkpoints (§7E), bucketed by day. Absent ⇒ 0036 not applied. */
+  milestones?: Map<string, CalendarMilestone[]>;
+  onOpenProject?: (projectId: string) => void;
   onCreateOn: (date: string) => void;
   onMove: (id: string, startsAt: string, endsAt: string | null, allDay: boolean) => void;
   onOpen: (e: CalEvent) => void;
@@ -99,10 +104,10 @@ export function MonthGrid({ anchor, events, onCreateOn, onMove, onOpen, onMore }
 
   return (
     <div className={cn('flex min-h-0 flex-1 flex-col', drag && 'select-none')}>
-      {/* Weekday header */}
+      {/* Weekday header — named from the cells' own first week, so it starts where they do (the app's week start). */}
       <div className="grid grid-cols-7 border-b border-line-strong">
-        {WEEKDAYS.map((w) => (
-          <div key={w} className="px-3 pb-1.5 pt-2 text-left text-overline uppercase text-ink-600">{w.toUpperCase()}</div>
+        {monthHeader(anchor).map((w) => (
+          <div key={w} className="px-3 pb-1.5 pt-2 text-left text-overline text-ink-600">{w}</div>
         ))}
       </div>
       {/* 6 weeks */}
@@ -112,7 +117,12 @@ export function MonthGrid({ anchor, events, onCreateOn, onMove, onOpen, onMore }
           const inMonth = d.getMonth() === month;
           const today = isToday(d);
           const dayEvents = byDate.get(key) ?? [];
-          const shown = dayEvents.slice(0, 3);
+          const dayMiles = milestones?.get(key) ?? [];
+          // A cell holds about three rows. Milestones take from that budget
+          // rather than sitting outside it — otherwise a day with three
+          // meetings and two checkpoints silently overflows its own height,
+          // which is the bug the "+N more" affordance exists to prevent.
+          const shown = dayEvents.slice(0, Math.max(1, 3 - dayMiles.length));
           const extra = dayEvents.length - shown.length;
           const isOver = overKey === key && overKey !== (drag?.kind === 'move' ? drag.fromKey : null);
           return (
@@ -125,12 +135,18 @@ export function MonthGrid({ anchor, events, onCreateOn, onMove, onOpen, onMore }
                 isOver ? 'bg-surface-selected ring-[1.5px] ring-inset ring-ink-500'
                   : today ? 'bg-surface-row'
                   : inMonth ? 'hover:bg-surface-hover'
-                  : 'bg-paper-3/60 hover:bg-surface-hover',
+                  // The neighbouring months recede to the page tone; the month itself is the bright surface.
+                  : 'bg-background hover:bg-surface-hover',
               )}>
               <div className="flex justify-end pb-px">
                 <span className={cn('grid h-[22px] min-w-[22px] place-items-center rounded-full text-meta tabular-nums',
-                  today ? 'bg-ink-900 font-semibold text-onsolid' : inMonth ? 'font-medium text-ink-800' : 'font-medium text-ink-500')}>{d.getDate()}</span>
+                  today ? 'bg-[var(--accent)] font-semibold text-[var(--on-accent)]' : inMonth ? 'font-medium text-ink-800' : 'font-medium text-ink-500')}>{d.getDate()}</span>
               </div>
+              {/* Checkpoints lead the cell: the day's headline before its
+                  appointments (§7E). */}
+              {dayMiles.map((m) => (
+                <MilestoneChip key={m.id} milestone={m} compact onOpen={(id) => onOpenProject?.(id)} />
+              ))}
               {shown.map((e) => (
                 <Chip key={e.id} e={e} dragging={e.id === dragId}
                   onPointerDown={(ev) => { if (ev.button !== 0) return; ev.stopPropagation(); begin({ kind: 'move', e, fromKey: key, overKey: key }); }} />
@@ -139,7 +155,7 @@ export function MonthGrid({ anchor, events, onCreateOn, onMove, onOpen, onMore }
                 <button type="button"
                   onPointerDown={(ev) => ev.stopPropagation()}
                   onClick={(ev) => { ev.stopPropagation(); onMore?.(key); }}
-                  className="focus-ring self-start rounded-xs px-1.5 py-px text-caption font-medium text-ink-600 transition-colors hover:bg-paper-3 hover:text-ink-800">
+                  className="focus-ring self-start rounded-xs px-1.5 py-px text-caption font-medium text-ink-600 transition-colors hover:bg-surface-hover hover:text-ink-800">
                   +{extra} more
                 </button>
               )}
@@ -157,7 +173,9 @@ function Chip({ e, dragging, onPointerDown }: { e: CalEvent; dragging: boolean; 
     <button type="button" onPointerDown={onPointerDown} title={e.title}
       className={cn('flex w-full cursor-grab items-center gap-1.5 overflow-hidden rounded-sm py-[2.5px] pl-1.5 pr-1.5 text-left text-caption font-medium transition-[filter] duration-fast hover:brightness-95', dragging && 'opacity-35')}
       style={{ borderLeft: `3px solid ${c.bar}`, background: c.bg, color: c.text }}>
-      {!e.all_day && <span className="shrink-0 text-caption tabular-nums opacity-70">{fmtTime(e.starts_at).replace(':00', '').replace(' ', '').toLowerCase()}</span>}
+      {/* Quiet by size, not by opacity — see the note in week-grid.tsx. */}
+      {/* The house clock, as it reads everywhere else: "07:00", never a bare "07". */}
+      {!e.all_day && <span className="shrink-0 text-caption tabular-nums">{fmtTime(e.starts_at)}</span>}
       <span className="truncate">{e.title}</span>
     </button>
   );

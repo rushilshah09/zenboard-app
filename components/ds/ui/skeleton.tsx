@@ -8,8 +8,16 @@ export function Skeleton({ className, shape = "block" }: { className?: string; s
   return (
     <span
       aria-hidden
+      // `data-shape` is the SHAPE OF THE MISSING THING, which is the only thing a
+      // loading placeholder actually knows. The paper skin reads it to draw the blank
+      // a printed form would leave: a rule for a line, a ruled box for a block.
+      data-slot="skeleton"
+      data-shape={shape}
       className={cn(
-        "relative block overflow-hidden bg-paper-5",
+        // HELD BACK by `--delay-busy` like every other busy indicator: a skeleton
+        // that flashes for 90ms is a layout blinking, which reads worse than the
+        // empty box it replaced.
+        "zb-busy relative block overflow-hidden bg-paper-5",
         shape === "line" && "h-3 rounded-xs",
         shape === "circle" && "rounded-full",
         shape === "block" && "rounded-md",
@@ -17,7 +25,14 @@ export function Skeleton({ className, shape = "block" }: { className?: string; s
       )}
     >
       <span
-        className="absolute inset-y-0 w-1/2 bg-gradient-to-r from-transparent via-paper-3 to-transparent motion-safe:animate-[shimmer_1.4s_ease-in-out_infinite]"
+        data-slot="skeleton-sweep"
+        // `zb-sweep`, not a hand-written duration: one vocabulary for everything
+        // that says "working" (ds-theme.css). It was `1.4s ease-in-out`, which
+        // PAUSES at both ends of every pass — on a loop the eye reads that as a
+        // stutter, not a sweep. Constant motion is linear (Emil's own rule), and
+        // reduced motion stops it entirely: a skeleton that sits still is still a
+        // skeleton, whereas a spinner that sits still reads as stuck.
+        className="absolute inset-y-0 w-1/2 bg-gradient-to-r from-transparent via-paper-3 to-transparent zb-sweep"
         style={{ transform: "translateX(-100%)" }}
       />
     </span>

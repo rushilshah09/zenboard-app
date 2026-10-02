@@ -2,44 +2,88 @@
 // Projects → Docs tab. Lists docs linked to the project, creates new ones (via
 // the shared Library actions, with project_id set), and edits them in a drawer
 // with the same autosave + content model as Library. A per-doc "Share with
-// client" toggle drives the portal (client_visible). Open in Library deep-links.
+// client" toggle drives the portal (client_visible). "Open in Documents" deep-links.
 //
-// DS-built: §5.1 Button, §4.3 IconButton, §4.37 Drawer (savedStamp autosave),
-// §4.45 EmptyState. No inline styles, no legacy Paper-OS tokens.
+// DS-built: §5.1 Button, §4.3 IconButton, §2.11 PageView (the one detail shell —
+// a doc opens the same way here as in Documents), §4.45 EmptyState. No inline
+// styles, no legacy Paper-OS tokens.
 import { useEffect, useRef, useState } from 'react';
-import { FileText, Plus, Trash2, ExternalLink, Eye, EyeOff } from "@/components/ds/icons";
+import { FileText, Plus, Trash2, ExternalLink, Video } from "@/components/ds/icons";
 import Link from 'next/link';
-import { Icon, Button, IconButton, Drawer, EmptyState } from '@/components/ds/ui';
+import { Icon, Button, IconButton, PageView, EmptyState, cardClass } from '@/components/ds/ui';
+import { SkeletonText } from '@/components/ds/ui/skeleton';
 import { addPage, updatePage, deletePage, getPage } from '@/lib/actions/library';
+import { isDocumentPage } from '@/lib/page-kinds';
 import { setDocClientVisible } from '@/lib/actions/portal';
-import { BlockEditor } from '@/components/documents/block-editor';
+import { ShareToggle } from '@/components/sharing/share-toggle';
+import { applyShare } from '@/components/sharing/apply-share';
+import type { ShareChannels } from '@/lib/visibility';
+import dynamic from 'next/dynamic';
 import { type Block, toBlocks, serialize } from '@/lib/blocks';
 import { cn } from '@/lib/cn';
 import type { PDoc } from '@/components/projects/projects-workspace';
-import { ShapeIcon } from '@/components/illustrations/ink';
+import { formatAgo } from '@/lib/date';
+import { isTempId, tempId } from '@/lib/temp-id';
 
-const ago = (iso: string) => {
-  const d = (Date.now() - new Date(iso).getTime()) / 1000;
-  if (d < 60) return 'just now';
-  if (d < 3600) return Math.floor(d / 60) + 'm ago';
-  if (d < 86400) return Math.floor(d / 3600) + 'h ago';
-  if (d < 604800) return Math.floor(d / 86400) + 'd ago';
-  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-};
+// A ProseMirror editor CANNOT render on the server — it needs a real DOM to
+// build its view — so every byte of it in the worker bundle was work thrown
+// away on first paint. It also only ever appears inside a panel that opens on
+// interaction, never in the initial HTML.
+//
+// `ssr: false` is therefore the correct shape, not only the smaller one, and
+// `database-view.tsx` already loads it this way. Static imports here put the
+// whole editor in the Cloudflare worker, which has a 3 MiB gzipped ceiling.
+const BlockEditor = dynamic(
+  () => import('@/components/documents/block-editor').then((m) => ({ default: m.BlockEditor })),
+  { ssr: false },
+);
+
+const ago = (iso: string) => formatAgo(iso, { precise: true }) ?? '';
+
+// The reading column. Full page is full-bleed, so a doc needs its own measure
+// (the fixed-width drawer used to give this for free). Narrower than 720 in a
+// side peek, it simply fills. Shared by the skeleton so the two cannot drift.
+const DOC_MEASURE = 'mx-auto w-full max-w-[720px] px-6 pb-16 pt-6';
 
 export function ProjectDocs({
-  projectId, docs, portalSupported, onChange, flash,
+  projectId, projectName, docs, portalSupported, channels, onChange, flash,
 }: {
   projectId: string;
+  /** For the document trail — a doc opened from here says where it lives. */
+  projectName: string;
   docs: PDoc[];
   portalSupported: boolean;
+  /** The project's share switches — the first of the two visibility gates. */
+  channels: ShareChannels;
   onChange: (next: PDoc[]) => void;
   flash: (m: string) => void;
 }) {
   const [editId, setEditId] = useState<string | null>(null);
 
+  // ── A CONTENT PIECE IS NOT A DOC ────────────────────────────────────────
+  //
+  // The loader fetches every `pages` row carrying this `project_id`, and a
+  // content piece carries one — the close-out creates them that way on purpose,
+  // so a case study knows which job it came from. This list rendered all of
+  // them: measured on the harness, **"4 docs" for three docs and a case
+  // study**, and clicking it would have handed a content piece to the DOCUMENT
+  // editor, where it has no stage, dates, brief or client sign-off.
+  //
+  // `isDocumentPage` is THE rule for which module owns a `pages` row, and its
+  // own note says the next module to store a page adds a line THERE rather
+  // than rediscovering this in another query file. Documents already uses it;
+  // this was the fourth place to need it and the first to nearly re-hand-roll
+  // it as `type !== 'content'` — which would have gone stale the moment a
+  // fifth type appeared.
+  //
+  // Split here rather than in the loader, because the project SHOULD show what
+  // it produced — just not as writing. Filtering upstream would have fixed the
+  // count by hiding the work.
+  const written = docs.filter((d) => isDocumentPage(d.type));
+  const madeContent = docs.filter((d) => !isDocumentPage(d.type));
+
   async function create() {
-    const tmp = 'tmp-' + Date.now();
+    const tmp = tempId();
     const optimistic: PDoc = { id: tmp, project_id: projectId, title: 'Untitled', type: 'doc', client_visible: false, updated_at: new Date().toISOString() };
     onChange([optimistic, ...docs]);
     const res = await addPage({ projectId, type: 'doc' });
@@ -49,15 +93,15 @@ export function ProjectDocs({
 
   async function remove(id: string) {
     onChange(docs.filter((d) => d.id !== id));
-    if (!id.startsWith('tmp-')) { const r = await deletePage(id); if ('error' in r) flash(r.error); }
+    if (!isTempId(id)) { const r = await deletePage(id); if ('error' in r) flash(r.error); }
   }
 
   async function toggleShare(id: string) {
     const doc = docs.find((d) => d.id === id); if (!doc) return;
     const next = !doc.client_visible;
-    onChange(docs.map((d) => (d.id === id ? { ...d, client_visible: next } : d)));
-    const r = await setDocClientVisible(id, next);
-    if ('error' in r) { onChange(docs.map((d) => (d.id === id ? { ...d, client_visible: !next } : d))); flash(r.error); }
+    const set = (v: boolean) => onChange(docs.map((d) => (d.id === id ? { ...d, client_visible: v } : d)));
+    set(next);
+    await applyShare(() => setDocClientVisible(id, next), () => set(!next), flash);
   }
 
   function onSaved(id: string, title: string) {
@@ -67,40 +111,45 @@ export function ProjectDocs({
   return (
     <div>
       <div className="mb-3 flex items-center">
-        <span className="text-ui text-ink-500">{docs.length} doc{docs.length === 1 ? '' : 's'}</span>
+        <span className="text-ui text-ink-500">{written.length} doc{written.length === 1 ? '' : 's'}</span>
         <span className="flex-1" />
         <Button size="sm" variant="secondary" icon={<Icon icon={Plus} size={14} />} onClick={create}>New doc</Button>
       </div>
 
-      {docs.length === 0 ? (
+      {written.length === 0 ? (
         <div className="rounded-lg border border-dashed border-line-strong">
           <EmptyState
             size="inline"
-            illustration={<ShapeIcon name="docs" size={56} />}
+            illustration={<Icon icon={FileText} size={20} />}
             title="No docs yet"
-            description="Briefs, scopes, notes — add one and optionally share it in the portal."
+            description="Briefs, scopes and notes, shared to the portal when you choose."
           />
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-line-soft bg-surface-raised">
-          {docs.map((d, i) => (
-            <div key={d.id} className={cn('flex items-center gap-3 px-3.5 py-3', i > 0 && 'border-t border-line-soft')}>
+        <div className={cardClass('overflow-hidden @container')}>
+          {/* A query container, like the task list's card: on a phone the
+              share pill drops its word — it had left each doc title ~14
+              characters. */}
+          {written.map((d, i) => (
+            <div key={d.id} className={cn('group flex items-center gap-3 px-3.5 py-3', i > 0 && 'border-t border-line-soft')}>
               <Icon icon={FileText} size={16} className="shrink-0 text-ink-500" />
               <button onClick={() => setEditId(d.id)} className="focus-ring min-w-0 flex-1 rounded-xs text-left">
                 <div className="truncate text-ui text-ink-900">{d.title?.trim() || 'Untitled'}</div>
                 <div className="text-caption text-ink-500">Edited {ago(d.updated_at)}</div>
               </button>
               {portalSupported && (
-                <button
-                  onClick={() => toggleShare(d.id)}
-                  aria-pressed={d.client_visible}
-                  title={d.client_visible ? 'Shared with client — click to unshare' : 'Share with client'}
-                  className={cn('focus-ring inline-flex h-7 shrink-0 items-center gap-1.5 rounded-sm border border-line-strong px-2 text-caption font-medium transition-colors duration-fast',
-                    d.client_visible ? 'bg-surface-selected text-ink-900' : 'text-ink-600 hover:bg-surface-hover hover:text-ink-800')}>
-                  <Icon icon={d.client_visible ? Eye : EyeOff} size={12} />{d.client_visible ? 'Shared' : 'Private'}
-                </button>
+                <ShareToggle
+                  kind="doc"
+                  item={{ client_visible: d.client_visible }}
+                  channels={channels}
+                  name={d.title?.trim() || 'Untitled'}
+                  onToggle={() => toggleShare(d.id)}
+                />
               )}
-              <Link href={`/library?page=${d.id}`} title="Open in Library" aria-label="Open in Library"
+              {/* Was `/library?page=` — a redirect that dropped the query string,
+                  so this landed on the Documents hub instead of the doc. Also
+                  "Library" is not a name the glossary uses any more. */}
+              <Link href={`/documents?page=${d.id}`} title="Open in Documents" aria-label="Open in Documents"
                 className="focus-ring grid size-7 shrink-0 place-items-center rounded-sm text-ink-500 transition-colors duration-fast hover:bg-surface-hover hover:text-ink-800">
                 <Icon icon={ExternalLink} size={14} />
               </Link>
@@ -110,13 +159,51 @@ export function ProjectDocs({
         </div>
       )}
 
-      {editId && <DocEditor id={editId} onClose={() => setEditId(null)} onSaved={onSaved} flash={flash} />}
+      {/* ── WHAT THIS PROJECT BECAME ─────────────────────────────────────
+          Content made about this job. The close-out offers exactly this at the
+          moment the work finishes ("finished work is the best marketing a
+          studio ever has"), and until now the pieces it created were only
+          findable in Content — the project that produced them said nothing.
+
+          A LINK, not an editor: a piece is worked on in Content, where its
+          stage, dates, brief and client sign-off live. Opening it in a document
+          editor here is the very confusion this section exists to end. */}
+      {madeContent.length > 0 && (
+        <section className="mt-7">
+          <h3 className="mb-2 text-overline">Content from this project</h3>
+          <div className={cardClass('overflow-hidden')}>
+            {madeContent.map((d, i) => (
+              <Link
+                key={d.id}
+                href={`/content?piece=${d.id}`}
+                className={cn(
+                  'focus-ring group flex items-center gap-3 px-3.5 py-3 transition-colors duration-fast hover:bg-surface-hover',
+                  i > 0 && 'border-t border-line-soft',
+                )}
+              >
+                <Icon icon={Video} size={16} className="shrink-0 text-ink-500" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-ui text-ink-900">{d.title?.trim() || 'Untitled'}</span>
+                  <span className="block text-caption text-ink-500">Edited {ago(d.updated_at)}</span>
+                </span>
+                <Icon icon={ExternalLink} size={14} className="shrink-0 text-ink-500" />
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {editId && <DocEditor id={editId} projectName={projectName} initialTitle={docs.find((d) => d.id === editId)?.title ?? ''} onClose={() => setEditId(null)} onSaved={onSaved} flash={flash} />}
     </div>
   );
 }
 
-function DocEditor({ id, onClose, onSaved, flash }: { id: string; onClose: () => void; onSaved: (id: string, title: string) => void; flash: (m: string) => void }) {
-  const [title, setTitle] = useState('');
+function DocEditor({ id, projectName, initialTitle, onClose, onSaved, flash }: { id: string; projectName: string; initialTitle: string; onClose: () => void; onSaved: (id: string, title: string) => void; flash: (m: string) => void }) {
+  // Seeded from the row you clicked. The document's BODY has to be fetched,
+  // but its title is already on screen in the list behind this panel — opening
+  // it into a skeleton and then replacing it with the same words is the app
+  // forgetting what it just showed you. Only the body waits.
+  const [title, setTitle] = useState(initialTitle);
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [state, setState] = useState<'loading' | 'idle' | 'saving' | 'saved'>('loading');
   const skip = useRef(true);
@@ -129,7 +216,7 @@ function DocEditor({ id, onClose, onSaved, flash }: { id: string; onClose: () =>
 
   // debounced autosave
   useEffect(() => {
-    if (state === 'loading' || id.startsWith('tmp-')) return;
+    if (state === 'loading' || isTempId(id)) return;
     if (skip.current) { skip.current = false; return; }
     setState('saving');
     const t = setTimeout(async () => {
@@ -142,18 +229,87 @@ function DocEditor({ id, onClose, onSaved, flash }: { id: string; onClose: () =>
     return () => clearTimeout(t);
   }, [title, blocks]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const heading = title.trim() || 'Untitled';
+  // A brand-new doc opens with an empty title and an empty body, and the block
+  // editor's placeholder only renders on the FOCUSED block — so with the caret
+  // nowhere, "New doc" landed you on a blank screen with no hint that anything
+  // was typeable. Notion, Linear and Docs all put the caret in the title of a
+  // page you just created; you named it in your head before you clicked.
+  //
+  // Only when it IS new: focusing the title of a doc you opened to read would
+  // hijack a scroll position and risk an accidental rename.
+  const titleRef = useRef<HTMLInputElement>(null);
+  const fresh = state !== 'loading' && !title.trim() && blocks.every((b) => !b.text?.trim());
+  const focusedOnce = useRef(false);
+  useEffect(() => {
+    if (!fresh || focusedOnce.current) return;
+    focusedOnce.current = true;
+    titleRef.current?.focus();
+  }, [fresh]);
+
   return (
-    <Drawer open onOpenChange={(o) => { if (!o) onClose(); }} modal size="lg" title="Doc"
-      savedStamp={state === 'saving' ? 'Saving…' : state === 'saved' ? 'Saved' : undefined}>
+    <PageView
+      open
+      onOpenChange={(o) => { if (!o) onClose(); }}
+      contentType="document"
+      // Header name tracks the editable H1 below; both stay in sync as you type.
+      title={heading}
+      // ── THE TRAIL ────────────────────────────────────────────────────────
+      // A project doc opens FULL PAGE, which is right — it is the thing you
+      // came to write. But full page replaces the workspace, so without a trail
+      // the only evidence of where you are is a close button, and a new doc
+      // (empty title, empty body) reads as a blank screen you cannot place.
+      //
+      // `doc-breadcrumbs.tsx` said this was coming: "keeping the three apart is
+      // what lets Projects or Clients grow a trail later without copying any of
+      // this." This is that trail — DS `Breadcrumbs` through PageView, no copy
+      // of the Documents wiring, because a project doc's parent is a PROJECT
+      // and not a folder in the documents tree.
+      //
+      // The project crumb CLOSES rather than navigates: the project is the page
+      // directly underneath this one, so closing is both instant and literally
+      // what "go up one" means here. "Projects" is a real link because that is
+      // a different page.
+      breadcrumbs={[
+        { label: 'Projects', href: '/projects' },
+        { label: projectName, onNavigate: onClose },
+        { label: heading, icon: <Icon icon={FileText} size={14} /> },
+      ]}
+      // The doc's canonical address — makes "Open in new tab" a real link, not a
+      // simulation. A not-yet-saved optimistic doc has no address yet.
+      href={isTempId(id) ? undefined : `/documents?page=${id}`}
+      // The quiet autosave stamp lives in the toolbar (§2.3), where <Drawer>'s
+      // savedStamp footer used to put it.
+      actions={
+        state === 'saving' || state === 'saved'
+          ? <span role="status" className="px-1 text-meta text-ink-500">{state === 'saving' ? 'Saving…' : 'Saved'}</span>
+          : undefined
+      }
+    >
       {state === 'loading' ? (
-        <div className="py-12 text-center text-ui text-ink-500">Loading…</div>
+        // A skeleton in the shape of the body, not a centred "Loading…": what
+        // is coming is paragraphs, so the wait shows paragraphs and the content
+        // lands without the layout jumping. The title is already real above it.
+        <div className={DOC_MEASURE} aria-busy="true">
+          <div className="mb-4 text-title-2 text-ink-900">{heading}</div>
+          <div className="flex flex-col gap-3" aria-label="Loading document">
+            <SkeletonText lines={3} />
+          </div>
+        </div>
       ) : (
-        <div className="px-2 pb-16 pt-2">
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Untitled" autoComplete="off" data-1p-ignore data-lpignore="true"
-            className="mb-4 w-full border-0 bg-transparent text-title-2 text-ink-900 outline-none placeholder:text-ink-400" />
-          <BlockEditor blocks={blocks} onChange={setBlocks} />
+        <div className={DOC_MEASURE}>
+          {/* Enter from the title moves INTO the document rather than doing
+              nothing — the title is a one-line field, so the key has no other
+              meaning here and every editor binds it this way. */}
+          <input data-chromeless ref={titleRef} value={title} onChange={(e) => setTitle(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); (e.currentTarget.closest('[data-doc-body]')?.querySelector('[contenteditable]') as HTMLElement | null)?.focus(); } }}
+            placeholder="Untitled" aria-label="Document title" autoComplete="off" data-1p-ignore data-lpignore="true"
+            className="mb-4 w-full border-0 bg-transparent text-title-2 text-ink-900 outline-none placeholder:text-ink-500" />
+          <div data-doc-body>
+            <BlockEditor blocks={blocks} onChange={setBlocks} />
+          </div>
         </div>
       )}
-    </Drawer>
+    </PageView>
   );
 }

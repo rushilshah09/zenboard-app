@@ -84,7 +84,7 @@ export function SpikeEditor({ initial }: { initial: SpikeBlock[] }) {
   const handleRef = useRef<ActiveEditorHandle>({ view: null });
   const metricsRef = useRef<Metrics>({ keyPaint: [], keySync: [], mountShifts: [], cls: 0, initialRenderMs: 0 });
   const pendingRectRef = useRef<{ x: number; y: number; w: number; h: number } | null>(null);
-  const lastActionRef = useRef('—');
+  const lastActionRef = useRef('–');
 
   const commit = (after: SpikeBlock[]) => { blocksRef.current = after; setBlocks(after); };
 
@@ -340,7 +340,7 @@ export function SpikeHud() {
       <div style={cell}><span>blocks</span><b>{w.n()}</b></div>
       <div style={cell}><span>key→paint p50 / p95</span><b>{m.p50}ms / {m.p95}ms</b></div>
       <div style={cell}><span>keystrokes</span><b>{m.keystrokes}</b></div>
-      <div style={cell}><span>mount shift (last)</span><b>{m.mountShifts.at(-1) ?? '—'}px</b></div>
+      <div style={cell}><span>mount shift (last)</span><b>{m.mountShifts.at(-1) ?? '–'}px</b></div>
       <div style={cell}><span>CLS total</span><b>{m.cls}</b></div>
       <div style={cell}><span>history depth</span><b>{s.depth}</b></div>
       <div style={cell}><span>last action</span><b style={{ maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.lastAction}</b></div>

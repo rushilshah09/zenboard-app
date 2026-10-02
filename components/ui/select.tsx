@@ -9,7 +9,7 @@
 //     opens OptionList in a canonical Popover, with outside-click / Esc close.
 import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, Check, Plus, Search } from "@/components/ds/icons";
-import { Icon } from "@/components/ds/ui";
+import { Icon, MenuField, MENU_ITEM_CLASS } from "@/components/ds/ui";
 import { cx } from './primitives';
 import { Popover } from './popover';
 
@@ -36,9 +36,11 @@ export function OptionList({
   return (
     <div>
       {searchable && (
-        <div className="flex items-center gap-2 h-7 px-2 mb-1 rounded-sm bg-paper shadow-[inset_0_0_0_1px_var(--line)]">
-          <Icon icon={Search} size={14} className="text-ink-5 shrink-0" />
-          <input
+        // The panel's own search field (MenuField): the list's popover is its edge.
+        <div className="mb-1">
+          <MenuField
+            icon={<Icon icon={Search} size={16} />}
+            aria-label={placeholder.replace(/…$/, '')}
             autoFocus={autoFocus}
             value={q}
             onChange={(e) => setQ(e.target.value)}
@@ -50,10 +52,6 @@ export function OptionList({
               }
             }}
             placeholder={placeholder}
-            autoComplete="off"
-            data-1p-ignore
-            data-lpignore="true"
-            className="flex-1 min-w-0 bg-transparent outline-none border-0 text-[13px] text-ink-2 placeholder:text-(--ink-placeholder)"
           />
         </div>
       )}
@@ -65,11 +63,11 @@ export function OptionList({
               key={o.value}
               type="button"
               onClick={() => onPick(o.value)}
-              className="flex items-center gap-2 w-full h-8 px-2 rounded-sm text-left text-[13px] text-ink-2 bg-transparent border-0 cursor-pointer transition-colors [transition-duration:var(--dur-instant)] hover:bg-hover"
+              className={cx(MENU_ITEM_CLASS, 'border-0 bg-transparent transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-hover')}
             >
               {o.dot && <span aria-hidden className="w-2 h-2 rounded-full shrink-0" style={{ background: o.dot }} />}
               <span className="flex-1 min-w-0 truncate">{o.label}</span>
-              {on && <Icon icon={Check} size={16} className="text-ink-4 shrink-0" />}
+              {on && <Icon icon={Check} size={16} className="text-ink-600 shrink-0" />}
             </button>
           );
         })}
@@ -77,14 +75,14 @@ export function OptionList({
           <button
             type="button"
             onClick={() => { onCreate!(q.trim()); setQ(''); }}
-            className="flex items-center gap-2 w-full h-8 px-2 rounded-sm text-left text-[13px] text-ink-3 bg-transparent border-0 cursor-pointer transition-colors [transition-duration:var(--dur-instant)] hover:bg-hover"
+            className={cx(MENU_ITEM_CLASS, 'border-0 bg-transparent text-ink-700 transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-hover')}
           >
-            <Icon icon={Plus} size={14} className="text-ink-5" />
+            <Icon icon={Plus} size={16} className="text-ink-600" />
             <span className="truncate">Create &ldquo;{q.trim()}&rdquo;</span>
           </button>
         )}
         {shown.length === 0 && !canCreate && (
-          <div className="px-2 py-3 text-[13px] text-ink-5 text-center">No options</div>
+          <div className="px-2 py-3 text-center text-ui text-ink-500">No options</div>
         )}
       </div>
     </div>
@@ -146,7 +144,7 @@ export function Select({
           onClick={toggle}
           className={cx(
             'flex items-center gap-2 w-full h-[var(--ctl-md)] px-3 bg-paper-2 border border-line rounded-md shadow-(--shadow-xs)',
-            'text-[13px] text-left cursor-pointer transition-[border-color] [transition-duration:var(--dur-fast)]',
+            'text-[13px] text-left cursor-pointer transition-[border-color] [transition-duration:var(--duration-fast)]',
             'hover:border-line-3 disabled:bg-disabled-bg disabled:text-disabled-text disabled:pointer-events-none',
             open && 'border-accent-border ring-2 ring-accent-soft',
           )}
